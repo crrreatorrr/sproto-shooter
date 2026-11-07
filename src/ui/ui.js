@@ -450,7 +450,11 @@ export function createUI(root, { input, bus, project, game }) {
     text(els.tickets, 'tk', `🎟 ${p.tickets}`);
     html(els.resources, 'rs', RESOURCES.map((r) => `<span style="--c:${r.color}" title="${r.name}">${r.icon}${p.resources[r.id]}</span>`).join(''));
     let wave = '';
-    if (s.mode === 'boss' && s.bossFight) wave = `<b>BOSS FIGHT</b> · ${BOSSES[s.bossFight.type].name} · Tier ${s.tier}`;
+    if (s.mode === 'campaign' && s.level) {
+      const lv = s.level;
+      const fuel = lv.fuel > 0 || (s.players[s.localPlayerId].jetpack) ? ` · fuel ${Math.ceil(lv.fuel)}` : '';
+      wave = `<b>${lv.name}</b> · ${lv.objective || ''}${fuel}`;
+    } else if (s.mode === 'boss' && s.bossFight) wave = `<b>BOSS FIGHT</b> · ${BOSSES[s.bossFight.type].name} · Tier ${s.tier}`;
     else if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> · Tier ${s.tier} <small>[\`] debug · [B] shop</small>`;
     else if (s.wave) {
       const w = s.wave;

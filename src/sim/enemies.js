@@ -35,7 +35,7 @@ function steer(state, e, target, w, invertSeek = false) {
   }
   const r = Math.hypot(e.pos.x, e.pos.z);
   let wx = 0, wz = 0;
-  if (r > ARENA_R - 3) { const k = (r - (ARENA_R - 3)) / 3; wx = (-e.pos.x / r) * k; wz = (-e.pos.z / r) * k; }
+  if (state.mode !== 'campaign' && r > ARENA_R - 3) { const k = (r - (ARENA_R - 3)) / 3; wx = (-e.pos.x / r) * k; wz = (-e.pos.z / r) * k; }
   const stx = -sz * e.ai.strafeDir, stz = sx * e.ai.strafeDir;
   let dx = w.seek * sx + w.sep * px + w.wall * wx + w.strafe * stx;
   let dz = w.seek * sz + w.sep * pz + w.wall * wz + w.strafe * stz;
@@ -229,7 +229,8 @@ export function enemyAI(state, dt) {
     } else {
       if (e.state === 'idle' && e.type !== 'dummy') setState(e, 'chase');
       const slow = e.status.goo ? 1 - e.status.goo.slow : 1;
-      BEHAVIORS[e.type].update(state, e, target, def, def.speed * e.speedMult * slow, dt);
+      const beh = BEHAVIORS[e.type] || BEHAVIORS[def.behavior];
+      beh.update(state, e, target, def, def.speed * e.speedMult * slow, dt);
     }
     // integrate (flyers hold altitude themselves; staggered flyers sag a bit)
     if (def.flying) { if (e.state === 'stagger' || e.state === 'spawning') e.vel.y += ((e.state === 'spawning' ? 2 : -3) - e.vel.y) * Math.min(1, 5 * dt); }
@@ -268,7 +269,10 @@ export function resolveOverlaps(state) {
         b.pos.x += nx * push * kb; b.pos.z += nz * push * kb;
       }
     }
-    if (a.type !== 'hexAuditor') { clampToArena(a, ra); pushOutOfBoxes(state, a, ra); }
+    if (a.type !== 'hexAuditor') {
+      if (state.mode !== 'campaign') clampToArena(a, ra);
+      pushOutOfBoxes(state, a, ra);
+    }
   }
   // push players out of enemies
   for (const p of Object.values(state.players)) {
@@ -282,7 +286,7 @@ export function resolveOverlaps(state) {
       const min = def.radius * e.scale + TUNING.playerRadius;
       if (d < min && d > 1e-4) { p.pos.x = e.pos.x + (dx / d) * min; p.pos.z = e.pos.z + (dz / d) * min; }
     }
-    clampToArena(p, TUNING.playerRadius);
+    if (state.mode !== 'campaign') clampToArena(p, TUNING.playerRadius);
   }
 }
 

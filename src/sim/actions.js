@@ -10,6 +10,7 @@ import { addXp, applySkillPassives } from './progression.js';
 import { onEnemyKilled, GOD_HP } from './combat.js';
 import { respawn, godTopUp } from './player.js';
 import { startWaves } from './waves.js';
+import { startCampaign, transitionDone } from './campaign/campaign.js';
 import { TUNING } from '../data/tuning.js';
 import { BOSSES } from '../data/enemies.js';
 import {
@@ -39,6 +40,7 @@ function handle(state, p, a) {
     case 'buyUpgrade': return buyUpgrade(state, p, a.id);
     case 'buySupply': return buySupply(state, p, a.id);
     case 'startMode': return startMode(state, p, a.mode, a.tier, a);
+    case 'transitionDone': return transitionDone(state);
     case 'debug': return debugOp(state, p, a.op, a.args || {});
   }
 }
@@ -58,6 +60,8 @@ export function startMode(state, p, mode, tier = 1, opts = {}) {
   state.bossFight = null;
   if (mode === 'waves') {
     startWaves(state, tier);
+  } else if (mode === 'campaign') {
+    startCampaign(state, p, opts.level);
   } else if (mode === 'boss') {
     startBossFight(state, p, opts.boss, tier);
   } else {

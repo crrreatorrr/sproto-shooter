@@ -62,7 +62,7 @@ export function projectiles(state, dt) {
       else { detonate(state, p); continue; }
     }
     const r = Math.hypot(p.pos.x, p.pos.z);
-    if (r > ARENA_R + (p.faction === 'enemy' ? 2 : 0)) {
+    if (state.mode !== 'campaign' && r > ARENA_R + (p.faction === 'enemy' ? 2 : 0)) {
       if (p.bounces > 0) { p.bounces--; const nx = p.pos.x / r, nz = p.pos.z / r; const vr = p.vel.x * nx + p.vel.z * nz; p.vel.x -= 2 * vr * nx; p.vel.z -= 2 * vr * nz; }
       else { detonate(state, p); continue; }
     }

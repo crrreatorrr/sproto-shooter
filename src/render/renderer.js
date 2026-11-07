@@ -11,6 +11,7 @@ import { createHumanoidRig } from './humanoidRig.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
 import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY, ensureGunModel, instantiateGun } from './assets.js';
+import { createLevelView } from './level/levelView.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const ELEM_COL = { none: 0xffe9a8, fire: 0xff7a1a, shock: 0x4fe3ff, goo: 0x9be33b };
@@ -89,6 +90,9 @@ export function createRenderer(container, bus) {
   scene.add(wall);
   const decor = new THREE.Group();
   scene.add(decor);
+  const levelView = createLevelView();
+  scene.add(levelView.group);
+  const arenaBits = [ground, outer, rim, edgeRing, wall, decor];
   let stageKey = '';
   let stageOverride = null;
 
@@ -808,6 +812,20 @@ export function createRenderer(container, bus) {
     needsT -= fdt;
     if (needsT <= 0) { needsT = 0.25; requestNeeds(state); }
     applyStage(stageFor(state, stageOverride));
+    const campaign = state.mode === 'campaign' && state.level;
+    for (const mesh of arenaBits) mesh.visible = !campaign;
+    levelView.group.visible = !!campaign;
+    if (campaign) {
+      levelView.sync(state);
+      if (scene.fog) {
+        const dark = state.level.modifiers && state.level.modifiers.lightsOut;
+        scene.fog.near = dark ? 4 : 30;
+        scene.fog.far = dark ? 36 : 420;
+      }
+    } else if (scene.fog && scene.fog.far > 300) {
+      scene.fog.near = 60;
+      scene.fog.far = 200;
+    }
     for (const e of state.enemies) {
       // Model-swap only when the needed stage model is loaded (avoid flicker between fallback and model).
       const v = syncView(e.id, () => (e.boss ? buildBoss(e) : buildEnemy(e)), viewKey(e));

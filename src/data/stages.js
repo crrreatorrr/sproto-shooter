@@ -31,16 +31,50 @@ export const STAGES = {
     bounce: { color: 0x60ff9a, intensity: 0.42 },
     ring: 0x60ff9a, ground: null, floorRepeat: 8, propHeight: 7,
   },
+  // Campaign-only. Textures fall back to city / glacier / void. Wave stages above are unchanged.
+  desert: {
+    label: 'Grand Bazaar', background: 0x2a1608, fog: 0xc48a4a,
+    hemi: { sky: 0xffc48a, ground: 0x6a4020, intensity: 1 },
+    sun: { color: 0xffd0a0, intensity: 2.4, position: [20, 28, -10] },
+    bounce: { color: 0xffaa55, intensity: 0.45 },
+    ring: 0xe8a060, ground: 0x8a6840, floorRepeat: 8, propHeight: 6,
+  },
+  grove: {
+    label: 'Vegetable Grove', background: 0x102008, fog: 0x1c3a18,
+    hemi: { sky: 0xb7e38a, ground: 0x243018, intensity: 1 },
+    sun: { color: 0xfff0c0, intensity: 1.8, position: [12, 24, 8] },
+    bounce: { color: 0x6adf3a, intensity: 0.4 },
+    ring: 0x6adf3a, ground: 0x3d6a32, floorRepeat: 8, propHeight: 6,
+  },
+  office: {
+    label: 'Government Office', background: 0x12141c, fog: 0x2a3144,
+    hemi: { sky: 0xc5d0e0, ground: 0x2a3038, intensity: 0.9 },
+    sun: { color: 0xe8eef8, intensity: 1.6, position: [8, 18, 6] },
+    bounce: { color: 0x8ec8ff, intensity: 0.35 },
+    ring: 0x8ec8ff, ground: 0x4a5568, floorRepeat: 6, propHeight: 4,
+  },
+  moonlit: {
+    label: 'Moonlit Ruins', background: 0x070612, fog: 0x16142e,
+    hemi: { sky: 0x9aa4d8, ground: 0x1a1830, intensity: 0.85 },
+    sun: { color: 0xd0d8ff, intensity: 1.5, position: [-18, 30, -8] },
+    bounce: { color: 0x6a78c8, intensity: 0.4 },
+    ring: 0xb0a0e0, ground: 0x2a2840, floorRepeat: 8, propHeight: 7,
+  },
 };
 export const STAGE_IDS = Object.keys(STAGES);
 
-export const stageAssets = (id) => ({
-  floor: `textures/stages/${id}/floor.jpg`,
-  sky: `textures/stages/${id}/sky.jpg`,
-  stone: `textures/stages/${id}/stone.jpg`,
-  pillar: `models/stages/${id}/pillar.glb`,
-  prop: `models/stages/${id}/prop.glb`,
-});
+// New campaign stages reuse an existing texture folder so stageAssets does not 404.
+const STAGE_TEXTURE = { desert: 'city', office: 'city', grove: 'glacier', moonlit: 'void' };
+export const stageAssets = (id) => {
+  const folder = STAGE_TEXTURE[id] || id;
+  return {
+    floor: `textures/stages/${folder}/floor.jpg`,
+    sky: `textures/stages/${folder}/sky.jpg`,
+    stone: `textures/stages/${folder}/stone.jpg`,
+    pillar: `models/stages/${folder}/pillar.glb`,
+    prop: `models/stages/${folder}/prop.glb`,
+  };
+};
 
 /**
  * Wave 1 → Los Angeles, wave 2 → Ashen Caldera, wave 3 → The Void.
@@ -50,6 +84,7 @@ export const WAVE_STAGES = ['city', 'volcano', 'void'];
 export const SANDBOX_STAGE = 'city';
 export function stageFor(state, override = null) {
   if (override) return override;
+  if (state.mode === 'campaign' && state.level && state.level.stage && STAGES[state.level.stage]) return state.level.stage;
   if (state.mode === 'waves' && state.wave) return WAVE_STAGES[Math.min(WAVE_STAGES.length - 1, state.wave.index)];
   return SANDBOX_STAGE;
 }

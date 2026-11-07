@@ -21,6 +21,7 @@ export function bosses(state, dt) {
   for (const e of state.enemies) {
     if (e.dead || !e.boss) continue;
     const def = BOSSES[e.type];
+    if (!def || def.campaign) continue;
     e.hitFlash = Math.max(0, e.hitFlash - dt);
     if (e.bigHeadT > 0) e.bigHeadT -= dt;
     const b = e.boss;
