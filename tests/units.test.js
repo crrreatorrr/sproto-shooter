@@ -12,6 +12,7 @@ import { xpToNext } from '../src/data/skills.js';
 import { WAVES } from '../src/data/waves.js';
 import { GUN_RECIPES, RECIPES_BY_ID } from '../src/data/recipes.js';
 import { createGameState, createEnemy, createBoss } from '../src/sim/state.js';
+import { BOSSES, ENEMIES } from '../src/data/enemies.js';
 import { run, cmd } from './helpers.js';
 
 describe('architecture', () => {
@@ -650,5 +651,113 @@ describe('clip layer (clipLayer.js)', () => {
     for (let i = 0; i < 120; i++) w = frame(null);
     expect(w).toBeLessThan(0.01);
     expect(bone.quaternion.angleTo(new THREE.Quaternion())).toBeLessThan(0.02);
+  });
+});
+
+describe('new enemies: Car Part Monster, Mole Monster, Laser Bot, Shooter Bot', () => {
+  const arena = (seed = 41) => {
+    const s = createGameState({ seed });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
+    s.wave.phase = 'boss'; s.enemies = [];
+    const p = s.players[s.localPlayerId]; p.shield = 0;
+    return { s, p };
+  };
+  const side = (e, pos) => (pos.x - e.pos.x) * Math.cos(e.yaw) + (pos.z - e.pos.z) * -Math.sin(e.yaw); // + = the enemy's right
+  /** run, collecting every new projectile with its spawn position, side of its owner, and the tick it appeared */
+  const track = (s, ticks, each) => {
+    const seen = new Set(), spawned = [], events = [];
+    for (let i = 0; i < ticks; i++) {
+      events.push(...run(s, 1, () => cmd()));
+      for (const pr of s.projectiles) if (!seen.has(pr.id)) {
+        seen.add(pr.id);
+        const owner = s.enemies.find((o) => o.id === pr.ownerId);
+        // where it left the owner: step back the one tick of flight it has already had
+        const at = { x: pr.pos.x - pr.vel.x / 60, y: pr.pos.y - pr.vel.y / 60, z: pr.pos.z - pr.vel.z / 60 };
+        spawned.push({ kind: pr.kind, pos: at, gravity: pr.gravity, bounces: pr.bounces, tick: s.tick, side: owner ? side(owner, at) : 0 });
+        if (each) each(pr);
+      }
+    }
+    return { spawned, events };
+  };
+
+  it('Car Part Monster lobs tyres from alternating hands (left first) that bounce once and explode', () => {
+    const { s, p } = arena();
+    p.pos = { x: 0, y: 0, z: 22 }; p.prevPos = { ...p.pos };
+    const b = createBoss(s, 'carMonster', { pos: { x: 0, z: 0 } });
+    b.boss.action = { id: 'missiles', t: 0, data: {} };
+    const { spawned, events } = track(s, 5 * 60);
+    const tyres = spawned.filter((x) => x.kind === 'tyre');
+    expect(tyres.length).toBe(BOSSES.carMonster.missiles.count);
+    expect(tyres.every((t) => t.gravity > 0 && t.bounces === 1)).toBe(true);
+    expect(tyres[0].side).toBeLessThan(0); // left hand first (matches the throw clip)
+    expect(tyres[1].side).toBeGreaterThan(0);
+    expect(events.some((e) => e.type === 'bounce' && e.kind === 'tyre')).toBe(true);
+    expect(events.some((e) => e.type === 'explosion' && e.enemy)).toBe(true);
+    expect(p.hp).toBeLessThan(p.maxHp);
+  });
+  it('Mole Monster fires fans of drill heads from its right-hand drill', () => {
+    const { s, p } = arena();
+    p.pos = { x: 0, y: 0, z: 22 }; p.prevPos = { ...p.pos };
+    const b = createBoss(s, 'moleMonster', { pos: { x: 0, z: 0 } });
+    b.boss.action = { id: 'volley', t: 0, data: {} };
+    const { spawned } = track(s, 4 * 60);
+    const drills = spawned.filter((x) => x.kind === 'drill');
+    const v = BOSSES.moleMonster.volley;
+    expect(drills.length).toBe(v.count * v.waves);
+    for (const d of drills) {
+      expect(d.side).toBeGreaterThan(0); // the drill is the right hand
+      expect(Math.abs(d.pos.y - v.from.up * BOSSES.moleMonster.height)).toBeLessThan(0.2);
+    }
+  });
+  it('Laser Bot shoots lasers from its head, and its firing clip is on the release frame when each one leaves', async () => {
+    const { enemyClipWant, ENEMY_CLIPS } = await import('../src/render/bossClips.js');
+    const { s, p } = arena(43);
+    p.pos = { x: 0, y: 0, z: 0 }; p.prevPos = { ...p.pos };
+    const e = createEnemy(s, 'robotLaser', { pos: { x: 0, z: 14 } }); e.state = 'chase';
+    const def = ENEMIES.robotLaser, rel = ENEMY_CLIPS.robotLaser.cast.release;
+    const times = [];
+    const { spawned } = track(s, 8 * 60, (pr) => {
+      if (pr.kind !== 'laser') return;
+      const w = enemyClipWant({ type: 'robotLaser', state: e.state, ai: e.ai, def, speed: 0, durations: { cast: 33 / 30 } });
+      times.push(w.clip === 'cast' ? w.time : -1);
+    });
+    const lasers = spawned.filter((x) => x.kind === 'laser');
+    expect(lasers.length).toBeGreaterThanOrEqual(2);
+    for (const l of lasers) expect(Math.abs(l.pos.y - def.gun.from.up * def.height)).toBeLessThan(0.2);
+    // first shot of each burst on the release frame, the second one burstGap later
+    times.forEach((t, i) => expect(t).toBeCloseTo(rel + (i % def.gun.burst) * def.gun.burstGap, 1));
+  });
+  it('Shooter Bot fires arm-gun bullets and, separately, a charged big laser from its head', () => {
+    const { s, p } = arena(44);
+    p.pos = { x: 0, y: 0, z: 0 }; p.prevPos = { ...p.pos };
+    const e = createEnemy(s, 'robotShooter', { pos: { x: 0, z: 16 } }); e.state = 'chase';
+    let both = 0;
+    const { spawned } = track(s, 16 * 60, () => { if ((e.ai.aimT > 0 || e.ai.burstLeft > 0) && (e.ai.spaimT > 0 || e.ai.spburstLeft > 0)) both++; });
+    const def = ENEMIES.robotShooter;
+    const bullets = spawned.filter((x) => x.kind === 'bullet'), big = spawned.filter((x) => x.kind === 'bigLaser');
+    expect(bullets.length).toBeGreaterThan(2);
+    expect(big.length).toBeGreaterThanOrEqual(1);
+    for (const b of bullets) expect(Math.abs(b.pos.y - def.gun.from.up * def.height)).toBeLessThan(0.2);
+    for (const b of big) expect(Math.abs(b.pos.y - def.special.from.up * def.height)).toBeLessThan(0.2);
+    expect(both).toBe(0); // never both weapons at once
+  });
+  it('barrage clips put a throw / drill recoil on every projectile spawn', async () => {
+    const { bossClipWant } = await import('../src/render/bossClips.js');
+    const durations = { throw_start: 0.6, throw_loop: 0.6, shoot_start: 0.5, shoot_loop: 0.4, idle: 2 };
+    const car = BOSSES.carMonster, m = car.missiles;
+    for (let i = 0; i < m.count; i++) {
+      const w = bossClipWant({ type: 'carMonster', action: 'missiles', actionT: 0.6 + i * m.gap + 1e-6, def: car, durations });
+      expect(w.clip).toBe('throw_loop');
+      expect(w.time).toBeCloseTo(i % 2 ? 0.3 : 0, 2); // left release at 0, right release half a loop later
+    }
+    const mole = BOSSES.moleMonster, v = mole.volley;
+    for (let i = 0; i < v.waves; i++) {
+      const w = bossClipWant({ type: 'moleMonster', action: 'volley', actionT: 0.5 + i * v.gap + 1e-6, def: mole, durations });
+      expect(w.clip).toBe('shoot_loop');
+      expect(w.time).toBeCloseTo(0, 2);
+    }
+    // clip-only bosses always have a clip (they rest in a T-pose)
+    for (const a of ['intro', 'chase', 'stunned', 'slam', 'charge', 'summon', 'transition', 'melee'])
+      expect(bossClipWant({ type: 'moleMonster', action: a, actionT: 0.3, speed: 0, def: mole, durations })).not.toBeNull();
   });
 });

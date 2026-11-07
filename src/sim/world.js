@@ -59,7 +59,10 @@ export function projectiles(state, dt) {
     p.pos = end;
     if (p.pos.y <= 0) {
       if (p.bounces > 0) {
-        p.bounces--; p.pos.y = 0.01; p.vel.y = Math.abs(p.vel.y) * 0.7; emit(state, 'duckBounce', { pos: { ...p.pos } });
+        p.bounces--; p.pos.y = 0.01; p.vel.y = Math.abs(p.vel.y) * 0.7;
+        // duck rounds quack; anything else (the Car Part Monster's tyres) just thuds
+        const duck = p.kind === 'duckBullet' || p.kind === 'rubberBullet';
+        emit(state, duck ? 'duckBounce' : 'bounce', { pos: { ...p.pos }, kind: p.kind });
         // rubber rounds lose most of their speed on the bounce and pop shortly after, close to where they landed
         if (p.kind === 'rubberBullet') { p.vel.x *= 0.4; p.vel.z *= 0.4; p.vel.y *= 0.7; p.ttl = Math.min(p.ttl, 0.35); }
       }
@@ -87,9 +90,9 @@ function detonate(state, p) {
   }
 }
 
-/** Enemy splash effect: missiles explode, everything else (goo spit) splats. */
+/** Enemy splash effect: missiles and tyres explode, everything else (goo spit) splats. */
 function emitEnemyBlast(state, p, pos) {
-  if (p.kind === 'missile') emit(state, 'explosion', { pos: { x: pos.x, y: Math.max(0.3, pos.y), z: pos.z }, radius: p.splash.radius, element: 'none', enemy: true });
+  if (p.kind === 'missile' || p.kind === 'tyre') emit(state, 'explosion', { pos: { x: pos.x, y: Math.max(0.3, pos.y), z: pos.z }, radius: p.splash.radius, element: 'none', enemy: true });
   else emit(state, 'splat', { pos: { ...pos }, element: p.element });
 }
 

@@ -127,9 +127,14 @@ export const CHARACTER_MODELS = {
   monster: [1, 2, 3].map(() => 'models/characters/monster.glb'), // one static model, scaled up per phase
   dragon: [1, 2, 3].map(() => 'models/characters/dragon.glb'), // one model for every phase
   sprotoBeast: [1, 2, 3].map(() => 'models/characters/sproto_monster.glb'),
+  // rigged + animated in Blender (art/blender/new_enemies.blend); one model for every phase/stage
+  carMonster: [1, 2, 3].map(() => 'models/characters/car_monster.glb'),
+  moleMonster: [1, 2, 3].map(() => 'models/characters/mole_monster.glb'),
+  robotLaser: [1, 2, 3].map(() => 'models/characters/robot_laser.glb'),
+  robotShooter: [1, 2, 3].map(() => 'models/characters/robot_shooter.glb'),
 };
 /** Models that don't use CHARACTER_ROTATION_Y (they already face +Z). */
-export const MODEL_ROTATION_Y = { monster: 0, sprotoBeast: 0 };
+export const MODEL_ROTATION_Y = { monster: 0, sprotoBeast: 0, carMonster: 0, moleMonster: 0, robotLaser: 0, robotShooter: 0 };
 export const rotationForModelPath = (path) => {
   for (const [m, paths] of Object.entries(CHARACTER_MODELS)) if (paths.includes(path) && m in MODEL_ROTATION_Y) return MODEL_ROTATION_Y[m];
   return CHARACTER_ROTATION_Y;

@@ -71,6 +71,13 @@ function summonGrunts(state, e) {
 }
 
 // ---------------- Mega Sproto ----------------
+/** A point on a boss as fractions of its height: { up, fwd, side } (side + = the boss's left). */
+function muzzle(e, def, f) {
+  const h = def.height, fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw), rx = Math.cos(e.yaw), rz = -Math.sin(e.yaw);
+  const fw = f.fwd * h, sd = -(f.side || 0) * h;
+  return { x: e.pos.x + fx * fw + rx * sd, y: e.pos.y + f.up * h, z: e.pos.z + fz * fw + rz * sd };
+}
+
 function MEGA(state, e, a, dt, def, t) {
   const phase = def.phases[e.boss.phaseIdx];
   const spd = def.speed * phase.speedMult * (e.status.goo ? 1 - e.status.goo.slow : 1);
@@ -156,14 +163,14 @@ function MEGA(state, e, a, dt, def, t) {
       if (a.t < 0.5) { if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'volley' }); } return false; }
       a.data.fired = a.data.fired || 0;
       while (a.data.fired < waves && a.t >= 0.5 + a.data.fired * v.gap) {
-        const from = { x: e.pos.x - Math.sin(e.yaw) * (def.radius + 0.2), y: v.y || 3.2, z: e.pos.z - Math.cos(e.yaw) * (def.radius + 0.2) };
+        const from = v.from ? muzzle(e, def, v.from) : { x: e.pos.x - Math.sin(e.yaw) * (def.radius + 0.2), y: v.y || 3.2, z: e.pos.z - Math.cos(e.yaw) * (def.radius + 0.2) };
         const base = Math.atan2(t.pos.x - from.x, t.pos.z - from.z) + (a.data.fired % 2 ? deg(v.fan / v.count / 2) : 0);
         const pitch = Math.atan2(t.pos.y + 1.1 - from.y, Math.hypot(t.pos.x - from.x, t.pos.z - from.z));
         for (let i = 0; i < v.count; i++) {
           const yaw = base + deg(v.fan) * (i / (v.count - 1) - 0.5);
           const dir = { x: Math.sin(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: Math.cos(yaw) * Math.cos(pitch) };
           createProjectile(state, { kind: v.kind || 'bullet', faction: 'enemy', ownerId: e.id, sourceKind: 'boss', pos: { ...from },
-            vel: { x: dir.x * v.speed, y: dir.y * v.speed, z: dir.z * v.speed }, radius: ENEMY_BULLET_RADIUS * 1.5, damage: v.damage * e.dmgMult, ttl: 4 });
+            vel: { x: dir.x * v.speed, y: dir.y * v.speed, z: dir.z * v.speed }, radius: v.radius || ENEMY_BULLET_RADIUS * 1.5, damage: v.damage * e.dmgMult, ttl: 4 });
         }
         a.data.fired++;
         emit(state, 'bossCast', { id: e.id, kind: 'volley' });
@@ -225,6 +232,18 @@ function MEGA(state, e, a, dt, def, t) {
       a.data.fired = a.data.fired || 0;
       while (a.data.fired < n && a.t >= 0.6 + a.data.fired * m.gap) {
         const side = a.data.fired % 2 ? 1 : -1;
+        if (m.kind === 'tyre') { // lobbed from alternating hands (left first) to land on/near you, bounce once, explode
+          const from = muzzle(e, def, { ...m.from, side: -side * m.from.side });
+          const sx = (float(state.rng) - 0.5) * 2 * m.scatter, sz = (float(state.rng) - 0.5) * 2 * m.scatter;
+          const T = m.flight + a.data.fired * 0.05, g = m.gravity;
+          const tx = t.pos.x + t.vel.x * T * 0.5 + sx, tz = t.pos.z + t.vel.z * T * 0.5 + sz;
+          createProjectile(state, { kind: 'tyre', faction: 'enemy', ownerId: e.id, sourceKind: 'boss', pos: from,
+            vel: { x: (tx - from.x) / T, y: (0 - from.y + 0.5 * g * T * T) / T, z: (tz - from.z) / T }, gravity: g, bounces: m.bounces,
+            radius: 0.7, damage: m.damage * e.dmgMult, ttl: m.ttl, splash: { radius: m.splash, damage: m.damage * e.dmgMult } });
+          a.data.fired++;
+          emit(state, 'bossCast', { id: e.id, kind: 'tyre' });
+          continue;
+        }
         const rx = Math.cos(e.yaw) * side * def.radius * 0.7, rz = -Math.sin(e.yaw) * side * def.radius * 0.7;
         const fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw);
         createProjectile(state, { kind: 'missile', faction: 'enemy', ownerId: e.id, sourceKind: 'boss',
