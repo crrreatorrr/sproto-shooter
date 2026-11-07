@@ -189,7 +189,7 @@ export function shopPrice(gun, tier) {
 
 export function salvageYield(gun) {
   const q = QUALITIES_BY_ID[gun.quality].idx;
-  const m = gun.type === 'bazooka' ? 1.5 : 1;
+  const m = GUN_TYPES_BY_ID[gun.type].bossOnly ? 2.5 : gun.type === 'bazooka' ? 1.5 : 1;
   const y = {
     scrap: Math.round((5 + 6 * q + gun.level) * m),
     springs: Math.round(2 * q * m),

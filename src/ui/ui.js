@@ -15,7 +15,7 @@ const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) 
 const fmt = (n, d = 0) => (Math.round(n * 10 ** d) / 10 ** d).toLocaleString();
 const RES_BY_ID = Object.fromEntries(RESOURCES.map((r) => [r.id, r]));
 const SPELL_ICON = { gooBolt: '●', chainZap: 'ϟ', swarm: '✲', manaShield: '◈', meteor: '☄' };
-const TYPE_ICON = { mg: '▬', shotgun: '▮', sniper: '━', bazooka: '◉' };
+const TYPE_ICON = { mg: '▬', shotgun: '▮', sniper: '━', bazooka: '◉', raygun: '⚡', bigbullets: '●' };
 
 export function createUI(root, { input, bus, project, game }) {
   const st = { menu: null, tabHeld: false, statsOpen: false, craftTab: 'guns', craftType: 'mg', choice: { element: null, part: null, arcane: false }, lastKey: {}, rerollSlot: 0 };
@@ -374,7 +374,7 @@ export function createUI(root, { input, bus, project, game }) {
     }).join('');
     const gunRows = g ? row('Gun', `<span style="color:${QUALITIES_BY_ID[g.quality].color}">${g.name}</span>`) + row('Damage', g.stats.pellets > 1 ? `${Math.round(g.stats.damage)} × ${g.stats.pellets}` : Math.round(g.stats.damage))
       + row('Fire rate', `${g.stats.fireRate.toFixed(1)} /s`) + row('Magazine', `${g.ammoInMag} / ${g.stats.magSize}`) + row('Reload', `${g.stats.reloadTime.toFixed(1)} s`)
-      + row('Range', g.type === 'bazooka' ? 'rocket' : (() => { const r = gunRange(g); return r.max >= 150 ? 'whole arena' : `full to ${Math.round(r.full)} m · max ${Math.round(r.max)} m`; })())
+      + row('Range', g.type === 'bazooka' ? 'rocket' : g.type === 'bigbullets' ? 'heavy round' : (() => { const r = gunRange(g); return r.max >= 150 ? 'whole arena' : `full to ${Math.round(r.full)} m · max ${Math.round(r.max)} m`; })())
       + row('Crit', `${Math.round(g.stats.critChance * 100)}% · ×${g.stats.critMult.toFixed(1)}`) : '';
     const stats = `<div class="skc" style="--c:#ffd166"><div class="skh">📊 Stats${s.tuning.godMode ? ' <span class="god">GOD MODE</span>' : ''}</div>
       ${row('Health', `${Math.ceil(p.hp)} / ${p.maxHp}`)}${row('Shield', `${Math.ceil(p.shield)} / ${p.maxShield}`)}${row('Mana', `${Math.floor(p.mana)} / ${p.maxMana}`)}

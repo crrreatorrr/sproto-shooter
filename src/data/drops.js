@@ -71,6 +71,7 @@ export const DROP_TABLES = {
     { kind: 'bigHealth', count: 2, chance: 1 },
     { kind: 'ammo', count: 3, chance: 1 },
     { kind: 'gun', count: 2, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
     { kind: 'tickets', min: 60, max: 60, chance: 1 },
   ],
   monster: [
@@ -79,6 +80,7 @@ export const DROP_TABLES = {
     { kind: 'bigHealth', count: 2, chance: 1 },
     { kind: 'ammo', count: 3, chance: 1 },
     { kind: 'gun', count: 2, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
     { kind: 'tickets', min: 60, max: 60, chance: 1 },
   ],
   sprotoBeast: [
@@ -87,6 +89,7 @@ export const DROP_TABLES = {
     { kind: 'bigHealth', count: 2, chance: 1 },
     { kind: 'ammo', count: 3, chance: 1 },
     { kind: 'gun', count: 2, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
     { kind: 'tickets', min: 60, max: 60, chance: 1 },
   ],
   dragon: [
@@ -95,6 +98,7 @@ export const DROP_TABLES = {
     { kind: 'bigHealth', count: 2, chance: 1 },
     { kind: 'ammo', count: 3, chance: 1 },
     { kind: 'gun', count: 1, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
     { kind: 'tickets', min: 45, max: 45, chance: 1 },
   ],
   hexAuditor: [
@@ -104,6 +108,7 @@ export const DROP_TABLES = {
     { kind: 'bigHealth', count: 2, chance: 1 },
     { kind: 'ammo', count: 3, chance: 1 },
     { kind: 'gun', count: 2, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
     { kind: 'tickets', min: 60, max: 60, chance: 1 },
   ],
 };
