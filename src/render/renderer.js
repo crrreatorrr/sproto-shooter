@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { TUNING, ARENA_R } from '../data/tuning.js';
 import { ENEMIES, BOSSES } from '../data/enemies.js';
-import { QUALITIES_BY_ID, ELEMENTS_BY_ID, MANUFACTURERS_BY_ID } from '../data/guns.js';
+import { QUALITIES_BY_ID, ELEMENTS_BY_ID, MANUFACTURERS_BY_ID, zoomFovFor } from '../data/guns.js';
 import { RESOURCES } from '../data/drops.js';
 import { worldHitboxes } from '../sim/collision.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
@@ -643,7 +643,7 @@ export function createRenderer(container, bus) {
     camera.rotation.z = (Math.sin(now * 0.037) * 0.03 * sh) + (p.move.mode === 'slide' ? 0.06 : 0) + (p.downed ? 0.25 : 0);
     const gun = p.guns[p.activeSlot];
     let targetFov = TUNING.fovBase + (p.move.mode === 'sprint' ? TUNING.fovSprint : 0);
-    if (p.zooming && gun) targetFov = gun.stats.zoomFov;
+    if (p.zooming && gun) targetFov = zoomFovFor(gun, opts.zoomLevel || 1);
     feel.fovPunch = Math.max(0, feel.fovPunch - fdt * 30);
     feel.fov = lerp(feel.fov, targetFov, Math.min(1, fdt * 14));
     camera.fov = feel.fov + feel.fovPunch;

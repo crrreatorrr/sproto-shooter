@@ -14,15 +14,19 @@ export function createInput(canvas) {
   const latch = {};
   let mouseL = false, mouseR = false, wheel = 0, slot = -1;
   let aimToggled = false;
+  let zoomStep = 1; // 1 or 2; only guns with two zoom levels (sniper) use 2
   let yaw = 0, pitch = 0;
   let actions = [];
   let enabled = true; // false while a menu is open
   const listeners = {};
   const api = {
     sensitivity: 0.0022,
+    zoomLevels: 1, // set each frame from the active gun
+    /** 0 when not aiming, else the zoom level (1 or 2). */
+    get zoomLevel() { return enabled && api.locked && (mouseR || aimToggled) ? Math.min(zoomStep, api.zoomLevels) : 0; },
     get locked() { return document.pointerLockElement === canvas; },
     on(type, fn) { (listeners[type] ||= []).push(fn); },
-    setEnabled(v) { enabled = v; if (!v) { mouseL = mouseR = false; aimToggled = false; held.clear(); } },
+    setEnabled(v) { enabled = v; if (!v) { mouseL = mouseR = false; aimToggled = false; zoomStep = 1; held.clear(); } },
     get enabled() { return enabled; },
     lock() { try { const r = canvas.requestPointerLock({ unadjustedMovement: false }); if (r && r.catch) r.catch(() => {}); } catch { /* ignore */ } },
     unlock() { if (document.pointerLockElement) document.exitPointerLock(); },
@@ -56,19 +60,28 @@ export function createInput(canvas) {
     held.add(e.code);
     for (const k of LATCHED) if (BIND[k].includes(e.code)) latch[k] = true;
     if (/^Digit[1-4]$/.test(e.code)) slot = Number(e.code.slice(5)) - 1;
-    if (BIND.aimToggle.includes(e.code) && enabled && api.locked) aimToggled = !aimToggled;
-    if (BIND.sprint.includes(e.code)) aimToggled = false; // sprinting drops a toggled aim
+    // F: off → zoom 1 → (sniper) zoom 2 → off
+    if (BIND.aimToggle.includes(e.code) && enabled && api.locked) {
+      const aiming = mouseR || aimToggled;
+      if (!aiming) { aimToggled = true; zoomStep = 1; } else if (zoomStep < api.zoomLevels) zoomStep++; else { aimToggled = false; zoomStep = 1; }
+    }
+    if (BIND.sprint.includes(e.code)) { aimToggled = false; zoomStep = 1; } // sprinting drops a toggled aim
   });
   window.addEventListener('keyup', (e) => { held.delete(e.code); if (e.code === 'AltLeft') e.preventDefault(); emit('keyup', e); });
-  window.addEventListener('blur', () => { held.clear(); mouseL = mouseR = false; aimToggled = false; });
+  window.addEventListener('blur', () => { held.clear(); mouseL = mouseR = false; aimToggled = false; zoomStep = 1; });
   canvas.addEventListener('mousedown', (e) => {
     if (!api.locked) { emit('clickUnlocked', e); return; }
     if (e.button === 0) mouseL = true;
-    if (e.button === 2) mouseR = true;
+    if (e.button === 2) { if (!aimToggled) zoomStep = 1; mouseR = true; }
   });
-  window.addEventListener('mouseup', (e) => { if (e.button === 0) mouseL = false; if (e.button === 2) mouseR = false; });
+  window.addEventListener('mouseup', (e) => { if (e.button === 0) mouseL = false; if (e.button === 2) { mouseR = false; if (!aimToggled) zoomStep = 1; } });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-  window.addEventListener('wheel', (e) => { if (api.locked && enabled) wheel = e.deltaY > 0 ? 1 : -1; }, { passive: true });
+  window.addEventListener('wheel', (e) => {
+    if (!api.locked || !enabled) return;
+    // while zoomed with a two-level scope the wheel changes zoom instead of switching guns
+    if (api.zoomLevel > 0 && api.zoomLevels > 1) { zoomStep = e.deltaY < 0 ? 2 : 1; return; }
+    wheel = e.deltaY > 0 ? 1 : -1;
+  }, { passive: true });
   document.addEventListener('mousemove', (e) => {
     if (!api.locked || !enabled) return;
     const zoomK = api.zoomSensitivity || 1;
@@ -76,6 +89,6 @@ export function createInput(canvas) {
     pitch -= e.movementY * api.sensitivity * zoomK;
     pitch = Math.max(-1.5, Math.min(1.5, pitch));
   });
-  document.addEventListener('pointerlockchange', () => { if (!api.locked) aimToggled = false; emit('lockchange', api.locked); });
+  document.addEventListener('pointerlockchange', () => { if (!api.locked) { aimToggled = false; zoomStep = 1; } emit('lockchange', api.locked); });
   return api;
 }

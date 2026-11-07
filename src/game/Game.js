@@ -8,7 +8,7 @@ import { createRenderer } from '../render/renderer.js';
 import { createAudio } from '../audio/sfx.js';
 import { createUI } from '../ui/ui.js';
 import { ENEMIES, BOSSES } from '../data/enemies.js';
-import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY } from '../data/guns.js';
+import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY, zoomLevelsOf, zoomFovFor } from '../data/guns.js';
 import { SKILL_IDS } from '../data/skills.js';
 import { MAX_TIER } from '../data/waves.js';
 
@@ -242,8 +242,10 @@ export class Game {
     const alpha = this.acc / DT;
     const p = this.state.players[this.state.localPlayerId];
     const g = p.guns[p.activeSlot];
-    this.input.zoomSensitivity = p.zooming && g ? g.stats.zoomFov / 90 : 1;
-    this.renderer.render(this.state, alpha, this.input.liveLook(), { shake: this.settings.shake });
+    this.input.zoomLevels = zoomLevelsOf(g);
+    const zoomLevel = Math.max(1, this.input.zoomLevel);
+    this.input.zoomSensitivity = p.zooming && g ? zoomFovFor(g, zoomLevel) / 90 : 1;
+    this.renderer.render(this.state, alpha, this.input.liveLook(), { shake: this.settings.shake, zoomLevel });
     this.ui.update(this.state);
     requestAnimationFrame((t) => this.frame(t));
   }
@@ -252,7 +254,7 @@ export class Game {
 function controlsHtml() {
   const k = (a, b) => `<div><kbd>${a}</kbd><span>${b}</span></div>`;
   return `<div class="controls">
-    ${k('WASD', 'Move')}${k('Mouse', 'Look · LMB fire · RMB hold to aim')}${k('F', 'Aim on / off')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
+    ${k('WASD', 'Move')}${k('Mouse', 'Look · LMB fire · RMB hold to aim')}${k('F', 'Aim on / off (sniper: zoom 1 → zoom 2 → off)')}${k('Wheel while zoomed', 'Sniper zoom 1 / 2')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
     ${k('C', 'Slide (Ctrl works, but Ctrl+W closes the tab!)')}${k('Alt / V', 'Dash')}${k('R', 'Reload')}${k('1-4 / Wheel', 'Switch gun')}
     ${k('G', 'Pick up gun · open Weapon Box')}${k('H', 'Use medkit')}${k('Q E Z X T', 'Spells (unlock with Magic XP)')}
     ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('5', 'Stats & powers')}${k('Enter', 'Ready / skip break')}${k('`', 'Debug panel')}${k('M', 'Mute')}${k('P', 'God mode (health stays at 99)')}

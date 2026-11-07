@@ -364,3 +364,15 @@ describe('machine gun ammo', () => {
     }
   });
 });
+
+describe('sniper zoom levels', () => {
+  it('the sniper has a second zoom three times stronger; other guns have one level', async () => {
+    const { zoomFovFor, zoomLevelsOf } = await import('../src/data/guns.js');
+    const sn = generateGun({ seed: 1, level: 1, forced: { type: 'sniper', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    const mg = generateGun({ seed: 2, level: 1, forced: { type: 'mg', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    expect(zoomLevelsOf(sn)).toBe(2);
+    expect(zoomLevelsOf(mg)).toBe(1);
+    expect(zoomFovFor(sn, 2)).toBeCloseTo(zoomFovFor(sn, 1) / 3);
+    expect(zoomFovFor(mg, 2)).toBe(zoomFovFor(mg, 1));
+  });
+});

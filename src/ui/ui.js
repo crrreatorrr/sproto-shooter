@@ -49,7 +49,6 @@ export function createUI(root, { input, bus, project, game }) {
     <div id="feed"></div>
     <div id="downed"><div class="big">DOWNED!</div><div>Get a kill for a <b>Second Wind</b></div><div id="downed-t"></div></div>
     <div id="vignette"></div>
-    <div id="scope"></div>
   </div>
   <div id="dmgnums"></div>
   <div id="panel" hidden></div>`;
@@ -60,7 +59,7 @@ export function createUI(root, { input, bus, project, game }) {
     shield: $('.bar.shield', root), health: $('.bar.health', root), mana: $('.bar.mana', root), skills: $('#skills-mini', root),
     spells: $('#spells', root), gunName: $('#gun-name', root), mag: $('#mag', root), reserve: $('#reserve', root), slots: $('#slots', root), medkits: $('#medkits', root),
     prompt: $('#prompt', root), loot: $('#lootcard', root), banners: $('#banners', root), toasts: $('#toasts', root), feed: $('#feed', root),
-    downed: $('#downed', root), downedT: $('#downed-t', root), vignette: $('#vignette', root), scope: $('#scope', root),
+    downed: $('#downed', root), downedT: $('#downed-t', root), vignette: $('#vignette', root),
     dmg: $('#dmgnums', root), panel: $('#panel', root), screen: document.getElementById('screen'),
   };
 
@@ -478,7 +477,7 @@ export function createUI(root, { input, bus, project, game }) {
       set(els.cross, 'xh', px, (e, v) => e.style.setProperty('--gap', v + 'px'));
     }
     const scoped = p.zooming && g && g.type === 'sniper';
-    set(els.scope, 'scope', scoped, (e, v) => e.classList.toggle('on', v));
+    // no scope overlay: the zoomed view fills the screen, and the crosshair hides while scoped
     set(els.cross, 'xhv', scoped || p.dead, (e, v) => e.classList.toggle('hidden', v));
 
     // downed
