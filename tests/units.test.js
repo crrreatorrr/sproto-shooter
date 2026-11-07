@@ -533,3 +533,32 @@ describe('weapon range', () => {
     expect(far).toBe(0);
   });
 });
+
+describe('boss movement feel', () => {
+  it('the flying dragon weaves: altitude and distance change, and it swoops low', () => {
+    const s = createGameState({ seed: 43 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'boss', tier: 1, boss: 'dragon' }] }));
+    const p = s.players[s.localPlayerId], b = s.enemies.find((e) => e.boss);
+    run(s, 120, () => cmd());
+    b.boss.action = { id: 'fly', t: 0, data: {} };
+    const alts = [], dists = [];
+    for (let i = 0; i < 8 * 60 && b.boss.action.id === 'fly'; i++) {
+      run(s, 1, () => cmd());
+      if (b.boss.action.t > 1.5 && b.boss.action.t < 8) { alts.push(b.pos.y); dists.push(Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z)); }
+    }
+    expect(Math.max(...alts) - Math.min(...alts)).toBeGreaterThan(4); // rolls up and down, incl. the swoop
+    expect(Math.min(...alts)).toBeLessThan(4); // the swoop comes down low
+    expect(Math.max(...dists) - Math.min(...dists)).toBeGreaterThan(5); // swings in and out
+  });
+  it('physical bosses turn at a limited rate instead of snapping', () => {
+    const s = createGameState({ seed: 44 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'boss', tier: 1, boss: 'monster' }] }));
+    const p = s.players[s.localPlayerId], b = s.enemies.find((e) => e.boss);
+    run(s, 150, () => cmd());
+    b.boss.action = { id: 'chase', t: 0, data: {} };
+    b.yaw = 0; p.pos = { x: 0, y: 0, z: b.pos.z + 20 }; p.prevPos = { ...p.pos }; // player straight behind it
+    let maxStep = 0, prev = b.yaw;
+    for (let i = 0; i < 30; i++) { run(s, 1, () => cmd()); const st = Math.abs(Math.atan2(Math.sin(b.yaw - prev), Math.cos(b.yaw - prev))); maxStep = Math.max(maxStep, st); prev = b.yaw; }
+    expect(maxStep).toBeLessThan(0.1); // ≤ ~6° per tick, never a 180° snap
+  });
+});

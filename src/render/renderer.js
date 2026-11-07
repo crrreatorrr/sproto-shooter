@@ -813,7 +813,13 @@ export function createRenderer(container, bus) {
       const o = v.obj, u = o.userData;
       const ex = lerp(e.prevPos.x, e.pos.x, alpha), ey = lerp(e.prevPos.y, e.pos.y, alpha), ez = lerp(e.prevPos.z, e.pos.z, alpha);
       o.position.set(ex, ey, ez);
-      o.rotation.y = e.yaw + Math.PI;
+      // bosses turn smoothly on screen (an angular ease toward the sim's facing)
+      if (e.boss) {
+        if (u.visYaw === undefined) u.visYaw = e.yaw;
+        const dy = Math.atan2(Math.sin(e.yaw - u.visYaw), Math.cos(e.yaw - u.visYaw));
+        u.visYaw += dy * Math.min(1, fdt * 7);
+        o.rotation.y = u.visYaw + Math.PI;
+      } else o.rotation.y = e.yaw + Math.PI;
       // flash / status tint
       const tint = e.hitFlash > 0 ? [0.9, 0.9, 0.9] : e.status.burn ? [0.45, 0.12, 0] : e.status.goo ? [0.08, 0.3, 0] : [0, 0, 0];
       if (u.char) u.char.setTint(...tint);
@@ -849,7 +855,9 @@ export function createRenderer(container, bus) {
             ? { intro: 'victory', transition: 'hit', chase: 'run', charge: e.boss.action.t < 0.8 ? 'castBig' : 'run', stunned: 'stun', slam: 'jump', volley: 'castBig', summon: 'victory', melee: 'castBig', missiles: 'cast' }
             : { intro: 'victory', transition: 'hit', drift: 'idle', ring: 'cast', fan: 'cast', spiral: 'cast', taxBolts: 'castBig', spiralRing: 'castBig', teleport: 'castBig' };
           const clip = map[act] || 'idle';
-          ch.play(clip, { speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : 1 });
+          // longer blends between clips; the run plays at the pace the boss actually moves
+          const runPace = Math.min(1.8, Math.max(0.6, spd / Math.max(1, BOSSES[e.type].speed || 4.5)));
+          ch.play(clip, { fade: 0.3, speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : clip === 'run' ? runPace : 1 });
         }
         ch.update(fdt);
         if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, speed: spd, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0,

@@ -122,7 +122,7 @@ export const BOSSES = {
     fireball: { damage: 15, splash: 2.6, count: 3, flight: 1.2 },
     tail: { damage: 20, radius: 6.5, windup: 0.6 },
     // flight: take off, circle you at altitude dropping fireballs, land
-    fly: { height: 7, rise: 1.2, duration: 5.5, land: 1.2, speed: 11, radius: 13, shotEvery: 1.1 },
+    fly: { height: 7, heightSwing: 3, rise: 1.2, duration: 7, land: 1.4, speed: 13, radius: 13, radiusSwing: 4, shotEvery: 1.1, swoopAt: 3.2, swoopTime: 1.6, swoopHeight: 2.6 },
     model: 'dragon', stageHeights: [3.2, 3.4, 3.6],
     portraits: [],
     phases: [

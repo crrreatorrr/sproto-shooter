@@ -25,6 +25,7 @@ export function createDragonRig(ch) {
   ch.root.traverse((o) => { if (o.isBone) bones[o.name.replace(/^tripo/, '')] = o; });
   const chain = (prefix, n) => Array.from({ length: n }, (_, i) => bones[`${prefix}${i}`]).filter(Boolean);
   const tail = chain('Tail_', 5);
+  const root = bones.Root;
   const spine = chain('Spine_', 4);
   const neck = chain('Head_', 4); // Head_0..3 form the neck; Head_4+ the skull/jaw
   const front = [{ bones: chain('0_Left_Limb_', 3), phase: 0 }, { bones: chain('0_Right_Limb_', 3), phase: Math.PI }];
@@ -33,7 +34,8 @@ export function createDragonRig(ch) {
   const bind = new Map(all.map((b) => [b, b.quaternion.clone()]));
   let time = 0, walk = 0;
   const S = () => ({ x: 0, v: 0 });
-  const gait = S(), fly = S(), breath = S(), bank = S(), prevYaw = { y: null };
+  const gait = S(), fly = S(), breath = S(), bank = S(), pitch = S(), prevYaw = { y: null }, prevAlt = { y: null };
+  let swim = 0;
 
   return {
     ok: tail.length > 0 || spine.length > 0,
@@ -53,37 +55,46 @@ export function createDragonRig(ch) {
       // bank into turns while flying (from the change in heading)
       const dyaw = prevYaw.y === null ? 0 : Math.atan2(Math.sin(s.yaw - prevYaw.y), Math.cos(s.yaw - prevYaw.y)) / Math.max(dt, 1e-3);
       prevYaw.y = s.yaw;
-      const roll = spring(bank, Math.max(-0.35, Math.min(0.35, -dyaw * 0.25)) * flying, 5, dt);
-      if (roll) rotWorld(spine[0], _fwd, roll);
+      const roll = spring(bank, Math.max(-0.5, Math.min(0.5, -dyaw * 0.35)) * flying, 5, dt);
+      // nose up when climbing, down when diving (from the change in altitude)
+      const vy = prevAlt.y === null ? 0 : ((s.altitude || 0) - prevAlt.y) / Math.max(dt, 1e-3);
+      prevAlt.y = s.altitude || 0;
+      const nose = spring(pitch, Math.max(-0.45, Math.min(0.45, -vy * 0.09)) * flying, 4, dt);
+      if (root) { rotWorld(root, _fwd, roll); rotWorld(root, _side, nose); } else if (roll) rotWorld(spine[0], _fwd, roll);
 
-      // tail: travelling wave; bigger and slower in flight (it steers), quicker while walking
-      const tAmp = 0.12 + 0.1 * g + 0.16 * flying, tSpd = 2.6 + 1.0 * g - 0.8 * flying;
-      tail.forEach((b, i) => {
-        rotWorld(b, _up, Math.sin(time * tSpd - i * 0.75) * tAmp);
-        rotWorld(b, _side, Math.sin(time * 2.2 - i * 0.6) * 0.1 * flying); // vertical undulation in flight
+      // serpentine swim: in flight one travelling S-wave runs from the neck down the spine to the tail tip
+      // (an eastern dragon swims through the air); on the ground just a gentle sway
+      swim += dt * (2.2 + 2.6 * flying + 1.0 * g);
+      const body = [...neck.slice().reverse(), ...spine, ...tail]; // head end first
+      body.forEach((b, i) => {
+        const ph = swim - i * 0.55;
+        const lat = Math.sin(ph) * (0.03 + 0.03 * g + 0.17 * flying * (0.5 + i / body.length));
+        const ver = Math.sin(ph * 0.8 + 1.2) * 0.1 * flying;
+        if (neck.includes(b)) { rotWorld(b, _up, lat * 0.5); return; } // the head stays roughly on target
+        rotWorld(b, _up, lat); rotWorld(b, _side, ver);
       });
-      // spine: sway on the ground, a swimming undulation in the air
-      spine.forEach((b, i) => {
-        rotWorld(b, _up, Math.sin(time * 2 - i * 0.6) * (0.035 + 0.02 * g));
-        rotWorld(b, _side, Math.sin(time * 2.2 - i * 0.7) * 0.07 * flying);
-      });
+      // tail: extra sweep on the ground while walking
+      tail.forEach((b, i) => rotWorld(b, _up, Math.sin(time * (2.6 + g) - i * 0.75) * (0.1 + 0.1 * g) * (1 - flying)));
 
       // neck/head: idle bob; breath telegraph rears back, breath lunges forward; flying keeps the head forward
       const want = s.action === 'breath' ? (s.actionT < 0.7 ? -1 : 1) : s.action === 'fireballs' ? 0.6 : s.action === 'fly' ? 0.35 : 0;
       const bp = spring(breath, want, 7, dt);
       neck.forEach((b, i) => rotWorld(b, _side, Math.sin(time * 1.6 - i * 0.5) * 0.05 + bp * 0.12));
 
-      // legs: diagonal walk while stalking; tucked (front folded back, hind trailing) while flying
+      // legs: diagonal walk while stalking; in flight folded back and paddling in time with the swim
       walk += dt * (2 + 5 * g);
       for (const l of [...front, ...hind]) {
         if (!l.bones.length) continue;
         const isFront = front.includes(l);
-        const sw = Math.sin(walk + l.phase) * 0.35 * g;
-        const tuck = flying * (isFront ? 0.9 : 1.1); // fold back
-        rotWorld(l.bones[0], _side, sw + tuck);
-        if (l.bones[1]) rotWorld(l.bones[1], _side, Math.max(0, -sw) * 0.8 + flying * (isFront ? -1.2 : 0.5));
-        if (l.bones[2]) rotWorld(l.bones[2], _side, flying * 0.5 + Math.sin(time * 2.2 + l.phase) * 0.08 * flying);
+        const sw = Math.sin(walk + l.phase) * 0.5 * g; // bigger stride
+        const paddle = Math.sin(swim * 1.0 + l.phase + (isFront ? 0 : 1.6)) * 0.45 * flying;
+        const tuck = flying * (isFront ? 0.7 : 0.95); // fold back
+        rotWorld(l.bones[0], _side, sw + tuck + paddle);
+        if (l.bones[1]) rotWorld(l.bones[1], _side, Math.max(0, -sw) * 1.1 + flying * (isFront ? -0.9 : 0.4) - paddle * 0.6); // lift the foot on the swing
+        if (l.bones[2]) rotWorld(l.bones[2], _side, flying * 0.4 + paddle * 0.4 + Math.max(0, sw) * 0.4 * g); // paw rolls off the ground
       }
+      // walking: the body rolls and dips with each step
+      if (root && g > 0.01) { rotWorld(root, _fwd, Math.sin(walk) * 0.06 * g); rotWorld(root, _side, Math.abs(Math.cos(walk)) * 0.03 * g); }
     },
   };
 }
