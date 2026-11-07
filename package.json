@@ -14,7 +14,8 @@
     "assets:check": "node scripts/asset-report.mjs --check",
     "budgets": "node scripts/check-budgets.mjs",
     "profile": "node scripts/load-profile.mjs --runs 3 --out tests/fixtures/load-profile.json",
-    "profile:check": "node scripts/load-profile.mjs --check"
+    "profile:check": "node scripts/load-profile.mjs --check",
+    "build:server-sim": "node scripts/build-server-sim.mjs"
   },
   "engines": {
     "node": ">=22"
@@ -30,6 +31,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@types/node": "^26.6.6",
+    "esbuild": "^0.25.12",
     "eslint": "^9.39.5",
     "globals": "^17.14.0",
     "playwright": "^1.65.0",

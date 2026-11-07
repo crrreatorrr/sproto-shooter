@@ -35,6 +35,35 @@ export function fnv1a(str) {
   return (h >>> 0).toString(16).padStart(8, '0');
 }
 
+/**
+ * Engine-stable hash. Go's and V8's libm differ by 1 ulp, which changes
+ * JSON digits but not hits or hit points. Micro-units (1e-6) keep checkpoints
+ * identical in Node, browsers, and goja. `stateHash` itself is unchanged.
+ */
+function quantizeForHash(value) {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return 0;
+    return Math.round(value * 1000000);
+  }
+  if (value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    const arr = new Array(value.length);
+    for (let i = 0; i < value.length; i++) arr[i] = quantizeForHash(value[i]);
+    return arr;
+  }
+  const out = {};
+  const keys = Object.keys(value);
+  for (let i = 0; i < keys.length; i++) {
+    if (keys[i] === 'events') continue;
+    out[keys[i]] = quantizeForHash(value[keys[i]]);
+  }
+  return out;
+}
+
+export function verifyStateHash(state) {
+  return fnv1a(stableStringify(quantizeForHash(state)));
+}
+
 /** Hash of state minus `events` and any extra omitted keys. */
 export function stateHash(state, opt = {}) {
   const omit = opt.omit || ['events'];

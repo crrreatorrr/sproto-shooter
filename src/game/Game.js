@@ -28,6 +28,8 @@ export class Game {
     this.timeScale = 1;
     this.hitstopMs = 0;
     this.settings = { hitstop: true, shake: 1, sensitivity: 1 };
+    // Optional observer for a server-issued run log. Null leaves gameplay unchanged.
+    this.onSimCommand = null;
 
     const app = document.getElementById('app');
     this.renderer = createRenderer(app.querySelector('#view'), this.bus);
@@ -346,6 +348,7 @@ export class Game {
       const cmd = this.input.buildCommand(this.state.tick);
       if (this._skip) { cmd.pressed.skip = true; this._skip = false; }
       if (titleUp) { cmd.held = {}; cmd.moveX = cmd.moveZ = 0; cmd.pressed = {}; cmd.yaw = this.state.time * 0.15; cmd.pitch = -0.05; this.input.setLook(cmd.yaw, cmd.pitch); }
+      if (this.onSimCommand) this.onSimCommand(cmd, this.state);
       simulate(this.state, { [this.state.localPlayerId]: cmd }, DT);
       this.bus.emitAll(this.state.events);
       this.acc -= DT; n++;
