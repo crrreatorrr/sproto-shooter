@@ -6,8 +6,8 @@ This plan covers four goals:
 
 1. **Weak zones.** Heads and weak points take much bigger hits.
 2. **Move into Sproto Duel** and add co-op for two players, both **online** and **local** (split-screen).
-3. **Different attacks for each monster.**
-4. **Split the work** between Cursor (infrastructure and online), Claude Code (visuals, gameplay feel and QA) and ChatGPT (concept art).
+3. **Different attacks for each monster**, plus **new monsters and new weapons**.
+4. **Split the work** between Cursor (infrastructure and online), Claude Code (visuals, gameplay feel and QA) and ChatGPT (concept art for 3D assets that don't exist yet: new weapons, new monsters and new props).
 
 Section 1 is what the code has today. Sections 2–4 are the first draft of each feature. Section 5 critiques that draft, and section 6 is the improved plan that the agents follow. Agent prompts are in [`docs/coop/prompts/`](docs/coop/prompts/).
 
@@ -76,8 +76,9 @@ Section 1 is what the code has today. Sections 2–4 are the first draft of each
 | 15 | Attacks designed for one player | Co-op needs attacks that use the second player | Every boss gets one attack that needs teamwork. Enemies spread targets by threat instead of always picking the nearest |
 | 16 | Gameplay sim work not assigned | The brief assigns infra and online to Cursor and visuals and QA to Claude, but weak zones and attacks are gameplay logic | Claude owns them, because each attack is built around its telegraph and feedback. **Owner decision** if you want Cursor to own them |
 | 17 | Cursor and Claude editing the same sim files | Merge conflicts and broken builds | File ownership table (6.5), and multiplayer plumbing lands before attack work touches the same files |
-| 18 | ChatGPT images treated as game assets | ChatGPT makes 2D concept art. The games use rigged 3D models made with Higgsfield or Tripo | Concept art is input to Duel's `docs/higgsfield-workflow-guide.md` (image to 3D, rig). New characters get a clean A-pose model sheet so image-to-3D works |
-| 19 | Concept prompts that name real people | ChatGPT often refuses likenesses of real public figures | Prompts describe the design and ask you to attach a screenshot of the current in-game model |
+| 18 | ChatGPT images treated as game assets | ChatGPT makes 2D concept art. The games use rigged 3D models made with Higgsfield or Tripo | Concept art is only for 3D assets that don't exist yet, and it's the input to Duel's `docs/higgsfield-workflow-guide.md` (image to 3D, rig). Every image is a clean model sheet (A-pose for monsters, three-quarter side view for guns) so image-to-3D works |
+| 19 | Concept art planned without new content to draw | The draft only had attacks for existing monsters, which need animation, not new models | New monsters (6.3a) and new weapons (6.3b) are designed first, with weak zones and attacks, and the art list follows from them |
+| 19b | New gun types change the gun generator | `generateGun()` draws the type with a weighted pick over `GUN_TYPES`, so adding types changes every seeded roll and the determinism and full-run tests | New types get their own weights, the existing four keep their relative odds, and the seeded tests are updated on purpose in the same PR. Existing gun stats don't change |
 | 20 | No player count stated | Duel's server match, protocol and split-screen are all built for 2 | v1 is 2 players. 3–4 players online is a stretch goal |
 | 21 | No review step | The workspace rule is that a different agent reviews each PR | Codex (or the other agent) reviews every PR |
 
@@ -221,22 +222,62 @@ Rules every attack follows:
 
 **Visuals for every attack (Claude):** the telegraph pose, a ground decal or trail, a sound cue, the hit effect and the recovery pose. The boss's humanoid and dragon rigs (`render/humanoidRig.js`, `render/dragonRig.js`) get the new procedural poses.
 
+### 6.3a New monsters (Claude builds them, ChatGPT draws them)
+
+Each new monster fills a gap the current four don't cover, has a readable head plus one weak point, and has a co-op angle. They use the same attack runner as 6.3 and come in from the tier or wave listed.
+
+| Id | Monster | Role | From | Weak zones | Attacks | Co-op angle |
+|---|---|---|---|---|---|---|
+| `bombTosser` | **Bomb Tosser** | Breaks camping behind cover | Wave 2 | Head; a bomb satchel on its back (shooting it blows the Tosser up and hurts nearby enemies) | **Lob**: arcs a bouncing bomb with a ground ring, 1.2 s fuse. **Cluster** (tier 4+): three smaller bombs in a spread | Whoever it isn't aiming at can hit the satchel |
+| `hypeBot` | **Hype Bot** | Support: buffs other enemies | Wave 2 | A big speaker head (×3 like a head); a glowing antenna that, shot off, stops the buff | **Hype beam**: links to up to 3 enemies, +30% speed and a slow heal. **Feedback blast**: a short-range sound cone that knocks back | It hides behind the swarm, so one player flanks while the other holds |
+| `moleMiner` | **Mole Miner** | Ambush from below | Wave 3 | Helmet lamp head, only while it's above ground | **Burrow**: a dirt mound travels toward you (the telegraph). **Drill pop-up**: bursts up under you after 0.6 s. **Rock fling** while surfaced | Players call out mounds; if it chases one player, the other gets the surfaced window |
+| `gooGlob` | **Goo Glob** | Swarm that multiplies | Wave 2 | A floating core visible inside its see-through body (the only zone that takes bonus damage) | **Body slam** with a puddle that slows. **Split**: on death it splits into 2 medium, then 4 small globs | Splitting fills the arena; focus fire on cores stops the chain |
+| `laserLookout` | **Laser Lookout** | Long-range threat, a headshot duel | Wave 3 | A giant scope eye (head, ×4 from the sniper); shooting the eye blinds it for 3 s | **Laser aim**: a red laser locks on for 1.2 s, then a heavy shot. **Relocate**: hops to another pillar | It can only aim at one player; the other rushes or counter-snipes |
+| `tetherTwins` | **Tether Twins** | Co-op puzzle enemy | Wave 3, elites from tier 3 | Each twin's head; the energy cord between them is a weak point while it's stretched | **Cord whip**: the twins run apart and sweep the cord across the floor (jump it). **Re-link**: a twin that dies alone comes back in 4 s unless the other dies too | Built for two players: each takes a twin. Solo, the twins stay close so one burst can kill both |
+| `scrapTitan` | **Scrap Titan** (new boss) | Boss for Boss Fight mode and a later wave | Boss Fight, then tier 5+ | Armor plates come off as you shoot them; the glowing core moves to whichever plate fell last | **Junk barrage**: throws scrap chunks. **Magnet pull**: drags players in, then a spin. **Rebuild**: picks scrap up to restore a plate (shoot the scrap to stop it) | One player keeps the scrap off it while the other hits the core |
+
+### 6.3b New weapons (Claude builds them, ChatGPT draws them)
+
+The four existing gun types keep their stats and models. New weapons are additions.
+
+**New gun types** (starting stats for the balance pass; each gets a model, first-person grip placement in `render/firstPerson.js`, muzzle point, sound and range rules):
+
+| Id | Weapon | Role | Starting stats | Drop weight |
+|---|---|---|---|---|
+| `pistol` | **Pocket Bonker** | Sidearm, the headshot gun | 28 dmg, 4 shots/s semi-auto, 12 mag, head ×3.5, infinite reserve | 14 |
+| `lobber` | **Lob-o-Matic** | Grenade launcher, hits behind cover | 90 dmg + 3 m splash, bouncing grenade, 1.4 shots/s, 6 mag | 6 |
+| `zapper` | **Zap Ray** | Beam, good against flyers and swarms | Continuous beam 120 dps, chains to 2 enemies, 18 m range, heat bar instead of a magazine | 6 |
+
+**Legendary looks**: each Legendary wacky perk gets its own gun model, used whatever the gun type, so a Legendary is recognizable at a glance:
+
+| Perk | Model idea |
+|---|---|
+| Rubber Duckie | A gun built around a giant rubber duck, the duck's beak is the muzzle |
+| Yeet Reload | A gun wrapped in hazard tape with a lit fuse on the stock |
+| Every Tenth | A gun with a big round counter drum and an oversized second barrel |
+| Lil Buddy | A gun with a tiny Sproto riding on top in a little seat |
+| Party Popper | A gun made from a party popper and streamers, confetti spilling from the mag |
+| Big Head Mode | A gun with a huge cartoon magnifying glass as the scope |
+
+**New props** that the new attacks need: Weapon Box (today it's a primitive with a label), beanie bomb, coin mine, boulder, Bomb Tosser bomb, revive beacon.
+
 ### 6.4 Concept art (ChatGPT)
 
+- **Only for 3D assets that don't exist yet**: the new monsters (6.3a), new weapons (6.3b) and new props. Existing monsters and guns already have models; their new attacks are animation work, not new art.
 - One image per asset, white background, no text, comic-3D-fun style. Enemies can be menacing.
-- Attack concepts are animation and VFX references. New characters and props also need a **model sheet**: a full-body A-pose or neutral pose from a front three-quarter view, so Higgsfield or Tripo image-to-3D works (Duel's `docs/higgsfield-workflow-guide.md`).
-- For existing characters, attach a screenshot of the in-game model. The prompts describe the pose and attack, not a real person.
-- Save each image as `art/concepts/<id>.png` (ids in the ChatGPT prompt). Claude reviews them against the readability checklist (head and weak points readable at 30 m, silhouette distinct per enemy, telegraph pose obvious) before any 3D step.
+- Every image is a **model sheet** so Higgsfield or Tripo image-to-3D works (Duel's `docs/higgsfield-workflow-guide.md`): monsters full body in a neutral A-pose, front three-quarter view, limbs apart; guns as the whole gun in a three-quarter side view with the grip and trigger visible; props whole and centered.
+- Weak zones must be visible in the design (the satchel, the speaker head, the goo core, the scope eye, the cord anchors, the Titan's plates and core), because the game's headshots depend on them.
+- Save each image as `art/concepts/<id>.png` (ids in the ChatGPT prompt). Claude reviews them before any 3D step: head and weak points readable at 30 m, silhouette distinct from every other enemy, the gun's grip fits the first-person hands, nothing that breaks image-to-3D (thin floating parts, text, cropped limbs).
 
 ### 6.5 Who does what
 
 | Track | Owner | Items |
 |---|---|---|
 | Infrastructure and online | **Cursor** | P0 (after owner decisions), P1, P2, P3, P4 (build), P5, P6 |
-| Gameplay sim built around feel | **Claude Code** | 6.1 weak zones (sim + data), 6.3 attack runner and all attacks |
-| Visuals | **Claude Code** | Headshot and weak-point feedback, attack telegraphs and VFX, rig poses, split-screen HUD and look, co-op UI (downed, revive, teammate marker), integrating the new 3D assets |
+| Gameplay sim built around feel | **Claude Code** | 6.1 weak zones (sim + data), 6.3 attack runner and all attacks, 6.3a new monsters, 6.3b new gun types |
+| Visuals | **Claude Code** | Headshot and weak-point feedback, attack telegraphs and VFX, rig poses, split-screen HUD and look, co-op UI (downed, revive, teammate marker), turning approved concept art into rigged 3D models and integrating them |
 | QA | **Claude Code** | A parity pass after P1, a QA gate at the end of every phase (checklists in the Claude prompt), perf numbers from the overlay, two-player tests with `?netsim` |
-| Concept art | **ChatGPT** | The assets in 6.4 |
+| Concept art | **ChatGPT** | Model sheets for the new monsters, weapons and props in 6.3a, 6.3b and 6.4 |
 | Review | **Codex**, or the agent that didn't write the PR | Every PR |
 | Decisions, playtests, deploy | **Owner** | P0 PR decisions, two-machine online test, Nakama deploy, final art picks |
 
@@ -244,7 +285,7 @@ Rules every attack follows:
 
 | Cursor | Claude |
 |---|---|
-| `sim/state.js`, `sim/simulate.js`, `sim/player.js`, `sim/actions.js`, `sim/waves.js`, `sim/economy.js`, `sim/collision.js` (rewind only), new `sim/targeting.js` | `sim/combat.js`, `sim/enemies.js`, `sim/bosses.js`, new `sim/attacks.js`, `sim/collision.js` (zones, before P5), `data/enemies.js`, `data/tuning.js` `ZONES` |
+| `sim/state.js`, `sim/simulate.js`, `sim/player.js`, `sim/actions.js`, `sim/waves.js`, `sim/economy.js`, `sim/collision.js` (rewind only), new `sim/targeting.js` | `sim/combat.js`, `sim/enemies.js`, `sim/bosses.js`, new `sim/attacks.js`, `sim/collision.js` (zones, before P5), `data/enemies.js`, `data/tuning.js` `ZONES`, `data/guns.js` and `sim/guns.js` (new types only), `data/waves.js` (adding the new monsters) |
 | `game/Game.js`, `input/**`, `net/**`, `data/coop.js`, `src/net/**` (shared), `src/App.ts` menu entry, `metaverse-hub` server | `render/**` (except per-view camera setup in P4), `ui/**` HUD visuals, `audio/**`, `public/assets/**` new models |
 
 ### 6.6 Order and dependencies
@@ -254,16 +295,18 @@ P0 owner decisions ─► P1 lift & shift (Cursor) ─► Claude QA parity
                                    │
           ┌────────────────────────┼─────────────────────────────┐
           ▼                        ▼                             ▼
-   P2 gamepads (Cursor)   V1 weak zones (Claude)       ChatGPT concept batch 1 (enemies, attacks)
+   P2 gamepads (Cursor)   V1 weak zones (Claude)       ChatGPT batch 1: new monsters
           ▼                        ▼                             ▼
-   P3 two-player sim      V2 attack runner + enemy attacks   batch 2 (bosses, co-op, VFX)
+   P3 two-player sim      V2 attack runner + enemy attacks   ChatGPT batch 2: new weapons + props
           ▼                        ▼                             ▼
-   P4 split-screen ◄──── V4 split-screen HUD + co-op UI     Claude: concept review → 3D → integrate
-          ▼                        ▼
-   P5 online co-op         V3 boss attacks (needs P3 targeting for co-op twists)
-          ▼                        ▼
+   P4 split-screen ◄──── V4 split-screen HUD + co-op UI     V5 Claude: concept review → 3D → rig
+          ▼                        ▼                             ▼
+   P5 online co-op         V3 boss attacks (needs P3)      V6 new monsters, V7 new weapons (need V2 + V5)
+          ▼                        ▼                             ▼
    P6 hub + CI ───────────► Final QA gate (Claude) ─► owner two-machine playtest ─► deploy
 ```
+
+- ChatGPT can start right away: the art doesn't depend on any code.
 
 - Claude's V1 lands before Cursor's P5 rewinds hitboxes (both touch `collision.js`).
 - Cursor's P3 lands before Claude's V3 co-op twists (they need threat targeting and two players).
@@ -285,5 +328,6 @@ P0 owner decisions ─► P1 lift & shift (Cursor) ─► Claude QA parity
 - Solo, local co-op and online co-op all play a full 3-wave run plus Boss Fight mode inside Sproto Duel.
 - Headshots feel distinct and time-to-kill stays inside the tested limits.
 - Every enemy has the attacks in 6.3, each with a telegraph, sound and counterplay.
+- The six new monsters, the Scrap Titan, the three new gun types and the six Legendary looks are in the game as rigged 3D models made from approved concept art.
 - 60 fps in solo and split-screen wave 3 on a mid laptop GPU. Online plays well at 80 ms.
 - All checks pass. Each PR was reviewed by another agent.
