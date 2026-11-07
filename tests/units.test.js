@@ -453,3 +453,26 @@ describe('boss melee, missiles and sandbox', () => {
     expect(p.shield).toBe(sh);
   });
 });
+
+describe('boss fight mode', () => {
+  it('spawns the chosen boss with real damage and ends on a win or a loss', () => {
+    const s = createGameState({ seed: 31 });
+    const p = s.players[s.localPlayerId];
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'boss', tier: 1, boss: 'megaSproto' }] }));
+    expect(s.mode).toBe('boss');
+    expect(s.enemies.filter((e) => e.boss).map((e) => e.type)).toEqual(['megaSproto']);
+    expect(p.guns.map((g) => g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka']);
+    damagePlayer(s, p, { base: 20, sourceKind: 'boss' }); // not the sandbox: boss hits hurt
+    expect(p.shield).toBeLessThan(p.maxShield);
+    const won = run(s, 2, () => cmd({ actions: [{ type: 'debug', op: 'killAll' }] }));
+    expect(won.find((e) => e.type === 'bossFightOver')).toMatchObject({ won: true, boss: 'megaSproto' });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'boss', tier: 1, boss: 'monster' }] }));
+    p.hp = 1; p.shield = 0;
+    damagePlayer(s, p, { base: 500, sourceKind: 'boss' });
+    p.downedT = 0;
+    const lost = run(s, 3, () => cmd());
+    expect(lost.find((e) => e.type === 'bossFightOver')).toMatchObject({ won: false, boss: 'monster' });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', null, null, null]); // leaving gives the starting loadout back
+  });
+});

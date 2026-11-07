@@ -193,6 +193,10 @@ kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var
 .title h1 span { color: var(--pink); text-shadow: 0 8px 0 #5a1a7a; font-size: .7em; }
 .title .tag { font-size: 18px; color: var(--ink-dim); max-width: 520px; }
 .menu { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center; }
+.boss-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; width: min(900px, 100%); margin: 0 auto 16px; }
+.btn.boss-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 14px 16px; border: 2px solid var(--c); }
+.btn.boss-card b { font-family: var(--display); font-size: 20px; color: var(--c); }
+.btn.boss-card small { font-size: 12px; opacity: .85; } .btn.boss-card span { font-size: 13px; font-weight: 400; }
 .tier select { font-family: var(--display); font-size: 16px; background: var(--night); color: var(--sun); border: 2px solid var(--sun); border-radius: 8px; padding: 4px 8px; }
 .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 6px 18px; text-align: left; font-size: 13px; margin-top: 8px; width: 100%; }
 .controls div { display: flex; gap: 8px; align-items: center; } .controls span { color: var(--ink-dim); }

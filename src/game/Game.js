@@ -15,7 +15,7 @@ import { MAX_TIER } from '../data/waves.js';
 const MAX_FRAME = 0.25, MAX_TICKS = 5;
 
 export class Game {
-  constructor({ seed, mode = 'title', tier = 1, debug = false }) {
+  constructor({ seed, mode = 'title', tier = 1, debug = false, boss = null }) {
     this.bus = createEventBus();
     this.state = createGameState({ seed });
     this.paused = true;
@@ -41,6 +41,7 @@ export class Game {
     if (mode === 'waves') this.start('waves', tier);
     else if (mode === 'sandbox') this.start('sandbox', tier);
     else if (mode === 'test') this.start('test', tier);
+    else if (mode === 'boss') this.start('boss', tier, { boss: BOSSES[boss] ? boss : 'monster' });
     else this.showScreen('title');
 
     this.last = performance.now();
@@ -84,9 +85,10 @@ export class Game {
     });
   }
 
-  start(mode, tier = 1) {
+  start(mode, tier = 1, extra = {}) {
     this.audio.ensure();
-    this.queue({ type: 'startMode', mode, tier });
+    if (mode === 'boss') this.lastBoss = extra.boss;
+    this.queue({ type: 'startMode', mode, tier, ...extra });
     this.hideScreen();
     this.paused = false;
     this.input.lock();
@@ -105,9 +107,28 @@ export class Game {
           <button class="btn big" data-go="waves">▶ Wave Mode <small>3 waves + bosses</small></button>
           <button class="btn big alt" data-go="sandbox">🧪 Sandbox <small>debug spawn everything</small></button>
           <button class="btn big alt" data-go="test">🎯 Test Range <small>every gun, infinite ammo</small></button>
+          <button class="btn big alt" data-go="bossSelect">👑 Boss Fight <small>pick a boss to fight</small></button>
           <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
         </div>
         ${controlsHtml()}</div>`;
+    } else if (kind === 'bossSelect') {
+      const cards = Object.entries(BOSSES).map(([id, b]) => `<button class="btn boss-card" data-go="boss" data-boss="${id}" style="--c:#${b.color.toString(16).padStart(6, '0')}">
+          <b>${b.name}</b><small>${b.tag === 'magic' ? '🔮 Magic' : '💪 Physical'} · ${b.hp.toLocaleString()} HP</small><span>${BOSS_BLURB[id] || ''}</span></button>`).join('');
+      body = `<div class="title boss-select"><h1>BOSS <span>FIGHT</span></h1>
+        <p class="tag">Pick a boss. You get one of every gun with full ammo. Real damage: no god mode unless you press P.</p>
+        <div class="boss-grid">${cards}</div>
+        <div class="menu"><div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
+          <button class="btn alt" data-go="title">← Back</button></div></div>`;
+    } else if (kind === 'bossWon' || kind === 'bossLost') {
+      const win = kind === 'bossWon', b = BOSSES[this.lastBoss] || {}, r = s.run;
+      body = `<div class="end ${win ? 'victory' : 'defeat'}"><h1>${win ? `${b.name} DOWN!` : 'DEFEATED'}</h1>
+        <p>${win ? `You beat ${b.name} in ${Math.round(s.bossFight ? s.bossFight.time : 0)} s.` : `${b.name} got you. Try again?`}</p>
+        <div class="stats"><div><b>${Math.round(r.damageDealt).toLocaleString()}</b>damage</div><div><b>${r.bestHit}</b>best hit</div><div><b>${r.weakHits}</b>BONKs</div></div>
+        <div class="menu">
+          <button class="btn big" data-go="boss" data-boss="${this.lastBoss}">${win ? '↻ Fight again' : '↻ Retry'}</button>
+          <button class="btn" data-go="bossSelect">👑 Pick another boss</button>
+          <button class="btn alt" data-go="title">Main menu</button>
+        </div></div>`;
     } else if (kind === 'victory' || kind === 'defeat') {
       const r = s.run, win = kind === 'victory';
       const next = Math.min(MAX_TIER, s.tier + 1);
@@ -131,8 +152,9 @@ export class Game {
       if (!b) return;
       const go = b.dataset.go;
       if (go === 'continue') { this.hideScreen(); this.paused = false; this.input.lock(); return; }
+      if (go === 'title' || go === 'bossSelect') { this.showScreen(go); return; }
       const tier = b.dataset.tier ? +b.dataset.tier : +(this.screen.querySelector('#tier-sel')?.value || s.tier);
-      this.start(go, tier);
+      this.start(go, tier, go === 'boss' ? { boss: b.dataset.boss } : {});
     };
   }
   hideScreen() { this.screen.hidden = true; this.screen.innerHTML = ''; }
@@ -250,6 +272,14 @@ export class Game {
     requestAnimationFrame((t) => this.frame(t));
   }
 }
+
+/** One-line descriptions for the Boss Fight picker. */
+const BOSS_BLURB = {
+  dragon: 'Fire breath sweeps, lobbed fireballs, tail swipes.',
+  monster: 'Overhead arm smashes, homing missiles, bullet fans.',
+  megaSproto: 'Charges, ground slams, missiles, swings up close.',
+  hexAuditor: 'Floating caster: bullet hell, homing bolts, teleports.',
+};
 
 function controlsHtml() {
   const k = (a, b) => `<div><kbd>${a}</kbd><span>${b}</span></div>`;

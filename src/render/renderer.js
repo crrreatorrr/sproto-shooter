@@ -7,6 +7,7 @@ import { RESOURCES } from '../data/drops.js';
 import { worldHitboxes } from '../sim/collision.js';
 import { createFirstPerson, FP } from './firstPerson.js';
 import { createDragonRig } from './dragonRig.js';
+import { createHumanoidRig } from './humanoidRig.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
 import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY, ensureGunModel, instantiateGun } from './assets.js';
@@ -261,23 +262,6 @@ export function createRenderer(container, bus) {
 
   function bossStageIdx(e) { return Math.min(2, e.boss.phaseIdx); }
 
-  /** Procedural motion for a boss model without animation clips (the blue monster): breathe, stomp, lean, swing, rear. */
-  function animateStaticBoss(holder, e, now, spd) {
-    const a = e.boss.action, t = a.t, id = a.id;
-    const pulse = (c, w) => Math.exp(-(((t - c) / w) ** 2));
-    let x = 0, z = 0, y = Math.sin(now * 0.003) * 0.05, sy = 1 + Math.sin(now * 0.003) * 0.015, sx = 1;
-    if (spd > 0.6 || id === 'chase') { const s = now * 0.012 * Math.max(1, spd / 4); y += Math.abs(Math.sin(s)) * 0.25; z += Math.sin(s) * 0.06; x += 0.08; }
-    if (id === 'charge') x += t < 0.8 ? -0.18 * Math.min(1, t / 0.4) : 0.3; // rear back, then lunge forward
-    if (id === 'melee') { const m = BOSSES[e.type].melee; x += t < m.windup ? -0.25 * (t / m.windup) : 0.45 * pulse(m.windup + 0.08, 0.12); z += 0.25 * pulse(m.windup + 0.05, 0.1); }
-    if (id === 'volley' || id === 'missiles') { x -= 0.15 * Math.min(1, t / 0.4); sy += 0.06 * Math.min(1, t / 0.4); }
-    if (id === 'slam' && e.pos.y <= 0.01 && t > 0.3) { sy *= 0.85; sx *= 1.12; }
-    if (id === 'transition' || id === 'intro') { z += Math.sin(now * 0.03) * 0.05; sy += 0.05 * Math.sin(now * 0.01); }
-    if (id === 'summon') { x -= 0.2; sy += 0.08; }
-    holder.position.y = y;
-    holder.rotation.set(x, 0, z);
-    holder.scale.set(sx, sy, sx);
-  }
-
   function buildBoss(e) {
     const def = BOSSES[e.type];
     const g = new THREE.Group();
@@ -297,6 +281,7 @@ export function createRenderer(container, bus) {
       const belly = new THREE.Mesh(G.sphere, E(0xff3b3b)); belly.scale.setScalar(hb ? hb.r * 1.1 : 0.55);
       if (hb) belly.position.set(hb.x || 0, hb.y, hb.z || 0); belly.visible = false;
       g.add(belly, blob(def.radius * 1.3)); parts.belly = belly;
+      if (ch && def.rig === 'humanoid') parts.rig = createHumanoidRig(ch, def); // skeleton animated in code
     } else if (e.type === 'dragon') {
       holder.rotation.y = Math.PI; // this model's head is at Tripo -X, the opposite of the other characters
       g.add(blob(3.4));
@@ -867,7 +852,7 @@ export function createRenderer(container, bus) {
           ch.play(clip, { speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : 1 });
         }
         ch.update(fdt);
-        if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0 });
+        if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, speed: spd, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0 });
       }
       if (e.boss) {
         if (e.type === 'dragon') {
@@ -875,7 +860,6 @@ export function createRenderer(container, bus) {
         } else if (BOSSES[e.type].ai === 'mega') {
           u.belly.visible = e.boss.action.id === 'stunned';
           o.rotation.z = e.boss.action.id === 'stunned' ? Math.sin(now * 0.02) * 0.06 : 0;
-          if (BOSSES[e.type].staticModel && u.holder) animateStaticBoss(u.holder, e, now, spd);
         } else {
           const a = e.boss.weakAngle;
           u.weak.position.set(ex + Math.cos(a) * 1.9, ey + 0.2, ez + Math.sin(a) * 1.9);

@@ -94,13 +94,14 @@ export const BOSSES = {
     ],
   },
   monster: {
-    // Wave 2 boss. Static model (no rig): the renderer animates it procedurally. Spits monster bullets.
+    // Wave 2 boss. Rigged humanoid without clips: the renderer animates its skeleton (humanoidRig.js).
+    // Its melee is an overhead arm smash. Spits monster bullets.
     name: 'BLUE MONSTER', tag: 'physical', ai: 'mega', hp: 3800, radius: 2.4, height: 7.0, color: 0x2f6bff, speed: 4.8,
     contactDamage: 18, chargeDamage: 40, chargeSpeed: 24, slamDamage: 30,
     volley: { damage: 12, count: 5, fan: 40, speed: 26, waves: 2, gap: 0.45, y: 6.0, kind: 'monsterBullet' },
     melee: { range: 3.2, damage: 50, windup: 0.5, recover: 0.5, cd: 1.5, knockback: 16 },
     missiles: { count: 3, damage: 34, splash: 4.5, speed: 13, homing: 1.2, ttl: 6, gap: 0.28, y: 6.2 },
-    model: 'monster', staticModel: true, stageHeights: [7.0, 7.6, 8.2],
+    model: 'monster', rig: 'humanoid', stageHeights: [7.0, 7.6, 8.2],
     portraits: [],
     phases: [
       { hpBelow: 1.0, speedMult: 1.0, pattern: ['chase', 'volley', 'missiles', 'chase', 'charge', 'slam'] },
