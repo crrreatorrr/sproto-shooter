@@ -24,6 +24,8 @@ export class Game {
     this.hub = hub ?? { status: 'offline', connected: false, bankable: false, balance: null, error: null, refreshBalance: () => Promise.resolve(null), exitHub() {} };
     this.playing = false;
     this.hubLeaveArmed = false;
+    this.pvpActive = false;
+    this.pvp = null;
     this.bus = createEventBus();
     this.state = createGameState({ seed });
     this.paused = true;
@@ -62,6 +64,7 @@ export class Game {
     else if (mode === 'boss') this.start('boss', tier, { boss: BOSSES[boss] && !BOSSES[boss].campaign ? boss : 'monster' });
     else if (mode === 'campaign') this.start('campaign', tier, { level: level || 'L01' });
     else this.showScreen('title');
+    if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('pvpMock') === '1') this.openPvp({ demo: true });
 
     this.last = performance.now();
     this.acc = 0;
@@ -118,11 +121,13 @@ export class Game {
   wireInput() {
     const inp = this.input;
     inp.on('clickUnlocked', () => {
+      if (this.pvpActive && this.pvp && this.pvp.wantsLock) { this.audio.ensure(); inp.lock(); return; }
       if (!this.screen.hidden || this.ui.menuOpen) return;
       this.audio.ensure();
       inp.lock();
     });
     inp.on('lockchange', (locked) => {
+      if (this.pvpActive) return;
       if (locked) { this.paused = false; this.hidePause(); }
       else if (!this.ui.menuOpen && this.screen.hidden && !this.debugOpen) this.showPause();
     });
@@ -166,6 +171,7 @@ export class Game {
           <button class="btn big alt" data-go="test">🎯 Test Range <small>every gun, infinite ammo</small></button>
           <button class="btn big alt" data-go="bossSelect">👑 Boss Fight <small>pick a boss to fight</small></button>
           <button class="btn big" data-go="campaignSelect">🗺 Campaign <small>The Great Sproto Audit</small></button>
+          <button class="btn big alt" data-go="pvp">⚔ Free 1v1 <small>equal guns, no Tickets</small></button>
           <button class="btn alt" data-go="hub">${this.hubReturnLabel()}</button>
           <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
         </div>
@@ -237,6 +243,7 @@ export class Game {
       const go = b.dataset.go;
       if (go === 'hub') { this.requestHubReturn(b); return; }
       if (go === 'continue') { this.hideScreen(); this.paused = false; this.input.lock(); return; }
+      if (go === 'pvp') { this.openPvp(); return; }
       if (go === 'title' || go === 'bossSelect' || go === 'campaignSelect') { this.showScreen(go); return; }
       if (go === 'checkpoint') { restoreCheckpoint(this.state); this._campaignShown = false; this.hideScreen(); this.paused = false; this.input.lock(); return; }
       const tier = b.dataset.tier ? +b.dataset.tier : +(this.screen.querySelector('#tier-sel')?.value || s.tier);
@@ -379,6 +386,12 @@ export class Game {
     let ft = Math.min(frameMs / 1000, MAX_FRAME);
     this.last = now;
     if (this.hitstopMs > 0) { this.hitstopMs -= ft * 1000; ft = 0; }
+    if (this.pvpActive) {
+      const cmd = this.input.buildCommand(this.state.tick);
+      if (this.pvp) this.pvp.frame(ft, cmd);
+      requestAnimationFrame((t) => this.frame(t));
+      return;
+    }
     // Shop/crafting menus and the debug panel do NOT pause. The pause and end screens do. The title runs a demo behind it.
     const scr = this.screen.hidden ? null : this.screen.querySelector('.title') ? 'title' : 'other';
     const titleUp = scr === 'title';
@@ -418,6 +431,34 @@ export class Game {
     }, now);
     if (this.statsOn) this.drawStats(now);
     requestAnimationFrame((t) => this.frame(t));
+  }
+
+  async openPvp(opts = {}) {
+    if (this.pvpActive) return;
+    this.pvpActive = true;
+    this.playing = false;
+    this.ui.setPvp(true);
+    this.input.unlock();
+    try {
+      const { startPvpSession } = await import('../render/pvp/session.js');
+      this.pvp = startPvpSession({
+        screen: this.screen,
+        input: this.input,
+        hub: this.hub,
+        demo: !!opts.demo,
+        onExit: () => {
+          this.pvpActive = false;
+          this.pvp = null;
+          this.ui.setPvp(false);
+          this.showScreen('title');
+        },
+      });
+    } catch (err) {
+      this.pvpActive = false;
+      this.ui.setPvp(false);
+      this.showScreen('title');
+      this.ui.toast(err && err.message ? err.message : 'Free 1v1 failed');
+    }
   }
 
   drawStats(now) {
