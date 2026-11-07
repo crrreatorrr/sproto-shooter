@@ -30,9 +30,8 @@ export function playerMovement(state, dt) {
     m.dashCd = Math.max(0, m.dashCd - dt);
     // wish dir in world space from yaw
     const sy = Math.sin(p.yaw), cy = Math.cos(p.yaw);
-    let wx = c.moveX * cy - c.moveZ * sy * -1; // see below
     // forward = (-sin, -cos); right = (cos, -sin). moveZ>0 is forward
-    wx = -sy * c.moveZ + cy * c.moveX;
+    let wx = -sy * c.moveZ + cy * c.moveX;
     let wz = -cy * c.moveZ - sy * c.moveX;
     const wl = Math.hypot(wx, wz);
     if (wl > 1) { wx /= wl; wz /= wl; }

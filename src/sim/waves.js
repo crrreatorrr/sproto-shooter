@@ -99,9 +99,11 @@ export function waveDirector(state, dt) {
     case 'bossIntro':
       if (w.t >= cfg.boss.introDelay) {
         const paired = cfg.boss.types.length > 1;
+        // spawn across the arena from the player; paired bosses spread ±50°
+        const away = Math.atan2(-p.pos.x, -p.pos.z) + (Math.hypot(p.pos.x, p.pos.z) < 1 ? Math.PI : 0);
         cfg.boss.types.forEach((type, i) => {
-          const ang = (i / cfg.boss.types.length) * Math.PI * 2 + Math.atan2(-p.pos.x, -p.pos.z);
-          const pos = { x: Math.sin(ang) * -16, z: Math.cos(ang) * -16 };
+          const ang = away + (paired ? (i === 0 ? -0.9 : 0.9) : 0);
+          const pos = { x: Math.sin(ang) * 16, z: Math.cos(ang) * 16 };
           const b = createBoss(state, type, { pos, paired });
           w.bossIds.push(b.id);
           emit(state, 'bossSpawn', { id: b.id, bossType: type });
