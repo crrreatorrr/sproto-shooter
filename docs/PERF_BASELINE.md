@@ -12,7 +12,16 @@ asset, simulation or weapon changes belong to this milestone.
 | Initial JS, uncompressed | 832,995 bytes |
 | Initial JS, gzip (Vite rounded) | 230.87 KB |
 | CSS, gzip (Vite rounded) | 4.73 KB |
-| Runtime baseline | Pending CI capture |
+| 60-midget draw calls | 146 |
+| Triangles | 522,139 |
+| Shader programs | 14 |
+| Textures / geometries | 66 / 17 |
+| Mean fps (SwiftShader) | 1.97 |
+| Frame mean / p95 / max | 507.28 / 1,016.60 / 1,016.60 ms |
+| Cold title asset transfer | 3,043,830 bytes |
+| Cold wave-1 asset transfer | 3,637,024 bytes |
+| Cold wave-1 total transfer | 3,922,771 bytes |
+| Runtime exceptions / game HTTP errors | 0 / 0 |
 
 The initial JS is a single chunk including three and lil-gui. B-M1 will split
 three and load debug tooling lazily. This measurement precedes those changes.
@@ -46,6 +55,11 @@ when comparing later milestones against B-M0.
 
 The supplied cloud shell blocks Chromium's Unix socket creation (`socket()
 failed: Operation not permitted`), and the managed browser could not connect
-to its localhost preview. Runtime numbers and screenshots are therefore pending
-CI rather than estimated. Do not mark B-M0 accepted until its CI artifact has
-been inspected and its metrics recorded here.
+to its localhost preview. Runtime numbers and screenshots were captured in [CI run 42345689272](https://github.com/crrreatorrr/sproto-shooter/actions/runs/42345689272).
+The [artifact](https://github.com/crrreatorrr/sproto-shooter/actions/runs/42345689272/artifacts/13562954417)
+contains all three screenshots and the raw metrics. The stress screenshot was
+inspected. Measured source: `e8a400fbe6e90a42c5e4dbf8eda60c846e97eb24` (PR merge
+ref; game source remains identical to `721d8ee`). Environment: Ubuntu 26.04,
+Intel Xeon 6973P-C, Chrome 156.0.8078.79, Node 22.23.4, SwiftShader. The slow
+software run yielded 16 frame intervals in 8 seconds; hardware-GPU acceptance
+remains unverified.

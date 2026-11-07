@@ -1,0 +1,122 @@
+{
+  "commit": "e8a400fbe6e90a42c5e4dbf8eda60c846e97eb24",
+  "capturedAt": "2026-11-07T06:09:22.091Z",
+  "environment": {
+    "node": "v22.23.4",
+    "platform": "linux",
+    "release": "7.0.0-1019-azure",
+    "cpu": "Intel(R) Xeon(R) 6973P-C",
+    "chrome": "Google Chrome 156.0.8078.79",
+    "viewport": [
+      800,
+      450
+    ],
+    "gpu": "SwiftShader"
+  },
+  "chunks": [
+    {
+      "path": "assets/index-C3AnGnhc.js",
+      "bytes": 832995,
+      "gzipBytes": 230870
+    },
+    {
+      "path": "assets/index-C_A8wLF6.css",
+      "bytes": 18237,
+      "gzipBytes": 4730
+    }
+  ],
+  "titleNetwork": {
+    "requests": 15,
+    "transferBytes": 3330196,
+    "assetRequests": 5,
+    "assetTransferBytes": 3043830,
+    "assets": [
+      {
+        "url": "http://127.0.0.1:4174/assets/textures/stages/city/sky.jpg",
+        "status": 200,
+        "bytes": 454728
+      },
+      {
+        "url": "http://127.0.0.1:4174/assets/textures/stages/city/stone.jpg",
+        "status": 200,
+        "bytes": 601342
+      },
+      {
+        "url": "http://127.0.0.1:4174/assets/textures/stages/city/floor.jpg",
+        "status": 200,
+        "bytes": 1675022
+      },
+      {
+        "url": "http://127.0.0.1:4174/assets/models/stages/city/pillar.glb",
+        "status": 200,
+        "bytes": 138279
+      },
+      {
+        "url": "http://127.0.0.1:4174/assets/models/stages/city/prop.glb",
+        "status": 200,
+        "bytes": 174459
+      }
+    ]
+  },
+  "wave1Network": {
+    "requests": 18,
+    "transferBytes": 3922771,
+    "assetRequests": 7,
+    "assetTransferBytes": 3637024,
+    "assets": [
+      {
+        "url": "http://127.0.0.1:4174/assets/textures/stages/city/sky.jpg",
+        "status": 200,
+        "bytes": 454728
+      },
+      {
+        "url": "http://127.0.0.1:4174/assets/textures/stages/city/stone.jpg",
+        "status": 200,
+        "bytes": 601342
+      },
+      {
+        "url": "http://127.0.0.1:4174/assets/textures/stages/city/floor.jpg",
+        "status": 200,
+        "bytes": 1675022
+      },
+      {
+        "url": "http://127.0.0.1:4174/assets/models/stages/city/pillar.glb",
+        "status": 200,
+        "bytes": 138279
+      },
+      {
+        "url": "http://127.0.0.1:4174/assets/models/stages/city/prop.glb",
+        "status": 200,
+        "bytes": 174459
+      },
+      {
+        "url": "http://127.0.0.1:4174/assets/models/characters/midget_stage1.glb",
+        "status": 200,
+        "bytes": 313039
+      },
+      {
+        "url": "http://127.0.0.1:4174/assets/models/characters/obama_stage1.glb",
+        "status": 200,
+        "bytes": 280155
+      }
+    ]
+  },
+  "stress": {
+    "calls": 146,
+    "triangles": 522139,
+    "programs": 14,
+    "textures": 66,
+    "geometries": 17,
+    "enemies": 60,
+    "pendingDownloads": 0,
+    "tick": 145,
+    "renderer": "WebKit WebGL",
+    "samples": 16,
+    "avgMs": 507.275,
+    "fps": 1.9713173328076488,
+    "p95Ms": 1016.6000000000004,
+    "maxMs": 1016.6000000000004
+  },
+  "errors": [],
+  "ignoredHttpErrors": []
+}
