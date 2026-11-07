@@ -129,6 +129,7 @@ export const GUN_MODELS = {
   mg: { path: 'models/guns/toy_mg.glb', yaw: 90, muzzleY: 0.55 },
   shotgun: { path: 'models/guns/toy_shotgun.glb', yaw: -90, muzzleY: 0.85 },
   sniper: { path: 'models/guns/toy_sniper.glb', yaw: 90, muzzleY: 0.68 },
+  bazooka: { path: 'models/guns/toy_bazooka.glb', yaw: 0, muzzleY: 0.47 },
 };
 
 function loadGun(type, prio = NOW) {

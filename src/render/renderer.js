@@ -364,7 +364,7 @@ export function createRenderer(container, bus) {
   const PK_COL = { health: new THREE.Color(0xff4d6d), bigHealth: new THREE.Color(0xff2255), mana: new THREE.Color(0x6aa8ff), tickets: new THREE.Color(0xffd700) };
 
   // Gun with a 3D model (e.g. the toy machine gun): model + element gem. Null if the type has none / not loaded yet.
-  const GUN_MODEL_LEN = { mg: 0.7, shotgun: 0.75, sniper: 0.8 };
+  const GUN_MODEL_LEN = { mg: 0.7, shotgun: 0.75, sniper: 0.8, bazooka: 0.9 };
   function buildGunModel(gun, length) {
     const inst = instantiateGun(gun.type, length);
     if (!inst) return null;
@@ -547,21 +547,31 @@ export function createRenderer(container, bus) {
     model: { rest: [0.2, -0.17, -0.5], ads: [0, -0.27, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
     // slim shotgun sits a little higher; its barrel is the top of the model, so aiming can stay close to center
     shotgun: { rest: [0.19, -0.15, -0.5], ads: [0, -0.16, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
-    // sniper: zooming doesn't move or resize the gun; it only tilts it about its own center until the barrel
-    // tip lands just to the lower right of the crosshair (`tip`: camera-space x/y offset from the screen
-    // center), then cants it by `roll` around the center→tip line
-    sniper: { rest: [0.2, -0.17, -0.5], tilt: { tip: [0.12, -0.03], roll: -0.05 }, yaw: 0.06, roll: -0.03, scale: 1 },
+    // Screen-anchored poses (`place`): where the barrel tip and the back of the gun appear on screen, as
+    // [x, y, depth] with x/y in screen fractions (-1 left/bottom … 1 right/top) and depth in metres. The gun
+    // is aimed from back to tip and slid so its muzzle sits on the tip. Zooming swings the tip to `zoomTip`
+    // around the back (the shoulder), so the gun only tilts; its size never changes.
+    // sniper (Halo-style): tip just right of and below the center, the gun running back to the bottom-right
+    // corner; zoomed, the tip moves to just lower-right of the crosshair
+    sniper: { len: 1.15, place: { tip: [0.08, -0.12, 0.8], back: [1.0, -0.78, 0.25], zoomTip: [0.04, -0.06, 0.8], roll: 0, zoomRoll: -0.06 }, scale: 1 },
+    // bazooka on the right shoulder: big tube from the right edge pointing in toward the center
+    bazooka: { place: { tip: [0.2, -0.08, 1.15], back: [1.05, -0.55, 0.3], zoomTip: [0.09, -0.07, 1.15], roll: 0, zoomRoll: -0.04 }, scale: 1 },
   };
-  const _tq = new THREE.Quaternion(), _te = new THREE.Euler(), _tA = new THREE.Vector3(), _tB = new THREE.Vector3();
-  /** Rotation (quaternion) that, with the gun at its rest position, puts its muzzle at pose.tilt.tip. */
-  function tiltQuaternion(pose, muzzle) {
-    const [x, y] = pose.rest, [tx, ty] = pose.tilt.tip || [0, 0];
-    const dx = tx - x, dy = ty - y;
-    const reach = muzzle.lengthSq() - dx * dx - dy * dy; // how far ahead the tip can land
-    _tB.set(dx, dy, -Math.sqrt(Math.max(1e-4, reach))).normalize();
-    _tA.copy(muzzle).normalize();
-    const q = new THREE.Quaternion().setFromUnitVectors(_tA, _tB);
-    return q.premultiply(_tq.setFromAxisAngle(_tB, pose.tilt.roll));
+  const _tq = new THREE.Quaternion(), _te = new THREE.Euler(), _pT = new THREE.Vector3(), _pT2 = new THREE.Vector3(),
+    _pB = new THREE.Vector3(), _pD = new THREE.Vector3(), _pM = new THREE.Vector3(), _FWD = new THREE.Vector3(0, 0, -1);
+  /** Screen fraction [x, y, depth] → camera-space point, at the viewmodel's (base) field of view. */
+  function screenPoint(v, out) {
+    const t = Math.tan(THREE.MathUtils.degToRad(TUNING.fovBase / 2));
+    return out.set(v[0] * v[2] * t * camera.aspect, v[1] * v[2] * t, -v[2]);
+  }
+  /** Places a gun from a screen-anchored pose at aim amount `ads` (0..1): sets position and quaternion. */
+  function placeGun(gunObj, place, muzzle, ads) {
+    screenPoint(place.back, _pB);
+    screenPoint(place.tip, _pT).lerp(screenPoint(place.zoomTip || place.tip, _pT2), ads);
+    _pD.subVectors(_pT, _pB).normalize();
+    gunObj.quaternion.setFromUnitVectors(_FWD, _pD)
+      .premultiply(_tq.setFromAxisAngle(_pD, lerp(place.roll || 0, place.zoomRoll ?? place.roll ?? 0, ads)));
+    gunObj.position.copy(_pT).sub(_pM.copy(muzzle).applyQuaternion(gunObj.quaternion));
   }
   const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, reload: 0, swap: 0, lastYaw: 0, lastPitch: 0 };
 
@@ -705,7 +715,8 @@ export function createRenderer(container, bus) {
     const vmKey = gun ? gun.id + ':' + assetsVersion() : null;
     if (gun && vmKey !== vmGunKey) {
       vmGunKey = vmKey;
-      const modeled = GUN_MODEL_LEN[gun.type] && buildGunModel(gun, GUN_MODEL_LEN[gun.type]);
+      const vmLen = (VM_POSE[gun.type] && VM_POSE[gun.type].len) || GUN_MODEL_LEN[gun.type]; // viewmodel size can differ from pickups
+      const modeled = GUN_MODEL_LEN[gun.type] && buildGunModel(gun, vmLen);
       // assets changed but this gun still has no model: keep the current mesh
       if (modeled || !vmGun || vmGun.userData.gunId !== gun.id) {
         if (vmGun) vmRoot.remove(vmGun);
@@ -731,19 +742,21 @@ export function createRenderer(container, bus) {
     if (vmGun) {
       const pose = vmGun.userData.pose, ia = 1 - vm.ads;
       const r = reloadOffsets(vmGun.userData.type, p.reloadT, vm.reloadTime);
-      const ad = pose.tilt ? pose.rest : pose.ads;
-      // less sway and bob while aiming; none at full aim for a tilted gun so its tip stays on the crosshair
-      const steady = 1 - (pose.tilt ? 1 : 0.75) * vm.ads;
-      vmGun.position.set(
-        lerp(pose.rest[0], ad[0], vm.ads) + vm.swayX * steady + r.x,
-        lerp(pose.rest[1], ad[1], vm.ads) - vm.swayY * steady + r.y - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006 * steady,
-        lerp(pose.rest[2], ad[2], vm.ads) + vm.kick * 0.05 + r.z);
+      // less sway and bob while aiming; none at full aim for screen-anchored guns so the tip stays put
+      const steady = 1 - (pose.place ? 1 : 0.75) * vm.ads;
       const kickX = vm.kick * 0.25 + r.rx;
-      if (pose.tilt) {
-        const tilt = vmGun.userData.tiltQ ||= tiltQuaternion(pose, vmGun.userData.muzzle);
-        vmGun.quaternion.setFromEuler(_te.set(0, pose.yaw, pose.roll)).slerp(tilt, vm.ads)
-          .multiply(_tq.setFromEuler(_te.set(kickX, vm.swayX * steady + r.ry, r.rz)));
+      if (pose.place) {
+        placeGun(vmGun, pose.place, vmGun.userData.muzzle, vm.ads);
+        vmGun.position.x += vm.swayX * steady + r.x;
+        vmGun.position.y += -vm.swayY * steady + r.y - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006 * steady;
+        vmGun.position.z += vm.kick * 0.05 + r.z;
+        vmGun.quaternion.multiply(_tq.setFromEuler(_te.set(kickX, vm.swayX * steady + r.ry, r.rz)));
       } else {
+        const ad = pose.ads;
+        vmGun.position.set(
+          lerp(pose.rest[0], ad[0], vm.ads) + vm.swayX * steady + r.x,
+          lerp(pose.rest[1], ad[1], vm.ads) - vm.swayY * steady + r.y - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006 * steady,
+          lerp(pose.rest[2], ad[2], vm.ads) + vm.kick * 0.05 + r.z);
         vmGun.rotation.set(kickX, pose.yaw * ia + vm.swayX * steady + r.ry, pose.roll * ia + r.rz);
       }
       vmGun.updateMatrix();

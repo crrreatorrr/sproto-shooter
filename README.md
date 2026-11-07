@@ -2,7 +2,7 @@
 
 A wacky first-person loot shooter built with Three.js, inspired by Borderlands. You fight waves of Sproto Duel characters (midget swarms and bitcoin-shooting Obamas) across Sproto Duel's stages, grab procedurally generated guns, craft better ones at Weapon Boxes, and level four skills just by playing.
 
-This is the **mechanics sandbox** stage. Characters, stages and boss portraits are reused from [sproto-duel](https://github.com/crrreatorrr/sproto-duel) (`public/assets/`). The machine gun, shotgun and sniper use toy gun models (`public/assets/models/guns/`); the bazooka is still a low-poly placeholder. There's no login, hub, saving or multiplayer yet; the code is structured so those can be added later (see `PLAN.md` §9).
+This is the **mechanics sandbox** stage. Characters, stages and boss portraits are reused from [sproto-duel](https://github.com/crrreatorrr/sproto-duel) (`public/assets/`). All four guns (machine gun, shotgun, sniper, bazooka) use toy gun models (`public/assets/models/guns/`). There's no login, hub, saving or multiplayer yet; the code is structured so those can be added later (see `PLAN.md` §9).
 
 ## Run it
 
