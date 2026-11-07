@@ -285,7 +285,7 @@ export function createRenderer(container, bus) {
     } else if (e.type === 'dragon') {
       holder.rotation.y = Math.PI; // this model's head is at Tripo -X, the opposite of the other characters
       parts.groundShadow = blob(3.4); g.add(parts.groundShadow); // stays on the ground while it flies
-      if (ch) parts.rig = createDragonRig(ch);
+      if (ch) parts.rig = createDragonRig(ch, def);
     } else {
       holder.position.y = -1.3; // pos.y is the floating body centre
       const orb = new THREE.Mesh(G.sphere, MAT.weak); orb.scale.setScalar(0.45);
@@ -695,6 +695,7 @@ export function createRenderer(container, bus) {
   bus.on('meteorImpact', (ev) => { addBoom({ ...ev.pos, y: 0.5 }, 7, 0xff4400, 0.7); burstConfetti(ev.pos, 150, 12); addTrauma(1); });
   bus.on('splat', (ev) => burstConfetti(ev.pos, ev.element === 'fire' ? 18 : 10, 3, ev.element === 'fire' ? [new THREE.Color(0xff7a1a), new THREE.Color(0xffd166), new THREE.Color(0x553322)] : [new THREE.Color(0x9be33b), new THREE.Color(0x5aa02c)]));
   bus.on('playerDamaged', (ev) => addTrauma(ev.noDamage ? 0.3 : Math.min(0.5, ev.amount / 40)));
+  bus.on('bossMeleeHit', () => addTrauma(0.5)); // heavy hit: big shake (trauma², decays)
   bus.on('land', (ev) => { feel.landDip = Math.min(0.25, ev.speed / 60); });
   bus.on('dash', () => { feel.fovPunch += 8; });
   bus.on('slide', () => { feel.fovPunch += 4; });
@@ -813,7 +814,13 @@ export function createRenderer(container, bus) {
       const o = v.obj, u = o.userData;
       const ex = lerp(e.prevPos.x, e.pos.x, alpha), ey = lerp(e.prevPos.y, e.pos.y, alpha), ez = lerp(e.prevPos.z, e.pos.z, alpha);
       o.position.set(ex, ey, ez);
-      o.rotation.y = e.yaw + Math.PI;
+      // bosses turn smoothly on screen (an angular ease toward the sim's facing)
+      if (e.boss) {
+        if (u.visYaw === undefined) u.visYaw = e.yaw;
+        const dy = Math.atan2(Math.sin(e.yaw - u.visYaw), Math.cos(e.yaw - u.visYaw));
+        u.visYaw += dy * Math.min(1, fdt * 7);
+        o.rotation.y = u.visYaw + Math.PI;
+      } else o.rotation.y = e.yaw + Math.PI;
       // flash / status tint
       const tint = e.hitFlash > 0 ? [0.9, 0.9, 0.9] : e.status.burn ? [0.45, 0.12, 0] : e.status.goo ? [0.08, 0.3, 0] : [0, 0, 0];
       if (u.char) u.char.setTint(...tint);
@@ -849,7 +856,9 @@ export function createRenderer(container, bus) {
             ? { intro: 'victory', transition: 'hit', chase: 'run', charge: e.boss.action.t < 0.8 ? 'castBig' : 'run', stunned: 'stun', slam: 'jump', volley: 'castBig', summon: 'victory', melee: 'castBig', missiles: 'cast' }
             : { intro: 'victory', transition: 'hit', drift: 'idle', ring: 'cast', fan: 'cast', spiral: 'cast', taxBolts: 'castBig', spiralRing: 'castBig', teleport: 'castBig' };
           const clip = map[act] || 'idle';
-          ch.play(clip, { speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : 1 });
+          // longer blends between clips; the run plays at the pace the boss actually moves
+          const runPace = Math.min(1.8, Math.max(0.6, spd / Math.max(1, BOSSES[e.type].speed || 4.5)));
+          ch.play(clip, { fade: 0.3, speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : clip === 'run' ? runPace : 1 });
         }
         ch.update(fdt);
         if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, speed: spd, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0,

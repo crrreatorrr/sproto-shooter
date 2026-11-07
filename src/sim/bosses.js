@@ -73,11 +73,20 @@ function summonGrunts(state, e) {
 function MEGA(state, e, a, dt, def, t) {
   const phase = def.phases[e.boss.phaseIdx];
   const spd = def.speed * phase.speedMult * (e.status.goo ? 1 - e.status.goo.slow : 1);
-  const toward = (s) => {
-    const dx = t.pos.x - e.pos.x, dz = t.pos.z - e.pos.z, d = Math.hypot(dx, dz) || 1;
-    e.vel.x = (dx / d) * s; e.vel.z = (dz / d) * s;
-    e.yaw = yawTo(e.pos, t.pos);
+  // turn toward the player at a limited rate (no snapping)
+  const faceTo = (rate) => {
+    const diff = angleWrap(yawTo(e.pos, t.pos) - e.yaw);
+    e.yaw = angleWrap(e.yaw + Math.max(-rate * dt, Math.min(rate * dt, diff)));
   };
+  // accelerate toward the player along the current heading blend, instead of jumping to full speed
+  const toward = (s) => {
+    faceTo(3.2);
+    const dx = t.pos.x - e.pos.x, dz = t.pos.z - e.pos.z, d = Math.hypot(dx, dz) || 1;
+    const k = Math.min(1, dt * 4);
+    e.vel.x += ((dx / d) * s - e.vel.x) * k; e.vel.z += ((dz / d) * s - e.vel.z) * k;
+  };
+  // ease to a stop instead of halting dead
+  const brake = (rate = 8) => { const k = Math.max(0, 1 - dt * rate); e.vel.x *= k; e.vel.z *= k; };
   const integrate = () => {
     e.vel.y -= 30 * dt;
     e.pos.x += e.vel.x * dt; e.pos.y += e.vel.y * dt; e.pos.z += e.vel.z * dt;
@@ -108,8 +117,8 @@ function MEGA(state, e, a, dt, def, t) {
   }
 
   switch (a.id) {
-    case 'intro': e.vel.x = e.vel.z = 0; integrate(); return a.t > 2.0;
-    case 'transition': e.vel.x = e.vel.z = 0; integrate(); return a.t >= 2;
+    case 'intro': brake(); integrate(); return a.t > 2.0;
+    case 'transition': brake(); integrate(); return a.t >= 2;
     case 'chase': toward(spd); integrate(); contact(); return a.t >= 3;
     case 'charge': {
       if (!a.data.dir) {
@@ -119,7 +128,7 @@ function MEGA(state, e, a, dt, def, t) {
         createHazard(state, { kind: 'telegraphLine', pos: { x: e.pos.x, y: 0.05, z: e.pos.z }, ttl: 0.8, data: { dir: a.data.dir, len: 30, width: def.radius * 2 } });
         emit(state, 'bossTelegraph', { id: e.id, kind: 'charge' });
       }
-      if (a.t < 0.8) { e.vel.x = e.vel.z = 0; integrate(); return false; }
+      if (a.t < 0.8) { brake(); integrate(); return false; }
       const cs = def.chargeSpeed * phase.speedMult;
       e.vel.x = a.data.dir.x * cs; e.vel.z = a.data.dir.z * cs;
       const hitWall = integrate();
@@ -136,11 +145,11 @@ function MEGA(state, e, a, dt, def, t) {
       if (hitWall) { start(e, 'stunned'); emit(state, 'bossStunned', { id: e.id, pos: { ...e.pos } }); return false; }
       return a.t >= 2.8;
     }
-    case 'stunned': e.vel.x = e.vel.z = 0; integrate(); return a.t >= 2.0;
+    case 'stunned': brake(); integrate(); return a.t >= 2.0;
     case 'volley': {
       // Fans of bitcoins: slow and spread out, so strafing dodges most of them.
-      e.vel.x = e.vel.z = 0; integrate();
-      e.yaw = yawTo(e.pos, t.pos);
+      brake(); integrate();
+      faceTo(4);
       const v = def.volley;
       const waves = v.waves + (e.boss.phaseIdx >= 2 ? 1 : 0);
       if (a.t < 0.5) { if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'volley' }); } return false; }
@@ -180,13 +189,13 @@ function MEGA(state, e, a, dt, def, t) {
     case 'melee': {
       // wind up facing you, then a heavy swipe in front; dodge out of reach during the windup
       const m = def.melee;
-      e.vel.x = e.vel.z = 0; integrate();
+      brake(); integrate();
       // variant: bosses with a combo alternate punches and kicks; others smash
       if (!a.data.variant) { a.data.variant = m.combo ? m.combo[(e.ai.meleeN = (e.ai.meleeN || 0) + 1) % m.combo.length] : 'smash'; }
       const kick = a.data.variant === 'kick' && m.kick;
       const reach = m.range + (kick ? kick.range : 0);
       if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'melee', variant: a.data.variant }); }
-      if (a.t < m.windup) { e.yaw = yawTo(e.pos, t.pos); return false; }
+      if (a.t < m.windup) { faceTo(6); return false; }
       if (!a.data.swung) {
         a.data.swung = true;
         e.ai.meleeCd = m.cd;
@@ -197,6 +206,7 @@ function MEGA(state, e, a, dt, def, t) {
           const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z, d = Math.hypot(dx, dz) || 1;
           const inFront = (dx * fx + dz * fz) / d > -0.2;
           if (d < def.radius + reach + TUNING.playerRadius && inFront && p.pos.y < def.height) {
+            emit(state, 'bossMeleeHit', { id: e.id, playerId: p.id, variant: a.data.variant }); // hit-stop + shake
             damagePlayer(state, p, { base: m.damage * (kick ? kick.damage : 1) * e.dmgMult, sourceKind: 'boss', fromPos: e.pos });
             knockPlayer(p, e.pos, m.knockback * (kick ? kick.knockback : 1), kick ? 9 : 7);
           }
@@ -207,8 +217,8 @@ function MEGA(state, e, a, dt, def, t) {
     case 'missiles': {
       // homing missiles launched upward from the shoulders; they explode on impact
       const m = def.missiles;
-      e.vel.x = e.vel.z = 0; integrate();
-      e.yaw = yawTo(e.pos, t.pos);
+      brake(); integrate();
+      faceTo(4);
       const n = m.count + (e.boss.phaseIdx >= 2 ? 1 : 0);
       if (a.t < 0.6) { if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'missiles' }); } return false; }
       a.data.fired = a.data.fired || 0;
@@ -227,7 +237,7 @@ function MEGA(state, e, a, dt, def, t) {
       return a.t >= 0.6 + n * m.gap + 0.5;
     }
     case 'summon': {
-      e.vel.x = e.vel.z = 0; integrate();
+      brake(); integrate();
       if (!a.data.done) {
         a.data.done = true;
         const alive = state.enemies.filter((o) => !o.dead && o.summoned).length;
@@ -444,15 +454,21 @@ function DRAGON(state, e, a, dt, def, t) {
         if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'takeoff' }); }
         return false;
       }
-      if (a.t < f.rise + dur) { // circle around the player
+      if (a.t < f.rise + dur) { // weave around the player: the circle breathes in and out, altitude rolls up and down
         if (a.data.dir === undefined) a.data.dir = float(state.rng) < 0.5 ? -1 : 1;
-        const ang = Math.atan2(e.pos.x - t.pos.x, e.pos.z - t.pos.z) + a.data.dir * (f.speed / f.radius) * dt;
-        const tx = t.pos.x + Math.sin(ang) * f.radius, tz = t.pos.z + Math.cos(ang) * f.radius;
+        const ft = a.t - f.rise;
+        // swoop: partway through, dive low across the player and climb back out
+        const sw = Math.max(0, 1 - Math.abs(ft - f.swoopAt) / (f.swoopTime / 2)); // 0..1..0 over the swoop
+        const swoop = sw * sw * (3 - 2 * sw);
+        const radius = (f.radius + Math.sin(ft * 0.7) * f.radiusSwing) * (1 - 0.85 * swoop);
+        const ang = Math.atan2(e.pos.x - t.pos.x, e.pos.z - t.pos.z) + a.data.dir * ((f.speed * (1 + 0.4 * swoop)) / Math.max(4, radius)) * dt;
+        const tx = t.pos.x + Math.sin(ang) * radius, tz = t.pos.z + Math.cos(ang) * radius;
         const want = Math.atan2(-(tx - e.pos.x), -(tz - e.pos.z));
-        e.yaw = angleWrap(e.yaw + Math.max(-3 * dt, Math.min(3 * dt, angleWrap(want - e.yaw))));
-        const spd = Math.min(f.speed, Math.hypot(tx - e.pos.x, tz - e.pos.z) / dt);
+        e.yaw = angleWrap(e.yaw + Math.max(-3.5 * dt, Math.min(3.5 * dt, angleWrap(want - e.yaw))));
+        const spd = Math.min(f.speed * (1 + 0.4 * swoop), Math.hypot(tx - e.pos.x, tz - e.pos.z) / dt);
         move(spd);
-        e.pos.y = f.height + Math.sin(a.t * 2.2) * 0.4;
+        const cruise = f.height + Math.sin(ft * 0.9) * f.heightSwing;
+        e.pos.y = cruise + (f.swoopHeight - cruise) * swoop;
         // drop a fireball at the player every few moments
         a.data.shot = a.data.shot ?? f.shotEvery * 0.5;
         if (a.t - f.rise >= a.data.shot) {
