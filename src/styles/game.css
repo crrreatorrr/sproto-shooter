@@ -21,6 +21,11 @@
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--night); color: var(--ink); font-family: var(--body); }
 #app, #view { position: fixed; inset: 0; }
 #view canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+#stats-overlay {
+  position: fixed; top: 8px; left: 8px; z-index: 40; width: 260px; height: 120px;
+  pointer-events: none; border-radius: 6px;
+}
+#stats-overlay[hidden] { display: none; }
 #ui { position: fixed; inset: 0; pointer-events: none; }
 button { font-family: var(--body); }
 kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var(--night); border-radius: 5px; padding: 1px 6px; box-shadow: 0 2px 0 #9b8bc4; }

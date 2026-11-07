@@ -46,8 +46,9 @@ function hashRun(seed, mode) {
   return out;
 }
 
-// Wave hashes are the pre-campaign main lock (seeds 11–13, legendary MG, god mode).
-// Sandbox uses that same harness plus midget×6, flying midget×3, obama×2, big obama×1.
+// Wave hashes lock the current arena sim (seeds 11–13, legendary MG, god mode),
+// including boss weapons and the duck gun. Sandbox uses that same harness plus
+// midget×6, flying midget×3, obama×2, big obama×1.
 describe('arena baseline', () => {
   it('wave mode hashes match the locked main baseline', () => {
     for (const seed of [11, 12, 13]) {
