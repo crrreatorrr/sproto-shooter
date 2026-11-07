@@ -89,6 +89,10 @@ export function createHumanoidRig(ch, def) {
   const pose = Object.fromEntries(CHANNELS.map((k) => [k, spring()]));
   const gait = spring(), lean = spring(), bank = spring();
   let time = 0, phase = 0, prevSpeed = 0, prevYaw = null;
+  // tail chain (Sproto Beast, rigged in Blender): never still - a travelling side-to-side wave growing toward
+  // the tip, a double-time vertical wave on top, and a counter-swing against the torso's twist
+  const tailBones = Array.from({ length: 16 }, (_, i) => all[`Tail_${i}`]).filter(Boolean);
+  let tailPh = 0;
   return {
     ok: !!(B.hips && B.rArm && B.lArm),
     /** s = { speed, action, actionT, variant, yaw } from the boss sim state */
@@ -103,7 +107,12 @@ export function createHumanoidRig(ch, def) {
       FWD.set(0, 0, 1).applyQuaternion(_rootQ);
 
       // action pose through critically damped springs; much stiffer during melee so the strike stays snappy
-      const tgt = actionPose(s.action, s.actionT, melee, s.variant);
+      // a combo boss picks punch/kick on its first melee tick; until then hold the current pose instead of
+      // snapping toward the default smash for one frame
+      // ...and while an authored clip drives the pose (clipLayer.js) the action pose holds instead of snapping
+      // underneath the blend
+      const pending = (s.action === 'melee' && !s.variant && melee.combo) || (s.clipDriven && s.action === 'melee');
+      const tgt = pending ? Object.fromEntries(CHANNELS.map((k) => [k, pose[k].x])) : actionPose(s.action, s.actionT, melee, s.variant);
       const hl = s.action === 'melee' ? 0.025 : 0.09;
       const P = {};
       for (const k of CHANNELS) P[k] = springTo(pose[k], tgt[k], hl, dt);
@@ -146,6 +155,15 @@ export function createHumanoidRig(ch, def) {
       rotWorld(B.lArm, SIDE, P.lArm + R.swing * swingAmp * 0.9 * g + idle);
       rotWorld(B.rFore, SIDE, P.rFore - 0.15 - (0.5 + 0.6 * run) * g);
       rotWorld(B.lFore, SIDE, P.lFore - 0.15 - (0.5 + 0.6 * run) * g);
+      if (tailBones.length) {
+        tailPh += dt * 2 * Math.PI * (0.8 + 0.5 * g);
+        const n = tailBones.length;
+        tailBones.forEach((b, i) => {
+          const k = n > 1 ? i / (n - 1) : 0, lag = 0.62 * i;
+          rotWorld(b, UP, (0.09 + 0.16 * k) * Math.sin(tailPh - lag) - P.twist * 0.35 * k);
+          rotWorld(b, SIDE, (0.05 + 0.08 * k) * Math.sin(2 * tailPh - 1.25 * lag + 1));
+        });
+      }
     },
   };
 }

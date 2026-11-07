@@ -8,6 +8,8 @@ import { worldHitboxes } from '../sim/collision.js';
 import { createFirstPerson, FP } from './firstPerson.js';
 import { createDragonRig } from './dragonRig.js';
 import { createHumanoidRig } from './humanoidRig.js';
+import { createClipLayer } from './clipLayer.js';
+import { bossClipWant } from './bossClips.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
 import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY, ensureGunModel, instantiateGun } from './assets.js';
@@ -301,6 +303,8 @@ export function createRenderer(container, bus) {
       extra.push(orb, aura, auraFill);
       Object.assign(parts, { weak: orb, aura, auraFill });
     }
+    // authored clips (walk, attacks, flight) blended over the procedural rig; see bossClips.js
+    if (ch && parts.rig) { parts.clips = createClipLayer(ch); parts.fitH = h; }
     g.userData = parts;
     return { obj: g, extra, key: viewKey(e) };
   }
@@ -879,8 +883,19 @@ export function createRenderer(container, bus) {
           ch.play(clip, { fade: 0.3, speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : clip === 'run' ? runPace : 1 });
         }
         ch.update(fdt);
+        // authored clip for this frame (bossClips.js), decided first so the procedural rig can hold still under it
+        let want = null;
+        if (u.clips && e.boss) {
+          const a = e.boss.action;
+          want = bossClipWant({ type: e.type, action: a.id, actionT: a.t, variant: a.data.variant, data: a.data, speed: spd,
+            fitHeight: u.fitH, altitude: ey, def: BOSSES[e.type], phaseIdx: e.boss.phaseIdx, durations: u.clips.durations });
+        }
         if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, speed: spd, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0,
-          variant: e.boss ? e.boss.action.data.variant : null, altitude: ey, yaw: e.yaw });
+          variant: e.boss ? e.boss.action.data.variant : null, altitude: ey, yaw: e.yaw, clipDriven: !!want });
+        if (u.clips && e.boss) {
+          const w = u.clips.apply(fdt, want);
+          if (w > 0) { if (u.rig.post) u.rig.post(w); ch.root.position.y *= 1 - w; } // the clip carries its own hip bob
+        }
       }
       if (e.boss) {
         if (e.type === 'dragon') {
