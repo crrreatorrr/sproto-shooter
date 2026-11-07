@@ -181,7 +181,7 @@ describe('level-scoped loading', () => {
     const l2 = levelAssets(1, 1);
     expect(l2.stage).toBe('volcano');
     expect(l2.characters).toContainEqual({ model: 'midget', stage: 3 }); // flying midgets
-    expect(l2.bosses.map((b) => b.model)).toEqual(['dragon', 'dragon', 'dragon']);
+    expect(l2.bosses.map((b) => b.model)).toEqual(['monster', 'monster', 'monster']);
     expect(levelAssets(2, 1).bosses.map((b) => b.model)).toContain('sahil');
   });
 });
@@ -272,7 +272,7 @@ describe('waves config', () => {
       expect(mid / all.reduce((n, s) => n + s.count, 0)).toBeGreaterThan(0.5);
     }
     expect(WAVES[0].boss).toBeNull();
-    expect(WAVES[1].boss.types).toEqual(['dragon']);
+    expect(WAVES[1].boss.types).toEqual(['monster']);
     expect(WAVES[2].boss.types).toEqual(['megaSproto', 'hexAuditor']);
   });
 });
@@ -421,7 +421,7 @@ describe('boss melee, missiles and sandbox', () => {
     const s = createGameState({ seed: 21 });
     run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode, tier: 1 }] }));
     const p = s.players[s.localPlayerId];
-    const b = createBoss(s, 'dragon', { pos: { x: 0, z: 0 } });
+    const b = createBoss(s, 'monster', { pos: { x: 0, z: 0 } });
     b.boss.action = { id: 'chase', t: 0, data: {} };
     return { s, p, b };
   };

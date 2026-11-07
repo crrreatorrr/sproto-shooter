@@ -1,4 +1,4 @@
-// Boss phase machines: physical bosses (ai 'mega': Mega Tinubu, Dragon) and Hex Sahil (ai 'hex'). PLAN §4.11
+// Boss phase machines: physical bosses (ai 'mega': Mega Tinubu, Blue Monster) and Hex Sahil (ai 'hex'). PLAN §4.11
 // Each phase swaps the boss to the next Sproto Duel stage model (render side).
 import { BOSSES, ENEMY_BULLET_RADIUS } from '../data/enemies.js';
 import { TUNING, ARENA_R } from '../data/tuning.js';

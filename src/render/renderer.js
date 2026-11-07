@@ -260,7 +260,7 @@ export function createRenderer(container, bus) {
 
   function bossStageIdx(e) { return Math.min(2, e.boss.phaseIdx); }
 
-  /** Procedural motion for a boss model without animation clips (the dragon): breathe, stomp, lean, swing, rear. */
+  /** Procedural motion for a boss model without animation clips (the blue monster): breathe, stomp, lean, swing, rear. */
   function animateStaticBoss(holder, e, now, spd) {
     const a = e.boss.action, t = a.t, id = a.id;
     const pulse = (c, w) => Math.exp(-(((t - c) / w) ** 2));
@@ -387,7 +387,7 @@ export function createRenderer(container, bus) {
     bullet: { color: 0xffc93c, scale: 0.22, cap: 600 },
     pellet: { color: 0xff5ec4, scale: 0.12, cap: 300 },
     // boss projectiles drawn with 3D models (`model`, fitted to `len` metres, nose along +Z); a sphere until loaded
-    dragonBullet: { color: 0x4a5a2a, scale: 0.35, cap: 200, model: 'models/projectiles/dragon_bullet.glb', len: 0.9, noseYaw: -Math.PI / 2 },
+    monsterBullet: { color: 0x4a5a2a, scale: 0.35, cap: 200, model: 'models/projectiles/monster_bullet.glb', len: 0.9, noseYaw: -Math.PI / 2 },
     missile: { color: 0xff8a1a, scale: 0.4, cap: 64, model: 'models/projectiles/missile.glb', len: 1.3, noseYaw: -Math.PI / 2, glow: 0xff6a10 },
   };
   const inst = {};

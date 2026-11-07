@@ -89,10 +89,10 @@ export const CHARACTER_MODELS = {
   obama: [1, 2, 3].map((s) => `models/characters/obama_stage${s}.glb`),
   tinubu: [1, 2, 3].map((s) => `models/characters/tinubu_stage${s}.glb`),
   sahil: [1, 2, 3].map((s) => `models/characters/sahil_stage${s}.glb`),
-  dragon: [1, 2, 3].map(() => 'models/characters/dragon.glb'), // one static model, scaled up per phase
+  monster: [1, 2, 3].map(() => 'models/characters/monster.glb'), // one static model, scaled up per phase
 };
 /** Models that don't use CHARACTER_ROTATION_Y (they already face +Z). */
-export const MODEL_ROTATION_Y = { dragon: 0 };
+export const MODEL_ROTATION_Y = { monster: 0 };
 export const rotationForModelPath = (path) => {
   for (const [m, paths] of Object.entries(CHARACTER_MODELS)) if (paths.includes(path) && m in MODEL_ROTATION_Y) return MODEL_ROTATION_Y[m];
   return CHARACTER_ROTATION_Y;
