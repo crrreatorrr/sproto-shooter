@@ -17,7 +17,7 @@ export const TUNING = {
   slideMinSpeed: 5, slideBoost: 13, slideTime: 0.75, slideCd: 0.4,
   dashSpeed: 24, dashTime: 0.15, dashCd: 2.0, dashInvuln: 0.12,
 
-  fovBase: 90, fovSprint: 6, fovAds: 70, fovScope: 25,
+  fovBase: 90, fovSprint: 6, fovAds: 70, fovScope: 12,
 
   maxHp: 100, maxShield: 50, maxMana: 100,
   shieldDelay: 3.0, shieldRegen: 25,

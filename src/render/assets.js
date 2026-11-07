@@ -121,6 +121,62 @@ export function loadTexture(path, { color = true, repeat = null, prio = NOW } = 
   return job;
 }
 
+/**
+ * Gun models by gun type. `yaw` turns the source model so its muzzle points down -Z (camera forward);
+ * `muzzleY` is the barrel's height as a fraction of the model's height (0 = bottom, 1 = top).
+ */
+export const GUN_MODELS = {
+  mg: { path: 'models/guns/toy_mg.glb', yaw: 90, muzzleY: 0.55 },
+  shotgun: { path: 'models/guns/toy_shotgun.glb', yaw: -90, muzzleY: 0.85 },
+  sniper: { path: 'models/guns/toy_sniper.glb', yaw: 90, muzzleY: 0.68 },
+};
+
+function loadGun(type, prio = NOW) {
+  const def = GUN_MODELS[type];
+  const path = def.path;
+  if (jobs.has(path)) { if (prio === NOW) promote(path); return jobs.get(path); }
+  const job = schedule(path, () => gltf.loadAsync(BASE + path), prio).then((g) => {
+    if (!g || !g.scene) throw new Error('load failed');
+    g.scene.rotation.y = THREE.MathUtils.degToRad(def.yaw);
+    g.scene.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
+    const holder = new THREE.Group();
+    holder.add(g.scene);
+    holder.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(holder);
+    const center = box.getCenter(new THREE.Vector3());
+    g.scene.position.sub(center); // origin at the model's center
+    const size = box.getSize(new THREE.Vector3());
+    const t = { root: holder, length: Math.max(0.01, size.z), size, muzzleY: def.muzzleY, skinned: false };
+    models.set(path, t);
+    bump();
+    return t;
+  }).catch((err) => { console.warn('[assets] gun model failed', path, err.message); models.set(path, null); return null; });
+  jobs.set(path, job);
+  return job;
+}
+
+export function ensureGunModel(type, prio = NOW) {
+  return GUN_MODELS[type] ? loadGun(type, prio) : Promise.resolve(null);
+}
+
+/**
+ * A gun model instance scaled so its barrel axis is `length` long, centered on the origin, muzzle toward -Z.
+ * Returns { root, muzzle: Vector3 (local), size: Vector3 (scaled) } or null if not loaded / no model.
+ */
+export function instantiateGun(type, length) {
+  const def = GUN_MODELS[type];
+  const t = def && models.get(def.path);
+  if (!t) return null;
+  const inner = t.root.clone(true);
+  const s = length / t.length;
+  inner.scale.setScalar(s);
+  const root = new THREE.Group();
+  root.add(inner);
+  const size = t.size.clone().multiplyScalar(s);
+  const muzzle = new THREE.Vector3(0, -size.y / 2 + size.y * t.muzzleY, -size.z / 2);
+  return { root, muzzle, size };
+}
+
 export const peekTexture = (path) => textures.get(path) || null;
 export const peekModel = (path) => models.get(path) || null;
 

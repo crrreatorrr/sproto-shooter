@@ -12,7 +12,7 @@ export const GUN_TYPES = [
   { id: 'shotgun', name: 'Shotgun', short: 'SG', ammoType: 'shells', weight: 17, fireMode: 'auto',
     base: B({ damage: 8, pellets: 9, fireRate: 1.2, spread: 6.0, adsSpread: 4.5, magSize: 6, reloadTime: 2.4, critMult: 2.0, critChance: 0.03, elementChance: 0.06, recoil: 3.5, recoilYaw: 1.0, swapTime: 0.5, zoomFov: 75 }) },
   { id: 'sniper', name: 'Sniper', short: 'SN', ammoType: 'sniper', weight: 17, fireMode: 'auto',
-    base: B({ damage: 85, fireRate: 0.8, spread: 3.0, adsSpread: 0, magSize: 4, reloadTime: 2.6, critMult: 3.0, critChance: 0.08, elementChance: 0.35, recoil: 5.0, recoilYaw: 0.8, swapTime: 0.6, zoomFov: 25, pierce: 1 }) },
+    base: B({ damage: 85, fireRate: 0.8, spread: 3.0, adsSpread: 0, magSize: 4, reloadTime: 2.6, critMult: 3.0, critChance: 0.08, elementChance: 0.35, recoil: 5.0, recoilYaw: 0.8, swapTime: 0.6, zoomFov: 12, pierce: 1 }) },
   { id: 'bazooka', name: 'Bazooka', short: 'BZ', ammoType: 'rockets', weight: 6, fireMode: 'auto',
     base: B({ damage: 140, fireRate: 0.6, spread: 0.5, adsSpread: 0.2, magSize: 1, reloadTime: 2.2, projectileSpeed: 28, critMult: 1.5, critChance: 0, elementChance: 0.5, splashRadius: 4.0, splashDamage: 110, recoil: 4.0, recoilYaw: 0.5, swapTime: 0.7, zoomFov: 70 }) },
 ];

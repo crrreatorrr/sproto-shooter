@@ -7,7 +7,7 @@ import { RESOURCES } from '../data/drops.js';
 import { worldHitboxes } from '../sim/collision.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
-import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY } from './assets.js';
+import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY, ensureGunModel, instantiateGun } from './assets.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const ELEM_COL = { none: 0xffe9a8, fire: 0xff7a1a, shock: 0x4fe3ff, goo: 0x9be33b };
@@ -34,6 +34,9 @@ export function createRenderer(container, bus) {
   const bounce = new THREE.DirectionalLight(0xff7a3a, 0.4);
   bounce.position.set(0, 4, 40);
   scene.add(bounce);
+  // the first-person gun is drawn on its own layer in a second, depth-cleared pass (never clips into walls)
+  const VM_LAYER = 1;
+  for (const l of [hemi, sun, bounce]) l.layers.enable(VM_LAYER);
 
   // ---------- shared materials/geometries ----------
   const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.05, ...extra });
@@ -96,6 +99,8 @@ export function createRenderer(container, bus) {
     const { NOW, LATER } = PRIORITY;
     const stageId = stageFor(state, stageOverride);
     ensureStage(stageId, NOW);
+    for (const g of state.players[state.localPlayerId].guns) if (g) ensureGunModel(g.type, NOW);
+    for (const k of state.pickups || []) if (k.kind === 'gun') ensureGunModel(k.gun.type, LATER);
     for (const e of state.enemies) {
       if (e.dead) continue;
       if (e.boss) { const b = BOSSES[e.type]; b.phases.forEach((_, i) => ensureCharacter(b.model, i + 1, NOW)); continue; }
@@ -358,7 +363,27 @@ export function createRenderer(container, bus) {
   const AMMO_COL = { bullets: new THREE.Color(0xffd166), shells: new THREE.Color(0xff6a3d), sniper: new THREE.Color(0x4fe3ff), rockets: new THREE.Color(0xb07cff) };
   const PK_COL = { health: new THREE.Color(0xff4d6d), bigHealth: new THREE.Color(0xff2255), mana: new THREE.Color(0x6aa8ff), tickets: new THREE.Color(0xffd700) };
 
+  // Gun with a 3D model (e.g. the toy machine gun): model + element gem. Null if the type has none / not loaded yet.
+  const GUN_MODEL_LEN = { mg: 0.7, shotgun: 0.75, sniper: 0.8 };
+  function buildGunModel(gun, length) {
+    const inst = instantiateGun(gun.type, length);
+    if (!inst) return null;
+    const g = new THREE.Group();
+    g.add(inst.root);
+    if (gun.element !== 'none') {
+      const gem = new THREE.Mesh(G.sphereLo, E(ELEM_COL[gun.element]));
+      gem.scale.setScalar(length * 0.035); gem.position.set(inst.size.x / 2 + length * 0.01, 0, 0); g.add(gem);
+    }
+    g.userData.muzzle = inst.muzzle;
+    g.userData.model = true;
+    return g;
+  }
+
   function buildGunMesh(gun, forView = false) {
+    if (!forView && GUN_MODEL_LEN[gun.type]) {
+      const m = buildGunModel(gun, GUN_MODEL_LEN[gun.type] * 1.6);
+      if (m) return m;
+    }
     const g = new THREE.Group();
     const man = MANUFACTURERS_BY_ID[gun.manufacturer];
     const q = QUALITIES_BY_ID[gun.quality];
@@ -392,6 +417,8 @@ export function createRenderer(container, bus) {
     }
     if (gun.wacky === 'rubberDuck') { const duck = new THREE.Mesh(G.sphereLo, M(0xffe14a)); duck.scale.setScalar(0.07); duck.position.set(0, 0.12, 0.15); g.add(duck); }
     if (!forView) g.scale.setScalar(1.6);
+    const barrelLen = gun.type === 'bazooka' ? 0.475 - dims[2] / 2 : gun.parts.barrel === 'long' ? 0.45 : gun.parts.barrel === 'short' ? 0.18 : 0.3;
+    g.userData.muzzle = new THREE.Vector3(0, 0.02, -dims[2] / 2 - barrelLen);
     return g;
   }
 
@@ -506,9 +533,21 @@ export function createRenderer(container, bus) {
   const vmRoot = new THREE.Group();
   camera.add(vmRoot);
   const vmLight = new THREE.PointLight(0xffffff, 0.6, 3); vmLight.position.set(0.3, 0.3, 0); camera.add(vmLight);
-  let vmGun = null, vmGunId = null;
+  vmLight.layers.enable(VM_LAYER);
+  flashLight.layers.enable(VM_LAYER);
+  let vmGun = null, vmGunKey = null;
   const muzzleFlash = new THREE.Mesh(G.sphereLo, E(0xffdd66)); muzzleFlash.visible = false;
   vmRoot.add(muzzleFlash);
+  const setVmLayer = (o) => o.traverse((c) => c.layers.set(VM_LAYER));
+  setVmLayer(vmRoot);
+  // Viewmodel pose: [x, y, z] at rest / aiming, plus yaw/roll at rest. Modeled guns sit big in the lower right,
+  // barrel angled in toward the crosshair; aiming pulls them to the center.
+  const VM_POSE = {
+    box: { rest: [0.17, -0.15, -0.42], ads: [0, -0.1, -0.42], yaw: 0, roll: 0, scale: 0.45 },
+    model: { rest: [0.2, -0.17, -0.5], ads: [0, -0.27, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
+    // slim shotgun sits a little higher; its barrel is the top of the model, so aiming can stay close to center
+    shotgun: { rest: [0.19, -0.15, -0.5], ads: [0, -0.16, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
+  };
   const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, reload: 0, swap: 0, lastYaw: 0, lastPitch: 0 };
 
   // ---------- camera feel ----------
@@ -611,14 +650,20 @@ export function createRenderer(container, bus) {
     camera.updateProjectionMatrix();
 
     // viewmodel
-    if (gun && gun.id !== vmGunId) {
-      if (vmGun) vmRoot.remove(vmGun);
-      vmGun = buildGunMesh(gun, true);
-      vmGun.scale.setScalar(0.45);
-      vmRoot.add(vmGun);
-      vmGunId = gun.id;
-      const len = { mg: 0.6, shotgun: 0.55, sniper: 0.85, bazooka: 0.9 }[gun.type];
-      muzzleFlash.position.set(0.17, -0.15, -0.42 - len * 0.3 - (gun.parts.barrel === 'long' ? 0.14 : 0.06));
+    const vmKey = gun ? gun.id + ':' + assetsVersion() : null;
+    if (gun && vmKey !== vmGunKey) {
+      vmGunKey = vmKey;
+      const modeled = GUN_MODEL_LEN[gun.type] && buildGunModel(gun, GUN_MODEL_LEN[gun.type]);
+      // assets changed but this gun still has no model: keep the current mesh
+      if (modeled || !vmGun || vmGun.userData.gunId !== gun.id) {
+        if (vmGun) vmRoot.remove(vmGun);
+        vmGun = modeled || buildGunMesh(gun, true);
+        vmGun.userData.gunId = gun.id;
+        vmGun.userData.pose = modeled ? VM_POSE[gun.type] || VM_POSE.model : VM_POSE.box;
+        vmGun.scale.setScalar(vmGun.userData.pose.scale);
+        setVmLayer(vmGun);
+        vmRoot.add(vmGun);
+      }
     }
     vm.kick = Math.max(0, vm.kick - fdt * 8);
     vm.swap = Math.max(0, vm.swap - fdt * 4);
@@ -632,9 +677,14 @@ export function createRenderer(container, bus) {
     const scoped = p.zooming && gun && gun.type === 'sniper';
     vmRoot.visible = !p.dead && !scoped;
     if (vmGun) {
-      const rl = vm.reload;
-      vmGun.position.set(lerp(0.17, 0, vm.ads) + vm.swayX, lerp(-0.15, -0.1, vm.ads) - vm.swayY - rl * 0.1 - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006, -0.42 + vm.kick * 0.05);
-      vmGun.rotation.set(vm.kick * 0.25 + rl * 0.6 * (0.5 + 0.5 * Math.sin(now * 0.01)), Math.PI * 0 + vm.swayX, rl * 0.4);
+      const rl = vm.reload, pose = vmGun.userData.pose, ia = 1 - vm.ads;
+      vmGun.position.set(
+        lerp(pose.rest[0], pose.ads[0], vm.ads) + vm.swayX,
+        lerp(pose.rest[1], pose.ads[1], vm.ads) - vm.swayY - rl * 0.1 - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006,
+        lerp(pose.rest[2], pose.ads[2], vm.ads) + vm.kick * 0.05);
+      vmGun.rotation.set(vm.kick * 0.25 + rl * 0.6 * (0.5 + 0.5 * Math.sin(now * 0.01)), pose.yaw * ia + vm.swayX, pose.roll * ia + rl * 0.4);
+      vmGun.updateMatrix();
+      muzzleFlash.position.copy(vmGun.userData.muzzle).applyMatrix4(vmGun.matrix);
     }
     flashT -= fdt;
     if (flashT <= 0) muzzleFlash.visible = false;
@@ -727,6 +777,11 @@ export function createRenderer(container, bus) {
     for (const k of state.pickups) {
       if (k.kind !== 'gun') continue;
       const v = syncView(k.id, () => ({ obj: buildGunPickup(k.gun) }));
+      const old = v.obj.userData.mesh;
+      if (GUN_MODEL_LEN[k.gun.type] && !old.userData.model) {
+        const m = buildGunModel(k.gun, GUN_MODEL_LEN[k.gun.type] * 1.6);
+        if (m) { m.rotation.copy(old.rotation); v.obj.remove(old); v.obj.add(m); v.obj.userData.mesh = m; }
+      }
       v.obj.position.set(lerp(k.prevPos.x, k.pos.x, alpha), lerp(k.prevPos.y, k.pos.y, alpha) + Math.sin(now * 0.003 + k.id) * 0.1, lerp(k.prevPos.z, k.pos.z, alpha));
       v.obj.userData.mesh.rotation.y += fdt * 1.5;
       v.obj.scale.setScalar(p.nearGunPickupId === k.id ? 1.15 : 1);
@@ -828,6 +883,16 @@ export function createRenderer(container, bus) {
     }
 
     renderer.render(scene, camera);
+    // viewmodel pass: same camera, depth cleared, no sky redraw
+    const bg = scene.background;
+    scene.background = null;
+    renderer.autoClear = false;
+    renderer.clearDepth();
+    camera.layers.set(VM_LAYER);
+    renderer.render(scene, camera);
+    camera.layers.set(0);
+    renderer.autoClear = true;
+    scene.background = bg;
   }
 
   const _v = new THREE.Vector3();
