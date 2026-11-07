@@ -136,6 +136,7 @@ export const GUN_MODELS = {
   bazooka: { path: 'models/guns/toy_bazooka.glb', yaw: 0, muzzleY: 0.47 },
   raygun: { path: 'models/guns/toy_raygun.glb', yaw: 90, muzzleY: 0.64 }, // muzzle: centre of the emitter dish
   bigbullets: { path: 'models/guns/toy_bigbullets.glb', yaw: 90, muzzleY: 0.59 }, // muzzle: centre of the flared bell
+  duckgun: { path: 'models/guns/toy_duckgun.glb', yaw: 90, muzzleY: 0.62 }, // muzzle: the duck's beak
 };
 
 function loadGun(type, prio = NOW) {

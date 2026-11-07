@@ -1,7 +1,7 @@
 // DOM UI: HUD, crosshair, damage numbers, banners, loot card, skills, crafting, shop, boss bar, screens.
 // UI never writes game state; it queues actions via input.queueAction().
 import { SKILLS, SKILL_IDS, PERKS, PERKS_BY_ID, SPELLS, SPELL_IDS, xpToNext } from '../data/skills.js';
-import { gunRange, hasInfiniteReserve, QUALITIES_BY_ID, ELEMENTS_BY_ID, GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, PARTS_BY_ID, PARTS_BY_SLOT, SLOTS, WACKY_BY_ID, ELEMENTS } from '../data/guns.js';
+import { gunRange, hasInfiniteReserve, QUALITIES_BY_ID, ELEMENTS_BY_ID, GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, PARTS_BY_ID, PARTS_BY_SLOT, SLOTS, WACKY_BY_ID, ELEMENTS, LEGENDARY_SLOT, slotUsable } from '../data/guns.js';
 import { RESOURCES } from '../data/drops.js';
 import { GUN_RECIPES, ITEM_RECIPES, ARCANE_COST, REROLL_COST, SALVAGE_LEVEL, REROLL_LEVEL } from '../data/recipes.js';
 import { SHOP } from '../data/shop.js';
@@ -15,7 +15,7 @@ const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) 
 const fmt = (n, d = 0) => (Math.round(n * 10 ** d) / 10 ** d).toLocaleString();
 const RES_BY_ID = Object.fromEntries(RESOURCES.map((r) => [r.id, r]));
 const SPELL_ICON = { gooBolt: '●', chainZap: 'ϟ', swarm: '✲', manaShield: '◈', meteor: '☄' };
-const TYPE_ICON = { mg: '▬', shotgun: '▮', sniper: '━', bazooka: '◉', raygun: '⚡', bigbullets: '●' };
+const TYPE_ICON = { mg: '▬', shotgun: '▮', sniper: '━', bazooka: '◉', raygun: '⚡', bigbullets: '●', duckgun: '🦆' };
 
 export function createUI(root, { input, bus, project, game }) {
   const st = { menu: null, tabHeld: false, statsOpen: false, craftTab: 'guns', craftType: 'mg', choice: { element: null, part: null, arcane: false }, lastKey: {}, rerollSlot: 0 };
@@ -346,7 +346,7 @@ export function createUI(root, { input, bus, project, game }) {
   }
 
   function inventoryHtml(s, p) {
-    return `<h2>🎒 Your Guns</h2>${resBar(p)}<div class="offers">${p.guns.map((g, i) => i < p.unlockedSlots ? `<div class="offer"><div class="slotno">Slot ${i + 1}${i === p.activeSlot ? ' · equipped' : ''}</div>${gunCardHtml(g, null, { footer: g ? `<button class="btn sm" data-act="drop" data-v="${i}">Drop</button>` : '' })}</div>` : `<div class="offer"><div class="gcard empty">🔒 Slot ${i + 1}<br><small>Buy in the shop</small></div></div>`).join('')}</div>`;
+    return `<h2>🎒 Your Guns</h2>${resBar(p)}<div class="offers">${p.guns.map((g, i) => slotUsable(p, i) ? `<div class="offer"><div class="slotno">${i === LEGENDARY_SLOT ? '★ Legendary slot [L]' : `Slot ${i + 1}`}${i === p.activeSlot ? ' · equipped' : ''}</div>${gunCardHtml(g, null, { footer: g ? `<button class="btn sm" data-act="drop" data-v="${i}">Drop</button>` : '' })}</div>` : `<div class="offer"><div class="gcard empty">🔒 Slot ${i + 1}<br><small>Buy in the shop</small></div></div>`).join('')}</div>`;
   }
 
   // ---------- skills overlay (Tab) ----------
@@ -374,7 +374,7 @@ export function createUI(root, { input, bus, project, game }) {
     }).join('');
     const gunRows = g ? row('Gun', `<span style="color:${QUALITIES_BY_ID[g.quality].color}">${g.name}</span>`) + row('Damage', g.stats.pellets > 1 ? `${Math.round(g.stats.damage)} × ${g.stats.pellets}` : Math.round(g.stats.damage))
       + row('Fire rate', `${g.stats.fireRate.toFixed(1)} /s`) + row('Magazine', `${g.ammoInMag} / ${g.stats.magSize}`) + row('Reload', `${g.stats.reloadTime.toFixed(1)} s`)
-      + row('Range', g.type === 'bazooka' ? 'rocket' : g.type === 'bigbullets' ? 'heavy round' : (() => { const r = gunRange(g); return r.max >= 150 ? 'whole arena' : `full to ${Math.round(r.full)} m · max ${Math.round(r.max)} m`; })())
+      + row('Range', g.type === 'bazooka' ? 'rocket' : g.type === 'bigbullets' ? 'heavy round' : g.type === 'duckgun' ? 'lobbed, explodes' : (() => { const r = gunRange(g); return r.max >= 150 ? 'whole arena' : `full to ${Math.round(r.full)} m · max ${Math.round(r.max)} m`; })())
       + row('Crit', `${Math.round(g.stats.critChance * 100)}% · ×${g.stats.critMult.toFixed(1)}`) : '';
     const stats = `<div class="skc" style="--c:#ffd166"><div class="skh">📊 Stats${s.tuning.godMode ? ' <span class="god">GOD MODE</span>' : ''}</div>
       ${row('Health', `${Math.ceil(p.hp)} / ${p.maxHp}`)}${row('Shield', `${Math.ceil(p.shield)} / ${p.maxShield}`)}${row('Mana', `${Math.floor(p.mana)} / ${p.maxMana}`)}
@@ -442,7 +442,10 @@ export function createUI(root, { input, bus, project, game }) {
       set(els.mag, 'magLow', g.ammoInMag <= Math.max(1, g.stats.magSize * 0.2), (e, v) => e.classList.toggle('low', v));
     }
     const slotsKey = p.guns.map((x) => (x ? x.id + x.quality : '-')).join(',') + p.activeSlot + p.unlockedSlots;
-    html(els.slots, 'slots', p.guns.map((x, i) => `<div class="slot ${i === p.activeSlot ? 'on' : ''} ${i >= p.unlockedSlots ? 'lockd' : ''}" style="--q:${x ? QUALITIES_BY_ID[x.quality].color : '#555'}"><b>${i + 1}</b>${x ? TYPE_ICON[x.type] + ' ' + GUN_TYPES_BY_ID[x.type].short : i >= p.unlockedSlots ? '🔒' : '—'}</div>`).join(''));
+    html(els.slots, 'slots', p.guns.map((x, i) => {
+      const leg = i === LEGENDARY_SLOT, locked = !slotUsable(p, i);
+      return `<div class="slot ${i === p.activeSlot ? 'on' : ''} ${locked ? 'lockd' : ''} ${leg ? 'legslot' : ''}" style="--q:${x ? QUALITIES_BY_ID[x.quality].color : leg ? '#ff9f1a' : '#555'}"><b>${leg ? 'L' : i + 1}</b>${x ? TYPE_ICON[x.type] + ' ' + GUN_TYPES_BY_ID[x.type].short : locked ? '🔒' : leg ? '★' : '—'}</div>`;
+    }).join(''));
     void slotsKey;
     text(els.medkits, 'mk', p.medkits ? `✚ ×${p.medkits} [H]` : '');
 
@@ -495,7 +498,11 @@ export function createUI(root, { input, bus, project, game }) {
     const nearGun = p.nearGunPickupId ? s.pickups.find((k) => k.id === p.nearGunPickupId) : null;
     const box = nearBox(s, p);
     if (p.dead) prompt = s.mode === 'sandbox' ? `Respawning in ${Math.max(0, p.respawnT).toFixed(1)}s…` : '';
-    else if (nearGun) prompt = `<b>[G]</b> Pick up${p.guns.filter(Boolean).length >= p.unlockedSlots ? ' (swaps with equipped)' : ''}`;
+    else if (nearGun) {
+      const leg = nearGun.gun && nearGun.gun.quality === 'legendary';
+      const full = p.guns.slice(0, p.unlockedSlots).every(Boolean);
+      prompt = `<b>[G]</b> Pick up${leg ? (p.guns[LEGENDARY_SLOT] && full ? ' (swaps your legendary)' : ' → legendary slot [L]') : full ? ' (swaps with equipped)' : ''}`;
+    }
     else if (box) prompt = `<b>[G]</b> Open Weapon Box${box.craft ? ' (crafting…)' : ''}`;
     else if (s.wave && s.wave.phase === 'intermission') prompt = '<b>[B]</b> Shop · <b>[Enter]</b> Ready';
     html(els.prompt, 'prompt', prompt);

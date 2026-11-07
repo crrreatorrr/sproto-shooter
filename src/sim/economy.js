@@ -6,6 +6,7 @@ import { TUNING } from '../data/tuning.js';
 import { float, weighted, next, range } from '../core/rng.js';
 import { emit } from './events.js';
 import { generateGun, regenerate, sellValue, shopPrice, salvageYield, REROLLABLE } from './guns.js';
+import { LEGENDARY_SLOT, slotUsable } from '../data/guns.js';
 import { rollQuality, rollGunType, spawnGunPickup } from './drops.js';
 import { applySkillPassives } from './progression.js';
 import { nextId, createPickup } from './state.js';
@@ -115,21 +116,27 @@ function fail(state, p, reason) { emit(state, 'actionFailed', { playerId: p.id, 
 
 export function ensureActiveGun(p) {
   if (p.guns[p.activeSlot]) return;
-  const i = p.guns.findIndex((g, idx) => g && idx < p.unlockedSlots);
+  const i = p.guns.findIndex((g, idx) => g && slotUsable(p, idx));
   if (i >= 0) p.activeSlot = i;
 }
 
-/** Put a gun in an empty slot, else swap with the active gun (dropping the old one). */
+/**
+ * Put a gun in an empty slot, else swap with the active gun (dropping the old one). Legendary guns go to the
+ * legendary slot (key L) first, swapping out the legendary already there; only legendaries ever go there.
+ */
 export function pickupGun(state, p, pickupId) {
   const k = state.pickups.find((x) => x.id === pickupId && !x.dead && x.kind === 'gun');
   if (!k) return;
   if (Math.hypot(p.pos.x - k.pos.x, p.pos.z - k.pos.z) > TUNING.gunPickupRadius + 1) return;
-  let slot = -1;
-  for (let i = 0; i < p.unlockedSlots; i++) if (!p.guns[i]) { slot = i; break; }
   const gun = k.gun;
+  const legendary = gun.quality === 'legendary';
+  let slot = -1;
+  if (legendary && !p.guns[LEGENDARY_SLOT]) slot = LEGENDARY_SLOT;
+  else for (let i = 0; i < p.unlockedSlots; i++) if (!p.guns[i]) { slot = i; break; }
+  if (slot === -1 && legendary) slot = LEGENDARY_SLOT; // all full: a legendary swaps with the legendary
   k.dead = true;
-  if (slot === -1) {
-    slot = p.activeSlot;
+  if (slot === -1 || p.guns[slot]) {
+    if (slot === -1) slot = p.activeSlot === LEGENDARY_SLOT ? 0 : p.activeSlot; // a regular gun never replaces the legendary
     const old = p.guns[slot];
     if (old) {
       createPickup(state, { kind: 'gun', gun: old, pos: { x: p.pos.x, y: 1, z: p.pos.z }, vel: { x: 0, y: 4, z: 0 }, ttl: TUNING.gunPickupTtl });

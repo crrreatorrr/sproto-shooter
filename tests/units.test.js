@@ -294,12 +294,12 @@ describe('test range', () => {
     const s = createGameState({ seed: 7 });
     const p = s.players[s.localPlayerId];
     run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'test', tier: 1 }] }));
-    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka']);
-    expect(new Set(p.guns.map((g) => g.id)).size).toBe(4);
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka', null]); // + empty legendary slot
+    expect(new Set(p.guns.filter(Boolean).map((g) => g.id)).size).toBe(4);
     expect(s.tuning.infiniteAmmo).toBe(true);
     expect(s.enemies.filter((e) => e.type === 'dummy').length).toBe(5);
     run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
-    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', null, null, null]);
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', null, null, null, null]);
     expect(s.tuning.infiniteAmmo).toBe(false);
   });
 });
@@ -361,7 +361,7 @@ describe('god mode', () => {
     const extra = generateGun({ seed: 5, level: 1, forced: { type: 'shotgun', quality: 'common', manufacturer: 'reliable', element: 'none' } });
     mine.id = 501; extra.id = 502; p.guns[1] = mine; p.guns[2] = extra; p.unlockedSlots = 3; p.activeSlot = 1;
     run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
-    expect(p.guns.map((g) => g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka']);
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka', null]);
     expect(p.guns[1]).toBe(mine); // your epic shotgun is kept
     expect(p.activeSlot).toBe(1); // still holding it
     expect(p.unlockedSlots).toBe(4);
@@ -461,7 +461,7 @@ describe('boss fight mode', () => {
     run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'boss', tier: 1, boss: 'megaSproto' }] }));
     expect(s.mode).toBe('boss');
     expect(s.enemies.filter((e) => e.boss).map((e) => e.type)).toEqual(['megaSproto']);
-    expect(p.guns.map((g) => g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka']);
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka', null]);
     damagePlayer(s, p, { base: 20, sourceKind: 'boss' }); // not the sandbox: boss hits hurt
     expect(p.shield).toBeLessThan(p.maxShield);
     const won = run(s, 2, () => cmd({ actions: [{ type: 'debug', op: 'killAll' }] }));
@@ -473,7 +473,7 @@ describe('boss fight mode', () => {
     const lost = run(s, 3, () => cmd());
     expect(lost.find((e) => e.type === 'bossFightOver')).toMatchObject({ won: false, boss: 'monster' });
     run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
-    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', null, null, null]); // leaving gives the starting loadout back
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', null, null, null, null]); // leaving gives the starting loadout back
   });
 });
 

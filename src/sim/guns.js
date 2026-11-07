@@ -73,7 +73,7 @@ export function generateGun({ seed, level = 1, forced = {}, arcane = false, rero
   const nameDraws = [float(r), float(r)];
 
   const type = forced.type ?? dType.id;
-  const quality = forced.quality ?? dQual.id;
+  const quality = GUN_TYPES_BY_ID[type].legendaryOnly ? 'legendary' : forced.quality ?? dQual.id; // e.g. the Duck Gun
   const man = MANUFACTURERS_BY_ID[forced.manufacturer ?? dMan.id];
   const q = QUALITIES_BY_ID[quality];
   const parts = { barrel: 'stock', grip: 'stock', mag: 'stock', scope: 'stock' };
@@ -189,7 +189,8 @@ export function shopPrice(gun, tier) {
 
 export function salvageYield(gun) {
   const q = QUALITIES_BY_ID[gun.quality].idx;
-  const m = GUN_TYPES_BY_ID[gun.type].bossOnly ? 2.5 : gun.type === 'bazooka' ? 1.5 : 1;
+  const t = GUN_TYPES_BY_ID[gun.type];
+  const m = t.legendaryOnly ? 3 : t.bossOnly ? 2.5 : gun.type === 'bazooka' ? 1.5 : 1;
   const y = {
     scrap: Math.round((5 + 6 * q + gun.level) * m),
     springs: Math.round(2 * q * m),
