@@ -1,0 +1,27 @@
+<!doctype html><html><body style="margin:0;background:#888">
+<script type="module">
+// Dev tool: renders a character GLB in its bind pose from front and side, with bone axes. Usage: /dev/model-viewer.html?m=models/characters/sproto_player.glb
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+const q = new URLSearchParams(location.search);
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(1200, 700); r.outputColorSpace = THREE.SRGBColorSpace; document.body.appendChild(r.domElement);
+const s = new THREE.Scene(); s.background = new THREE.Color(0x8a8a8a);
+s.add(new THREE.HemisphereLight(0xffffff, 0x444444, 2)); const d = new THREE.DirectionalLight(0xffffff, 2); d.position.set(2, 4, 3); s.add(d);
+const g = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('/assets/' + (q.get('m') || 'models/characters/sproto_player.glb'));
+const root = g.scene; s.add(root); root.updateMatrixWorld(true);
+const box = new THREE.Box3().setFromObject(root, true); const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+window.info = { size: size.toArray(), min: box.min.toArray(), max: box.max.toArray() };
+const bones = {}; root.traverse((o) => { if (o.isBone) bones[o.name] = o; });
+const wp = (n) => bones[n].getWorldPosition(new THREE.Vector3()).toArray().map((v) => +v.toFixed(3));
+window.info.bones = Object.fromEntries(['mixamorig:Head', 'mixamorig:Neck', 'mixamorig:RightShoulder', 'mixamorig:RightArm', 'mixamorig:RightForeArm', 'mixamorig:RightHand', 'mixamorig:RightHandMiddle1', 'mixamorig:LeftArm', 'mixamorig:LeftHand', 'mixamorig:Hips'].filter((n) => bones[n]).map((n) => [n, wp(n)]));
+if (q.get('axes')) for (const b of Object.values(bones)) b.add(new THREE.AxesHelper(size.y * 0.05));
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, -100, 100);
+const h = size.y * 0.6; r.setScissorTest(true);
+for (const [i, ang] of [[0, 0], [1, Math.PI / 2]]) {
+  const x = i * 600; r.setViewport(x, 0, 600, 700); r.setScissor(x, 0, 600, 700);
+  cam.left = -h * 600 / 700; cam.right = h * 600 / 700; cam.top = h; cam.bottom = -h; cam.updateProjectionMatrix();
+  cam.position.set(c.x + Math.sin(ang) * 10, c.y, c.z + Math.cos(ang) * 10); cam.lookAt(c); r.render(s, cam);
+}
+window.done = true;
+</script></body></html>

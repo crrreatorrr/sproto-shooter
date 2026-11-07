@@ -5,6 +5,7 @@ import { ENEMIES, BOSSES } from '../data/enemies.js';
 import { QUALITIES_BY_ID, ELEMENTS_BY_ID, MANUFACTURERS_BY_ID } from '../data/guns.js';
 import { RESOURCES } from '../data/drops.js';
 import { worldHitboxes } from '../sim/collision.js';
+import { createFirstPerson, FP } from './firstPerson.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
 import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY } from './assets.js';
@@ -17,6 +18,7 @@ export function createRenderer(container, bus) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.localClippingEnabled = true; // first-person body clipping (firstPerson.js)
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -391,6 +393,9 @@ export function createRenderer(container, bus) {
       const gem = new THREE.Mesh(G.sphereLo, E(elCol)); gem.scale.setScalar(0.04); gem.position.set(dims[0] / 2 + 0.01, 0, 0); g.add(gem);
     }
     if (gun.wacky === 'rubberDuck') { const duck = new THREE.Mesh(G.sphereLo, M(0xffe14a)); duck.scale.setScalar(0.07); duck.position.set(0, 0.12, 0.15); g.add(duck); }
+    // muzzle socket (gun-mesh units) for the first-person muzzle flash
+    const bl = gun.type === 'bazooka' ? 0 : gun.parts.barrel === 'long' ? 0.45 : gun.parts.barrel === 'short' ? 0.18 : 0.3;
+    g.userData.muzzle = new THREE.Vector3(0, gun.type === 'bazooka' ? 0 : 0.02, gun.type === 'bazooka' ? -0.48 : -dims[2] / 2 - bl);
     if (!forView) g.scale.setScalar(1.6);
     return g;
   }
@@ -509,6 +514,7 @@ export function createRenderer(container, bus) {
   let vmGun = null, vmGunId = null;
   const muzzleFlash = new THREE.Mesh(G.sphereLo, E(0xffdd66)); muzzleFlash.visible = false;
   vmRoot.add(muzzleFlash);
+  const fp = createFirstPerson(camera);
   const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, reload: 0, swap: 0, lastYaw: 0, lastPitch: 0 };
 
   // ---------- camera feel ----------
@@ -614,11 +620,11 @@ export function createRenderer(container, bus) {
     if (gun && gun.id !== vmGunId) {
       if (vmGun) vmRoot.remove(vmGun);
       vmGun = buildGunMesh(gun, true);
-      vmGun.scale.setScalar(0.45);
+      vmGun.scale.setScalar(FP.gunScale);
       vmRoot.add(vmGun);
+      vmGun.add(muzzleFlash);
+      muzzleFlash.position.copy(vmGun.userData.muzzle);
       vmGunId = gun.id;
-      const len = { mg: 0.6, shotgun: 0.55, sniper: 0.85, bazooka: 0.9 }[gun.type];
-      muzzleFlash.position.set(0.17, -0.15, -0.42 - len * 0.3 - (gun.parts.barrel === 'long' ? 0.14 : 0.06));
     }
     vm.kick = Math.max(0, vm.kick - fdt * 8);
     vm.swap = Math.max(0, vm.swap - fdt * 4);
@@ -633,9 +639,12 @@ export function createRenderer(container, bus) {
     vmRoot.visible = !p.dead && !scoped;
     if (vmGun) {
       const rl = vm.reload;
-      vmGun.position.set(lerp(0.17, 0, vm.ads) + vm.swayX, lerp(-0.15, -0.1, vm.ads) - vm.swayY - rl * 0.1 - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006, -0.42 + vm.kick * 0.05);
+      const H = FP.hip.pos, A = FP.ads.pos;
+      vmGun.position.set(lerp(H[0], A[0], vm.ads) + vm.swayX, lerp(H[1], A[1], vm.ads) - vm.swayY - rl * 0.1 - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006, lerp(H[2], A[2], vm.ads) + vm.kick * 0.05);
       vmGun.rotation.set(vm.kick * 0.25 + rl * 0.6 * (0.5 + 0.5 * Math.sin(now * 0.01)), Math.PI * 0 + vm.swayX, rl * 0.4);
     }
+    if (vmGun && gun) fp.setGun(vmGun, gun.type);
+    fp.update(vmRoot.visible);
     flashT -= fdt;
     if (flashT <= 0) muzzleFlash.visible = false;
     flashLight.intensity = Math.max(0, flashLight.intensity - fdt * 120);
@@ -827,7 +836,8 @@ export function createRenderer(container, bus) {
       }
     }
 
-    renderer.render(scene, camera);
+    // dev hook: window.__debugCam renders the scene from an outside camera (used to tune the first-person rig)
+    renderer.render(scene, (typeof window !== 'undefined' && window.__debugCam) || camera);
   }
 
   const _v = new THREE.Vector3();
@@ -848,6 +858,8 @@ export function createRenderer(container, bus) {
     render, project, resize, canvas: renderer.domElement, camera,
     setShowHitboxes(v) { showHitboxes = v; },
     setStage(id) { stageOverride = id || null; },
+    firstPerson: fp,
+    THREE, scene,
     pendingDownloads,
     info: () => renderer.info,
   };
