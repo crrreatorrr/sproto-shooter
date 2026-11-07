@@ -40,6 +40,8 @@ function meleePose(variant, t, melee) {
   if (variant === 'kick') {
     // chamber: right knee up and bent, weight on the left; snap: leg extends out front; arms up for balance
     P.rLeg = mix(limb, -1.25, -1.75); P.rKnee = mix(tip, 1.7, 0.1); P.lKnee = mix(core, 0.3, 0.12);
+    // re-chamber: after the snap the knee folds back in before the foot comes down (not a straight swing back)
+    P.rKnee += 1.5 * Math.sin(Math.PI * Math.min(1, tip.rec * 1.4)) * (tip.rec < 1 ? 1 : 0);
     P.lean = mix(core, -0.1, -0.32); P.twist = mix(core, -0.15, 0.2);
     P.rOut = mix(core, -0.35, -0.65); P.lOut = mix(core, 0.35, 0.65); P.lArm = mix(core, -0.3, 0.35); P.lFore = mix(core, -0.9, -0.6);
   } else if (variant === 'punch') {
