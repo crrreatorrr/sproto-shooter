@@ -1,9 +1,9 @@
 // Shop & economy (PLAN §7.9)
 export const SHOP = {
   offerCount: 4,
-  basePrice: { mg: 25, shotgun: 45, sniper: 45, bazooka: 90 },
+  basePrice: { mg: 25, shotgun: 45, sniper: 45, bazooka: 90, raygun: 150, bigbullets: 170 },
   sellBase: 8,
-  typePremium: { mg: 1, shotgun: 1.5, sniper: 1.5, bazooka: 2.5 },
+  typePremium: { mg: 1, shotgun: 1.5, sniper: 1.5, bazooka: 2.5, raygun: 3, bigbullets: 3.5 },
   rerollBase: 10, rerollStep: 5,
   vendPrice: 35,
   vendOutcomes: [
