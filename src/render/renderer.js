@@ -285,7 +285,7 @@ export function createRenderer(container, bus) {
     } else if (e.type === 'dragon') {
       holder.rotation.y = Math.PI; // this model's head is at Tripo -X, the opposite of the other characters
       parts.groundShadow = blob(3.4); g.add(parts.groundShadow); // stays on the ground while it flies
-      if (ch) parts.rig = createDragonRig(ch);
+      if (ch) parts.rig = createDragonRig(ch, def);
     } else {
       holder.position.y = -1.3; // pos.y is the floating body centre
       const orb = new THREE.Mesh(G.sphere, MAT.weak); orb.scale.setScalar(0.45);
@@ -695,6 +695,7 @@ export function createRenderer(container, bus) {
   bus.on('meteorImpact', (ev) => { addBoom({ ...ev.pos, y: 0.5 }, 7, 0xff4400, 0.7); burstConfetti(ev.pos, 150, 12); addTrauma(1); });
   bus.on('splat', (ev) => burstConfetti(ev.pos, ev.element === 'fire' ? 18 : 10, 3, ev.element === 'fire' ? [new THREE.Color(0xff7a1a), new THREE.Color(0xffd166), new THREE.Color(0x553322)] : [new THREE.Color(0x9be33b), new THREE.Color(0x5aa02c)]));
   bus.on('playerDamaged', (ev) => addTrauma(ev.noDamage ? 0.3 : Math.min(0.5, ev.amount / 40)));
+  bus.on('bossMeleeHit', () => addTrauma(0.5)); // heavy hit: big shake (trauma², decays)
   bus.on('land', (ev) => { feel.landDip = Math.min(0.25, ev.speed / 60); });
   bus.on('dash', () => { feel.fovPunch += 8; });
   bus.on('slide', () => { feel.fovPunch += 4; });

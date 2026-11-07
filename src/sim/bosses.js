@@ -206,6 +206,7 @@ function MEGA(state, e, a, dt, def, t) {
           const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z, d = Math.hypot(dx, dz) || 1;
           const inFront = (dx * fx + dz * fz) / d > -0.2;
           if (d < def.radius + reach + TUNING.playerRadius && inFront && p.pos.y < def.height) {
+            emit(state, 'bossMeleeHit', { id: e.id, playerId: p.id, variant: a.data.variant }); // hit-stop + shake
             damagePlayer(state, p, { base: m.damage * (kick ? kick.damage : 1) * e.dmgMult, sourceKind: 'boss', fromPos: e.pos });
             knockPlayer(p, e.pos, m.knockback * (kick ? kick.knockback : 1), kick ? 9 : 7);
           }

@@ -63,6 +63,7 @@ export class Game {
     this.bus.on('damage', (ev) => { if (ev.isWeak && ev.sourceKind === 'gun' && ev.amount > 40) stop(45); if (ev.killed && ev.isWeak) stop(60); });
     this.bus.on('bossDefeated', () => stop(200));
     this.bus.on('bossPhase', () => stop(120));
+    this.bus.on('bossMeleeHit', () => stop(110)); // brief freeze when a boss melee connects (weight)
     this.bus.on('meteorImpact', () => stop(90));
   }
 

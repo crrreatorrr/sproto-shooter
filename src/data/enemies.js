@@ -78,7 +78,9 @@ export const BOSSES = {
     name: 'MEGA TINUBU', tag: 'physical', ai: 'mega', hp: 3500, radius: 2.6, height: 5.85, color: 0xff6a3d, speed: 4.5,
     contactDamage: 15, chargeDamage: 35, chargeSpeed: 22, slamDamage: 25,
     volley: { damage: 10, count: 7, fan: 50, speed: 24, waves: 2, gap: 0.4, y: 4.2 },
-    melee: { range: 3.0, damage: 45, windup: 0.45, recover: 0.5, cd: 1.6, knockback: 14 },
+    // melee timing follows boss-attack research: a readable windup that holds (>= 0.34 s from tell to hit), a
+    // fast strike, then a long recovery (the punish window)
+    melee: { range: 3.0, damage: 45, windup: 0.7, recover: 0.85, cd: 1.6, knockback: 14 },
     missiles: { count: 2, damage: 32, splash: 4.5, speed: 13, homing: 1.1, ttl: 6, gap: 0.3, y: 5.2 },
     model: 'tinubu', stageHeights: [5.5, 6.0, 6.5],
     portraits: ['ui/bosses/tinubu.png', 'ui/bosses/tinubu_stage2.png', 'ui/bosses/tinubu_stage3.png'],
@@ -99,7 +101,7 @@ export const BOSSES = {
     name: 'BLUE MONSTER', tag: 'physical', ai: 'mega', hp: 3800, radius: 2.4, height: 7.0, color: 0x2f6bff, speed: 4.8,
     contactDamage: 18, chargeDamage: 40, chargeSpeed: 24, slamDamage: 30,
     volley: { damage: 12, count: 5, fan: 40, speed: 26, waves: 2, gap: 0.45, y: 6.0, kind: 'monsterBullet' },
-    melee: { range: 3.2, damage: 50, windup: 0.5, recover: 0.5, cd: 1.5, knockback: 16 },
+    melee: { range: 3.2, damage: 50, windup: 0.75, recover: 0.9, cd: 1.5, knockback: 16 },
     missiles: { count: 3, damage: 34, splash: 4.5, speed: 13, homing: 1.2, ttl: 6, gap: 0.28, y: 6.2 },
     model: 'monster', rig: 'humanoid', stageHeights: [7.0, 7.6, 8.2],
     portraits: [],
@@ -144,7 +146,7 @@ export const BOSSES = {
     name: 'SPROTO BEAST', tag: 'physical', ai: 'mega', hp: 4500, radius: 2.4, height: 7.5, color: 0x7a3cff, speed: 5.4,
     contactDamage: 20, chargeDamage: 45, chargeSpeed: 25, slamDamage: 32,
     volley: { damage: 11, count: 7, fan: 55, speed: 26, waves: 2, gap: 0.35, y: 6.0 },
-    melee: { range: 3.4, damage: 55, windup: 0.42, recover: 0.6, cd: 1.2, knockback: 15, combo: ['punch', 'kick', 'punch', 'punch', 'kick'], kick: { range: 1.0, damage: 1.2, knockback: 1.4 } },
+    melee: { range: 3.4, damage: 55, windup: 0.6, recover: 0.75, cd: 1.2, knockback: 15, combo: ['punch', 'kick', 'punch', 'punch', 'kick'], kick: { range: 1.0, damage: 1.2, knockback: 1.4 } },
     missiles: { count: 4, damage: 34, splash: 4.5, speed: 14, homing: 1.3, ttl: 6, gap: 0.25, y: 6.4 },
     model: 'sprotoBeast', rig: 'humanoid', stageHeights: [7.5, 8.0, 8.6],
     portraits: [],
