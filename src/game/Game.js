@@ -14,11 +14,13 @@ import { restoreCheckpoint } from '../sim/campaign/campaign.js';
 import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY, zoomLevelsOf, zoomFovFor } from '../data/guns.js';
 import { SKILL_IDS } from '../data/skills.js';
 import { MAX_TIER } from '../data/waves.js';
+import { createPerfCounters } from '../render/debug/perfCounters.js';
+import { createStatsOverlay } from '../render/debug/StatsOverlay.js';
 
 const MAX_FRAME = 0.25, MAX_TICKS = 5;
 
 export class Game {
-  constructor({ seed, mode = 'title', tier = 1, debug = false, boss = null, level = null }) {
+  constructor({ seed, mode = 'title', tier = 1, debug = false, boss = null, level = null, stats = false }) {
     this.bus = createEventBus();
     this.state = createGameState({ seed });
     this.paused = true;
@@ -52,6 +54,35 @@ export class Game {
     this.acc = 0;
     requestAnimationFrame((t) => this.frame(t));
     window.__game = this; // for debugging in devtools
+    this.perfCounters = createPerfCounters();
+    this.statsOverlay = createStatsOverlay(app);
+    this.statsOn = !!stats;
+    this.statsOverlay.setVisible(this.statsOn);
+    window.__sproto = {
+      game: this,
+      perf: (seconds = 5) => this.samplePerf(seconds),
+    };
+  }
+
+  samplePerf(seconds = 5) {
+    const now = performance.now();
+    const timing = this.perfCounters.report(seconds, now);
+    const counts = this.renderer.counts();
+    const mem = performance.memory;
+    return {
+      ...timing,
+      drawCalls: counts.drawCalls,
+      triangles: counts.triangles,
+      programs: counts.programs,
+      textures: counts.textures,
+      geometries: counts.geometries,
+      heapMB: mem ? mem.usedJSHeapSize / 1048576 : null,
+    };
+  }
+
+  toggleStats() {
+    this.statsOn = !this.statsOn;
+    this.statsOverlay.setVisible(this.statsOn);
   }
 
   queue(a) { this.input.queueAction(a); }
@@ -84,6 +115,7 @@ export class Game {
     });
     inp.on('key', (e) => {
       if (e.code === 'Backquote') this.toggleDebug();
+      if (e.code === 'F3') { e.preventDefault(); this.toggleStats(); }
       if (e.code === 'KeyM') this.audio.toggleMute();
       if (e.code === 'KeyP' && !e.repeat && !this.ui.menuOpen) this.queue({ type: 'debug', op: 'toggleGod' });
       if (e.code === 'Enter' && this.state.wave && this.state.wave.phase === 'intermission' && !this.ui.menuOpen) this._skip = true;
@@ -279,13 +311,15 @@ export class Game {
 
   // ---------- loop ----------
   frame(now) {
-    let ft = Math.min((now - this.last) / 1000, MAX_FRAME);
+    const frameMs = now - this.last;
+    let ft = Math.min(frameMs / 1000, MAX_FRAME);
     this.last = now;
     if (this.hitstopMs > 0) { this.hitstopMs -= ft * 1000; ft = 0; }
     // Shop/crafting menus and the debug panel do NOT pause. The pause and end screens do. The title runs a demo behind it.
     const scr = this.screen.hidden ? null : this.screen.querySelector('.title') ? 'title' : 'other';
     const titleUp = scr === 'title';
     if (scr === null || titleUp) this.acc += ft * this.timeScale;
+    const sim0 = performance.now();
     let n = 0;
     while (this.acc >= DT && n < MAX_TICKS) {
       const cmd = this.input.buildCommand(this.state.tick);
@@ -296,6 +330,7 @@ export class Game {
       this.acc -= DT; n++;
     }
     if (n === MAX_TICKS) this.acc = 0;
+    const simMs = performance.now() - sim0;
     const lv = this.state.level;
     if (this.state.mode === 'campaign' && lv && !this._campaignShown && this.screen.hidden) {
       if (lv.won) { this._campaignShown = true; const i = CAMPAIGN.indexOf(lv.id); if (CAMPAIGN[i + 1]) unlockLevel(CAMPAIGN[i + 1]); for (const id of Object.keys(lv.modifiers)) rememberModifier(id); this.showScreen('levelClear'); }
@@ -307,9 +342,48 @@ export class Game {
     this.input.zoomLevels = zoomLevelsOf(g);
     const zoomLevel = Math.max(1, this.input.zoomLevel);
     this.input.zoomSensitivity = p.zooming && g ? zoomFovFor(g, zoomLevel) / 90 : 1;
+    const ren0 = performance.now();
     this.renderer.render(this.state, alpha, this.input.liveLook(), { shake: this.settings.shake, zoomLevel });
+    const renderCpuMs = performance.now() - ren0;
+    const hud0 = performance.now();
     this.ui.update(this.state);
+    const hudMs = performance.now() - hud0;
+    this.perfCounters.push({
+      frameMs, simMs, renderCpuMs, hudMs, ticks: n, gpuMs: this.renderer.takeGpuMs(),
+    }, now);
+    if (this.statsOn) this.drawStats(now);
     requestAnimationFrame((t) => this.frame(t));
+  }
+
+  drawStats(now) {
+    const windowed = this.perfCounters.report(2, now);
+    const counts = this.renderer.counts();
+    const mem = /** @type {any} */ (performance).memory;
+    const gpu = this.renderer.takeGpuMs();
+    const alive = this.state.enemies.reduce((n, e) => n + (e.dead ? 0 : 1), 0);
+    this.statsOverlay.draw({
+      fps: windowed.avgFps,
+      p95: windowed.p95Ms,
+      frameMs: windowed.avgMs,
+      simMs: windowed.simAvgMs,
+      renderMs: windowed.renderAvgMs,
+      hudMs: windowed.frames ? this.perfCounters.tail(1)[0].hudMs : 0,
+      gpu: gpu == null ? 'n/a' : gpu.toFixed(2),
+      calls: counts.drawCalls,
+      tris: counts.triangles,
+      programs: counts.programs,
+      geometries: counts.geometries,
+      textures: counts.textures,
+      renderScale: this.renderer.renderScale(),
+      enemies: alive,
+      projectiles: this.state.projectiles.length,
+      particles: this.renderer.liveFx(),
+      pending: this.renderer.pendingDownloads(),
+      heap: mem ? (mem.usedJSHeapSize / 1048576).toFixed(1) : 'n/a',
+      // Manifest-based estimate arrives with the asset pipeline (plan B M6).
+      gpuMB: 'n/a',
+      graph: this.perfCounters.tail(120),
+    });
   }
 }
 
@@ -328,6 +402,6 @@ function controlsHtml() {
     ${k('WASD', 'Move')}${k('Mouse', 'Look · LMB fire · RMB hold to aim')}${k('F', 'Aim on / off (sniper: zoom 1 → zoom 2 → off)')}${k('Wheel while zoomed', 'Sniper zoom 1 / 2')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
     ${k('C', 'Slide (Ctrl works, but Ctrl+W closes the tab!)')}${k('Alt / V', 'Dash')}${k('R', 'Reload')}${k('1-4 / Wheel', 'Switch gun')}
     ${k('G', 'Pick up gun · open Weapon Box')}${k('H', 'Use medkit')}${k('Q E Z X T', 'Spells (unlock with Magic XP)')}
-    ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('5', 'Stats & powers')}${k('Enter', 'Ready / skip break')}${k('`', 'Debug panel')}${k('M', 'Mute')}${k('P', 'God mode (health stays at 99)')}
+    ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('5', 'Stats & powers')}${k('Enter', 'Ready / skip break')}${k('`', 'Debug panel')}${k('F3', 'Frame stats')}${k('M', 'Mute')}${k('P', 'God mode (health stays at 99)')}
   </div>`;
 }
