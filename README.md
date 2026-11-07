@@ -2,7 +2,9 @@
 
 A wacky first-person loot shooter built with Three.js, inspired by Borderlands. You fight waves of Sproto Duel characters (midget swarms and bitcoin-shooting Obamas) across Sproto Duel's stages, grab procedurally generated guns, craft better ones at Weapon Boxes, and level four skills just by playing.
 
-This is the **mechanics sandbox** stage. Characters, stages and boss portraits are reused from [sproto-duel](https://github.com/crrreatorrr/sproto-duel) (`public/assets/`). All four guns (machine gun, shotgun, sniper, bazooka) use toy gun models (`public/assets/models/guns/`). There's no login, hub, saving or multiplayer yet; the code is structured so those can be added later (see `PLAN.md` §9).
+This is the **mechanics sandbox** stage. Characters, stages and boss portraits are reused from [sproto-duel](https://github.com/crrreatorrr/sproto-duel) (`public/assets/`). All four guns (machine gun, shotgun, sniper, bazooka) use toy gun models (`public/assets/models/guns/`). Campaign progress is saved in the browser. There is no multiplayer yet (see `PLAN.md` §9).
+
+A visit from the metaverse hub arrives as `/#t=<ticket>`. The client redeems it with `@metaverse/hub-sdk` (game id `sproto-shooter`), shows the hub ticket balance on the title screen, and Return to Hub leaves through `/#from=sproto-shooter`. Opened on its own, the game still runs and the chip stays `--`. Run tickets (the loot currency) are a different number from hub tickets. The plaza gate for this id is a separate change in metaverse-hub (SDK 0.6.2, migration `0038_sproto_shooter`, the fifth ring, The Range). Until that lands, the hub cannot mint a ticket for this game.
 
 ## Run it
 
@@ -14,6 +16,14 @@ npm run build      # static build in dist/
 ```
 
 URL params: `?mode=waves|sandbox|test&tier=1-10&seed=123&debug=1`
+
+Hub (same shape as the other games):
+
+| Variable | Meaning |
+|---|---|
+| `VITE_NAKAMA_URL` | Nakama origin. Dev default `http://127.0.0.1:7350`. `npm run dev` also proxies `/v2` and `/ws` there. |
+| `VITE_NAKAMA_SERVER_KEY` | Nakama client server key. Dev and a page opened on loopback use Nakama's stock key. A public build sends no key unless this is set, so a ticket redeem is refused and the game stays standalone. This is not the Nakama HTTP key. |
+| `VITE_HUB_URL` | Hub page for Return to Hub. Dev default `/hub/`. |
 
 ## What's in
 

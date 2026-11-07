@@ -18,7 +18,8 @@ import { MAX_TIER } from '../data/waves.js';
 const MAX_FRAME = 0.25, MAX_TICKS = 5;
 
 export class Game {
-  constructor({ seed, mode = 'title', tier = 1, debug = false, boss = null, level = null }) {
+  constructor({ seed, mode = 'title', tier = 1, debug = false, boss = null, level = null, hub = null }) {
+    this.hub = hub ?? { connected: false, balance: null, refreshBalance: () => Promise.resolve(null), exitHub() {} };
     this.bus = createEventBus();
     this.state = createGameState({ seed });
     this.paused = true;
@@ -108,6 +109,7 @@ export class Game {
     let body = '';
     if (kind === 'title') {
       body = `<div class="title"><h1>SPROTO<br><span>SHOOTER</span></h1>
+        ${this.hubChip()}
         <p class="tag">A wacky loot shooter. Blast blobs, grab guns, craft better ones, beat the bosses.</p>
         <div class="menu">
           <button class="btn big" data-go="waves">▶ Wave Mode <small>3 waves + bosses</small></button>
@@ -115,6 +117,7 @@ export class Game {
           <button class="btn big alt" data-go="test">🎯 Test Range <small>every gun, infinite ammo</small></button>
           <button class="btn big alt" data-go="bossSelect">👑 Boss Fight <small>pick a boss to fight</small></button>
           <button class="btn big" data-go="campaignSelect">🗺 Campaign <small>The Great Sproto Audit</small></button>
+          <button class="btn alt" data-go="hub">⌂ Return to Hub</button>
           <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
         </div>
         ${controlsHtml()}</div>`;
@@ -178,10 +181,12 @@ export class Game {
     }
     this.screen.innerHTML = body;
     this.screen.hidden = false;
+    if (kind === 'title') this.paintHubChip();
     this.screen.onclick = (e) => {
       const b = e.target.closest('[data-go]');
       if (!b) return;
       const go = b.dataset.go;
+      if (go === 'hub') { this.hub.exitHub(); return; }
       if (go === 'continue') { this.hideScreen(); this.paused = false; this.input.lock(); return; }
       if (go === 'title' || go === 'bossSelect' || go === 'campaignSelect') { this.showScreen(go); return; }
       if (go === 'checkpoint') { restoreCheckpoint(this.state); this._campaignShown = false; this.hideScreen(); this.paused = false; this.input.lock(); return; }
@@ -193,11 +198,24 @@ export class Game {
     };
   }
   hideScreen() { this.screen.hidden = true; this.screen.innerHTML = ''; }
+  hubChip() {
+    const n = this.hub.connected ? (this.hub.balance === null ? '…' : String(this.hub.balance)) : '--';
+    return `<div class="hub-chip">Hub tickets <b>${n}</b></div>`;
+  }
+  paintHubChip() {
+    const el = this.screen.querySelector('.hub-chip b');
+    if (!el || !this.hub.connected) return;
+    this.hub.refreshBalance().then((n) => {
+      const live = this.screen.querySelector('.hub-chip b');
+      if (live && n !== null) live.textContent = String(n);
+    });
+  }
   showPause() {
     if (!this.screen.hidden) return;
     this.paused = true;
     this.screen.innerHTML = `<div class="pause"><h1>PAUSED</h1><button class="btn big" data-p="resume">Resume</button>
       <button class="btn" data-p="title">Main menu</button>
+      <button class="btn alt" data-p="hub">Return to Hub</button>
       <label>Mouse sensitivity <input id="sens" type="range" min="0.3" max="3" step="0.05" value="${this.settings.sensitivity}"></label>
       <label><input id="hs" type="checkbox" ${this.settings.hitstop ? 'checked' : ''}> Hitstop on big hits</label>
       <label>Screen shake <input id="shk" type="range" min="0" max="1.5" step="0.1" value="${this.settings.shake}"></label>
@@ -207,7 +225,10 @@ export class Game {
       const b = e.target.closest('[data-p]');
       if (!b) return;
       if (b.dataset.p === 'resume') { this.hideScreen(); this.input.lock(); }
-      else this.showScreen('title');
+      else if (b.dataset.p === 'hub') {
+        if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Leave this run?'; return; }
+        this.hub.exitHub();
+      } else this.showScreen('title');
     };
     this.screen.oninput = (e) => {
       if (e.target.id === 'sens') { this.settings.sensitivity = +e.target.value; this.input.sensitivity = 0.0022 * this.settings.sensitivity; }

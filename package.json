@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@metaverse/hub-sdk": "file:vendor/hub-sdk",
     "lil-gui": "^0.19.2",
     "three": "^0.170.0"
   },
