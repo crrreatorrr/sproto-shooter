@@ -587,3 +587,68 @@ describe('animation math (anim.js)', () => {
     expect(legCycle(0, 0.77).swing).toBeGreaterThan(legCycle(0.5, 0.77).swing); // stance moves the leg back
   });
 });
+
+describe('boss animation clips (bossClips.js)', () => {
+  const durations = { walk: 1.2, smash: 1.8, punch: 44 / 30, kick: 1.6, fly: 2.4, fireball: 1.5 };
+  it('melee clips land their contact frame exactly on the sim swing', async () => {
+    const { meleeClipTime } = await import('../src/render/bossClips.js');
+    expect(meleeClipTime(0, 0.75, 0.9, 0.8, 1.8)).toBe(0);
+    expect(meleeClipTime(0.75, 0.75, 0.9, 0.8, 1.8)).toBeCloseTo(0.8, 9); // damage frame === impact frame
+    expect(meleeClipTime(0.75 + 0.9, 0.75, 0.9, 0.8, 1.8)).toBeCloseTo(1.8, 9); // recovery ends with the clip
+    let prev = -1;
+    for (let t = 0; t <= 2; t += 0.01) { const c = meleeClipTime(t, 0.75, 0.9, 0.8, 1.8); expect(c).toBeGreaterThanOrEqual(prev); prev = c; }
+  });
+  it('picks walk, smash, punch and kick for the humanoid bosses', async () => {
+    const { bossClipWant, BOSS_CLIPS } = await import('../src/render/bossClips.js');
+    const { BOSSES } = await import('../src/data/enemies.js');
+    const mon = BOSSES.monster, beast = BOSSES.sprotoBeast;
+    const walk = bossClipWant({ type: 'monster', action: 'chase', actionT: 1, speed: 4.8, fitHeight: 7, def: mon, durations });
+    expect(walk.clip).toBe('walk');
+    expect(walk.rate).toBeCloseTo(4.8 / (BOSS_CLIPS.monster.walk.speedPerHeight * 7), 6); // stride matches ground speed
+    expect(bossClipWant({ type: 'monster', action: 'chase', actionT: 1, speed: 0, def: mon, durations })).toBeNull(); // standing: procedural idle
+    expect(bossClipWant({ type: 'monster', action: 'stunned', actionT: 1, speed: 3, def: mon, durations })).toBeNull();
+    const smash = bossClipWant({ type: 'monster', action: 'melee', actionT: mon.melee.windup, def: mon, durations });
+    expect(smash).toMatchObject({ clip: 'smash' });
+    expect(smash.time).toBeCloseTo(BOSS_CLIPS.monster.melee.smash.impact, 9);
+    for (const v of ['punch', 'kick']) {
+      const w = bossClipWant({ type: 'sprotoBeast', action: 'melee', variant: v, actionT: beast.melee.windup, def: beast, durations });
+      expect(w.clip).toBe(v);
+      expect(w.time).toBeCloseTo(BOSS_CLIPS.sprotoBeast.melee[v].impact, 9);
+    }
+  });
+  it('the dragon flies with its clip and opens its mouth exactly when each fireball spawns', async () => {
+    const { bossClipWant, BOSS_CLIPS } = await import('../src/render/bossClips.js');
+    const { BOSSES } = await import('../src/data/enemies.js');
+    const d = BOSSES.dragon, f = d.fly, rel = BOSS_CLIPS.dragon.fireball.release;
+    expect(bossClipWant({ type: 'dragon', action: 'stalk', actionT: 1, altitude: 0, def: d, durations })).toBeNull(); // ground: procedural
+    // mirror the sim's schedule: data.shot starts at shotEvery/2 and advances by shotEvery when a fireball spawns
+    const at = (cruiseT, shot) => bossClipWant({ type: 'dragon', action: 'fly', actionT: f.rise + cruiseT, altitude: 7, def: d, data: { shot }, durations, phaseIdx: 0 });
+    const first = f.shotEvery * 0.5;
+    expect(at(first - rel - 0.2, first).clip).toBe('fly'); // cruising before the first windup
+    expect(at(first - 0.2, first)).toMatchObject({ clip: 'fireball' });
+    expect(at(first - 0.2, first).time).toBeCloseTo(rel - 0.2, 9); // winding up toward the spawn
+    expect(at(first, first + f.shotEvery).time).toBeCloseTo(rel, 9); // the frame the sim spawns it
+    const second = first + f.shotEvery;
+    expect(at(second, second + f.shotEvery).time).toBeCloseTo(rel, 9); // and every later shot
+    expect(at(f.duration + 0.5, 99).clip).toBe('fly'); // landing glide: no more spits
+  });
+});
+
+describe('clip layer (clipLayer.js)', () => {
+  it('blends an authored clip over the procedural pose, holds it on still frames, and fades back out', async () => {
+    const THREE = await import('three');
+    const { createClipLayer } = await import('../src/render/clipLayer.js');
+    const root = new THREE.Group(), bone = new THREE.Bone(); bone.name = 'Arm'; root.add(bone);
+    const up = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+    const clip = new THREE.AnimationClip('raise', 1, [new THREE.QuaternionKeyframeTrack('Arm.quaternion', [0, 1], [...up.toArray(), ...up.toArray()])]);
+    const layer = createClipLayer({ root, clips: [clip] });
+    const frame = (want) => { bone.quaternion.identity(); return layer.apply(1 / 60, want); }; // procedural pose = identity each frame
+    let w = 0;
+    for (let i = 0; i < 90; i++) w = frame({ clip: 'raise', time: 0.5, blend: 0.06 }); // the clip holds the same pose every frame
+    expect(w).toBeGreaterThan(0.99);
+    expect(bone.quaternion.angleTo(up)).toBeLessThan(0.02); // still applied although the clip value never changed
+    for (let i = 0; i < 120; i++) w = frame(null);
+    expect(w).toBeLessThan(0.01);
+    expect(bone.quaternion.angleTo(new THREE.Quaternion())).toBeLessThan(0.02);
+  });
+});
