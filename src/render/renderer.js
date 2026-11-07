@@ -1,6 +1,6 @@
 // Three.js renderer. Reads state only; interpolates prevPos -> pos with alpha. Placeholder low-poly "Sproto" art.
 import * as THREE from 'three';
-import { TUNING, ARENA_R } from '../data/tuning.js';
+import { TUNING } from '../data/tuning.js';
 import { ENEMIES, BOSSES } from '../data/enemies.js';
 import { QUALITIES_BY_ID, ELEMENTS_BY_ID, MANUFACTURERS_BY_ID } from '../data/guns.js';
 import { RESOURCES } from '../data/drops.js';
@@ -8,6 +8,9 @@ import { worldHitboxes } from '../sim/collision.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
 import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY } from './assets.js';
+import { getLevelRuntime } from '../sim/level/runtime.js';
+
+const ARENA_R = getLevelRuntime('arena').radius;
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const ELEM_COL = { none: 0xffe9a8, fire: 0xff7a1a, shock: 0x4fe3ff, goo: 0x9be33b };

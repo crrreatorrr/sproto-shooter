@@ -36,4 +36,5 @@ export const TUNING = {
   hitscanRange: 150,
 };
 
+/** Circle radius in metres. Sim and rendering read it via getLevelRuntime('arena').radius. */
 export const ARENA_R = TUNING.arenaRadius;

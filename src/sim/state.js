@@ -13,6 +13,8 @@ export function createGameState({ seed = 12345, mode = 'sandbox', tier = 1 } = {
   const state = {
     version: 1, seed, rng: createRng(seed), tick: 0, time: 0, nextId: 1,
     mode, tier, localPlayerId: 0,
+    // Arena dynamic state only. Static colliders live in getLevelRuntime, outside the hash.
+    level: { id: 'arena' },
     players: {}, enemies: [], allies: [], projectiles: [], pickups: [], hazards: [],
     weaponBoxes: [], spawnPoints: [],
     wave: null,

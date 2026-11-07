@@ -1,5 +1,5 @@
 // Projectiles, hazards, pickups, allies, status effects, cleanup.
-import { TUNING, ARENA_R } from '../data/tuning.js';
+import { TUNING } from '../data/tuning.js';
 import { ALLY } from '../data/enemies.js';
 import { XP } from '../data/skills.js';
 import { RES_IDS } from '../data/drops.js';
@@ -7,6 +7,9 @@ import { emit } from './events.js';
 import { raycastEnemies, sphereHitsPlayer } from './collision.js';
 import { damageEnemy, damagePlayer, explode, healPlayer, nearestEnemy, centerOf, enemyAoE } from './combat.js';
 import { createProjectile } from './state.js';
+import { getLevelRuntime } from './level/runtime.js';
+
+const ARENA_R = getLevelRuntime('arena').radius;
 
 // ---------------- Projectiles ----------------
 export function projectiles(state, dt) {

@@ -1,5 +1,5 @@
 // Player input, movement, combat (firing/reload/swap), vitals. PLAN §4.4, §7.1
-import { TUNING, ARENA_R } from '../data/tuning.js';
+import { TUNING } from '../data/tuning.js';
 import { GUN_TYPES_BY_ID } from '../data/guns.js';
 import { float, range } from '../core/rng.js';
 import { dirFromYawPitch, deg, clamp } from '../core/math.js';
@@ -329,4 +329,4 @@ export function respawn(state, p) {
   emit(state, 'playerRespawn', { playerId: p.id });
 }
 
-export { GUN_TYPES_BY_ID, ARENA_R };
+export { GUN_TYPES_BY_ID };

@@ -1,0 +1,22 @@
+{
+  "ticks": [600, 3000, 6000],
+  "waveSeeds": [11, 12, 13],
+  "sandboxSeed": 21,
+  "note": "full hashes state minus events, including state.level. gameplay also omits state.level and matches main @ f952c6a before C-M0. Both must stay put.",
+  "full": {
+    "waves": {
+      "11": { "600": "1a99b4ce", "3000": "1a864f30", "6000": "6d9f29ec" },
+      "12": { "600": "7f54aa52", "3000": "ad86fcab", "6000": "3f88d691" },
+      "13": { "600": "196ddc71", "3000": "4421a3ab", "6000": "e174c13a" }
+    },
+    "sandbox": { "600": "af2fb45e", "3000": "ca25ecfa", "6000": "067f2857" }
+  },
+  "gameplay": {
+    "waves": {
+      "11": { "600": "2a5fdfd6", "3000": "4912d172", "6000": "21cb1efa" },
+      "12": { "600": "57bd7dd6", "3000": "7668728b", "6000": "5ce41397" },
+      "13": { "600": "66056567", "3000": "8fc0e797", "6000": "13a1e930" }
+    },
+    "sandbox": { "600": "4e7cca5c", "3000": "ff342e18", "6000": "5dd8ed31" }
+  }
+}

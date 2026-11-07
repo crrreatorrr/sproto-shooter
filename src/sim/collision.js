@@ -1,6 +1,9 @@
 // Collision: arena clamp, ray vs sphere/capsule, world hitboxes, raycastEnemies. PLAN §4.9–4.10
 import { ENEMIES, BOSSES } from '../data/enemies.js';
-import { TUNING, ARENA_R } from '../data/tuning.js';
+import { TUNING } from '../data/tuning.js';
+import { getLevelRuntime } from './level/runtime.js';
+
+const ARENA_R = getLevelRuntime('arena').radius;
 
 export function clampToArena(ent, radius) {
   const r = Math.hypot(ent.pos.x, ent.pos.z);

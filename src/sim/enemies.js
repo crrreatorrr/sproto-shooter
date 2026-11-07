@@ -1,12 +1,15 @@
 // Enemy AI: FSM + steering + behaviors (midget runner, obama shooter, bigObama heavy, dummy). PLAN §4.8
 import { ENEMIES, ENEMY_BULLET_RADIUS } from '../data/enemies.js';
-import { ARENA_R, TUNING } from '../data/tuning.js';
+import { TUNING } from '../data/tuning.js';
 import { float, range } from '../core/rng.js';
 import { angleWrap, yawTo, deg } from '../core/math.js';
 import { emit } from './events.js';
 import { clampToArena, pushOutOfBoxes, entityDef } from './collision.js';
 import { hitPlayerSphere, enemyAoE } from './combat.js';
 import { createProjectile, createHazard } from './state.js';
+import { getLevelRuntime } from './level/runtime.js';
+
+const ARENA_R = getLevelRuntime('arena').radius;
 
 export function nearestPlayer(state, pos) {
   let best = null, bd = Infinity;
