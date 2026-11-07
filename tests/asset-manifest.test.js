@@ -37,9 +37,9 @@ describe('asset manifest', () => {
 
   it('records dimensions and decoded sizes', () => {
     const floor = manifest.assets.find((asset) => asset.path === 'textures/stages/city/floor.jpg');
-    expect(floor.width).toBe(2048);
-    expect(floor.height).toBe(2048);
-    expect(floor.decodedBytes).toBe(2048 * 2048 * 4);
+    expect(floor.width).toBe(1024);
+    expect(floor.height).toBe(1024);
+    expect(floor.decodedBytes).toBe(1024 * 1024 * 4);
     const dragon = manifest.assets.find((asset) => asset.path === 'models/characters/dragon.glb');
     expect(dragon.meshopt).toBe(true);
     expect(dragon.images.length).toBeGreaterThan(0);

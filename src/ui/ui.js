@@ -53,6 +53,18 @@ export function createUI(root, { input, bus, project, game }) {
   <div id="dmgnums"></div>
   <div id="panel" hidden></div>`;
 
+  const loadEl = h('div');
+  loadEl.id = 'load-state';
+  loadEl.hidden = true;
+  loadEl.style.cssText = 'position:fixed;left:16px;bottom:16px;z-index:30;background:rgba(8,6,16,.88);color:#ffe9a8;padding:8px 12px;border-radius:8px;font:700 14px/1.35 "Baloo 2",sans-serif;pointer-events:auto;max-width:340px';
+  root.appendChild(loadEl);
+  loadEl.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-retry]');
+    if (!b || !game.renderer || !game.renderer.retryFailed) return;
+    b.disabled = true;
+    game.renderer.retryFailed();
+  });
+
   const els = {
     wave: $('#wave-info', root), tickets: $('#tickets', root), resources: $('#resources', root), bossbars: $('#bossbars', root),
     cross: $('#crosshair', root), hit: $('#hitmarker', root),
@@ -467,9 +479,23 @@ export function createUI(root, { input, bus, project, game }) {
       wave = `<b>WAVE ${w.index + 1}/3</b> · Tier ${s.tier} · ${phaseTxt}`;
     }
     if (s.tuning.godMode) wave += ' · <b class="god">GOD MODE</b>';
-    const pend = game.renderer && game.renderer.pendingDownloads ? game.renderer.pendingDownloads() : 0;
-    if (pend > 0) wave += ` <small class="loading">⏳ loading ${pend}</small>`;
+    const report = game.renderer && game.renderer.loadReport ? game.renderer.loadReport() : null;
+    const pend = report ? report.pending : (game.renderer && game.renderer.pendingDownloads ? game.renderer.pendingDownloads() : 0);
+    const failed = report ? report.failed.length : 0;
+    if (failed > 0) wave += ` <small class="loading">could not load ${failed}</small>`;
+    else if (pend > 0) wave += ` <small class="loading">⏳ loading ${pend}</small>`;
     html(els.wave, 'wave', wave);
+    if (report && (failed > 0 || pend > 0)) {
+      const mb = (report.bytesDone / 1048576).toFixed(1);
+      const text = failed > 0
+        ? `${failed} file${failed === 1 ? '' : 's'} failed (${mb} MB in). Placeholders are on screen. <button type="button" data-retry="1">Retry</button>`
+        : `Loading ${pend} · ${mb} MB`;
+      if (loadEl.dataset.k !== text) { loadEl.dataset.k = text; loadEl.innerHTML = text; }
+      loadEl.hidden = false;
+    } else if (!loadEl.hidden) {
+      loadEl.hidden = true;
+      loadEl.dataset.k = '';
+    }
 
     // boss bars
     const bossList = s.enemies.filter((e) => e.boss && !e.dead);

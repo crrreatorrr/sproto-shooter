@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { colliderFor } from './gunCollider.js';
+import { enqueue, PRIORITY, retainAsset, peekAsset } from './assets.js';
 
 export const PLAYER_MODEL = 'models/characters/sproto_player.glb';
 const BASE = `${import.meta.env.BASE_URL}assets/`;
@@ -156,7 +157,12 @@ export function createFirstPerson(camera) {
     clipPlanes[1].setFromNormalAndCoplanarPoint(_cn.set(0, 0, -1).applyQuaternion(_cq), camera.localToWorld(_cp.set(0, 0, FP.clipZ)));
   }
 
-  new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(BASE + PLAYER_MODEL).then((g) => {
+  const armsLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  let armsHeld = false;
+  function attachArms(g) {
+    if (ready || armsHeld || !g || !g.scene) return;
+    armsHeld = true;
+    retainAsset(PLAYER_MODEL);
     const body = g.scene;
     body.traverse((o) => {
       if (o.isSkinnedMesh) {
@@ -209,7 +215,10 @@ export function createFirstPerson(camera) {
       const tip = a.fingers[1] ? a.fingers[1][a.fingers[1].length - 1].getWorldPosition(V()) : a.middle1.getWorldPosition(V());
       a.palmSign = tip.sub(a.middle1.getWorldPosition(V())).dot(fr.n) >= 0 ? 1 : -1;
     }
-  }).catch((e) => console.warn('[firstPerson] could not load player model', e.message));
+  }
+  enqueue(PLAYER_MODEL, () => new Promise((resolve, reject) => {
+    armsLoader.load(BASE + PLAYER_MODEL, resolve, undefined, (err) => reject(err instanceof Error ? err : new Error('arms failed')));
+  }), PRIORITY.NOW).then((g) => attachArms(g)).catch((e) => console.warn('[firstPerson] could not load player model', e.message));
 
   // ---------- grasp ----------
   const gq = new THREE.Quaternion();
@@ -392,6 +401,7 @@ export function createFirstPerson(camera) {
      * move a hand off its default hold (reloads) }.
      */
     update(visible, opts = {}) {
+      if (!ready) attachArms(peekAsset(PLAYER_MODEL));
       root.visible = ready && visible && !!gun && !(typeof window !== 'undefined' && window.__hideFP); // __hideFP: dev hook to inspect the gun alone
       if (!root.visible) return;
       const dt = Math.min(0.1, opts.dt ?? 1 / 60), ads = opts.ads || 0;

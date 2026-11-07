@@ -23,18 +23,19 @@ describe('sim hashes', () => {
 });
 
 describe('budget pins', () => {
-  it('keeps the 5% growth gates and the plan caps that already fit', () => {
-    expect(GATE.titleShellGzipBytes).toBe(Math.floor(MEASURED.titleShellGzipBytes * (1 + GROWTH)));
-    expect(GATE.staticShipBytes).toBe(Math.floor(MEASURED.staticShipBytes * (1 + GROWTH)));
-    expect(MEASURED.titleShellGzipBytes).toBeGreaterThan(150 * 1024);
-    expect(MEASURED.staticShipBytes).toBeGreaterThan(25 * 1024 * 1024);
-    expect(MEASURED.criticalTransferBytes).toBeGreaterThan(6 * 1024 * 1024);
-    expect(MEASURED.criticalTransferBytes).toBeLessThanOrEqual(GATE.criticalTransferBytes);
-    expect(GATE.criticalTransferBytes).toBe(Math.floor(MEASURED.criticalTransferBytes * (1 + GROWTH)));
+  it('keeps the plan caps now that the measured load is under them', () => {
+    expect(MEASURED.titleShellGzipBytes).toBeLessThanOrEqual(150 * 1024);
+    expect(MEASURED.staticShipBytes).toBeLessThanOrEqual(25 * 1024 * 1024);
+    expect(MEASURED.criticalTransferBytes).toBeLessThanOrEqual(6 * 1024 * 1024);
+    expect(MEASURED.criticalFirstPartyRequests).toBeLessThanOrEqual(20);
+    expect(GATE.titleShellGzipBytes).toBe(150 * 1024);
+    expect(GATE.staticShipBytes).toBe(25 * 1024 * 1024);
+    expect(GATE.criticalTransferBytes).toBe(6 * 1024 * 1024);
     expect(GATE.criticalRequests).toBe(20);
-    expect(MEASURED.criticalFirstPartyRequests).toBe(16);
     expect(GATE.glbBytes).toBe(3 * 1024 * 1024);
-    expect(GATE.textureMaxEdge).toBe(2048);
+    expect(GATE.textureMaxEdge).toBe(1024);
+    expect(GATE.decodedBytes).toBe(MEASURED.decodedBytes);
+    expect(GROWTH).toBe(0.05);
   });
 
   it('accepts the current dist when it has been built', () => {

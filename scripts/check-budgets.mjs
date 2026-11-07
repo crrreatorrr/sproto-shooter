@@ -19,19 +19,23 @@ export const ASPIRATION = {
   textureMaxEdge: 2048,
 };
 
-// Measured on baseline 8a5676e with zlib gzip level 6 (the size Vite prints).
+// Measured after the S4 split and texture pass. Gzip is zlib level 6.
+// Title shell is the entry chunk only. criticalTransferBytes also includes the
+// deferred game and hub chunks the title actually loads, and not the debug GUI.
 export const MEASURED = {
-  staticShipBytes: 34432594,
-  publicAssetBytes: 33289145,
-  titleShellGzipBytes: 323111,
-  criticalTransferBytes: 7170841,
-  criticalFirstPartyRequests: 16,
-  jsBytes: 1123168,
-  jsGzipBytes: 317751,
+  staticShipBytes: 23217417,
+  publicAssetBytes: 22065058,
+  decodedBytes: 229711358,
+  titleShellGzipBytes: 6669,
+  criticalTransferBytes: 3761311,
+  criticalFirstPartyRequests: 13,
+  criticalJsGzipBytes: 312547,
+  jsGzipBytes: 1311,
   cssBytes: 19514,
   cssGzipBytes: 4962,
-  htmlBytes: 767,
-  htmlGzipBytes: 398,
+  htmlBytes: 765,
+  htmlGzipBytes: 396,
+  assetBytes: 3443406,
 };
 
 export function growthCeiling(bytes) {
@@ -39,14 +43,15 @@ export function growthCeiling(bytes) {
 }
 
 export const GATE = {
-  titleShellGzipBytes: growthCeiling(MEASURED.titleShellGzipBytes),
-  staticShipBytes: growthCeiling(MEASURED.staticShipBytes),
-  // 6 MiB is missed once projectile models and the sandbox Duck Gun are counted.
-  // Gate growth at 5% of the measured transfer instead of dropping those files.
-  criticalTransferBytes: growthCeiling(MEASURED.criticalTransferBytes),
+  // Met aspirations are now the CI gates. Decoded bytes are pinned to the
+  // optimized inventory; a larger RGBA8 estimate fails.
+  titleShellGzipBytes: ASPIRATION.titleShellGzipBytes,
+  staticShipBytes: ASPIRATION.staticShipBytes,
+  criticalTransferBytes: ASPIRATION.criticalTransferBytes,
   criticalRequests: ASPIRATION.criticalRequests,
   glbBytes: ASPIRATION.glbBytes,
-  textureMaxEdge: ASPIRATION.textureMaxEdge,
+  textureMaxEdge: 1024,
+  decodedBytes: MEASURED.decodedBytes,
 };
 
 // Title boots a city sandbox. That download is the city stage, the starting MG,
@@ -54,6 +59,8 @@ export const GATE = {
 // projectile (the renderer starts those loads while it builds the pools).
 // Boss and next-wave prefetch do not run in sandbox. Google fonts are
 // third-party and stay in the waterfall, outside this first-party set.
+// Title sandbox. Projectile meshes wait until one of that kind exists, so they
+// are not part of this set. The Duck Gun pickup in front of spawn still is.
 export const CRITICAL_ASSETS = [
   'textures/stages/city/floor.jpg',
   'textures/stages/city/sky.jpg',
@@ -63,43 +70,51 @@ export const CRITICAL_ASSETS = [
   'models/guns/toy_mg.glb',
   'models/guns/toy_duckgun.glb',
   'models/characters/sproto_player.glb',
-  'models/projectiles/rubber_bullet.glb',
-  'models/projectiles/monster_bullet.glb',
-  'models/projectiles/missile.glb',
-  'models/projectiles/tyre.glb',
-  'models/projectiles/drill_head.glb',
 ];
 
 function gzipSize(buf) {
   return zlib.gzipSync(buf, { level: GZIP_LEVEL }).length;
 }
 
-function topLevelBuildFiles(dist, ext) {
-  const dir = path.join(dist, 'assets');
-  if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir)
-    .filter((name) => name.endsWith(ext) && !name.endsWith('.map'))
-    .map((name) => path.join(dir, name));
+function shellFiles(dist, ext) {
+  if (!fs.existsSync(dist)) return [];
+  return fs.readdirSync(dist)
+    .filter((name) => name.startsWith('index-') && name.endsWith(ext) && !name.endsWith('.map'))
+    .map((name) => path.join(dist, name));
+}
+
+function htmlRefs(html, kind) {
+  const re = kind === 'js'
+    ? /<script[^>]+src="([^"]+\.js)"/g
+    : /<link[^>]+href="([^"]+\.css)"/g;
+  return [...html.matchAll(re)]
+    .map((match) => match[1].replace(/^\.\//, ''))
+    .filter((name) => !name.startsWith('http'));
 }
 
 export function shellSizes(dist) {
   const htmlPath = path.join(dist, 'index.html');
   const html = fs.readFileSync(htmlPath);
-  const js = topLevelBuildFiles(dist, '.js').map((file) => fs.readFileSync(file));
-  const css = topLevelBuildFiles(dist, '.css').map((file) => fs.readFileSync(file));
+  const htmlText = html.toString('utf8');
+  const entry = htmlRefs(htmlText, 'js').map((name) => fs.readFileSync(path.join(dist, name)));
+  const css = htmlRefs(htmlText, 'css').map((name) => fs.readFileSync(path.join(dist, name)));
+  const criticalJs = shellFiles(dist, '.js').filter((file) => !path.basename(file).includes('debug-gui'));
   const htmlGzipBytes = gzipSize(html);
-  const jsGzipBytes = js.reduce((sum, buf) => sum + gzipSize(buf), 0);
+  const entryGzipBytes = entry.reduce((sum, buf) => sum + gzipSize(buf), 0);
   const cssGzipBytes = css.reduce((sum, buf) => sum + gzipSize(buf), 0);
+  const criticalJsGzipBytes = criticalJs.reduce((sum, file) => sum + gzipSize(fs.readFileSync(file)), 0);
   return {
     htmlBytes: html.length,
     cssBytes: css.reduce((sum, buf) => sum + buf.length, 0),
-    jsBytes: js.reduce((sum, buf) => sum + buf.length, 0),
+    jsBytes: entry.reduce((sum, buf) => sum + buf.length, 0),
     htmlGzipBytes,
     cssGzipBytes,
-    jsGzipBytes,
-    titleShellGzipBytes: htmlGzipBytes + cssGzipBytes + jsGzipBytes,
-    jsFiles: js.length,
+    jsGzipBytes: entryGzipBytes,
+    titleShellGzipBytes: htmlGzipBytes + cssGzipBytes + entryGzipBytes,
+    criticalJsGzipBytes,
+    jsFiles: entry.length,
     cssFiles: css.length,
+    criticalJsFiles: criticalJs.length,
   };
 }
 
@@ -113,8 +128,9 @@ export function criticalTransferBytes(dist) {
   return {
     ...shell,
     assetBytes,
-    criticalTransferBytes: shell.titleShellGzipBytes + assetBytes,
-    criticalRequests: shell.jsFiles + shell.cssFiles + 1 + CRITICAL_ASSETS.length,
+    criticalTransferBytes: shell.criticalJsGzipBytes + shell.cssGzipBytes + shell.htmlGzipBytes + assetBytes,
+    criticalJsGzipBytes: shell.criticalJsGzipBytes,
+    criticalRequests: shell.criticalJsFiles + shell.cssFiles + 1 + CRITICAL_ASSETS.length,
   };
 }
 
@@ -136,6 +152,9 @@ export function evaluate(dist) {
   const manifest = buildManifest();
   if (manifest.missing.length) {
     violations.push(violation('missing-refs', `Missing runtime refs: ${manifest.missing.join(', ')}`, manifest.missing.length, 0));
+  }
+  if (manifest.counts.decodedBytes > GATE.decodedBytes) {
+    violations.push(violation('decoded-bytes', 'Decoded RGBA8 estimate is above the optimized pin', manifest.counts.decodedBytes, GATE.decodedBytes));
   }
   for (const asset of manifest.assets) {
     if (asset.kind === 'image' && (asset.width == null || asset.height == null)) {
@@ -186,8 +205,8 @@ export function evaluate(dist) {
     violations.push(violation('critical-requests', 'Critical first-party request count is above 20', critical.criticalRequests, GATE.criticalRequests));
   }
   const shellText = [
-    ...topLevelBuildFiles(distDir, '.js'),
-    ...topLevelBuildFiles(distDir, '.css'),
+    ...shellFiles(distDir, '.js'),
+    ...shellFiles(distDir, '.css'),
     path.join(distDir, 'index.html'),
   ].map((file) => fs.readFileSync(file, 'utf8')).join('\n');
   if (shellText.includes('BEGIN PRIVATE KEY') || shellText.includes('AKIA')) {
