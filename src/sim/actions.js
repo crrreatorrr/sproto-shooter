@@ -1,7 +1,7 @@
 // UI/debug actions arrive inside commands; dispatched here. Keeps the sim the only writer of state.
 import { next } from '../core/rng.js';
 import { RES_IDS } from '../data/drops.js';
-import { SKILL_IDS, xpToNext } from '../data/skills.js';
+import { SKILL_IDS, SPELL_IDS, PERKS_BY_ID, xpToNext } from '../data/skills.js';
 import { emit } from './events.js';
 import { createEnemy, createBoss, newRunStats, nextId } from './state.js';
 import { generateGun } from './guns.js';
@@ -84,6 +84,9 @@ export const GOD_TICKETS = 999, GOD_RESOURCES = 99;
 /** God mode on: back up to at least GOD_HP (reviving if down) and stocked up on everything. Off: normal damage again. */
 export function setGodMode(state, p, on) {
   state.tuning.godMode = !!on;
+  // every spell while god mode is on; turning it off keeps only what the Magic level has earned
+  for (const id of SPELL_IDS) p.perks[id] = on || p.skills[PERKS_BY_ID[id].skill].level >= PERKS_BY_ID[id].level;
+  if (!p.perks.manaShield) p.spells.manaShieldOn = false;
   if (!on) return;
   if (p.dead || p.downed) respawn(state, p);
   p.hp = Math.max(p.hp, Math.min(GOD_HP, p.maxHp));

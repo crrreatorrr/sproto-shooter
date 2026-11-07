@@ -316,9 +316,12 @@ describe('god mode', () => {
     expect(p.downed).toBe(false);
     expect(p.tickets).toBe(999);
     for (const v of Object.values(p.resources)) expect(v).toBe(99);
+    for (const id of ['gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor']) expect(p.perks[id]).toBe(true);
     damagePlayer(s, p, { base: 500, sourceKind: 'enemy' });
     expect(p.hp).toBe(99);
     run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    expect(p.perks.gooBolt).toBe(true); // Magic Lv 1 spell stays
+    expect(p.perks.meteor).toBe(false); // god-mode-only spell locks again
     damagePlayer(s, p, { base: 500, sourceKind: 'enemy' });
     expect(p.downed).toBe(true);
     run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));

@@ -388,7 +388,8 @@ export function createUI(root, { input, bus, project, game }) {
         : id === 'manaShield' && p.spells.manaShieldOn ? '<em class="ok">ON</em>'
         : cd > 0 ? `<em class="wait">Cooldown ${cd.toFixed(1)} s</em>`
         : p.mana < cost - 0.5 ? '<em class="wait">Not enough mana</em>' : '<em class="ok">READY</em>';
-      return `<div class="power ${p.perks[id] ? '' : 'locked'}"><kbd>${sp.key}</kbd><div><b>${SPELL_ICON[id]} ${sp.name}</b> ${status}
+      const viaGod = p.perks[id] && magic < pk.level ? ' <em class="god">via god mode</em>' : '';
+      return `<div class="power ${p.perks[id] ? '' : 'locked'}"><kbd>${sp.key}</kbd><div><b>${SPELL_ICON[id]} ${sp.name}</b> ${status}${viaGod}
         <small>${pk.desc} · ${id === 'meteor' ? 'all mana' : sp.mana + ' mana'}${id === 'manaShield' ? ' + drain' : ''} · ${sp.cd}s cooldown</small></div></div>`;
     }).join('');
     const perks = PERKS.filter((k) => !SPELLS[k.id]).map((k) => `<div class="power ${p.perks[k.id] ? '' : 'locked'}"><kbd>${ICON[k.skill]}</kbd><div><b>${k.name}</b> ${p.perks[k.id] ? '<em class="ok">ACTIVE</em>' : `<em class="lock">🔒 LOCKED · needs ${SKILLS[k.skill].name} Lv ${k.level} (you're Lv ${p.skills[k.skill].level})</em>`}<small>${k.desc}</small></div></div>`).join('');

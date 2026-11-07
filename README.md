@@ -48,7 +48,7 @@ Assets load per level, not all at once (`render/assets.js` priority queue + `lev
 | LMB / RMB (hold) | Fire / aim (sniper scope) |
 | F | Aim on / off (Shift cancels it) |
 | 5 | Stats & powers panel (spells and perks show what unlocks them) |
-| P | God mode: you still get hit, but health never drops below 99 |
+| P | God mode: you still get hit but health never drops below 99; also unlocks every spell and tops up tickets, resources, ammo and medkits |
 | Shift · Space · C · Alt or V | Sprint · jump/double jump · slide · dash |
 | R · 1–4 / wheel | Reload · switch gun |
 | G | Pick up gun / open Weapon Box |
