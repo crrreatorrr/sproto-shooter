@@ -9,9 +9,12 @@ import { createFirstPerson, FP } from './firstPerson.js';
 import { colliderFor } from './gunCollider.js';
 import { createDragonRig } from './dragonRig.js';
 import { createHumanoidRig } from './humanoidRig.js';
+import { createClipLayer } from './clipLayer.js';
+import { bossClipWant } from './bossClips.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
 import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY, ensureGunModel, instantiateGun } from './assets.js';
+import { createLevelView } from './level/levelView.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const ELEM_COL = { none: 0xffe9a8, fire: 0xff7a1a, shock: 0x4fe3ff, goo: 0x9be33b };
@@ -90,6 +93,9 @@ export function createRenderer(container, bus) {
   scene.add(wall);
   const decor = new THREE.Group();
   scene.add(decor);
+  const levelView = createLevelView();
+  scene.add(levelView.group);
+  const arenaBits = [ground, outer, rim, edgeRing, wall, decor];
   let stageKey = '';
   let stageOverride = null;
 
@@ -298,6 +304,8 @@ export function createRenderer(container, bus) {
       extra.push(orb, aura, auraFill);
       Object.assign(parts, { weak: orb, aura, auraFill });
     }
+    // authored clips (walk, attacks, flight) blended over the procedural rig; see bossClips.js
+    if (ch && parts.rig) { parts.clips = createClipLayer(ch); parts.fitH = h; }
     g.userData = parts;
     return { obj: g, extra, key: viewKey(e) };
   }
@@ -977,6 +985,20 @@ export function createRenderer(container, bus) {
     needsT -= fdt;
     if (needsT <= 0) { needsT = 0.25; requestNeeds(state); }
     applyStage(stageFor(state, stageOverride));
+    const campaign = state.mode === 'campaign' && state.level;
+    for (const mesh of arenaBits) mesh.visible = !campaign;
+    levelView.group.visible = !!campaign;
+    if (campaign) {
+      levelView.sync(state);
+      if (scene.fog) {
+        const dark = state.level.modifiers && state.level.modifiers.lightsOut;
+        scene.fog.near = dark ? 4 : 30;
+        scene.fog.far = dark ? 36 : 420;
+      }
+    } else if (scene.fog && scene.fog.far > 300) {
+      scene.fog.near = 60;
+      scene.fog.far = 200;
+    }
     for (const e of state.enemies) {
       // Model-swap only when the needed stage model is loaded (avoid flicker between fallback and model).
       const v = syncView(e.id, () => (e.boss ? buildBoss(e) : buildEnemy(e)), viewKey(e));
@@ -1030,8 +1052,19 @@ export function createRenderer(container, bus) {
           ch.play(clip, { fade: 0.3, speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : clip === 'run' ? runPace : 1 });
         }
         ch.update(fdt);
+        // authored clip for this frame (bossClips.js), decided first so the procedural rig can hold still under it
+        let want = null;
+        if (u.clips && e.boss) {
+          const a = e.boss.action;
+          want = bossClipWant({ type: e.type, action: a.id, actionT: a.t, variant: a.data.variant, data: a.data, speed: spd,
+            fitHeight: u.fitH, altitude: ey, def: BOSSES[e.type], phaseIdx: e.boss.phaseIdx, durations: u.clips.durations });
+        }
         if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, speed: spd, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0,
-          variant: e.boss ? e.boss.action.data.variant : null, altitude: ey, yaw: e.yaw });
+          variant: e.boss ? e.boss.action.data.variant : null, altitude: ey, yaw: e.yaw, clipDriven: !!want });
+        if (u.clips && e.boss) {
+          const w = u.clips.apply(fdt, want);
+          if (w > 0) { if (u.rig.post) u.rig.post(w); ch.root.position.y *= 1 - w; } // the clip carries its own hip bob
+        }
       }
       if (e.boss) {
         if (e.type === 'dragon') {

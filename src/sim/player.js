@@ -38,6 +38,7 @@ export function playerMovement(state, dt) {
     const canAct = !p.downed;
     const sprinting = canAct && c.held.sprint && c.moveZ > 0 && !p.zooming;
     let maxSpeed = sprinting ? TUNING.sprintSpeed : TUNING.walkSpeed;
+    if (p.campaignSpeed) maxSpeed *= p.campaignSpeed;
     if (p.downed) maxSpeed *= TUNING.downedSpeedMult;
 
     // jump buffering
@@ -102,6 +103,14 @@ export function playerMovement(state, dt) {
 
     // gravity + integrate
     if (m.mode !== 'dash') p.vel.y -= TUNING.gravity * dt;
+    if (state.mode === 'campaign' && state.level && state.level.gravityMult !== 1 && m.mode !== 'dash') {
+      p.vel.y -= TUNING.gravity * (state.level.gravityMult - 1) * dt;
+    }
+    if (state.mode === 'campaign' && p.jetpack && c.held.jump && !p.onGround && state.level && state.level.fuel > 0) {
+      p.vel.y += 28 * dt;
+      if (p.vel.y > 12) p.vel.y = 12;
+      if (!state.level.modifiers.fuelInfinite) state.level.fuel = Math.max(0, state.level.fuel - 18 * dt);
+    }
     p.pos.x += p.vel.x * dt; p.pos.y += p.vel.y * dt; p.pos.z += p.vel.z * dt;
     const wasAir = !p.onGround;
     if (p.pos.y <= 0) {
@@ -109,8 +118,10 @@ export function playerMovement(state, dt) {
       if (p.vel.y < 0) { if (wasAir && p.vel.y < -6) emit(state, 'land', { playerId: p.id, speed: -p.vel.y }); p.vel.y = 0; }
       p.onGround = true;
     } else p.onGround = false;
-    clampToArena(p, TUNING.playerRadius);
-    pushOutOfBoxes(state, p, TUNING.playerRadius);
+    if (state.mode !== 'campaign') {
+      clampToArena(p, TUNING.playerRadius);
+      pushOutOfBoxes(state, p, TUNING.playerRadius);
+    }
   }
 }
 

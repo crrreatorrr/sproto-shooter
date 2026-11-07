@@ -8,6 +8,9 @@ import { createRenderer } from '../render/renderer.js';
 import { createAudio } from '../audio/sfx.js';
 import { createUI } from '../ui/ui.js';
 import { ENEMIES, BOSSES } from '../data/enemies.js';
+import { CAMPAIGN, getLevelData } from '../data/levels/index.js';
+import { unlockLevel, loadProfile, rememberModifier } from '../save/profile.js';
+import { restoreCheckpoint } from '../sim/campaign/campaign.js';
 import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY, zoomLevelsOf, zoomFovFor } from '../data/guns.js';
 import { SKILL_IDS } from '../data/skills.js';
 import { MAX_TIER } from '../data/waves.js';
@@ -15,7 +18,7 @@ import { MAX_TIER } from '../data/waves.js';
 const MAX_FRAME = 0.25, MAX_TICKS = 5;
 
 export class Game {
-  constructor({ seed, mode = 'title', tier = 1, debug = false, boss = null }) {
+  constructor({ seed, mode = 'title', tier = 1, debug = false, boss = null, level = null }) {
     this.bus = createEventBus();
     this.state = createGameState({ seed });
     this.paused = true;
@@ -41,7 +44,8 @@ export class Game {
     if (mode === 'waves') this.start('waves', tier);
     else if (mode === 'sandbox') this.start('sandbox', tier);
     else if (mode === 'test') this.start('test', tier);
-    else if (mode === 'boss') this.start('boss', tier, { boss: BOSSES[boss] ? boss : 'monster' });
+    else if (mode === 'boss') this.start('boss', tier, { boss: BOSSES[boss] && !BOSSES[boss].campaign ? boss : 'monster' });
+    else if (mode === 'campaign') this.start('campaign', tier, { level: level || 'L01' });
     else this.showScreen('title');
 
     this.last = performance.now();
@@ -89,6 +93,7 @@ export class Game {
   start(mode, tier = 1, extra = {}) {
     this.audio.ensure();
     if (mode === 'boss') this.lastBoss = extra.boss;
+    this._campaignShown = false;
     this.queue({ type: 'startMode', mode, tier, ...extra });
     this.hideScreen();
     this.paused = false;
@@ -109,11 +114,12 @@ export class Game {
           <button class="btn big alt" data-go="sandbox">🧪 Sandbox <small>debug spawn everything</small></button>
           <button class="btn big alt" data-go="test">🎯 Test Range <small>every gun, infinite ammo</small></button>
           <button class="btn big alt" data-go="bossSelect">👑 Boss Fight <small>pick a boss to fight</small></button>
+          <button class="btn big" data-go="campaignSelect">🗺 Campaign <small>The Great Sproto Audit</small></button>
           <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
         </div>
         ${controlsHtml()}</div>`;
     } else if (kind === 'bossSelect') {
-      const cards = Object.entries(BOSSES).map(([id, b]) => `<button class="btn boss-card" data-go="boss" data-boss="${id}" style="--c:#${b.color.toString(16).padStart(6, '0')}">
+      const cards = Object.entries(BOSSES).filter(([, b]) => !b.campaign).map(([id, b]) => `<button class="btn boss-card" data-go="boss" data-boss="${id}" style="--c:#${b.color.toString(16).padStart(6, '0')}">
           <b>${b.name}</b><small>${b.tag === 'magic' ? '🔮 Magic' : '💪 Physical'} · ${b.hp.toLocaleString()} HP</small><span>${BOSS_BLURB[id] || ''}</span></button>`).join('');
       body = `<div class="title boss-select"><h1>BOSS <span>FIGHT</span></h1>
         <p class="tag">Pick a boss. You get one of every gun with full ammo. Real damage: no god mode unless you press P.</p>
@@ -129,6 +135,30 @@ export class Game {
           <button class="btn big" data-go="boss" data-boss="${this.lastBoss}">${win ? '↻ Fight again' : '↻ Retry'}</button>
           <button class="btn" data-go="bossSelect">👑 Pick another boss</button>
           <button class="btn alt" data-go="title">Main menu</button>
+        </div></div>`;
+    } else if (kind === 'campaignSelect') {
+      const prof = loadProfile();
+      const cards = CAMPAIGN.map((id, i) => {
+        const lv = getLevelData(id);
+        const open = prof.unlocked.includes(id);
+        return `<button class="btn boss-card" data-go="campaign" data-level="${id}" ${open ? '' : 'disabled'}><b>${i + 1}. ${lv.name}</b><small>${open ? lv.stage : 'locked'} · tier ${lv.tier}</small></button>`;
+      }).join('');
+      body = `<div class="title boss-select"><h1>THE GREAT <span>SPROTO AUDIT</span></h1>
+        <p class="tag">Ten levels. Your guns stay the same. The world does not.</p>
+        <div class="boss-grid">${cards}</div>
+        <div class="menu"><button class="btn alt" data-go="title">← Back</button></div></div>`;
+    } else if (kind === 'levelClear' || kind === 'levelLost') {
+      const win = kind === 'levelClear';
+      const lv = s.level || {};
+      const idx = Math.max(0, CAMPAIGN.indexOf(lv.id));
+      const next = CAMPAIGN[idx + 1];
+      body = `<div class="end ${win ? 'victory' : 'defeat'}"><h1>${win ? 'AUDIT PASSED' : 'AUDIT FAILED'}</h1>
+        <p>${win ? `${lv.name} cleared in ${Math.round(lv.time)}s. Par ${Math.round((lv.parTime || 0) / 60)} min.` : `${lv.name} got the better of you.`}</p>
+        <div class="menu">
+          ${win && next ? `<button class="btn big" data-go="campaign" data-level="${next}">▶ Next level</button>` : ''}
+          <button class="btn" data-go="retryLevel" data-level="${lv.id}">↻ Retry</button>
+          ${kind === 'levelLost' ? `<button class="btn" data-go="checkpoint">Checkpoint</button>` : ''}
+          <button class="btn alt" data-go="campaignSelect">Level select</button>
         </div></div>`;
     } else if (kind === 'victory' || kind === 'defeat') {
       const r = s.run, win = kind === 'victory';
@@ -153,9 +183,13 @@ export class Game {
       if (!b) return;
       const go = b.dataset.go;
       if (go === 'continue') { this.hideScreen(); this.paused = false; this.input.lock(); return; }
-      if (go === 'title' || go === 'bossSelect') { this.showScreen(go); return; }
+      if (go === 'title' || go === 'bossSelect' || go === 'campaignSelect') { this.showScreen(go); return; }
+      if (go === 'checkpoint') { restoreCheckpoint(this.state); this._campaignShown = false; this.hideScreen(); this.paused = false; this.input.lock(); return; }
       const tier = b.dataset.tier ? +b.dataset.tier : +(this.screen.querySelector('#tier-sel')?.value || s.tier);
-      this.start(go, tier, go === 'boss' ? { boss: b.dataset.boss } : {});
+      const extra = {};
+      if (go === 'boss') extra.boss = b.dataset.boss;
+      if (go === 'campaign' || go === 'retryLevel') extra.level = b.dataset.level;
+      this.start(go === 'retryLevel' ? 'campaign' : go, tier, extra);
     };
   }
   hideScreen() { this.screen.hidden = true; this.screen.innerHTML = ''; }
@@ -262,6 +296,11 @@ export class Game {
       this.acc -= DT; n++;
     }
     if (n === MAX_TICKS) this.acc = 0;
+    const lv = this.state.level;
+    if (this.state.mode === 'campaign' && lv && !this._campaignShown && this.screen.hidden) {
+      if (lv.won) { this._campaignShown = true; const i = CAMPAIGN.indexOf(lv.id); if (CAMPAIGN[i + 1]) unlockLevel(CAMPAIGN[i + 1]); for (const id of Object.keys(lv.modifiers)) rememberModifier(id); this.showScreen('levelClear'); }
+      else if (lv.lost) { this._campaignShown = true; this.showScreen('levelLost'); }
+    }
     const alpha = this.acc / DT;
     const p = this.state.players[this.state.localPlayerId];
     const g = p.guns[p.activeSlot];

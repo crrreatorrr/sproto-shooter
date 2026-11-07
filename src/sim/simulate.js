@@ -8,6 +8,7 @@ import { projectiles, hazards, statusEffects, pickups, allies, cleanup, snapshot
 import { crafting } from './economy.js';
 import { progression } from './progression.js';
 import { waveDirector } from './waves.js';
+import { campaignPre, campaignPost } from './campaign/campaign.js';
 
 export const DT = 1 / 60;
 
@@ -18,6 +19,7 @@ export function simulate(state, commands, dt = DT) {
   snapshotPrev(state);
   playerInput(state, commands);
   applyActions(state, commands);
+  if (state.mode === 'campaign') campaignPre(state, dt);
   playerMovement(state, dt);
   playerCombat(state, dt);
   spells(state, dt);
@@ -33,5 +35,6 @@ export function simulate(state, commands, dt = DT) {
   pickups(state, dt);
   crafting(state, dt);
   progression(state);
+  if (state.mode === 'campaign') campaignPost(state, dt);
   cleanup(state);
 }

@@ -1,0 +1,30 @@
+---
+description: Sproto Shooter campaign (levels, level engine, Sproto Duel bosses). Use when working on campaign levels, collision/nav, mechanisms, jetpack, enemies, bosses or sections.
+globs: src/data/levels/**,src/sim/level/**,src/sim/campaign/**,src/sim/mechanisms/**,src/sim/movement/**,src/sim/ai/**,src/sim/duelBoss/**,src/sim/rewardSpells.js,src/data/duelBosses.js,src/render/level/**,src/render/cinematic/**,tests/levels/**
+alwaysApply: false
+---
+
+# Campaign rules (read the specs; this is the short version)
+
+Specs: `docs/codex/C-campaign-levels.md` (engine/systems), `docs/codex/C-level-designs.md` (10 levels),
+`docs/codex/C-bosses-sproto-duel.md` (bosses), `docs/codex/C-milestones-cursor.md` (milestones, DoD, prompts).
+Ground rules: `CODEX_PLAN.md`.
+
+1. **Gun mechanics never change.** World weapons = `generateGun({ forced: { type, quality: 'common', manufacturer: 'reliable', element: 'none' } })`.
+   Power-ups and reward spells never multiply gun damage or make bullets home.
+2. **`src/sim` and `src/data` stay pure:** no `three`, no DOM, no `Math.random`, `Date.now`, `performance.now`.
+   Use `state.rng`. Levels are plain data built with `src/data/levels/kit.js`.
+3. **Wave Mode/Sandbox stay bit-identical:** `tests/levels/baseline.test.js` hashes must not change.
+   The `arena` level keeps the old code path.
+4. **Static level data lives outside `state`** (`getLevelRuntime(level, section)`); only dynamic data goes in `state.level`.
+5. **Load timing never touches the sim.** Section transitions wait for the `transitionDone` command.
+   Only the current section (+ the next preloading) is ever in memory.
+6. **Sproto Duel bosses use the same attacks.** Copy from `~/games/sproto-duel` (`src/campaign/levels.ts`, `src/config.ts`);
+   Duel wins over the plan. Only `DUEL_DMG_K` and `DUEL_HP_K` convert. Keep the parity fixture test green.
+7. **Every new sim event** goes in `src/game/eventCoverage.js`.
+8. **File ownership:** a level PR touches only its level files/tests/cards; engine changes are separate PRs.
+9. **Fairness:** no spawns within 15 m or in view (except `placed`); lethal hazards telegraph ≥ 0.8 s; sniper lasers ≥ 1.2 s.
+10. **Budgets:** ≤ 300 visible draw calls, ≤ 1.5 M visible triangles, sim ≤ 4 ms with 40 enemies, ≤ 48 live enemies,
+    ≤ 4000 colliders per section, section switch ≤ 4 s.
+11. **Done** = `npm test`, lint, typecheck and build green + the milestone's acceptance + level artifacts (map PNGs, screenshots, validator report).
+    If the spec blocks you, stop and explain in the PR. Don't invent architecture.

@@ -1,4 +1,5 @@
 // Enemy + boss + elite definitions. Visuals reuse Sproto Duel's rigged characters (see data/stages.js MODELS).
+import { DUEL_BOSS_LIST } from './duelBosses.js';
 // Hitboxes are local: +z forward, y up, multiplied by the enemy's scale.
 export const ENEMIES = {
   // Fast melee runner that comes in swarms. Never shoots.
@@ -63,6 +64,28 @@ export const ENEMIES = {
     ],
   },
 };
+
+function dress(behavior, over) {
+  return { ...ENEMIES[behavior], ...over, behavior };
+}
+Object.assign(ENEMIES, {
+  boomMidget: dress('midget', { name: 'Boom Midget', hp: 34, color: 0xff5533 }),
+  riotMidget: dress('midget', { name: 'Riot Midget', hp: 58, speed: 5.4, color: 0x88a0c0 }),
+  sewerMidget: dress('midget', { name: 'Sewer Midget', hp: 36, color: 0x6aa84f }),
+  floretSprout: dress('midget', { name: 'Floret Sprout', hp: 48, speed: 6.2, color: 0x6adf3a }),
+  hexAcolyte: dress('obama', { name: 'Hex Acolyte', hp: 64, color: 0x3ecf8e, model: 'sahil' }),
+  glowieAgent: dress('obama', { name: 'Glowie Agent', hp: 70, color: 0x8ec8ff, model: 'sahil' }),
+  auditSniper: dress('obama', {
+    name: 'Audit Sniper', hp: 55, color: 0xc8d8ff, model: 'obama',
+    gun: { damage: 8, burst: 1, burstGap: 0.2, cooldownMin: 1.6, cooldownMax: 2.4, spread: 1.5, speed: 40, range: 48, windup: 0.35 },
+  }),
+  miningRig: dress('bigObama', { name: 'Mining Rig', hp: 140, speed: 1.4, color: 0x9aa4b2, model: 'obama' }),
+  daycare: dress('midget', { name: 'Daycare Nest', hp: 80, speed: 2.2, color: 0xffb4a2 }),
+  bitbug: dress('flyingMidget', { name: 'Bitbug', hp: 18, color: 0xb07cff, model: 'midget' }),
+  jetObama: dress('flyingMidget', { name: 'Jet Obama', hp: 55, color: 0x7fd34e, model: 'obama', stage: 2 }),
+  balloonMidget: dress('flyingMidget', { name: 'Balloon Midget', hp: 28, color: 0xff8ad4, model: 'midget' }),
+  miniTinubu: dress('midget', { name: 'Mini Tinubu', hp: 90, speed: 6.4, color: 0xff6a3d, model: 'tinubu', radius: 0.55, height: 1.8 }),
+});
 
 export const ELITE = { hpMult: 2.5, dmgMult: 1.3, speedMult: 1.1, scale: 1.25, poiseMult: 2, dropMult: 2, gunMult: 3, xpMult: 3 };
 export const AFFINITY_POOL = ['fire', 'shock', 'goo'];
@@ -178,6 +201,8 @@ export const BOSSES = {
     ],
   },
 };
+
+for (const b of DUEL_BOSS_LIST) BOSSES[b.id] = b;
 
 export const ALLY = { ttl: 8, speed: 7, damage: 30, splashRadius: 2, fireCd: 0.8, range: 14 };
 
