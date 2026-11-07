@@ -1,4 +1,4 @@
-// Boot: URL params ?seed=123&mode=waves|sandbox&tier=3&debug=1
+// Boot: URL params ?seed=123&mode=waves|sandbox&tier=3&debug=1&stats=1
 import { Game } from './game/Game.js';
 
 const q = new URLSearchParams(location.search);
@@ -7,4 +7,5 @@ new Game({
   mode: q.get('mode') || 'title',
   tier: Math.max(1, Math.min(10, Number(q.get('tier')) || 1)),
   debug: q.get('debug') === '1',
+  stats: q.get('stats') === '1',
 });

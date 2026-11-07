@@ -13,10 +13,41 @@ const ELEM_COL = { none: 0xffe9a8, fire: 0xff7a1a, shock: 0x4fe3ff, goo: 0x9be33
 
 export function createRenderer(container, bus) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  renderer.info.autoReset = false;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   container.appendChild(renderer.domElement);
+
+  // One timer query in flight. The result lands a frame or two later; disjoint results are dropped.
+  const gl = /** @type {WebGL2RenderingContext} */ (renderer.getContext());
+  const timerExt = /** @type {any} */ (gl.getExtension('EXT_disjoint_timer_query_webgl2'));
+  /** @type {{ q: WebGLQuery, open: boolean }[]} */
+  const gpuQueue = [];
+  let gpuMs = /** @type {number | null} */ (null);
+  function beginGpu() {
+    if (!timerExt || gpuQueue.some((q) => q.open)) return;
+    if (gl.getParameter(timerExt.GPU_DISJOINT_EXT)) return;
+    const q = gl.createQuery();
+    if (!q) return;
+    gl.beginQuery(timerExt.TIME_ELAPSED_EXT, q);
+    gpuQueue.push({ q, open: true });
+  }
+  function endGpu() {
+    const top = gpuQueue[gpuQueue.length - 1];
+    if (!timerExt || !top || !top.open) return;
+    gl.endQuery(timerExt.TIME_ELAPSED_EXT);
+    top.open = false;
+  }
+  function pollGpu() {
+    if (!timerExt) return;
+    const disjoint = gl.getParameter(timerExt.GPU_DISJOINT_EXT);
+    while (gpuQueue.length && !gpuQueue[0].open && gl.getQueryParameter(gpuQueue[0].q, gl.QUERY_RESULT_AVAILABLE)) {
+      const item = gpuQueue.shift();
+      if (item && !disjoint) gpuMs = gl.getQueryParameter(item.q, gl.QUERY_RESULT) / 1e6;
+      if (item) gl.deleteQuery(item.q);
+    }
+  }
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x2a1b4a);
@@ -579,7 +610,17 @@ export function createRenderer(container, bus) {
   const _hb = [];
   let lastNow = performance.now();
 
+  function liveFx() {
+    let n = booms.length;
+    for (let i = 0; i < CONF_N; i++) if (cl[i] > 0) n++;
+    for (let i = 0; i < tracers.length; i++) if (tracers[i].life > 0) n++;
+    return n;
+  }
+
   function render(state, alpha, look, opts = {}) {
+    renderer.info.reset();
+    pollGpu();
+    beginGpu();
     const now = performance.now();
     const fdt = Math.min(0.05, (now - lastNow) / 1000);
     lastNow = now;
@@ -826,6 +867,7 @@ export function createRenderer(container, bus) {
     }
 
     renderer.render(scene, camera);
+    endGpu();
   }
 
   const _v = new THREE.Vector3();
@@ -848,5 +890,21 @@ export function createRenderer(container, bus) {
     setStage(id) { stageOverride = id || null; },
     pendingDownloads,
     info: () => renderer.info,
+    counts() {
+      const info = renderer.info;
+      return {
+        drawCalls: info.render.calls,
+        triangles: info.render.triangles,
+        programs: info.programs.length,
+        textures: info.memory.textures,
+        geometries: info.memory.geometries,
+      };
+    },
+    liveFx,
+    renderScale() {
+      const dpr = window.devicePixelRatio || 1;
+      return renderer.getPixelRatio() / dpr;
+    },
+    takeGpuMs() { return gpuMs; },
   };
 }
