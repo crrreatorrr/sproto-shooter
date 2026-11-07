@@ -551,9 +551,9 @@ export function createRenderer(container, bus) {
     // [x, y, depth] with x/y in screen fractions (-1 left/bottom … 1 right/top) and depth in metres. The gun
     // is aimed from back to tip and slid so its muzzle sits on the tip. Zooming swings the tip to `zoomTip`
     // around the back (the shoulder), so the gun only tilts; its size never changes.
-    // sniper (Halo-style): tip just right of and below the center, the gun running back to the bottom-right
-    // corner; zoomed, the tip moves to just lower-right of the crosshair
-    sniper: { len: 1.15, place: { tip: [0.08, -0.12, 0.8], back: [1.0, -0.78, 0.25], zoomTip: [0.04, -0.06, 0.8], roll: 0, zoomRoll: -0.06 }, scale: 1 },
+    // sniper: same rules as the machine gun and shotgun; aiming centers it low enough that the scope on top
+    // stays below the crosshair
+    sniper: { rest: [0.2, -0.17, -0.5], ads: [0, -0.26, -0.5], yaw: 0.06, roll: -0.03, scale: 1 },
     // bazooka on the right shoulder: big tube from the right edge pointing in toward the center
     bazooka: { place: { tip: [0.2, -0.08, 1.15], back: [1.05, -0.55, 0.3], zoomTip: [0.09, -0.07, 1.15], roll: 0, zoomRoll: -0.04 }, scale: 1 },
   };
