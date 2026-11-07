@@ -328,6 +328,30 @@ describe('god mode', () => {
     expect(p.downed).toBe(false);
     expect(p.hp).toBeGreaterThanOrEqual(99);
   });
+  it('keeps mana full so spells can be cast back to back (cooldowns still apply)', () => {
+    const s = createGameState({ seed: 6 });
+    const p = s.players[s.localPlayerId];
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    run(s, 1, () => cmd({ pressed: { swarm: true } }));
+    expect(s.allies.length).toBeGreaterThan(0);
+    expect(p.mana).toBe(p.maxMana);
+    run(s, 1, () => cmd({ pressed: { meteor: true } }));
+    expect(p.spells.cd.meteor).toBeGreaterThan(0);
+    expect(p.mana).toBe(p.maxMana);
+  });
+  it('gives every gun endless spare ammo, still with reloads', () => {
+    const s = createGameState({ seed: 8 });
+    const p = s.players[s.localPlayerId];
+    const sn = generateGun({ seed: 3, level: 1, forced: { type: 'sniper', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    sn.id = 999; p.guns[1] = sn; p.activeSlot = 1; p.ammo.sniper = 0; sn.ammoInMag = 0;
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    p.ammo.sniper = 0; // god mode tops ammo up; empty it again to prove the reserve isn't used
+    run(s, 1, () => cmd({ pressed: { reload: true } }));
+    expect(p.reloadT).toBeGreaterThan(0);
+    run(s, 4 * 60, () => cmd());
+    expect(sn.ammoInMag).toBe(sn.stats.magSize);
+    expect(p.ammo.sniper).toBe(0);
+  });
   it('is on in the Test Range and off again after leaving it', () => {
     const s = createGameState({ seed: 4 });
     run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'test', tier: 1 }] }));

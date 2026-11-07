@@ -128,7 +128,7 @@ function switchSlot(state, p, slot) {
 
 function startReload(state, p, g) {
   if (p.reloadT > 0 || g.ammoInMag >= g.stats.magSize) return;
-  const free = state.tuning.infiniteAmmo || hasInfiniteReserve(g);
+  const free = state.tuning.infiniteAmmo || state.tuning.godMode || hasInfiniteReserve(g); // god mode: every gun has endless spare ammo
   if (!free && p.ammo[g.ammoType] <= 0) { emit(state, 'ammoEmpty', { playerId: p.id }); return; }
   const st = effectiveGunStats(g, p);
   p.reloadT = st.reloadTime;
@@ -147,7 +147,7 @@ function startReload(state, p, g) {
 
 function finishReload(state, p, g) {
   const need = g.stats.magSize - g.ammoInMag;
-  const free = state.tuning.infiniteAmmo || hasInfiniteReserve(g);
+  const free = state.tuning.infiniteAmmo || state.tuning.godMode || hasInfiniteReserve(g); // god mode: every gun has endless spare ammo
   const take = free ? need : Math.min(need, p.ammo[g.ammoType]);
   if (!free) p.ammo[g.ammoType] -= take;
   g.ammoInMag += take;
@@ -319,6 +319,7 @@ export function playerVitals(state, dt) {
     } else if (!inAura) {
       p.mana = Math.min(p.maxMana, p.mana + (TUNING.manaRegen + (p.skills.magic.level - 1)) * dt);
     }
+    if (state.tuning.godMode) p.mana = p.maxMana; // god mode: infinite mana (spell cooldowns still apply)
     if (p.inAuraT > 0) p.inAuraT -= dt;
   }
 }

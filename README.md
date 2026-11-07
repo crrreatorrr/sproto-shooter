@@ -49,7 +49,7 @@ Assets load per level, not all at once (`render/assets.js` priority queue + `lev
 | F | Aim on / off (Shift cancels it). Sniper: zoom 1 → zoom 2 (3× stronger) → off |
 | Wheel while zoomed | Sniper: switch between zoom 1 and zoom 2 (instead of switching guns) |
 | 5 | Stats & powers panel (spells and perks show what unlocks them) |
-| P | God mode: you still get hit but health never drops below 99; also unlocks every spell and tops up tickets, resources, ammo and medkits |
+| P | God mode: you still get hit but health never drops below 99; also unlocks every spell, gives infinite mana and endless spare ammo for every gun (you still reload), and tops up tickets, resources and medkits |
 | Shift · Space · C · Alt or V | Sprint · jump/double jump · slide · dash |
 | R · 1–4 / wheel | Reload · switch gun |
 | G | Pick up gun / open Weapon Box |

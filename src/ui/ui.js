@@ -368,7 +368,7 @@ export function createUI(root, { input, bus, project, game }) {
     const row = (k, v) => `<div class="srow"><span>${k}</span><b>${v}</b></div>`;
     const dr = Math.round(3 * (p.skills.health.level - 1));
     const ammo = Object.keys(p.ammoCap).map((t) => {
-      const inf = s.tuning.infiniteAmmo || p.guns.some((x) => x && x.ammoType === t && hasInfiniteReserve(x));
+      const inf = s.tuning.infiniteAmmo || s.tuning.godMode || p.guns.some((x) => x && x.ammoType === t && hasInfiniteReserve(x));
       return row(`Ammo · ${t}`, inf ? '∞' : `${p.ammo[t]} / ${p.ammoCap[t]}`);
     }).join('');
     const gunRows = g ? row('Gun', `<span style="color:${QUALITIES_BY_ID[g.quality].color}">${g.name}</span>`) + row('Damage', g.stats.pellets > 1 ? `${Math.round(g.stats.damage)} × ${g.stats.pellets}` : Math.round(g.stats.damage))
@@ -436,7 +436,7 @@ export function createUI(root, { input, bus, project, game }) {
       const q = QUALITIES_BY_ID[g.quality];
       html(els.gunName, 'gn', `<span style="color:${q.color}">${g.name}</span>${g.element !== 'none' ? ` <i style="color:${ELEMENTS_BY_ID[g.element].color}">●</i>` : ''}`);
       text(els.mag, 'mag', p.reloadT > 0 ? `RELOAD ${p.reloadT.toFixed(1)}s` : String(g.ammoInMag));
-      text(els.reserve, 'res', s.tuning.infiniteAmmo || hasInfiniteReserve(g) ? '/ ∞' : `/ ${p.ammo[g.ammoType]}`);
+      text(els.reserve, 'res', s.tuning.infiniteAmmo || s.tuning.godMode || hasInfiniteReserve(g) ? '/ ∞' : `/ ${p.ammo[g.ammoType]}`);
       set(els.mag, 'magLow', g.ammoInMag <= Math.max(1, g.stats.magSize * 0.2), (e, v) => e.classList.toggle('low', v));
     }
     const slotsKey = p.guns.map((x) => (x ? x.id + x.quality : '-')).join(',') + p.activeSlot + p.unlockedSlots;
