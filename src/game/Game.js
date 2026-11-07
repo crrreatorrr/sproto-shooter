@@ -79,6 +79,7 @@ export class Game {
     inp.on('key', (e) => {
       if (e.code === 'Backquote') this.toggleDebug();
       if (e.code === 'KeyM') this.audio.toggleMute();
+      if (e.code === 'KeyP' && !e.repeat && !this.ui.menuOpen) this.queue({ type: 'debug', op: 'toggleGod' });
       if (e.code === 'Enter' && this.state.wave && this.state.wave.phase === 'intermission' && !this.ui.menuOpen) this._skip = true;
     });
   }
@@ -186,7 +187,10 @@ export class Game {
     pl.add(d, 'skill', SKILL_IDS); pl.add({ go: () => q('levelSkill', { skill: d.skill }) }, 'go').name('Level up skill');
     pl.add({ go: () => q('maxSkills') }, 'go').name('Max all skills');
     pl.add({ go: () => q('heal') }, 'go').name('Heal / revive');
-    pl.add(d, 'god').name('God mode').onChange((v) => q('setTuning', { key: 'godMode', value: v }));
+    // reads the live setting so the P key and the Test Range stay in sync with the checkbox
+    const god = {};
+    Object.defineProperty(god, 'on', { get: () => this.state.tuning.godMode, set: (v) => q('setTuning', { key: 'godMode', value: v }) });
+    pl.add(god, 'on').name('God mode [P]').listen();
     pl.add(d, 'infAmmo').name('Infinite ammo').onChange((v) => q('setTuning', { key: 'infiniteAmmo', value: v }));
     pl.add(d, 'unlock').name('Unlock all recipes').onChange((v) => q('setTuning', { key: 'unlockAllRecipes', value: v }));
     const w = gui.addFolder('World & tuning');
@@ -251,6 +255,6 @@ function controlsHtml() {
     ${k('WASD', 'Move')}${k('Mouse', 'Look · LMB fire · RMB hold to aim')}${k('F', 'Aim on / off')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
     ${k('C', 'Slide (Ctrl works, but Ctrl+W closes the tab!)')}${k('Alt / V', 'Dash')}${k('R', 'Reload')}${k('1-4 / Wheel', 'Switch gun')}
     ${k('G', 'Pick up gun · open Weapon Box')}${k('H', 'Use medkit')}${k('Q E Z X T', 'Spells (unlock with Magic XP)')}
-    ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('Enter', 'Ready / skip break')}${k('`', 'Debug panel')}${k('M', 'Mute')}
+    ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('Enter', 'Ready / skip break')}${k('`', 'Debug panel')}${k('M', 'Mute')}${k('P', 'God mode (health stays at 99)')}
   </div>`;
 }

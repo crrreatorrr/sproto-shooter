@@ -153,8 +153,11 @@ export function revivePlayer(state, p) {
   emit(state, 'playerRevived', { playerId: p.id });
 }
 
+/** God mode: hits still land (shake, flash, shield and health drop) but health never goes below this. */
+export const GOD_HP = 99;
+
 export function damagePlayer(state, p, hit) {
-  if (state.tuning.godMode || p.invulnT > 0 || p.dead) return 0;
+  if (p.invulnT > 0 || p.dead) return 0;
   let dmg = hit.base * (hit.sourceKind === 'self' ? 1 : state.tuning.enemyDmgMult);
   dmg *= 1 - 0.03 * (p.skills.health.level - 1);
   let absorbed = 0;
@@ -169,6 +172,7 @@ export function damagePlayer(state, p, hit) {
   dmg -= toShield;
   if (toShield > 0 && p.shield <= 0.01) emit(state, 'shieldBroken', { playerId: p.id });
   let toHealth = dmg;
+  if (state.tuning.godMode) toHealth = Math.max(0, Math.min(toHealth, p.hp - Math.min(GOD_HP, p.maxHp)));
   if (p.hp - toHealth <= 0) {
     if (p.perks.unkillable && !p.unkillableUsed && !p.downed) {
       p.unkillableUsed = true; toHealth = p.hp - 1; p.invulnT = 3;

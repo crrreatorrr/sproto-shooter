@@ -303,3 +303,31 @@ describe('test range', () => {
     expect(s.tuning.infiniteAmmo).toBe(false);
   });
 });
+
+describe('god mode', () => {
+  it('hits still land but health never drops below 99, and P-style toggling revives', () => {
+    const s = createGameState({ seed: 3 });
+    const p = s.players[s.localPlayerId];
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    expect(s.tuning.godMode).toBe(true);
+    const dealt = damagePlayer(s, p, { base: 500, sourceKind: 'enemy' });
+    expect(dealt).toBeGreaterThan(0); // shield and the 1 HP above the floor still take the hit
+    expect(p.hp).toBe(99);
+    expect(p.downed).toBe(false);
+    damagePlayer(s, p, { base: 500, sourceKind: 'enemy' });
+    expect(p.hp).toBe(99);
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    damagePlayer(s, p, { base: 500, sourceKind: 'enemy' });
+    expect(p.downed).toBe(true);
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    expect(p.downed).toBe(false);
+    expect(p.hp).toBeGreaterThanOrEqual(99);
+  });
+  it('is on in the Test Range and off again after leaving it', () => {
+    const s = createGameState({ seed: 4 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'test', tier: 1 }] }));
+    expect(s.tuning.godMode).toBe(true);
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
+    expect(s.tuning.godMode).toBe(false);
+  });
+});

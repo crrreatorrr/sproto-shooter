@@ -7,7 +7,7 @@ import { createEnemy, createBoss, newRunStats, nextId } from './state.js';
 import { generateGun } from './guns.js';
 import { spawnGunPickup, rollGunType, rollQuality } from './drops.js';
 import { addXp, applySkillPassives } from './progression.js';
-import { onEnemyKilled } from './combat.js';
+import { onEnemyKilled, GOD_HP } from './combat.js';
 import { respawn } from './player.js';
 import { startWaves } from './waves.js';
 import { TUNING } from '../data/tuning.js';
@@ -50,7 +50,7 @@ export function startMode(state, p, mode, tier = 1) {
   p.hp = p.maxHp; p.shield = p.maxShield; p.mana = p.maxMana;
   p.pos = { x: 0, y: 0, z: 8 }; p.prevPos = { ...p.pos }; p.vel = { x: 0, y: 0, z: 0 };
   // leaving the test range takes its free loadout and infinite ammo back
-  if (state.testMode && mode !== 'test') { resetLoadout(state, p); state.tuning.infiniteAmmo = false; }
+  if (state.testMode && mode !== 'test') { resetLoadout(state, p); state.tuning.infiniteAmmo = false; setGodMode(state, p, false); }
   state.testMode = mode === 'test';
   if (mode === 'waves') {
     startWaves(state, tier);
@@ -74,7 +74,16 @@ function giveTestLoadout(state, p) {
   p.activeSlot = 0; p.reloadT = 0; p.swapT = 0;
   for (const k of Object.keys(p.ammoCap)) p.ammo[k] = p.ammoCap[k];
   state.tuning.infiniteAmmo = true;
+  setGodMode(state, p, true);
   debugOp(state, p, 'spawnDummies', {});
+}
+
+/** God mode on: back up to at least GOD_HP (reviving if down). Off: normal damage again. */
+export function setGodMode(state, p, on) {
+  state.tuning.godMode = !!on;
+  if (!on) return;
+  if (p.dead || p.downed) respawn(state, p);
+  p.hp = Math.max(p.hp, Math.min(GOD_HP, p.maxHp));
 }
 
 function resetLoadout(state, p) {
@@ -139,7 +148,8 @@ export function debugOp(state, p, op, args) {
     case 'setTier': state.tier = Math.max(1, Math.min(10, args.tier | 0)); break;
     case 'refillAmmo': for (const k of Object.keys(p.ammo)) p.ammo[k] = p.ammoCap[k]; for (const g of p.guns) if (g) g.ammoInMag = g.stats.magSize; break;
     case 'heal': p.hp = p.maxHp; p.shield = p.maxShield; p.mana = p.maxMana; if (p.dead || p.downed) respawn(state, p); break;
-    case 'setTuning': state.tuning[args.key] = args.value; break;
+    case 'setTuning': if (args.key === 'godMode') setGodMode(state, p, args.value); else state.tuning[args.key] = args.value; break;
+    case 'toggleGod': setGodMode(state, p, !state.tuning.godMode); break;
     case 'setGunStat': { const g = p.guns[p.activeSlot]; if (g && args.key in g.stats) g.stats[args.key] = args.value; break; }
     case 'skipWave': if (state.wave) { for (const e of state.enemies) if (!e.dead) { e.lastHit = { sourceId: p.id, sourceKind: 'gun' }; onEnemyKilled(state, e); } state.wave.spawnQueue = []; state.wave.groupIdx = 99; } break;
   }

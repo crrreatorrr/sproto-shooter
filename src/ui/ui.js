@@ -419,6 +419,7 @@ export function createUI(root, { input, bus, project, game }) {
       const phaseTxt = { pre: 'Get ready…', combat: `Enemies left: ${left + remainingGroups}`, bossIntro: 'BOSS INCOMING', boss: 'BOSS FIGHT', cleared: 'Cleared!', intermission: `Intermission ${Math.ceil(w.intermissionT)}s · [B] Shop · [Enter] Ready`, victory: 'VICTORY', defeat: 'DEFEAT' }[w.phase];
       wave = `<b>WAVE ${w.index + 1}/3</b> · Tier ${s.tier} · ${phaseTxt}`;
     }
+    if (s.tuning.godMode) wave += ' · <b class="god">GOD MODE</b>';
     const pend = game.renderer && game.renderer.pendingDownloads ? game.renderer.pendingDownloads() : 0;
     if (pend > 0) wave += ` <small class="loading">⏳ loading ${pend}</small>`;
     html(els.wave, 'wave', wave);

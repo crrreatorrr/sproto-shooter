@@ -20,7 +20,7 @@ URL params: `?mode=waves|sandbox|test&tier=1-10&seed=123&debug=1`
 | Area | Details |
 |---|---|
 | Arena & stages | 90 m circle, 16 spawn points, 2 Weapon Boxes. Sproto Duel stages wrap it: wave 1 Los Angeles, wave 2 Ashen Caldera, wave 3 The Void, sandbox Aurora Glacier (sky, floor, stone, pillar and prop models) |
-| Modes | **Wave Mode**: 3 waves (20 / 33 / 50 enemies, mostly midget swarms), Mega Tinubu ends wave 2, Mega Tinubu + Hex Sahil together end wave 3, 15 s shop break between waves, victory leads to the next tier (1–10). **Sandbox**: spawn anything from the debug panel. **Test Range** (`?mode=test`): the sandbox with every gun type in slots 1–4, infinite ammo and target dummies; starting Wave Mode afterwards resets you to the starting gun |
+| Modes | **Wave Mode**: 3 waves (20 / 33 / 50 enemies, mostly midget swarms), Mega Tinubu ends wave 2, Mega Tinubu + Hex Sahil together end wave 3, 15 s shop break between waves, victory leads to the next tier (1–10). **Sandbox**: spawn anything from the debug panel. **Test Range** (`?mode=test`): the sandbox with every gun type in slots 1–4, infinite ammo, god mode and target dummies; starting Wave Mode afterwards resets you to the starting gun |
 | Guns | 4 types with drop rarity: Machine Gun (common ~60%), Shotgun (rare ~17%), Sniper (rare ~17%), Bazooka (very rare ~6%). Separate quality roll Common→Legendary, 4 manufacturers, 12 parts, 3 elements (Fire burn, Shock chain, Goo slow). Legendaries get a wacky perk: rubber-duck bullets, yeet reload, every-10th mega bullet, mini Sproto buddies, confetti kills, big-head mode |
 | Enemies | **Midget**: fast melee runner that never shoots and comes in big swarms. **Bitcoin Obama**: keeps distance, strafes and fires 3-round bitcoin bursts (about 1 shot/s, 4.5° spread, 30 m/s, so you can dodge; your MG does 10 shots/s). **Flying Midget** (Midget stage 3 + propeller beanie, from wave 2): fast and erratic, circles you 3–6 m up and peppers you with tiny 2-damage pellets; 30 HP but hard to hit. **Big Bitcoin Obama**: heavy with a front shield, ground pound and a sloppy 6-round hose; hit the back battery. Models use Sproto Duel's stage 1/2/3 versions: elites and tier 4+ step up a stage. Elites wear a crown, have ×2.5 HP and drop double. Headshots = **BONK** |
 | Bosses | Each phase swaps to the next Sproto Duel stage model. **Mega Tinubu** (Physical, 3 phases): bitcoin volleys, charge (stuns itself on the wall, exposing a belly weak spot), jump-over shockwaves, summons midget swarms. **Hex Sahil** (Magic, 3 phases): floating caster with bullet-hell orbs, homing tax bolts, teleports, an orbiting weak spot and a mana-draining aura |
@@ -47,6 +47,7 @@ Assets load per level, not all at once (`render/assets.js` priority queue + `lev
 | WASD / Mouse | Move / aim (click the game to lock the mouse) |
 | LMB / RMB (hold) | Fire / aim (sniper scope) |
 | F | Aim on / off (Shift cancels it) |
+| P | God mode: you still get hit, but health never drops below 99 |
 | Shift · Space · C · Alt or V | Sprint · jump/double jump · slide · dash |
 | R · 1–4 / wheel | Reload · switch gun |
 | G | Pick up gun / open Weapon Box |
