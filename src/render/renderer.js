@@ -547,7 +547,20 @@ export function createRenderer(container, bus) {
     model: { rest: [0.2, -0.17, -0.5], ads: [0, -0.27, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
     // slim shotgun sits a little higher; its barrel is the top of the model, so aiming can stay close to center
     shotgun: { rest: [0.19, -0.15, -0.5], ads: [0, -0.16, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
+    // sniper: zooming doesn't move or resize the gun; it only tilts it about its own center until the barrel
+    // tip sits exactly on the screen center (the crosshair), then cants it by `roll` around the center→tip line
+    sniper: { rest: [0.2, -0.17, -0.5], tilt: { roll: -0.2 }, yaw: 0.06, roll: -0.03, scale: 1 },
   };
+  const _tq = new THREE.Quaternion(), _te = new THREE.Euler(), _tA = new THREE.Vector3(), _tB = new THREE.Vector3();
+  /** Rotation (quaternion) that, with the gun at its rest position, puts its muzzle on the view axis. */
+  function tiltQuaternion(pose, muzzle) {
+    const [x, y, z] = pose.rest;
+    const reach = muzzle.lengthSq() - x * x - y * y; // how far down the view axis the tip can land
+    _tB.set(-x, -y, -Math.sqrt(Math.max(1e-4, reach))).normalize();
+    _tA.copy(muzzle).normalize();
+    const q = new THREE.Quaternion().setFromUnitVectors(_tA, _tB);
+    return q.premultiply(_tq.setFromAxisAngle(_tB, pose.tilt.roll));
+  }
   const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, reload: 0, swap: 0, lastYaw: 0, lastPitch: 0 };
 
   // ---------- camera feel ----------
@@ -674,15 +687,24 @@ export function createRenderer(container, bus) {
     vm.swayY = lerp(vm.swayY, Math.max(-0.05, Math.min(0.05, dpitch * 0.6)), Math.min(1, fdt * 10));
     const ads = p.zooming ? 1 : 0;
     vm.ads = lerp(vm.ads || 0, ads, Math.min(1, fdt * 14));
-    const scoped = p.zooming && gun && gun.type === 'sniper';
-    vmRoot.visible = !p.dead && !scoped;
+    vmRoot.visible = !p.dead;
     if (vmGun) {
       const rl = vm.reload, pose = vmGun.userData.pose, ia = 1 - vm.ads;
+      const ad = pose.tilt ? pose.rest : pose.ads;
+      // less sway and bob while aiming; none at full aim for a tilted gun so its tip stays on the crosshair
+      const steady = 1 - (pose.tilt ? 1 : 0.75) * vm.ads;
       vmGun.position.set(
-        lerp(pose.rest[0], pose.ads[0], vm.ads) + vm.swayX,
-        lerp(pose.rest[1], pose.ads[1], vm.ads) - vm.swayY - rl * 0.1 - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006,
-        lerp(pose.rest[2], pose.ads[2], vm.ads) + vm.kick * 0.05);
-      vmGun.rotation.set(vm.kick * 0.25 + rl * 0.6 * (0.5 + 0.5 * Math.sin(now * 0.01)), pose.yaw * ia + vm.swayX, pose.roll * ia + rl * 0.4);
+        lerp(pose.rest[0], ad[0], vm.ads) + vm.swayX * steady,
+        lerp(pose.rest[1], ad[1], vm.ads) - vm.swayY * steady - rl * 0.1 - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006 * steady,
+        lerp(pose.rest[2], ad[2], vm.ads) + vm.kick * 0.05);
+      const kickX = vm.kick * 0.25 + rl * 0.6 * (0.5 + 0.5 * Math.sin(now * 0.01));
+      if (pose.tilt) {
+        const tilt = vmGun.userData.tiltQ ||= tiltQuaternion(pose, vmGun.userData.muzzle);
+        vmGun.quaternion.setFromEuler(_te.set(0, pose.yaw, pose.roll)).slerp(tilt, vm.ads)
+          .multiply(_tq.setFromEuler(_te.set(kickX, vm.swayX * steady, rl * 0.4)));
+      } else {
+        vmGun.rotation.set(kickX, pose.yaw * ia + vm.swayX * steady, pose.roll * ia + rl * 0.4);
+      }
       vmGun.updateMatrix();
       muzzleFlash.position.copy(vmGun.userData.muzzle).applyMatrix4(vmGun.matrix);
     }
@@ -888,9 +910,13 @@ export function createRenderer(container, bus) {
     scene.background = null;
     renderer.autoClear = false;
     renderer.clearDepth();
+    // the gun is drawn at the base field of view, so zooming magnifies the world but not the gun
+    const worldFov = camera.fov;
+    camera.fov = TUNING.fovBase; camera.updateProjectionMatrix();
     camera.layers.set(VM_LAYER);
     renderer.render(scene, camera);
     camera.layers.set(0);
+    camera.fov = worldFov; camera.updateProjectionMatrix();
     renderer.autoClear = true;
     scene.background = bg;
   }

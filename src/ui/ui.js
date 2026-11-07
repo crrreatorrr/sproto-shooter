@@ -476,9 +476,8 @@ export function createUI(root, { input, bus, project, game }) {
       const px = Math.round(6 + sp * 7 + p.recoil.heat * 6);
       set(els.cross, 'xh', px, (e, v) => e.style.setProperty('--gap', v + 'px'));
     }
-    const scoped = p.zooming && g && g.type === 'sniper';
-    // no scope overlay: the zoomed view fills the screen, and the crosshair hides while scoped
-    set(els.cross, 'xhv', scoped || p.dead, (e, v) => e.classList.toggle('hidden', v));
+    // no scope overlay: the zoomed view fills the screen with the gun and the white crosshair still showing
+    set(els.cross, 'xhv', p.dead, (e, v) => e.classList.toggle('hidden', v));
 
     // downed
     set(els.downed, 'down', p.downed, (e, v) => e.classList.toggle('on', v));
