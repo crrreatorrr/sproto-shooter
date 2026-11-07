@@ -4,46 +4,103 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { CHARACTER_MODELS, rotationForModelPath, stageAssets } from '../data/stages.js';
+import { createLoadControl } from './loadControl.js';
 
 const BASE = `${import.meta.env.BASE_URL}assets/`;
 const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const texLoader = new THREE.TextureLoader();
 
-const models = new Map(); // path -> template {root, clips, height} | null
-
 // ---- download queue: 'now' (needed this level) before 'later' (prefetch); a few at a time ----
 const NOW = 0, LATER = 1;
 const MAX_PARALLEL = 4;
-const queue = []; // {path, start, prio, resolve}
-let active = 0, activeNow = 0;
-const requested = new Set(); // every path ever requested, for diagnostics
+// Two stages plus the viewmodel fit under this. Anything outside the demand set is dropped.
+const RESIDENT_CAP = 96 * 1024 * 1024;
+const control = createLoadControl({ maxParallel: MAX_PARALLEL, capBytes: RESIDENT_CAP, now: NOW, later: LATER });
+const starters = new Map();
+
+const requested = new Set();
 function schedule(path, start, prio) {
   requested.add(path);
-  return new Promise((resolve) => { queue.push({ path, start, prio, resolve }); pump(); });
+  starters.set(path, start);
+  return control.schedule(path, start, prio);
 }
-function pump() {
-  while (active < MAX_PARALLEL && queue.length) {
-    queue.sort((a, b) => a.prio - b.prio);
-    // background prefetch never competes with something the current level needs
-    if (queue[0].prio === LATER && activeNow > 0) break;
-    const job = queue.shift();
-    const urgent = job.prio === NOW;
-    active++; if (urgent) activeNow++;
-    job.start().then(job.resolve, job.resolve).finally(() => { active--; if (urgent) activeNow--; pump(); });
-  }
-}
-function promote(path) { for (const q of queue) if (q.path === path) q.prio = NOW; pump(); }
+function promote(path) { control.promote(path); }
 /** Downloads waiting or in flight (for the HUD's loading hint). */
-export const pendingDownloads = () => queue.length + active;
+export const pendingDownloads = () => control.pendingDownloads();
 export const requestedPaths = () => [...requested];
-const textures = new Map(); // path -> texture | null
-const jobs = new Map();
 let version = 0;
 const listeners = [];
 
 export const assetsVersion = () => version;
 export const onAssetsChanged = (fn) => listeners.push(fn);
 const bump = () => { version++; listeners.forEach((f) => f(version)); };
+
+const TEX_KEYS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap'];
+
+function estimateDecoded(root) {
+  let n = 0;
+  const seen = new Set();
+  if (!root || !root.traverse) return n;
+  root.traverse((o) => {
+    if (o.geometry && !seen.has(o.geometry)) {
+      seen.add(o.geometry);
+      for (const attr of Object.values(o.geometry.attributes)) n += attr.array?.byteLength || 0;
+      if (o.geometry.index) n += o.geometry.index.array?.byteLength || 0;
+    }
+    for (const m of o.material ? [].concat(o.material) : []) {
+      for (const key of TEX_KEYS) {
+        const tex = m[key];
+        if (!tex || seen.has(tex)) continue;
+        seen.add(tex);
+        const img = tex.image;
+        const w = img?.width || img?.videoWidth || 0;
+        const h = img?.height || img?.videoHeight || 0;
+        n += w * h * 4;
+      }
+    }
+  });
+  return n;
+}
+
+function disposeTemplate(t) {
+  if (!t) return;
+  if (t.isTexture) { t.dispose(); return; }
+  const root = t.root || t.scene;
+  if (!root || !root.traverse) return;
+  const geos = new Set();
+  const mats = new Set();
+  const texs = new Set();
+  root.traverse((o) => {
+    if (o.geometry) geos.add(o.geometry);
+    for (const m of o.material ? [].concat(o.material) : []) {
+      mats.add(m);
+      for (const key of TEX_KEYS) if (m[key]) texs.add(m[key]);
+    }
+  });
+  for (const g of geos) g.dispose();
+  for (const m of mats) m.dispose();
+  for (const tex of texs) tex.dispose();
+}
+
+function applyEvictions(disposed) {
+  if (!disposed.length) return;
+  for (const item of disposed) disposeTemplate(item.result);
+  bump();
+}
+
+async function fetchBuf(path) {
+  const res = await fetch(BASE + path);
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
+  const buf = await res.arrayBuffer();
+  control.noteBytes(buf.byteLength);
+  return buf;
+}
+
+function parseGltf(buf) {
+  return new Promise((resolve, reject) => {
+    gltf.parse(buf, BASE, resolve, (err) => reject(err instanceof Error ? err : new Error('decode failed')));
+  });
+}
 
 // Boss clips are authored in place in Blender (art/blender/boss_animations.blend): their small hip sway and
 // recoil are part of the motion (feet are planted against it), so they must not be pinned.
@@ -70,30 +127,37 @@ function pinRootMotion(template, clips) {
 }
 
 function loadModel(path, prio = NOW) {
-  if (jobs.has(path)) { if (prio === NOW) promote(path); return jobs.get(path); }
-  const job = schedule(path, () => gltf.loadAsync(BASE + path), prio).then((g) => {
+  if (control.status(path) !== 'idle' && control.status(path) !== 'error') {
+    if (prio === NOW) promote(path);
+    return control.schedule(path, starters.get(path), prio);
+  }
+  if (control.status(path) === 'error') return control.schedule(path, starters.get(path), prio);
+  return schedule(path, async () => {
+    const g = await parseGltf(await fetchBuf(path));
     if (!g || !g.scene) throw new Error('load failed');
     const root = g.scene;
     root.traverse((o) => { if (o.isSkinnedMesh || o.isMesh) { o.frustumCulled = false; if (o.material) o.material.side = THREE.DoubleSide; } });
     if (!IN_PLACE_CLIPS.test(path)) pinRootMotion(root, g.animations);
-    // measure in bind pose with the -90° turn applied
     const holder = new THREE.Group();
     root.rotation.y = THREE.MathUtils.degToRad(rotationForModelPath(path));
     holder.add(root);
     holder.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(holder, true);
     const t = { root: holder, clips: g.animations, height: Math.max(0.01, box.max.y - box.min.y), minY: box.min.y, skinned: true };
-    models.set(path, t);
+    control.setDecoded(path, estimateDecoded(holder));
     bump();
     return t;
-  }).catch((err) => { console.warn('[assets] model failed', path, err.message); models.set(path, null); return null; });
-  jobs.set(path, job);
-  return job;
+  }, prio);
 }
 
 function loadStatic(path, prio = NOW) {
-  if (jobs.has(path)) { if (prio === NOW) promote(path); return jobs.get(path); }
-  const job = schedule(path, () => gltf.loadAsync(BASE + path), prio).then((g) => {
+  if (control.status(path) === 'loading' || control.status(path) === 'ready') {
+    if (prio === NOW) promote(path);
+    return control.schedule(path, starters.get(path), prio);
+  }
+  if (control.status(path) === 'error') return control.schedule(path, starters.get(path), prio);
+  return schedule(path, async () => {
+    const g = await parseGltf(await fetchBuf(path));
     if (!g || !g.scene) throw new Error('load failed');
     const holder = new THREE.Group();
     g.scene.rotation.y = THREE.MathUtils.degToRad(-90);
@@ -102,27 +166,36 @@ function loadStatic(path, prio = NOW) {
     holder.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(holder);
     const t = { root: holder, height: Math.max(0.01, box.max.y - box.min.y), minY: box.min.y, skinned: false };
-    models.set(path, t);
+    control.setDecoded(path, estimateDecoded(holder));
     bump();
     return t;
-  }).catch((err) => { console.warn('[assets] model failed', path, err.message); models.set(path, null); return null; });
-  jobs.set(path, job);
-  return job;
+  }, prio);
 }
 
 export function loadTexture(path, { color = true, repeat = null, prio = NOW } = {}) {
-  if (jobs.has(path)) { if (prio === NOW) promote(path); return jobs.get(path); }
-  const job = schedule(path, () => texLoader.loadAsync(BASE + path), prio).then((t) => {
-    if (!t || !t.isTexture) throw new Error('load failed');
-    if (color) t.colorSpace = THREE.SRGBColorSpace;
-    if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat, repeat); }
-    t.anisotropy = 4;
-    textures.set(path, t);
-    bump();
-    return t;
-  }).catch(() => { textures.set(path, null); return null; });
-  jobs.set(path, job);
-  return job;
+  if (control.status(path) === 'loading' || control.status(path) === 'ready') {
+    if (prio === NOW) promote(path);
+    return control.schedule(path, starters.get(path), prio);
+  }
+  if (control.status(path) === 'error') return control.schedule(path, starters.get(path), prio);
+  return schedule(path, async () => {
+    const buf = await fetchBuf(path);
+    const url = URL.createObjectURL(new Blob([buf]));
+    try {
+      const t = await texLoader.loadAsync(url);
+      if (!t || !t.isTexture) throw new Error('load failed');
+      if (color) t.colorSpace = THREE.SRGBColorSpace;
+      if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat, repeat); }
+      t.anisotropy = 4;
+      const w = t.image?.width || 0;
+      const h = t.image?.height || 0;
+      control.setDecoded(path, w * h * 4);
+      bump();
+      return t;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }, prio);
 }
 
 /**
@@ -142,8 +215,13 @@ export const GUN_MODELS = {
 function loadGun(type, prio = NOW) {
   const def = GUN_MODELS[type];
   const path = def.path;
-  if (jobs.has(path)) { if (prio === NOW) promote(path); return jobs.get(path); }
-  const job = schedule(path, () => gltf.loadAsync(BASE + path), prio).then((g) => {
+  if (control.status(path) === 'loading' || control.status(path) === 'ready') {
+    if (prio === NOW) promote(path);
+    return control.schedule(path, starters.get(path), prio);
+  }
+  if (control.status(path) === 'error') return control.schedule(path, starters.get(path), prio);
+  return schedule(path, async () => {
+    const g = await parseGltf(await fetchBuf(path));
     if (!g || !g.scene) throw new Error('load failed');
     g.scene.rotation.y = THREE.MathUtils.degToRad(def.yaw);
     g.scene.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
@@ -155,16 +233,60 @@ function loadGun(type, prio = NOW) {
     g.scene.position.sub(center); // origin at the model's center
     const size = box.getSize(new THREE.Vector3());
     const t = { root: holder, length: Math.max(0.01, size.z), size, muzzleY: def.muzzleY, skinned: false };
-    models.set(path, t);
+    control.setDecoded(path, estimateDecoded(holder));
     bump();
     return t;
-  }).catch((err) => { console.warn('[assets] gun model failed', path, err.message); models.set(path, null); return null; });
-  jobs.set(path, job);
-  return job;
+  }, prio);
 }
 
 export function ensureGunModel(type, prio = NOW) {
   return GUN_MODELS[type] ? loadGun(type, prio) : Promise.resolve(null);
+}
+
+/**
+ * Run an external starter on the same 4-wide queue (first-person arms, projectile meshes).
+ * Failures stay errors. They are not cached as ready.
+ */
+export function enqueue(path, start, prio = NOW) {
+  if (control.status(path) === 'loading' || control.status(path) === 'ready' || control.status(path) === 'error') {
+    if (prio === NOW && control.status(path) !== 'ready') promote(path);
+    return control.schedule(path, starters.get(path) || start, prio);
+  }
+  return schedule(path, async () => {
+    const result = await start();
+    if (result == null) throw new Error('load failed');
+    const root = result.root || result.scene;
+    if (root) control.setDecoded(path, estimateDecoded(root));
+    bump();
+    return result;
+  }, prio);
+}
+
+export function assetStatus(path) { return control.status(path); }
+export function peekAsset(path) { return control.result(path); }
+export function retainAsset(path) { control.retain(path); }
+export function releaseAsset(path) { control.release(path); }
+
+export function loadReport() { return control.report(); }
+
+/** Drop error jobs and run their starters again. Does not mark them ready. */
+export function retryFailed() {
+  const paths = control.retryPaths();
+  const jobs = [];
+  for (const path of paths) {
+    const start = starters.get(path);
+    if (start) jobs.push(control.schedule(path, start, NOW));
+  }
+  if (paths.length) bump();
+  return Promise.all(jobs);
+}
+
+/**
+ * Keep the current stage and its prefetch. Evict everything else that no live
+ * instance still references, then anything unpinned past the resident cap.
+ */
+export function setAssetDemand(nowPaths, laterPaths) {
+  applyEvictions(control.setDemand(nowPaths, laterPaths));
 }
 
 /**
@@ -173,20 +295,33 @@ export function ensureGunModel(type, prio = NOW) {
  */
 export function instantiateGun(type, length) {
   const def = GUN_MODELS[type];
-  const t = def && models.get(def.path);
+  const t = def && control.result(def.path);
   if (!t) return null;
+  control.retain(def.path);
   const inner = t.root.clone(true);
   const s = length / t.length;
   inner.scale.setScalar(s);
   const root = new THREE.Group();
   root.add(inner);
+  let released = false;
+  root.userData.releaseAsset = () => {
+    if (released) return;
+    released = true;
+    control.release(def.path);
+  };
   const size = t.size.clone().multiplyScalar(s);
   const muzzle = new THREE.Vector3(0, -size.y / 2 + size.y * t.muzzleY, -size.z / 2);
   return { root, muzzle, size };
 }
 
-export const peekTexture = (path) => textures.get(path) || null;
-export const peekModel = (path) => models.get(path) || null;
+export const peekTexture = (path) => {
+  const t = control.result(path);
+  return t && t.isTexture ? t : null;
+};
+export const peekModel = (path) => {
+  const t = control.result(path);
+  return t && t.root ? t : null;
+};
 
 export const PRIORITY = { NOW, LATER };
 
@@ -197,7 +332,11 @@ export function ensureStage(id, prio = NOW) {
 }
 export function stageReady(id) {
   const a = stageAssets(id);
-  return [a.sky, a.floor, a.stone, a.pillar, a.prop].every((p) => textures.has(p) || models.has(p));
+  return [a.sky, a.floor, a.stone, a.pillar, a.prop].every((p) => control.isReady(p));
+}
+export function stagePaths(id) {
+  const a = stageAssets(id);
+  return [a.sky, a.floor, a.stone, a.pillar, a.prop];
 }
 
 /** Request one character model (model id + Sproto Duel stage 1..3). */
@@ -205,20 +344,31 @@ export function ensureCharacter(model, stage, prio = NOW) {
   const path = CHARACTER_MODELS[model] && CHARACTER_MODELS[model][stage - 1];
   return path ? loadModel(path, prio) : Promise.resolve(null);
 }
+export function characterPath(model, stage) {
+  return (CHARACTER_MODELS[model] && CHARACTER_MODELS[model][stage - 1]) || null;
+}
 export function characterReady(model, stage) {
-  const path = CHARACTER_MODELS[model] && CHARACTER_MODELS[model][stage - 1];
-  return !path || models.has(path);
+  const path = characterPath(model, stage);
+  return !path || control.isReady(path);
 }
 
 /** A static prop instance fitted to `fitHeight`, standing on y=0. */
 export function instantiateStatic(path, fitHeight) {
-  const t = models.get(path);
-  if (!t) return null;
+  const t = control.result(path);
+  if (!t || !t.root) return null;
+  control.retain(path);
   const inner = t.root.clone(true);
   const s = fitHeight / t.height;
   inner.scale.setScalar(s);
   inner.position.y = -t.minY * s;
-  const g = new THREE.Group(); g.add(inner);
+  const g = new THREE.Group();
+  g.add(inner);
+  let released = false;
+  g.userData.releaseAsset = () => {
+    if (released) return;
+    released = true;
+    control.release(path);
+  };
   return g;
 }
 
@@ -230,13 +380,15 @@ const CLIP = { idle: 'idle', run: 'run', cast: 'cast', castBig: 'cast_big', hit:
  */
 export function instantiateCharacter(model, stage, fitHeight) {
   const path = CHARACTER_MODELS[model][stage - 1];
-  const t = models.get(path);
-  if (!t) return null;
+  const t = control.result(path);
+  if (!t || !t.root) return null;
+  control.retain(path);
   const inner = cloneSkinned(t.root);
   const mats = [];
   inner.traverse((o) => {
     if (o.isMesh && o.material) {
       o.material = o.material.clone();
+      o.material.userData.characterClone = true;
       if (o.material.emissive) mats.push(o.material);
     }
   });
@@ -250,7 +402,7 @@ export function instantiateCharacter(model, stage, fitHeight) {
     const clip = t.clips.find((c) => c.name.toLowerCase() === name) || t.clips.find((c) => c.name.toLowerCase().includes(name));
     if (clip) actions[k] = mixer.clipAction(clip);
   }
-  let current = null, flash = -1;
+  let current = null, flash = -1, released = false;
   return {
     root, model, stage, path,
     clips: t.clips, // raw clips, for layers that drive them directly (clipLayer.js)
@@ -276,5 +428,12 @@ export function instantiateCharacter(model, stage, fitHeight) {
     },
     setTint(r, g, b) { for (const m of mats) m.emissive.setRGB(r, g, b); flash = -1; },
     fitTo: fit,
+    dispose() {
+      if (released) return;
+      released = true;
+      mixer.stopAllAction();
+      for (const m of mats) m.dispose();
+      control.release(path);
+    },
   };
 }

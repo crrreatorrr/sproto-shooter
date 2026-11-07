@@ -131,11 +131,19 @@ function glbDetails(buf) {
       name: im.name || null,
       mime: im.mimeType || dim?.mime || null,
       encodedBytes: view.byteLength,
+      sha256: sha256(bytes),
       width,
       height,
       decodedBytes: rgbaBytes(width, height),
     });
   }
+  const rig = {
+    clips: (json.animations || []).map((clip) => clip.name || '').sort(),
+    skins: (json.skins || []).length,
+    joints: (json.skins || []).reduce((sum, skin) => sum + (skin.joints || []).length, 0),
+    nodes: (json.nodes || []).length,
+    materials: (json.materials || []).map((mat) => mat.name || '').sort(),
+  };
   let meshoptDecodedBytes = 0;
   let triangles = 0;
   for (const view of json.bufferViews || []) {
@@ -158,7 +166,47 @@ function glbDetails(buf) {
     decodedBytes: meshoptDecodedBytes + imageDecodedBytes,
     triangles,
     images,
+    rig,
   };
+}
+
+function duplicateImages(assets) {
+  const groups = new Map();
+  const add = (hash, where, bytes) => {
+    if (!hash) return;
+    let row = groups.get(hash);
+    if (!row) {
+      row = { sha256: hash, bytes, uses: [] };
+      groups.set(hash, row);
+    }
+    row.uses.push(where);
+  };
+  for (const asset of assets) {
+    if (asset.kind === 'image') add(asset.sha256, asset.path, asset.bytes);
+    for (const image of asset.images || []) add(image.sha256, `${asset.path}#${image.name || image.sha256.slice(0, 8)}`, image.encodedBytes);
+  }
+  return [...groups.values()]
+    .filter((row) => row.uses.length > 1)
+    .map((row) => ({ ...row, uses: row.uses.sort() }))
+    .sort((a, b) => b.bytes - a.bytes || a.sha256.localeCompare(b.sha256));
+}
+
+function duplicateRigs(assets) {
+  const groups = new Map();
+  for (const asset of assets) {
+    if (!asset.rig || !asset.rig.joints) continue;
+    const key = JSON.stringify([asset.rig.clips, asset.rig.joints, asset.rig.nodes]);
+    let row = groups.get(key);
+    if (!row) {
+      row = { clips: asset.rig.clips, joints: asset.rig.joints, nodes: asset.rig.nodes, paths: [] };
+      groups.set(key, row);
+    }
+    row.paths.push(asset.path);
+  }
+  return [...groups.values()]
+    .filter((row) => row.paths.length > 1)
+    .map((row) => ({ ...row, paths: row.paths.sort() }))
+    .sort((a, b) => a.paths[0].localeCompare(b.paths[0]));
 }
 
 function addRef(map, assetPath, from, kind) {
@@ -252,6 +300,7 @@ function describeAsset(relPath, buf, ref) {
     record.decodedBytes = details?.decodedBytes ?? null;
     record.decodedNote = 'Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.';
     record.images = details?.images ?? [];
+    record.rig = details?.rig ?? null;
     return record;
   }
   record.kind = 'other';
@@ -304,7 +353,9 @@ export function buildManifest() {
     schema: 'sproto-shooter.asset-manifest.v1',
     baselineCommit: BASELINE_COMMIT,
     runtimeRoot: 'public/assets',
-    decodedNote: 'decodedBytes is a hardware-independent size. It is not a GPU timing.',
+    decodedNote: 'decodedBytes is an RGBA8 upload estimate plus meshopt-decoded buffer views. It is not a GPU timing. KTX2 is not used; resized JPEG/PNG is the measured transfer and decode win, without a transcoder.',
+    duplicates: duplicateImages(assets),
+    duplicateRigs: duplicateRigs(assets),
     counts: {
       runtimeFiles: assets.length,
       runtimeBytes: assets.reduce((sum, asset) => sum + asset.bytes, 0),
@@ -313,6 +364,8 @@ export function buildManifest() {
       dynamic: references.filter((row) => row.kind !== 'static').length,
       missing: missing.length,
       unused: unused.length,
+      duplicateImageGroups: duplicateImages(assets).length,
+      duplicateRigGroups: duplicateRigs(assets).length,
     },
     missing,
     unused,
@@ -335,6 +388,8 @@ export function fingerprint(manifest) {
     counts: manifest.counts,
     missing: manifest.missing,
     unused: manifest.unused,
+    duplicates: manifest.duplicates,
+    duplicateRigs: manifest.duplicateRigs,
     dynamicPatterns: manifest.dynamicPatterns,
     references: manifest.references,
     assets: manifest.assets,

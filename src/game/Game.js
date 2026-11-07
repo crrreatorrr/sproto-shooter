@@ -1,5 +1,4 @@
 // Wires state + fixed-timestep loop + input + renderer + audio + UI + debug panel. PLAN §1.3
-import GUI from 'lil-gui';
 import { createGameState } from '../sim/state.js';
 import { simulate, DT } from '../sim/simulate.js';
 import { createEventBus } from '../core/eventBus.js';
@@ -39,9 +38,11 @@ export class Game {
     this.screen = app.querySelector('#screen');
 
     this.input.setLook(this.state.players[this.state.localPlayerId].yaw, 0);
+    this.gui = null;
+    this.debugOpen = false;
     this.wireFeel();
     this.wireInput();
-    this.buildDebug(debug);
+    if (debug) this.openDebugPanel();
 
     // initial sandbox content so the title screen has something going on behind it
     this.queue({ type: 'startMode', mode: 'sandbox', tier: 1 });
@@ -273,7 +274,15 @@ export class Game {
   hidePause() { if (this.screen.querySelector('.pause')) this.hideScreen(); }
 
   // ---------- debug panel ----------
-  buildDebug(open) {
+  openDebugPanel() {
+    if (this.gui) { this.gui.show(); this.debugOpen = true; this.input.unlock(); return; }
+    if (this._guiLoading) return;
+    this._guiLoading = import(/* webpackChunkName: "debug-gui" */ 'lil-gui').then(({ default: GUI }) => {
+      this.buildDebug(GUI, true);
+      this._guiLoading = null;
+    });
+  }
+  buildDebug(GUI, open) {
     const gui = new GUI({ title: 'Sproto Debug [`]', width: 300 });
     this.gui = gui;
     const d = { enemy: 'grunt', count: 1, elite: false, tier: 1, boss: 'monster', gunType: 'random', quality: 'random', element: 'random', wacky: 'random',
@@ -324,6 +333,7 @@ export class Game {
     gui.domElement.style.zIndex = 50;
   }
   toggleDebug() {
+    if (!this.gui) { this.openDebugPanel(); return; }
     this.debugOpen = !this.debugOpen;
     if (this.debugOpen) {
       const g = this.state.players[this.state.localPlayerId].guns[this.state.players[this.state.localPlayerId].activeSlot];

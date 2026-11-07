@@ -13,7 +13,8 @@ import { createClipLayer } from './clipLayer.js';
 import { bossClipWant, enemyClipWant } from './bossClips.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
-import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY, ensureGunModel, instantiateGun } from './assets.js';
+import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY, ensureGunModel, instantiateGun, setAssetDemand, stagePaths, characterPath, enqueue, assetStatus, loadReport, retryFailed, retainAsset, peekAsset, GUN_MODELS } from './assets.js';
+import { PLAYER_MODEL } from './firstPerson.js';
 import { createLevelView } from './level/levelView.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -137,30 +138,85 @@ export function createRenderer(container, bus) {
    *           enemies only once this wave is cleared (intermission), so level 1 downloads level-1 assets only.
    */
   let needsT = 0;
+  const demandNow = [];
+  const demandLater = [];
   function requestNeeds(state) {
     const { NOW, LATER } = PRIORITY;
+    demandNow.length = 0;
+    demandLater.length = 0;
     const stageId = stageFor(state, stageOverride);
     ensureStage(stageId, NOW);
-    for (const g of state.players[state.localPlayerId].guns) if (g) ensureGunModel(g.type, NOW);
-    for (const k of state.pickups || []) if (k.kind === 'gun') ensureGunModel(k.gun.type, LATER);
+    demandNow.push(...stagePaths(stageId), PLAYER_MODEL);
+    for (const g of state.players[state.localPlayerId].guns) if (g && GUN_MODELS[g.type]) {
+      ensureGunModel(g.type, NOW);
+      demandNow.push(GUN_MODELS[g.type].path);
+    }
+    for (const k of state.pickups || []) if (k.kind === 'gun' && k.gun && GUN_MODELS[k.gun.type]) {
+      ensureGunModel(k.gun.type, LATER);
+      demandLater.push(GUN_MODELS[k.gun.type].path);
+    }
     for (const e of state.enemies) {
       if (e.dead) continue;
-      if (e.boss) { const b = BOSSES[e.type]; b.phases.forEach((_, i) => ensureCharacter(b.model, i + 1, NOW)); continue; }
+      if (e.boss) {
+        const b = BOSSES[e.type];
+        b.phases.forEach((_, i) => {
+          ensureCharacter(b.model, i + 1, NOW);
+          const path = characterPath(b.model, i + 1);
+          if (path) demandNow.push(path);
+        });
+        continue;
+      }
       const def = ENEMY_DEFS[e.type];
-      if (def.model) ensureCharacter(def.model, enemyStage(e), NOW);
+      if (def.model) {
+        ensureCharacter(def.model, enemyStage(e), NOW);
+        const path = characterPath(def.model, enemyStage(e));
+        if (path) demandNow.push(path);
+      }
     }
-    if (state.mode !== 'waves' || !state.wave) return;
+    if (state.mode !== 'waves' || !state.wave) {
+      setAssetDemand(demandNow, demandLater);
+      return;
+    }
     const w = state.wave;
     const lvl = levelAssets(w.index, state.tier);
-    for (const c of lvl.characters) ensureCharacter(c.model, c.stage, NOW);
+    for (const c of lvl.characters) {
+      ensureCharacter(c.model, c.stage, NOW);
+      const path = characterPath(c.model, c.stage);
+      if (path) demandNow.push(path);
+    }
     const coreReady = stageReady(lvl.stage) && lvl.characters.every((c) => characterReady(c.model, c.stage));
-    if (coreReady) for (const c of lvl.bosses) ensureCharacter(c.model, c.stage, w.phase === 'bossIntro' || w.phase === 'boss' ? NOW : LATER);
+    if (coreReady) for (const c of lvl.bosses) {
+      const prio = w.phase === 'bossIntro' || w.phase === 'boss' ? NOW : LATER;
+      ensureCharacter(c.model, c.stage, prio);
+      const path = characterPath(c.model, c.stage);
+      if (path) (prio === NOW ? demandNow : demandLater).push(path);
+    }
     const between = w.phase === 'cleared' || w.phase === 'intermission';
     const next = between ? levelAssets(w.index + 1, state.tier) : null;
     if (next) {
       ensureStage(next.stage, LATER);
-      for (const c of next.characters) ensureCharacter(c.model, c.stage, LATER);
+      demandLater.push(...stagePaths(next.stage));
+      for (const c of next.characters) {
+        ensureCharacter(c.model, c.stage, LATER);
+        const path = characterPath(c.model, c.stage);
+        if (path) demandLater.push(path);
+      }
     }
+    setAssetDemand(demandNow, demandLater);
+  }
+
+  function setStageMap(mat, tex, rx, ry) {
+    const prev = mat.map;
+    if (prev && prev.userData?.stageClone) prev.dispose();
+    if (tex) {
+      const clone = tex.clone();
+      clone.userData.stageClone = true;
+      clone.wrapS = clone.wrapT = THREE.RepeatWrapping;
+      clone.repeat.set(rx, ry);
+      clone.needsUpdate = true;
+      mat.map = clone;
+    } else mat.map = null;
+    mat.needsUpdate = true;
   }
 
   function applyStage(id) {
@@ -177,17 +233,16 @@ export function createRenderer(container, bus) {
     const skyTex = peekTexture(a.sky);
     sky.material.map = skyTex; sky.material.color.setHex(skyTex ? 0xffffff : st.background); sky.material.needsUpdate = true;
     const floor = peekTexture(a.floor);
-    if (floor) { const f = floor.clone(); f.wrapS = f.wrapT = THREE.RepeatWrapping; f.repeat.set(st.floorRepeat, st.floorRepeat); f.needsUpdate = true; groundMat.map = f; }
-    else groundMat.map = null;
-    groundMat.color.setHex(floor ? 0xffffff : 0x4a3a66); groundMat.needsUpdate = true;
+    setStageMap(groundMat, floor, st.floorRepeat, st.floorRepeat);
+    groundMat.color.setHex(floor ? 0xffffff : 0x4a3a66);
     const stone = peekTexture(a.stone);
-    if (stone) { const t = stone.clone(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(60, 1); t.needsUpdate = true; rimMat.map = t; } else rimMat.map = null;
-    rimMat.needsUpdate = true;
+    setStageMap(rimMat, stone, 60, 1);
     outer.visible = st.ground != null;
     if (st.ground != null) {
-      if (floor) { const f = floor.clone(); f.wrapS = f.wrapT = THREE.RepeatWrapping; f.repeat.set(40, 40); f.needsUpdate = true; outerMat.map = f; } else outerMat.map = null;
-      outerMat.color.setHex(st.ground); outerMat.needsUpdate = true;
+      setStageMap(outerMat, floor, 40, 40);
+      outerMat.color.setHex(st.ground);
     }
+    disposeTree(decor);
     decor.clear();
     // pillars just outside the ring, props further out
     for (let i = 0; i < 16; i++) {
@@ -296,6 +351,7 @@ export function createRenderer(container, bus) {
     }
     const sh = blob(def.radius * 1.3); g.add(sh); parts.shadow = sh;
     g.userData = parts;
+    markOwned(g);
     return { obj: g, key: viewKey(e) };
   }
 
@@ -339,6 +395,8 @@ export function createRenderer(container, bus) {
     // authored clips (walk, attacks, flight) blended over the procedural rig; see bossClips.js
     if (ch && (parts.rig || def.rig === 'clips')) { parts.clips = createClipLayer(ch); parts.fitH = h; parts.clipsOnly = def.rig === 'clips' && !!parts.clips; }
     g.userData = parts;
+    markOwned(g);
+    for (const x of extra) markOwned(x);
     return { obj: g, extra, key: viewKey(e) };
   }
 
@@ -365,10 +423,31 @@ export function createRenderer(container, bus) {
   // ---------- views sync ----------
   const views = new Map(); // id -> {obj, kind}
   const seen = new Set();
+  const SHARED_MATS = new Set(Object.values(MAT));
+  function disposeTree(obj) {
+    if (!obj || !obj.traverse) return;
+    obj.traverse((o) => {
+      if (typeof o.userData?.releaseAsset === 'function') o.userData.releaseAsset();
+      if (o.userData?.char?.dispose) o.userData.char.dispose();
+      for (const m of o.material ? [].concat(o.material) : []) {
+        if (m.userData?.owned && !SHARED_MATS.has(m)) m.dispose();
+      }
+    });
+  }
+  function markOwned(root) {
+    root.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      for (const m of [].concat(o.material)) {
+        if (m.userData?.characterClone || SHARED_MATS.has(m)) continue;
+        m.userData.owned = true;
+      }
+    });
+  }
   function dropView(v) {
+    disposeTree(v.obj);
     scene.remove(v.obj);
-    if (v.extra) v.extra.forEach((x) => scene.remove(x));
-    if (v.obj.userData.extra) v.obj.userData.extra.forEach((x) => scene.remove(x));
+    if (v.extra) v.extra.forEach((x) => { disposeTree(x); scene.remove(x); });
+    if (v.obj.userData.extra) v.obj.userData.extra.forEach((x) => { disposeTree(x); scene.remove(x); });
   }
   function syncView(id, make, key = null) {
     seen.add(id);
@@ -447,9 +526,20 @@ export function createRenderer(container, bus) {
     im.frustumCulled = false; im.count = 0;
     scene.add(im);
     inst[k] = { im, n: 0, d, modeled: false };
-    if (d.model) {
-      loadProjectileModel(d).then((m) => { if (!m) return; im.geometry = m.geometry; im.material = m.material; inst[k].modeled = true; });
+  }
+  function ensureProjectileModel(I) {
+    const d = I.d;
+    if (!d.model || I.modeled) return;
+    const found = peekAsset(d.model);
+    if (found && found.geometry) {
+      retainAsset(d.model);
+      I.im.geometry = found.geometry;
+      I.im.material = found.material;
+      I.modeled = true;
+      return;
     }
+    if (assetStatus(d.model) === 'loading' || assetStatus(d.model) === 'error') return;
+    enqueue(d.model, () => loadProjectileModel(d), PRIORITY.LATER);
   }
 
   // pickups instanced
@@ -497,7 +587,9 @@ export function createRenderer(container, bus) {
     const g = new THREE.Group();
     g.add(inst.root);
     if (gun.element !== 'none') {
-      const gem = new THREE.Mesh(G.sphereLo, E(ELEM_COL[gun.element]));
+      const gemMat = E(ELEM_COL[gun.element]);
+      gemMat.userData.owned = true;
+      const gem = new THREE.Mesh(G.sphereLo, gemMat);
       gem.scale.setScalar(length * 0.035); gem.position.set(inst.size.x / 2 + length * 0.01, 0, 0); gem.userData.noCollide = true; g.add(gem);
     }
     g.userData.muzzle = inst.muzzle;
@@ -1010,7 +1102,7 @@ export function createRenderer(container, bus) {
       const modeled = GUN_MODEL_LEN[gun.type] && buildGunModel(gun, vmLen);
       // assets changed but this gun still has no model: keep the current mesh
       if (modeled || !vmGun || vmGun.userData.gunId !== gun.id) {
-        if (vmGun) vmRoot.remove(vmGun);
+        if (vmGun) { disposeTree(vmGun); vmRoot.remove(vmGun); }
         vmGun = modeled || buildGunMesh(gun, true);
         vmGun.userData.gunId = gun.id;
         vmGun.userData.type = gun.type;
@@ -1062,8 +1154,8 @@ export function createRenderer(container, bus) {
 
     // enemies
     needsT -= fdt;
-    if (needsT <= 0) { needsT = 0.25; requestNeeds(state); }
     applyStage(stageFor(state, stageOverride));
+    if (needsT <= 0) { needsT = 0.25; requestNeeds(state); }
     const campaign = state.mode === 'campaign' && state.level;
     for (const mesh of arenaBits) mesh.visible = !campaign;
     levelView.group.visible = !!campaign;
@@ -1220,7 +1312,8 @@ export function createRenderer(container, bus) {
       else if (pr.kind === 'bullet' || pr.kind === 'pellet') { dummy.scale.set(s, s, s * 2.2); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
       else if (pr.kind === 'laser' || pr.kind === 'bigLaser') { dummy.scale.set(s, s, s * (pr.kind === 'laser' ? 7 : 5)); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
       else if (pr.kind === 'yeetGun') { dummy.scale.set(0.15, 0.2, 0.8); dummy.rotation.set(now * 0.02, now * 0.015, 0); }
-      else if (I.d.model) { // modeled boss projectiles fly nose-first
+      else if (I.d.model) { // modeled boss projectiles fly nose-first; the mesh stays a sphere until it loads
+        ensureProjectileModel(I);
         dummy.scale.setScalar(I.modeled ? 1 : s);
         dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z);
         if (pr.kind === 'missile') dummy.rotateZ(now * 0.01 + pr.id); // spin
@@ -1346,6 +1439,8 @@ export function createRenderer(container, bus) {
     firstPerson: fp,
     THREE, scene,
     pendingDownloads,
+    loadReport,
+    retryFailed,
     info: () => renderer.info,
     counts() {
       const info = renderer.info;
