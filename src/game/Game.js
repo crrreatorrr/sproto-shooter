@@ -315,6 +315,8 @@ export class Game {
 
 /** One-line descriptions for the Boss Fight picker. */
 const BOSS_BLURB = {
+  carMonster: 'Magnet smashes up close; hurls car tyres that bounce and explode.',
+  moleMonster: 'Drill stabs up close; fires fans of drill heads from its drill hand.',
   dragon: 'Takes flight to bomb you with fireballs, fire breath, tail swipes.',
   monster: 'Overhead arm smashes, homing missiles, bullet fans.',
   sprotoBeast: 'Punch and kick combos, missile salvos, charges.',

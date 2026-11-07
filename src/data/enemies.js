@@ -55,6 +55,39 @@ export const ENEMIES = {
       { type: 'sphere', zone: 'weak', r: 0.38, x: 0, y: 1.5, z: -0.9 },
     ],
   },
+  // Robots: rigged + animated in Blender (art/blender/new_enemies.blend). `clips: true` = every state is an authored
+  // clip (render/bossClips.js enemyClipWant). `from` = where shots leave the model, as fractions of its height
+  // (up, fwd, side; side + = the model's left), measured on the firing frame of the clip.
+  // Common ranged robot: keeps its distance and fires 2-shot bursts of fast red lasers from its head.
+  robotLaser: {
+    name: 'Laser Bot', hp: 60, speed: 4.6, accel: 22, radius: 0.5, height: 2.2, damage: 0,
+    keepMin: 8, keepMax: 18, poiseMax: 30, staggerTime: 0.5,
+    color: 0xff4a3d, affinity: { resist: 'fire', weak: 'shock' },
+    weights: { seek: 1.0, sep: 1.5, wall: 2.0, strafe: 0.8 },
+    gun: { kind: 'laser', damage: 7, burst: 2, burstGap: 0.2, cooldownMin: 1.6, cooldownMax: 2.6, spread: 2.5, speed: 46, range: 36, windup: 0.5,
+      radius: 0.16, from: { up: 0.78, fwd: 0.12, side: 0.04 }, trackDone: true },
+    model: 'robotLaser', stage: 1, clips: true, behavior: 'obama',
+    hitboxes: [
+      { type: 'capsule', zone: 'body', r: 0.5, y0: 0, y1: 1.4 },
+      { type: 'sphere', zone: 'weak', r: 0.42, x: 0, y: 1.8, z: 0.05 },
+    ],
+  },
+  // Tougher robot: arm-gun bursts as its regular attack and, on its own cooldown, a charged big head laser.
+  robotShooter: {
+    name: 'Shooter Bot', hp: 170, speed: 3.6, accel: 16, radius: 0.55, height: 2.7, damage: 0,
+    keepMin: 10, keepMax: 22, poiseMax: 90, staggerTime: 0.6,
+    color: 0x8a4dff, affinity: { resist: 'fire', weak: 'shock' },
+    weights: { seek: 1.0, sep: 1.5, wall: 2.0, strafe: 0.6 },
+    gun: { kind: 'bullet', damage: 6, burst: 3, burstGap: 0.15, cooldownMin: 1.4, cooldownMax: 2.2, spread: 4, speed: 34, range: 34, windup: 0.45,
+      from: { up: 0.75, fwd: 0.33, side: 0.03 }, trackDone: true },
+    special: { kind: 'bigLaser', damage: 26, burst: 1, burstGap: 0.2, cooldownMin: 5.5, cooldownMax: 7.5, spread: 0.5, speed: 58, range: 44, windup: 1.0,
+      radius: 0.55, from: { up: 0.87, fwd: 0.12, side: -0.01 }, trackDone: true },
+    model: 'robotShooter', stage: 1, clips: true, behavior: 'gunner',
+    hitboxes: [
+      { type: 'capsule', zone: 'body', r: 0.5, y0: 0, y1: 2.15 },
+      { type: 'sphere', zone: 'weak', r: 0.3, x: 0, y: 2.35, z: 0.1 },
+    ],
+  },
   dummy: {
     name: 'Target Dummy', hp: 500, speed: 0, accel: 0, radius: 0.5, height: 1.8, damage: 0,
     poiseMax: 1e9, staggerTime: 0, color: 0xe8d7a8, affinity: { resist: null, weak: null }, regen: true,
@@ -182,6 +215,47 @@ export const BOSSES = {
       { type: 'capsule', zone: 'body', r: 2.4, y0: 0, y1: 7.5 },
       { type: 'sphere', zone: 'weak', r: 0.9, x: 0, y: 6.4, z: 1.9 },
       { type: 'sphere', zone: 'weak', r: 0.75, x: 0, y: 3.9, z: 1.6, onlyWhen: 'stunned' },
+    ],
+  },
+  // Car Part Monster: magnet-fisted junk golem. Smashes up close and hurls car tyres that bounce once and explode.
+  // rig 'clips': every action is an authored clip (render/bossClips.js); no procedural rig under it.
+  carMonster: {
+    name: 'CAR PART MONSTER', tag: 'physical', ai: 'mega', hp: 4200, radius: 2.6, height: 6.4, color: 0xc0392b, speed: 4.4,
+    contactDamage: 20, chargeDamage: 42, chargeSpeed: 23, slamDamage: 30,
+    melee: { range: 3.2, damage: 52, windup: 0.75, recover: 0.9, cd: 1.5, knockback: 17 },
+    // thrown from alternating hands every `gap` s after a 0.6 s wind-up, lobbed to land on you (`flight` s), one bounce
+    missiles: { kind: 'tyre', count: 4, damage: 30, splash: 5, gap: 0.3, flight: 1.15, gravity: 16, bounces: 1, scatter: 2.5, ttl: 6, from: { up: 0.95, fwd: 0.25, side: 0.45 } },
+    model: 'carMonster', rig: 'clips', stageHeights: [6.4, 6.9, 7.4],
+    portraits: [],
+    phases: [
+      { hpBelow: 1.0, speedMult: 1.0, pattern: ['chase', 'missiles', 'chase', 'charge', 'slam'] },
+      { hpBelow: 0.55, speedMult: 1.2, pattern: ['chase', 'missiles', 'charge', 'slam', 'summon'] },
+      { hpBelow: 0.2, speedMult: 1.4, pattern: ['missiles', 'chase', 'charge', 'missiles', 'slam', 'summon'] },
+    ],
+    hitboxes: [
+      { type: 'capsule', zone: 'body', r: 2.6, y0: 0, y1: 6.4 },
+      { type: 'sphere', zone: 'weak', r: 0.9, x: 0, y: 5.8, z: 0.8 },
+      { type: 'sphere', zone: 'weak', r: 0.8, x: 0, y: 3.4, z: 1.8, onlyWhen: 'stunned' },
+    ],
+  },
+  // Mole Monster: a miner mole with a drill for a right hand. Drill stab up close; fans of drill heads at range.
+  moleMonster: {
+    name: 'MOLE MONSTER', tag: 'physical', ai: 'mega', hp: 4000, radius: 2.4, height: 5.6, color: 0x8d6e63, speed: 4.8,
+    contactDamage: 18, chargeDamage: 40, chargeSpeed: 24, slamDamage: 30,
+    melee: { range: 3.4, damage: 50, windup: 0.75, recover: 0.9, cd: 1.4, knockback: 16 },
+    // fired from the drill hand: a 0.5 s aim, then `waves` fans every `gap` s (the shoot_loop clip is one gap long)
+    volley: { kind: 'drill', damage: 14, count: 3, fan: 22, speed: 30, waves: 3, gap: 0.4, radius: 0.45, from: { up: 0.68, fwd: 0.79, side: -0.13 } },
+    model: 'moleMonster', rig: 'clips', stageHeights: [5.6, 6.0, 6.5],
+    portraits: [],
+    phases: [
+      { hpBelow: 1.0, speedMult: 1.0, pattern: ['chase', 'volley', 'chase', 'charge', 'slam'] },
+      { hpBelow: 0.55, speedMult: 1.2, pattern: ['chase', 'volley', 'charge', 'volley', 'slam', 'summon'] },
+      { hpBelow: 0.2, speedMult: 1.4, pattern: ['volley', 'chase', 'charge', 'volley', 'slam', 'summon'] },
+    ],
+    hitboxes: [
+      { type: 'capsule', zone: 'body', r: 2.4, y0: 0, y1: 5.6 },
+      { type: 'sphere', zone: 'weak', r: 0.85, x: 0, y: 4.9, z: 0.9 },
+      { type: 'sphere', zone: 'weak', r: 0.75, x: 0, y: 2.8, z: 1.6, onlyWhen: 'stunned' },
     ],
   },
   hexAuditor: {

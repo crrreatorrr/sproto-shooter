@@ -9,7 +9,7 @@ import { createFirstPerson, FP } from './firstPerson.js';
 import { createDragonRig } from './dragonRig.js';
 import { createHumanoidRig } from './humanoidRig.js';
 import { createClipLayer } from './clipLayer.js';
-import { bossClipWant } from './bossClips.js';
+import { bossClipWant, enemyClipWant } from './bossClips.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
 import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY, ensureGunModel, instantiateGun } from './assets.js';
@@ -237,7 +237,8 @@ export function createRenderer(container, bus) {
     const parts = { eyes: [] };
     let ch = null;
     if (def.model) ch = instantiateCharacter(def.model, enemyStage(e), def.height);
-    if (ch) { g.add(ch.root); parts.char = ch; ch.play('idle'); }
+    if (ch) { g.add(ch.root); parts.char = ch; if (!def.clips) ch.play('idle'); }
+    if (ch && def.clips) { parts.clips = createClipLayer(ch); parts.clipsOnly = !!parts.clips; } // every state is an authored clip
     else { const f = buildFallback(def.color, def.height, def.radius); g.add(f); Object.assign(parts, f.userData); }
     if (e.type === 'bigObama') {
       const shield = new THREE.Mesh(G.box, MAT.shield); shield.scale.set(1.8, 1.9, 0.14); shield.position.set(0, 1.3, 1.0);
@@ -304,7 +305,7 @@ export function createRenderer(container, bus) {
       Object.assign(parts, { weak: orb, aura, auraFill });
     }
     // authored clips (walk, attacks, flight) blended over the procedural rig; see bossClips.js
-    if (ch && parts.rig) { parts.clips = createClipLayer(ch); parts.fitH = h; }
+    if (ch && (parts.rig || def.rig === 'clips')) { parts.clips = createClipLayer(ch); parts.fitH = h; parts.clipsOnly = def.rig === 'clips' && !!parts.clips; }
     g.userData = parts;
     return { obj: g, extra, key: viewKey(e) };
   }
@@ -388,6 +389,11 @@ export function createRenderer(container, bus) {
     // boss projectiles drawn with 3D models (`model`, fitted to `len` metres, nose along +Z); a sphere until loaded
     monsterBullet: { color: 0x4a5a2a, scale: 0.35, cap: 200, model: 'models/projectiles/monster_bullet.glb', len: 0.9, noseYaw: -Math.PI / 2 },
     missile: { color: 0xff8a1a, scale: 0.4, cap: 64, model: 'models/projectiles/missile.glb', len: 1.3, noseYaw: -Math.PI / 2, glow: 0xff6a10 },
+    // Car Part Monster's tyres (tumble end over end, glowing hot) and the Mole Monster's drill heads (spin nose-first)
+    tyre: { color: 0x222222, scale: 0.6, cap: 48, model: 'models/projectiles/tyre.glb', len: 1.5, noseYaw: 0, glow: 0xff5a10 },
+    drill: { color: 0x9a7a5a, scale: 0.4, cap: 96, model: 'models/projectiles/drill_head.glb', len: 1.1, noseYaw: Math.PI / 2 },
+    // robot lasers: stretched bolts along their flight
+    laser: { color: 0xff2a2a, scale: 0.13, cap: 300 }, bigLaser: { color: 0x6ff6ff, scale: 0.42, cap: 32 },
   };
   const inst = {};
   const dummy = new THREE.Object3D();
@@ -718,6 +724,7 @@ export function createRenderer(container, bus) {
   bus.on('craftComplete', (ev) => burstConfetti({ ...ev.pos, y: 1.5 }, 30, 4, [new THREE.Color(0x4fd1c5), new THREE.Color(0xffd166)]));
   bus.on('levelUp', () => feel.fovPunch += 3);
   bus.on('duckBounce', (ev) => burstConfetti(ev.pos, 2, 2, [new THREE.Color(0xffe14a)]));
+  bus.on('bounce', (ev) => burstConfetti(ev.pos, 3, 3, [new THREE.Color(0x6b6b6b), new THREE.Color(0x3a3a3a)])); // tyre hitting the ground
 
   // ---------- frame ----------
   let showHitboxes = false;
@@ -865,7 +872,8 @@ export function createRenderer(container, bus) {
       const spd = Math.hypot(e.vel.x, e.vel.z);
       if (u.char) {
         const ch = u.char;
-        if (!e.boss) {
+        if (u.clipsOnly) { /* clip layer drives every state (below) */ }
+        else if (!e.boss) {
           if (e.state === 'stagger') ch.play('stun');
           else if (e.state === 'attack') ch.play(e.type === 'bigObama' ? 'castBig' : 'cast', { speed: e.type === 'midget' ? 1.8 : 1.2 });
           else if (e.ai.shooting) ch.play('cast', { speed: 1.4 });
@@ -882,19 +890,22 @@ export function createRenderer(container, bus) {
           const runPace = Math.min(1.8, Math.max(0.6, spd / Math.max(1, BOSSES[e.type].speed || 4.5)));
           ch.play(clip, { fade: 0.3, speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : clip === 'run' ? runPace : 1 });
         }
-        ch.update(fdt);
+        if (!u.clipsOnly) ch.update(fdt);
         // authored clip for this frame (bossClips.js), decided first so the procedural rig can hold still under it
         let want = null;
         if (u.clips && e.boss) {
           const a = e.boss.action;
           want = bossClipWant({ type: e.type, action: a.id, actionT: a.t, variant: a.data.variant, data: a.data, speed: spd,
             fitHeight: u.fitH, altitude: ey, def: BOSSES[e.type], phaseIdx: e.boss.phaseIdx, durations: u.clips.durations });
+        } else if (u.clips) {
+          const def = ENEMY_DEFS[e.type];
+          want = enemyClipWant({ type: e.type, state: e.state, ai: e.ai, def, speed: spd, fitHeight: def.height * (e.scale || 1), durations: u.clips.durations });
         }
         if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, speed: spd, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0,
           variant: e.boss ? e.boss.action.data.variant : null, altitude: ey, yaw: e.yaw, clipDriven: !!want });
-        if (u.clips && e.boss) {
+        if (u.clips) {
           const w = u.clips.apply(fdt, want);
-          if (w > 0) { if (u.rig.post) u.rig.post(w); ch.root.position.y *= 1 - w; } // the clip carries its own hip bob
+          if (w > 0 && u.rig) { if (u.rig.post) u.rig.post(w); ch.root.position.y *= 1 - w; } // the clip carries its own hip bob
         }
       }
       if (e.boss) {
@@ -962,11 +973,14 @@ export function createRenderer(container, bus) {
       const s = I.d.scale * (pr.kind === 'orb' || pr.kind === 'taxBolt' || pr.kind === 'fireball' ? 1 + Math.sin(now * 0.02 + pr.id) * 0.15 : 1) * (pr.kind === 'flame' ? 0.6 + (1.4 - pr.ttl) * 1.6 : 1);
       if (pr.kind === 'rocket') { dummy.scale.set(s, s, s * 3); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
       else if (pr.kind === 'bullet' || pr.kind === 'pellet') { dummy.scale.set(s, s, s * 2.2); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
+      else if (pr.kind === 'laser' || pr.kind === 'bigLaser') { dummy.scale.set(s, s, s * (pr.kind === 'laser' ? 7 : 5)); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
       else if (pr.kind === 'yeetGun') { dummy.scale.set(0.15, 0.2, 0.8); dummy.rotation.set(now * 0.02, now * 0.015, 0); }
       else if (I.d.model) { // modeled boss projectiles fly nose-first
         dummy.scale.setScalar(I.modeled ? 1 : s);
         dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z);
         if (pr.kind === 'missile') dummy.rotateZ(now * 0.01 + pr.id); // spin
+        else if (pr.kind === 'drill') dummy.rotateZ(now * 0.04 + pr.id); // the drill bit keeps spinning
+        else if (pr.kind === 'tyre') dummy.rotateX(now * 0.015 + pr.id); // tumbling end over end
       }
       else { dummy.scale.setScalar(s); dummy.rotation.set(0, 0, 0); }
       dummy.updateMatrix();

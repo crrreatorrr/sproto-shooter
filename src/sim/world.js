@@ -58,7 +58,7 @@ export function projectiles(state, dt) {
     if (consumed) continue;
     p.pos = end;
     if (p.pos.y <= 0) {
-      if (p.bounces > 0) { p.bounces--; p.pos.y = 0.01; p.vel.y = Math.abs(p.vel.y) * 0.7; emit(state, 'duckBounce', { pos: { ...p.pos } }); }
+      if (p.bounces > 0) { p.bounces--; p.pos.y = 0.01; p.vel.y = Math.abs(p.vel.y) * 0.7; emit(state, p.kind === 'duckBullet' ? 'duckBounce' : 'bounce', { pos: { ...p.pos }, kind: p.kind }); }
       else { detonate(state, p); continue; }
     }
     const r = Math.hypot(p.pos.x, p.pos.z);
@@ -83,9 +83,9 @@ function detonate(state, p) {
   }
 }
 
-/** Enemy splash effect: missiles explode, everything else (goo spit) splats. */
+/** Enemy splash effect: missiles and tyres explode, everything else (goo spit) splats. */
 function emitEnemyBlast(state, p, pos) {
-  if (p.kind === 'missile') emit(state, 'explosion', { pos: { x: pos.x, y: Math.max(0.3, pos.y), z: pos.z }, radius: p.splash.radius, element: 'none', enemy: true });
+  if (p.kind === 'missile' || p.kind === 'tyre') emit(state, 'explosion', { pos: { x: pos.x, y: Math.max(0.3, pos.y), z: pos.z }, radius: p.splash.radius, element: 'none', enemy: true });
   else emit(state, 'splat', { pos: { ...pos }, element: p.element });
 }
 
