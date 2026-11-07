@@ -8,7 +8,8 @@ import { createAudio } from '../audio/sfx.js';
 import { createUI } from '../ui/ui.js';
 import { ENEMIES, BOSSES } from '../data/enemies.js';
 import { CAMPAIGN, getLevelData } from '../data/levels/index.js';
-import { unlockLevel, loadProfile, rememberModifier } from '../save/profile.js';
+import { unlockLevel, loadProfile, rememberModifier, saveProfile, syncNonEconomicProfile, cloudBody } from '../save/profile.js';
+import { decideHubReturn, hubChipHtml } from '../hub/link.js';
 import { restoreCheckpoint } from '../sim/campaign/campaign.js';
 import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY, zoomLevelsOf, zoomFovFor } from '../data/guns.js';
 import { SKILL_IDS } from '../data/skills.js';
@@ -20,13 +21,15 @@ const MAX_FRAME = 0.25, MAX_TICKS = 5;
 
 export class Game {
   constructor({ seed, mode = 'title', tier = 1, debug = false, boss = null, level = null, stats = false, hub = null }) {
-    this.hub = hub ?? { connected: false, balance: null, refreshBalance: () => Promise.resolve(null), exitHub() {} };
+    this.hub = hub ?? { status: 'offline', connected: false, bankable: false, balance: null, error: null, refreshBalance: () => Promise.resolve(null), exitHub() {} };
+    this.playing = false;
+    this.hubLeaveArmed = false;
     this.bus = createEventBus();
     this.state = createGameState({ seed });
     this.paused = true;
     this.timeScale = 1;
     this.hitstopMs = 0;
-    this.settings = { hitstop: true, shake: 1, sensitivity: 1 };
+    this.settings = { hitstop: true, shake: 1, sensitivity: 1, ...loadProfile().settings };
     // Optional observer for a server-issued run log. Null leaves gameplay unchanged.
     this.onSimCommand = null;
 
@@ -37,7 +40,13 @@ export class Game {
     this.ui = createUI(app.querySelector('#ui'), { input: this.input, bus: this.bus, project: (p) => this.renderer.project(p), game: this });
     this.screen = app.querySelector('#screen');
 
+    this.input.sensitivity = 0.0022 * this.settings.sensitivity;
     this.input.setLook(this.state.players[this.state.localPlayerId].yaw, 0);
+    syncNonEconomicProfile(this.hub).then((decision) => {
+      if (!decision?.profile?.settings) return;
+      Object.assign(this.settings, decision.profile.settings);
+      this.input.sensitivity = 0.0022 * this.settings.sensitivity;
+    }).catch(() => {});
     this.gui = null;
     this.debugOpen = false;
     this.wireFeel();
@@ -127,6 +136,8 @@ export class Game {
   }
 
   start(mode, tier = 1, extra = {}) {
+    this.playing = true;
+    this.hubLeaveArmed = false;
     this.audio.ensure();
     if (mode === 'boss') this.lastBoss = extra.boss;
     this._campaignShown = false;
@@ -138,6 +149,9 @@ export class Game {
 
   // ---------- screens ----------
   showScreen(kind) {
+    if (kind === 'victory' || kind === 'defeat' || kind === 'bossWon' || kind === 'bossLost' || kind === 'levelClear' || kind === 'levelLost') {
+      this.playing = false;
+    }
     const s = this.state, p = s.players[s.localPlayerId];
     this.input.unlock();
     this.ui.closeMenu && this.ui.menuOpen && this.ui.closeMenu();
@@ -152,7 +166,7 @@ export class Game {
           <button class="btn big alt" data-go="test">🎯 Test Range <small>every gun, infinite ammo</small></button>
           <button class="btn big alt" data-go="bossSelect">👑 Boss Fight <small>pick a boss to fight</small></button>
           <button class="btn big" data-go="campaignSelect">🗺 Campaign <small>The Great Sproto Audit</small></button>
-          <button class="btn alt" data-go="hub">⌂ Return to Hub</button>
+          <button class="btn alt" data-go="hub">${this.hubReturnLabel()}</button>
           <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
         </div>
         ${controlsHtml()}</div>`;
@@ -202,11 +216,11 @@ export class Game {
       const r = s.run, win = kind === 'victory';
       const next = Math.min(MAX_TIER, s.tier + 1);
       body = `<div class="end ${kind}"><h1>${win ? (s.tier >= MAX_TIER ? 'SPROTO SUPREME!' : 'VICTORY!') : 'DEFEATED'}</h1>
-        <p>${win ? `Tier ${s.tier} cleared. A Legendary gun dropped in the middle of the arena. Grab it before you go!` : `You lost half the tickets you earned this run.`}</p>
+        <p>${win ? `Tier ${s.tier} cleared. A Legendary gun dropped in the middle of the arena. Grab it before you go!` : `You lost half the Run Cash you earned this run.`}</p>
         <div class="stats">
           <div><b>${r.kills}</b>kills</div><div><b>${r.eliteKills}</b>elites</div><div><b>${r.bossKills}</b>bosses</div>
           <div><b>${Math.round(r.damageDealt).toLocaleString()}</b>damage</div><div><b>${r.bestHit}</b>best hit</div><div><b>${r.weakHits}</b>BONKs</div>
-          <div><b>${r.ticketsEarned}</b>tickets</div><div><b>${r.gunsFound}</b>guns found</div><div><b>${r.crafts}</b>crafts</div>
+          <div><b>${r.ticketsEarned}</b>run cash</div><div><b>${r.gunsFound}</b>guns found</div><div><b>${r.crafts}</b>crafts</div>
         </div>
         <div class="xpgain">${SKILL_IDS.map((k) => `<span>${k}: +${Math.round(r.xpGained[k])} XP (Lv ${p.skills[k].level})</span>`).join('')}</div>
         <div class="menu">
@@ -221,7 +235,7 @@ export class Game {
       const b = e.target.closest('[data-go]');
       if (!b) return;
       const go = b.dataset.go;
-      if (go === 'hub') { this.hub.exitHub(); return; }
+      if (go === 'hub') { this.requestHubReturn(b); return; }
       if (go === 'continue') { this.hideScreen(); this.paused = false; this.input.lock(); return; }
       if (go === 'title' || go === 'bossSelect' || go === 'campaignSelect') { this.showScreen(go); return; }
       if (go === 'checkpoint') { restoreCheckpoint(this.state); this._campaignShown = false; this.hideScreen(); this.paused = false; this.input.lock(); return; }
@@ -233,24 +247,42 @@ export class Game {
     };
   }
   hideScreen() { this.screen.hidden = true; this.screen.innerHTML = ''; }
+  hubReturnLabel() {
+    return this.playing && this.hubLeaveArmed ? 'Leave this run?' : '⌂ Return to Hub';
+  }
+  requestHubReturn(button) {
+    if (decideHubReturn({ playing: this.playing, armed: this.hubLeaveArmed }) === 'confirm') {
+      this.hubLeaveArmed = true;
+      if (button) button.textContent = 'Leave this run?';
+      return;
+    }
+    this.hub.exitHub();
+  }
   hubChip() {
-    const n = this.hub.connected ? (this.hub.balance === null ? '…' : String(this.hub.balance)) : '--';
-    return `<div class="hub-chip">Hub tickets <b>${n}</b></div>`;
+    return hubChipHtml(this.hub);
   }
   paintHubChip() {
-    const el = this.screen.querySelector('.hub-chip b');
-    if (!el || !this.hub.connected) return;
-    this.hub.refreshBalance().then((n) => {
-      const live = this.screen.querySelector('.hub-chip b');
-      if (live && n !== null) live.textContent = String(n);
+    const slot = this.screen.querySelector('.hub-chip');
+    if (!slot) return;
+    if (!this.hub.bankable) {
+      slot.outerHTML = this.hubChip();
+      return;
+    }
+    this.hub.refreshBalance().then(() => {
+      const live = this.screen.querySelector('.hub-chip');
+      if (live) live.outerHTML = this.hubChip();
     });
+  }
+  persistSettings() {
+    const profile = saveProfile({ ...loadProfile(), settings: { ...this.settings } });
+    if (this.hub.bankable && this.hub.saveCloud) this.hub.saveCloud(cloudBody(profile));
   }
   showPause() {
     if (!this.screen.hidden) return;
     this.paused = true;
     this.screen.innerHTML = `<div class="pause"><h1>PAUSED</h1><button class="btn big" data-p="resume">Resume</button>
       <button class="btn" data-p="title">Main menu</button>
-      <button class="btn alt" data-p="hub">Return to Hub</button>
+      <button class="btn alt" data-p="hub">${this.hubReturnLabel()}</button>
       <label>Mouse sensitivity <input id="sens" type="range" min="0.3" max="3" step="0.05" value="${this.settings.sensitivity}"></label>
       <label><input id="hs" type="checkbox" ${this.settings.hitstop ? 'checked' : ''}> Hitstop on big hits</label>
       <label>Screen shake <input id="shk" type="range" min="0" max="1.5" step="0.1" value="${this.settings.shake}"></label>
@@ -260,15 +292,14 @@ export class Game {
       const b = e.target.closest('[data-p]');
       if (!b) return;
       if (b.dataset.p === 'resume') { this.hideScreen(); this.input.lock(); }
-      else if (b.dataset.p === 'hub') {
-        if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Leave this run?'; return; }
-        this.hub.exitHub();
-      } else this.showScreen('title');
+      else if (b.dataset.p === 'hub') this.requestHubReturn(b);
+      else this.showScreen('title');
     };
     this.screen.oninput = (e) => {
       if (e.target.id === 'sens') { this.settings.sensitivity = +e.target.value; this.input.sensitivity = 0.0022 * this.settings.sensitivity; }
       if (e.target.id === 'hs') this.settings.hitstop = e.target.checked;
       if (e.target.id === 'shk') this.settings.shake = +e.target.value;
+      this.persistSettings();
     };
   }
   hidePause() { if (this.screen.querySelector('.pause')) this.hideScreen(); }
@@ -303,7 +334,7 @@ export class Game {
     gn.add({ go: () => { for (let i = 0; i < 6; i++) q('spawnGun', {}); } }, 'go').name('Loot explosion (6)');
     gn.add({ go: () => q('refillAmmo') }, 'go').name('Refill ammo');
     const pl = gui.addFolder('Player');
-    pl.add(d, 'tickets', 10, 2000, 10); pl.add({ go: () => q('giveTickets', { amount: d.tickets }) }, 'go').name('Give tickets');
+    pl.add(d, 'tickets', 10, 2000, 10).name('Run Cash'); pl.add({ go: () => q('giveTickets', { amount: d.tickets }) }, 'go').name('Give Run Cash');
     pl.add({ go: () => q('giveResources', { amount: 100 }) }, 'go').name('Give resources');
     pl.add(d, 'skill', SKILL_IDS); pl.add({ go: () => q('levelSkill', { skill: d.skill }) }, 'go').name('Level up skill');
     pl.add({ go: () => q('maxSkills') }, 'go').name('Max all skills');

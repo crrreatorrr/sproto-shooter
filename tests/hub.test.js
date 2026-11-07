@@ -35,20 +35,22 @@ describe('hub visit', () => {
     expect(api.balances).toBe(0);
   });
 
-  it('is connected when the SDK saved this game\'s session', async () => {
-    const store = { [`hub:${HUB_GAME_ID}:session`]: '{"token":"t"}' };
-    globalThis.sessionStorage = {
-      getItem: (k) => store[k] ?? null,
-      setItem() {},
-      removeItem() {},
-    };
+  it('is connected when getSession returns this game, and dedups the balance read', async () => {
     const api = fakeApi();
+    const part = Buffer.from(JSON.stringify({ uid: 'p', usn: 'ken', exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url');
+    api.getSession = () => ({
+      token: `e30.${part}.sig`,
+      playerId: 'p',
+      game: HUB_GAME_ID,
+      ranked: false,
+      expiresAt: Date.now() + 60_000,
+    });
     const link = await connectHub(api);
-    expect(link.connected).toBe(true);
+    expect(link.status).toBe('connected');
+    expect(link.accountLabel).toBe('ken');
     expect(await link.refreshBalance()).toBe(12);
     expect(await link.refreshBalance()).toBe(12);
     expect(api.balances).toBe(1);
-    delete globalThis.sessionStorage;
   });
 
   it('records a failed redeem and still lets the game boot', async () => {
@@ -68,7 +70,7 @@ describe('hub visit', () => {
     expect(hubExitUrl()).toMatch(/#from=sproto-shooter$/);
 
     const online = new HubLink({ exit(reason) { online.reason = reason; } });
-    online.connected = true;
+    online.bankable = true;
     online.exitHub();
     expect(online.reason).toBe('return');
     expect(gone).toHaveLength(1);

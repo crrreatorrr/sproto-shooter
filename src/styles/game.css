@@ -201,6 +201,10 @@ kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var
 .title .tag { font-size: 18px; color: var(--ink-dim); max-width: 520px; }
 .hub-chip { font-weight: 800; color: var(--sun); background: rgba(26, 16, 48, .85); border: 2px solid var(--sun); border-radius: 999px; padding: 6px 14px; }
 .hub-chip b { font-variant-numeric: tabular-nums; }
+.hub-chip.offline { color: var(--ink-dim); border-color: var(--ink-dim); }
+.hub-chip.guest { color: #9ad7ff; border-color: #9ad7ff; }
+.hub-chip.connected { color: var(--sun); border-color: var(--sun); }
+.hub-chip.error { color: var(--bad); border-color: var(--bad); }
 .menu { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center; }
 .boss-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; width: min(900px, 100%); margin: 0 auto 16px; }
 .btn.boss-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 14px 16px; border: 2px solid var(--c); }

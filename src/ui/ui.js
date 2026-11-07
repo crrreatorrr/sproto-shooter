@@ -151,21 +151,21 @@ export function createUI(root, { input, bus, project, game }) {
   bus.on('perkUnlocked', (ev) => { const pk = PERKS_BY_ID[ev.perkId]; setTimeout(() => banner(`<small>UNLOCKED</small>${pk.name}<em>${pk.desc}</em>`, 'perk', 2800), 600); });
   bus.on('wavePre', (ev) => banner(`<small>GET READY</small>WAVE ${ev.waveIndex + 1}<em>${WAVES[ev.waveIndex].name.split(': ')[1]}</em>`, 'wave', 2600));
   bus.on('waveStart', () => banner('FIGHT!', 'fight', 900));
-  bus.on('waveCleared', (ev) => banner(`<small>WAVE ${ev.waveIndex + 1}</small>CLEARED! <em>+${ev.tickets} 🎟</em>`, 'cleared'));
+  bus.on('waveCleared', (ev) => banner(`<small>WAVE ${ev.waveIndex + 1}</small>CLEARED! <em>+${ev.tickets} Run Cash</em>`, 'cleared'));
   bus.on('intermissionStart', () => { banner('<small>INTERMISSION</small>SHOP [B] · CRAFT AT WEAPON BOXES<em>ENTER when ready</em>', 'inter', 3200); });
   bus.on('bossIntro', (ev) => banner(`<small>⚠ BOSS INCOMING ⚠</small>${ev.types.map((t) => BOSSES[t].name).join(' + ')}`, 'boss', 3000));
   bus.on('bossPhase', (ev) => banner(`${BOSSES[ev.bossType].name}<em>${ev.phaseIdx === 2 ? 'FINAL AUDIT!' : 'IS ANGRY NOW'}</em>`, 'boss', 1800));
   bus.on('bossDefeated', (ev) => banner(`<small>BOSS DEFEATED</small>${BOSSES[ev.bossType].name}`, 'cleared', 2600));
   bus.on('playerRevived', () => banner('SECOND WIND!', 'fight', 1200));
   bus.on('unkillableTriggered', () => banner('UNKILLABLE SPROTO!', 'perk', 1500));
-  bus.on('actionFailed', (ev) => toast(ev.reason, 'bad'));
+  bus.on('actionFailed', (ev) => toast(String(ev.reason || '').replace(/tickets/gi, 'Run Cash'), 'bad'));
   bus.on('noMana', () => toast('Not enough mana', 'bad'));
   bus.on('spellLocked', (ev) => { const pk = PERKS.find((x) => x.id === ev.spellId); toast(`Locked: Magic Lv ${pk ? pk.level : '?'}`, 'bad'); });
   bus.on('gunPickedUp', (ev) => { const g = game.findGun(ev.gunId); if (g) feed(`Picked up ${g.name}`, QUALITIES_BY_ID[g.quality].color); });
   bus.on('craftComplete', (ev) => toast(ev.category === 'gun' ? 'Gun crafted! Pick it up at the box' : 'Crafted!', 'good'));
-  bus.on('purchase', (ev) => toast(`Bought (−${ev.price} 🎟)`, 'good'));
-  bus.on('sold', (ev) => toast(`Sold for ${ev.value} 🎟`, 'good'));
-  bus.on('vend', (ev) => toast({ gun: '🎰 A gun drops out!', resources: `🎰 ${ev.detail}`, jackpot: '🎰 JACKPOT! +60 🎟', chicken: '🎰 ...a rubber chicken. Squeak.' }[ev.outcome], 'good'));
+  bus.on('purchase', (ev) => toast(`Bought (−${ev.price} Run Cash)`, 'good'));
+  bus.on('sold', (ev) => toast(`Sold for ${ev.value} Run Cash`, 'good'));
+  bus.on('vend', (ev) => toast({ gun: '🎰 A gun drops out!', resources: `🎰 ${String(ev.detail || '').replace(/tickets/gi, 'Run Cash')}`, jackpot: '🎰 JACKPOT! +60 Run Cash', chicken: '🎰 ...a rubber chicken. Squeak.' }[ev.outcome], 'good'));
   bus.on('salvage', (ev) => toast('Salvaged: ' + Object.entries(ev.yield).map(([k, v]) => `+${v} ${RES_BY_ID[k].name}`).join(', '), 'good'));
   bus.on('reroll', () => toast('Stat rerolled!', 'good'));
   bus.on('pickup', (ev) => {
@@ -282,7 +282,7 @@ export function createUI(root, { input, bus, project, game }) {
   }
 
   function resBar(p) {
-    return `<div class="resbar"><span class="tk">🎟 ${p.tickets}</span>${RESOURCES.map((r) => `<span style="--c:${r.color}" title="${r.name}">${r.icon} ${p.resources[r.id]}</span>`).join('')}</div>`;
+    return `<div class="resbar"><span class="tk" title="Run Cash, not hub Tickets">Run Cash ${p.tickets}</span>${RESOURCES.map((r) => `<span style="--c:${r.color}" title="${r.name}">${r.icon} ${p.resources[r.id]}</span>`).join('')}</div>`;
   }
 
   function craftHtml(s, p) {
@@ -334,22 +334,22 @@ export function createUI(root, { input, bus, project, game }) {
   }
 
   function shopHtml(s, p) {
-    const offers = s.shop.offers.map((o) => `<div class="offer ${o.sold ? 'sold' : ''}">${gunCardHtml(o.gun, p.guns[p.activeSlot], { footer: o.sold ? '<div class="soldtag">SOLD</div>' : `<button class="btn" data-act="buy" data-v="${o.id}" ${p.tickets >= o.price ? '' : 'disabled'}>Buy 🎟 ${o.price}</button>` })}</div>`).join('');
+    const offers = s.shop.offers.map((o) => `<div class="offer ${o.sold ? 'sold' : ''}">${gunCardHtml(o.gun, p.guns[p.activeSlot], { footer: o.sold ? '<div class="soldtag">SOLD</div>' : `<button class="btn" data-act="buy" data-v="${o.id}" ${p.tickets >= o.price ? '' : 'disabled'}>Buy ${o.price} Run Cash</button>` })}</div>`).join('');
     const up = s.shop.upgrades;
     const ups = SHOP.upgrades.map((u) => {
       const rank = u.id === 'slot4' ? (up.slot4 || p.unlockedSlots >= 4 ? 1 : 0) : up[u.id];
       const max = rank >= u.prices.length;
-      return `<div class="mini"><b>${u.name}</b><span>${max ? 'MAX' : `Rank ${rank}/${u.prices.length}`}</span><button class="btn sm" data-act="upgrade" data-v="${u.id}" ${max || p.tickets < u.prices[rank] ? 'disabled' : ''}>${max ? '—' : '🎟 ' + u.prices[rank]}</button></div>`;
+      return `<div class="mini"><b>${u.name}</b><span>${max ? 'MAX' : `Rank ${rank}/${u.prices.length}`}</span><button class="btn sm" data-act="upgrade" data-v="${u.id}" ${max || p.tickets < u.prices[rank] ? 'disabled' : ''}>${max ? '—' : u.prices[rank] + ' Run Cash'}</button></div>`;
     }).join('');
-    const sups = SHOP.supplies.map((u) => `<div class="mini"><b>${u.name}</b><span></span><button class="btn sm" data-act="supply" data-v="${u.id}" ${p.tickets < u.price ? 'disabled' : ''}>🎟 ${u.price}</button></div>`).join('');
-    const sells = p.guns.map((g, i) => g ? `<div class="mini" style="--q:${QUALITIES_BY_ID[g.quality].color}"><b>${i + 1}</b> ${g.name}<span></span><button class="btn sm" data-act="sell" data-v="${i}">Sell 🎟 ${sellValue(g)}</button></div>` : '').join('');
+    const sups = SHOP.supplies.map((u) => `<div class="mini"><b>${u.name}</b><span></span><button class="btn sm" data-act="supply" data-v="${u.id}" ${p.tickets < u.price ? 'disabled' : ''}>${u.price} Run Cash</button></div>`).join('');
+    const sells = p.guns.map((g, i) => g ? `<div class="mini" style="--q:${QUALITIES_BY_ID[g.quality].color}"><b>${i + 1}</b> ${g.name}<span></span><button class="btn sm" data-act="sell" data-v="${i}">Sell ${sellValue(g)} Run Cash</button></div>` : '').join('');
     const rerollPrice = SHOP.rerollBase + SHOP.rerollStep * s.shop.rerolls;
     const inter = s.wave && s.wave.phase === 'intermission';
-    return `<h2>🎟 Ticket Shop ${inter ? `<small>Next wave in ${Math.ceil(s.wave.intermissionT)}s</small>` : ''}</h2>${resBar(p)}
+    return `<h2>Run Cash Shop ${inter ? `<small>Next wave in ${Math.ceil(s.wave.intermissionT)}s</small>` : ''}</h2><p class="hint">Run Cash is this run's shop money. It is not hub Tickets and cannot be exchanged.</p>${resBar(p)}
       <div class="offers">${offers}</div>
       <div class="cols">
-        <div><h3>Vending Machine</h3><div class="mini vend"><b>🎰 Mystery pull</b><span>gun, resources, jackpot… or a chicken</span><button class="btn sm" data-act="vend" ${p.tickets < SHOP.vendPrice ? 'disabled' : ''}>🎟 ${SHOP.vendPrice}</button></div>
-          <div class="mini"><b>Reroll offers</b><span></span><button class="btn sm" data-act="rerollShop" ${p.tickets < rerollPrice ? 'disabled' : ''}>🎟 ${rerollPrice}</button></div>
+        <div><h3>Vending Machine</h3><div class="mini vend"><b>🎰 Mystery pull</b><span>gun, resources, jackpot… or a chicken</span><button class="btn sm" data-act="vend" ${p.tickets < SHOP.vendPrice ? 'disabled' : ''}>${SHOP.vendPrice} Run Cash</button></div>
+          <div class="mini"><b>Reroll offers</b><span></span><button class="btn sm" data-act="rerollShop" ${p.tickets < rerollPrice ? 'disabled' : ''}>${rerollPrice} Run Cash</button></div>
           <h3>Supplies</h3>${sups}</div>
         <div><h3>Upgrades</h3>${ups}</div>
         <div><h3>Sell guns</h3>${sells}</div>
@@ -390,7 +390,7 @@ export function createUI(root, { input, bus, project, game }) {
       + row('Crit', `${Math.round(g.stats.critChance * 100)}% · ×${g.stats.critMult.toFixed(1)}`) : '';
     const stats = `<div class="skc" style="--c:#ffd166"><div class="skh">📊 Stats${s.tuning.godMode ? ' <span class="god">GOD MODE</span>' : ''}</div>
       ${row('Health', `${Math.ceil(p.hp)} / ${p.maxHp}`)}${row('Shield', `${Math.ceil(p.shield)} / ${p.maxShield}`)}${row('Mana', `${Math.floor(p.mana)} / ${p.maxMana}`)}
-      ${row('Damage taken', dr ? `−${dr}%` : 'normal')}${row('Medkits', p.medkits)}${row('Tickets', p.tickets)}
+      ${row('Damage taken', dr ? `−${dr}%` : 'normal')}${row('Medkits', p.medkits)}${row('Run Cash', p.tickets)}
       ${SKILL_IDS.map((id) => row(`${ICON[id]} ${SKILLS[id].name}`, `Lv ${p.skills[id].level}`)).join('')}${gunRows}${ammo}</div>`;
     const magic = p.skills.magic.level;
     const spells = SPELL_IDS.map((id) => {
@@ -462,7 +462,7 @@ export function createUI(root, { input, bus, project, game }) {
     text(els.medkits, 'mk', p.medkits ? `✚ ×${p.medkits} [H]` : '');
 
     // top bar
-    text(els.tickets, 'tk', `🎟 ${p.tickets}`);
+    text(els.tickets, 'tk', `Run Cash ${p.tickets}`);
     html(els.resources, 'rs', RESOURCES.map((r) => `<span style="--c:${r.color}" title="${r.name}">${r.icon}${p.resources[r.id]}</span>`).join(''));
     let wave = '';
     if (s.mode === 'campaign' && s.level) {
