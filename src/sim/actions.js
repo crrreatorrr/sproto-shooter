@@ -11,6 +11,7 @@ import { onEnemyKilled, GOD_HP } from './combat.js';
 import { respawn, godTopUp } from './player.js';
 import { startWaves } from './waves.js';
 import { TUNING } from '../data/tuning.js';
+import { BOSSES } from '../data/enemies.js';
 import {
   startCraft, salvage, reroll, pickupGun, dropGun, buyOffer, rerollShop, sellGun, vend, buyUpgrade, buySupply, rollShopOffers,
 } from './economy.js';
@@ -37,12 +38,12 @@ function handle(state, p, a) {
     case 'vend': return vend(state, p);
     case 'buyUpgrade': return buyUpgrade(state, p, a.id);
     case 'buySupply': return buySupply(state, p, a.id);
-    case 'startMode': return startMode(state, p, a.mode, a.tier);
+    case 'startMode': return startMode(state, p, a.mode, a.tier, a);
     case 'debug': return debugOp(state, p, a.op, a.args || {});
   }
 }
 
-export function startMode(state, p, mode, tier = 1) {
+export function startMode(state, p, mode, tier = 1, opts = {}) {
   state.enemies.length = 0; state.projectiles.length = 0; state.hazards.length = 0; state.allies.length = 0;
   state.pickups = state.pickups.filter((k) => k.kind === 'gun');
   state.run = newRunStats();
@@ -51,9 +52,14 @@ export function startMode(state, p, mode, tier = 1) {
   p.pos = { x: 0, y: 0, z: 8 }; p.prevPos = { ...p.pos }; p.vel = { x: 0, y: 0, z: 0 };
   // leaving the test range takes its free loadout and infinite ammo back
   if (state.testMode && mode !== 'test') { resetLoadout(state, p); state.tuning.infiniteAmmo = false; setGodMode(state, p, false); }
+  // ...and so does leaving a boss fight
+  if (state.bossFight && mode !== 'boss' && mode !== 'test') resetLoadout(state, p);
   state.testMode = mode === 'test';
+  state.bossFight = null;
   if (mode === 'waves') {
     startWaves(state, tier);
+  } else if (mode === 'boss') {
+    startBossFight(state, p, opts.boss, tier);
   } else {
     state.mode = 'sandbox'; state.wave = null; state.tier = tier;
     p.unlockedSlots = 4;
@@ -61,6 +67,34 @@ export function startMode(state, p, mode, tier = 1) {
     if (mode === 'test') giveTestLoadout(state, p);
     emit(state, 'modeStart', { mode: state.testMode ? 'test' : 'sandbox', tier });
   }
+}
+
+/**
+ * Boss Fight mode: one boss of your choice in the arena, with real damage (unlike the sandbox). You get one of
+ * every gun with full ammo; leaving the mode gives the starting loadout back.
+ */
+function startBossFight(state, p, type, tier) {
+  if (!BOSSES[type]) type = Object.keys(BOSSES)[0];
+  state.mode = 'boss'; state.wave = null; state.tier = tier;
+  state.bossFight = { type, over: null, startT: state.time, time: 0 };
+  giveAllGuns(state, p);
+  for (const k of Object.keys(p.ammoCap)) p.ammo[k] = p.ammoCap[k];
+  for (const g of p.guns) if (g) g.ammoInMag = g.stats.magSize;
+  const b = createBoss(state, type, { tier, pos: { x: 0, z: -18 } });
+  emit(state, 'modeStart', { mode: 'boss', tier, boss: type });
+  emit(state, 'bossIntro', { types: [type] });
+  emit(state, 'bossSpawn', { id: b.id, bossType: type });
+}
+
+/** Boss Fight mode: ends when the boss or the player goes down. */
+export function bossFightDirector(state) {
+  const f = state.bossFight;
+  if (state.mode !== 'boss' || !f || f.over) return;
+  const boss = state.enemies.find((e) => e.boss && e.type === f.type);
+  const p = state.players[state.localPlayerId];
+  f.time = state.time - f.startT;
+  if (!boss || boss.dead) { f.over = 'won'; emit(state, 'bossFightOver', { won: true, boss: f.type, time: f.time }); }
+  else if (p.dead) { f.over = 'lost'; emit(state, 'bossFightOver', { won: false, boss: f.type, hpLeft: boss.hp / boss.maxHp }); }
 }
 
 /** Test range: one of every gun type in slots 1-4, full ammo, infinite reserve, target dummies. */

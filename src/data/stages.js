@@ -78,7 +78,7 @@ export function levelAssets(waveIdx, tier) {
     const b = BOSSES[type];
     b.phases.forEach((_, i) => bosses.set(`${b.model}:${i + 1}`, { model: b.model, stage: Math.min(3, i + 1) }));
     // bosses summon midgets
-    if (type === 'megaSproto') add('midget', enemyStage({ type: 'midget', elite: false, tier }));
+    if (b.ai === 'mega') add('midget', enemyStage({ type: 'midget', elite: false, tier }));
   }
   return { stage: WAVE_STAGES[Math.min(WAVE_STAGES.length - 1, waveIdx)], characters: [...set.values()], bosses: [...bosses.values()] };
 }
@@ -89,7 +89,14 @@ export const CHARACTER_MODELS = {
   obama: [1, 2, 3].map((s) => `models/characters/obama_stage${s}.glb`),
   tinubu: [1, 2, 3].map((s) => `models/characters/tinubu_stage${s}.glb`),
   sahil: [1, 2, 3].map((s) => `models/characters/sahil_stage${s}.glb`),
+  monster: [1, 2, 3].map(() => 'models/characters/monster.glb'), // one static model, scaled up per phase
   dragon: [1, 2, 3].map(() => 'models/characters/dragon.glb'), // one model for every phase
+};
+/** Models that don't use CHARACTER_ROTATION_Y (they already face +Z). */
+export const MODEL_ROTATION_Y = { monster: 0 };
+export const rotationForModelPath = (path) => {
+  for (const [m, paths] of Object.entries(CHARACTER_MODELS)) if (paths.includes(path) && m in MODEL_ROTATION_Y) return MODEL_ROTATION_Y[m];
+  return CHARACTER_ROTATION_Y;
 };
 /** Tripo exports face +X; turn -90° so they face +Z (Sproto Duel uses the same rotation). */
 export const CHARACTER_ROTATION_Y = -90;

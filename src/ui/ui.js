@@ -165,6 +165,7 @@ export function createUI(root, { input, bus, project, game }) {
     els.vignette.className = ev.toHealth > 0 ? 'hurt' : 'shield';
   });
   bus.on('victory', () => game.showScreen('victory'));
+  bus.on('bossFightOver', (ev) => setTimeout(() => game.showScreen(ev.won ? 'bossWon' : 'bossLost'), ev.won ? 1800 : 1200));
   bus.on('defeat', () => game.showScreen('defeat'));
 
   // ---------- menus ----------
@@ -448,7 +449,8 @@ export function createUI(root, { input, bus, project, game }) {
     text(els.tickets, 'tk', `🎟 ${p.tickets}`);
     html(els.resources, 'rs', RESOURCES.map((r) => `<span style="--c:${r.color}" title="${r.name}">${r.icon}${p.resources[r.id]}</span>`).join(''));
     let wave = '';
-    if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> · Tier ${s.tier} <small>[\`] debug · [B] shop</small>`;
+    if (s.mode === 'boss' && s.bossFight) wave = `<b>BOSS FIGHT</b> · ${BOSSES[s.bossFight.type].name} · Tier ${s.tier}`;
+    else if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> · Tier ${s.tier} <small>[\`] debug · [B] shop</small>`;
     else if (s.wave) {
       const w = s.wave;
       const left = s.enemies.filter((e) => !e.dead && e.type !== 'dummy').length + w.spawnQueue.length;

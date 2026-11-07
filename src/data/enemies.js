@@ -72,21 +72,46 @@ export const ENEMY_BULLET_RADIUS = 0.2;
 
 // Bosses: each phase swaps to the next Sproto Duel stage model (stage 1 → 2 → 3).
 export const BOSSES = {
+  // Physical bosses (ai 'mega'): chase, volley, charge, slam, summon, missiles, plus a heavy melee swipe when
+  // you get close. melee.range is reach beyond the boss radius; missiles home in and explode.
   megaSproto: {
-    name: 'MEGA TINUBU', tag: 'physical', hp: 3500, radius: 2.0, height: 4.5, color: 0xff6a3d, speed: 4.5,
+    name: 'MEGA TINUBU', tag: 'physical', ai: 'mega', hp: 3500, radius: 2.6, height: 5.85, color: 0xff6a3d, speed: 4.5,
     contactDamage: 15, chargeDamage: 35, chargeSpeed: 22, slamDamage: 25,
-    volley: { damage: 10, count: 7, fan: 50, speed: 24, waves: 2, gap: 0.4 },
-    model: 'tinubu', stageHeights: [4.2, 4.6, 5.0],
+    volley: { damage: 10, count: 7, fan: 50, speed: 24, waves: 2, gap: 0.4, y: 4.2 },
+    melee: { range: 3.0, damage: 45, windup: 0.45, recover: 0.5, cd: 1.6, knockback: 14 },
+    missiles: { count: 2, damage: 32, splash: 4.5, speed: 13, homing: 1.1, ttl: 6, gap: 0.3, y: 5.2 },
+    model: 'tinubu', stageHeights: [5.5, 6.0, 6.5],
     portraits: ['ui/bosses/tinubu.png', 'ui/bosses/tinubu_stage2.png', 'ui/bosses/tinubu_stage3.png'],
     phases: [
-      { hpBelow: 1.0, speedMult: 1.0, pattern: ['chase', 'volley', 'charge', 'chase', 'slam'] },
-      { hpBelow: 0.5, speedMult: 1.3, pattern: ['chase', 'charge', 'volley', 'slam', 'charge', 'slam', 'summon'] },
-      { hpBelow: 0.2, speedMult: 1.5, pattern: ['volley', 'charge', 'slam', 'volley', 'charge', 'summon'] },
+      { hpBelow: 1.0, speedMult: 1.0, pattern: ['chase', 'volley', 'charge', 'chase', 'missiles', 'slam'] },
+      { hpBelow: 0.5, speedMult: 1.3, pattern: ['chase', 'charge', 'missiles', 'volley', 'slam', 'charge', 'slam', 'summon'] },
+      { hpBelow: 0.2, speedMult: 1.5, pattern: ['volley', 'missiles', 'charge', 'slam', 'volley', 'charge', 'summon'] },
     ],
     hitboxes: [
-      { type: 'capsule', zone: 'body', r: 2.0, y0: 0, y1: 4.5 },
-      { type: 'sphere', zone: 'weak', r: 0.6, x: 0, y: 4.4, z: 0.6 },
-      { type: 'sphere', zone: 'weak', r: 0.5, x: 0, y: 2.0, z: 1.9, onlyWhen: 'stunned' },
+      { type: 'capsule', zone: 'body', r: 2.6, y0: 0, y1: 5.85 },
+      { type: 'sphere', zone: 'weak', r: 0.78, x: 0, y: 5.7, z: 0.78 },
+      { type: 'sphere', zone: 'weak', r: 0.65, x: 0, y: 2.6, z: 2.5, onlyWhen: 'stunned' },
+    ],
+  },
+  monster: {
+    // Wave 2 boss. Rigged humanoid without clips: the renderer animates its skeleton (humanoidRig.js).
+    // Its melee is an overhead arm smash. Spits monster bullets.
+    name: 'BLUE MONSTER', tag: 'physical', ai: 'mega', hp: 3800, radius: 2.4, height: 7.0, color: 0x2f6bff, speed: 4.8,
+    contactDamage: 18, chargeDamage: 40, chargeSpeed: 24, slamDamage: 30,
+    volley: { damage: 12, count: 5, fan: 40, speed: 26, waves: 2, gap: 0.45, y: 6.0, kind: 'monsterBullet' },
+    melee: { range: 3.2, damage: 50, windup: 0.5, recover: 0.5, cd: 1.5, knockback: 16 },
+    missiles: { count: 3, damage: 34, splash: 4.5, speed: 13, homing: 1.2, ttl: 6, gap: 0.28, y: 6.2 },
+    model: 'monster', rig: 'humanoid', stageHeights: [7.0, 7.6, 8.2],
+    portraits: [],
+    phases: [
+      { hpBelow: 1.0, speedMult: 1.0, pattern: ['chase', 'volley', 'missiles', 'chase', 'charge', 'slam'] },
+      { hpBelow: 0.5, speedMult: 1.25, pattern: ['chase', 'missiles', 'volley', 'charge', 'slam', 'summon'] },
+      { hpBelow: 0.2, speedMult: 1.45, pattern: ['missiles', 'volley', 'charge', 'slam', 'missiles', 'charge', 'summon'] },
+    ],
+    hitboxes: [
+      { type: 'capsule', zone: 'body', r: 2.4, y0: 0, y1: 7.0 },
+      { type: 'sphere', zone: 'weak', r: 0.9, x: 0, y: 6.5, z: 0.5 },
+      { type: 'sphere', zone: 'weak', r: 0.7, x: 0, y: 3.6, z: 1.5, onlyWhen: 'stunned' },
     ],
   },
   // Jade Dragon: wave 1 boss (Tripo quadruped rig, no clips: animated procedurally in render/dragonRig.js).
@@ -114,7 +139,7 @@ export const BOSSES = {
   },
   hexAuditor: {
     // Floats ~1.6 m off the ground: pos.y is the body centre, so hitboxes go below and above it.
-    name: 'HEX SAHIL', tag: 'magic', hp: 3000, radius: 0.7, height: 2.5, color: 0x9b59ff, speed: 4.5, hoverY: 1.6,
+    name: 'HEX SAHIL', tag: 'magic', ai: 'hex', hp: 3000, radius: 0.7, height: 2.5, color: 0x9b59ff, speed: 4.5, hoverY: 1.6,
     orbDamage: 8, taxDamage: 12, auraRadius: 9, auraRadiusP3: 13, auraDrain: 15,
     model: 'sahil', stageHeights: [2.6, 2.8, 3.1],
     portraits: ['ui/bosses/sahil.png', 'ui/bosses/sahil_stage2.png', 'ui/bosses/sahil_stage3.png'],

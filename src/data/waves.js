@@ -22,7 +22,7 @@ export const WAVES = [
       { at: 20, aliveBelow: 4, pattern: 'spread', spawns: [S('bigObama', 1), S('obama', 3), S('midget', 4, 1), S('flyingMidget', 2)] },
       { at: 32, aliveBelow: 4, pattern: 'spread', spawns: [S('bigObama', 1, 1), S('obama', 2, 1), S('midget', 6), S('flyingMidget', 2)] },
     ],
-    boss: { types: ['megaSproto'], introDelay: 3 },
+    boss: { types: ['monster'], introDelay: 3 },
   },
   {
     id: 3, name: 'Wave 3: The Final Audit', clearTickets: 50, maxAlive: 24,

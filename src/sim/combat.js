@@ -158,6 +158,13 @@ export const GOD_HP = 99;
 
 export function damagePlayer(state, p, hit) {
   if (p.invulnT > 0 || p.dead) return 0;
+  // sandbox: boss attacks still land (shake, flash, knockback) but do no damage
+  if (state.mode === 'sandbox' && hit.sourceKind === 'boss') {
+    const from = hit.fromPos;
+    emit(state, 'playerDamaged', { playerId: p.id, amount: 0, toShield: 0, toHealth: 0, absorbed: 0, sourceKind: 'boss', noDamage: true,
+      dir: from ? Math.atan2(from.x - p.pos.x, from.z - p.pos.z) : null });
+    return 0;
+  }
   let dmg = hit.base * (hit.sourceKind === 'self' ? 1 : state.tuning.enemyDmgMult);
   dmg *= 1 - 0.03 * (p.skills.health.level - 1);
   let absorbed = 0;

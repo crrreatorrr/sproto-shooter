@@ -1,5 +1,5 @@
 // Pure sim entry point. No rendering, DOM, unseeded randomness or wall clock in src/sim or src/data. PLAN §1.5
-import { applyActions } from './actions.js';
+import { applyActions, bossFightDirector } from './actions.js';
 import { playerInput, playerMovement, playerCombat, playerVitals } from './player.js';
 import { spells } from './spells.js';
 import { enemyAI } from './enemies.js';
@@ -23,6 +23,7 @@ export function simulate(state, commands, dt = DT) {
   spells(state, dt);
   allies(state, dt);
   waveDirector(state, dt);
+  bossFightDirector(state);
   enemyAI(state, dt);
   bosses(state, dt);
   hazards(state, dt);

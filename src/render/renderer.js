@@ -7,6 +7,7 @@ import { RESOURCES } from '../data/drops.js';
 import { worldHitboxes } from '../sim/collision.js';
 import { createFirstPerson, FP } from './firstPerson.js';
 import { createDragonRig } from './dragonRig.js';
+import { createHumanoidRig } from './humanoidRig.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
 import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY, ensureGunModel, instantiateGun } from './assets.js';
@@ -272,10 +273,15 @@ export function createRenderer(container, bus) {
     g.add(holder);
     if (ch) { holder.add(ch.root); parts.char = ch; ch.play('idle'); }
     else { const f = buildFallback(def.color, h, def.radius); holder.add(f); Object.assign(parts, f.userData); }
+    parts.holder = holder;
     const extra = [];
-    if (e.type === 'megaSproto') {
-      const belly = new THREE.Mesh(G.sphere, E(0xff3b3b)); belly.scale.setScalar(0.55); belly.position.set(0, 2.0, 1.9); belly.visible = false;
-      g.add(belly, blob(2.6)); parts.belly = belly;
+    if (def.ai === 'mega') {
+      // stunned weak spot from the boss's hitboxes; ground shadow sized to the boss
+      const hb = def.hitboxes.find((x) => x.onlyWhen === 'stunned');
+      const belly = new THREE.Mesh(G.sphere, E(0xff3b3b)); belly.scale.setScalar(hb ? hb.r * 1.1 : 0.55);
+      if (hb) belly.position.set(hb.x || 0, hb.y, hb.z || 0); belly.visible = false;
+      g.add(belly, blob(def.radius * 1.3)); parts.belly = belly;
+      if (ch && def.rig === 'humanoid') parts.rig = createHumanoidRig(ch, def); // skeleton animated in code
     } else if (e.type === 'dragon') {
       holder.rotation.y = Math.PI; // this model's head is at Tripo -X, the opposite of the other characters
       g.add(blob(3.4));
@@ -337,6 +343,31 @@ export function createRenderer(container, bus) {
     seen.clear();
   }
 
+  /** One mesh from a projectile GLB, centred, nose turned to +Z and fitted to d.len metres. */
+  async function loadProjectileModel(d) {
+    try {
+      const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+      const { MeshoptDecoder } = await import('three/examples/jsm/libs/meshopt_decoder.module.js');
+      const g = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(`${import.meta.env.BASE_URL}assets/${d.model}`);
+      let mesh = null;
+      g.scene.traverse((o) => { if (!mesh && o.isMesh) mesh = o; });
+      if (!mesh) return null;
+      const geo = mesh.geometry.clone();
+      geo.applyMatrix4(mesh.matrixWorld);
+      geo.computeBoundingBox();
+      const c = geo.boundingBox.getCenter(new THREE.Vector3());
+      geo.translate(-c.x, -c.y, -c.z);
+      geo.rotateY(d.noseYaw || 0);
+      geo.computeBoundingBox();
+      const sz = geo.boundingBox.getSize(new THREE.Vector3());
+      const k = d.len / Math.max(1e-4, sz.z);
+      geo.scale(k, k, k);
+      let material = mesh.material;
+      if (d.glow && material.emissive) { material = material.clone(); material.emissive.set(d.glow); material.emissiveIntensity = 0.7; } // readable against the sky
+      return { geometry: geo, material };
+    } catch (err) { console.warn('[projectiles] model failed', d.model, err.message); return null; }
+  }
+
   // ---------- instanced projectiles ----------
   const PROJ_KINDS = {
     orb: { color: 0xc77dff, scale: 0.35, cap: 500 }, taxBolt: { color: 0xff3bd4, scale: 0.4, cap: 32 },
@@ -346,6 +377,9 @@ export function createRenderer(container, bus) {
     bullet: { color: 0xffc93c, scale: 0.22, cap: 600 },
     flame: { color: 0xff7a1a, scale: 0.4, cap: 300 }, fireball: { color: 0xff4a1a, scale: 0.6, cap: 16 },
     pellet: { color: 0xff5ec4, scale: 0.12, cap: 300 },
+    // boss projectiles drawn with 3D models (`model`, fitted to `len` metres, nose along +Z); a sphere until loaded
+    monsterBullet: { color: 0x4a5a2a, scale: 0.35, cap: 200, model: 'models/projectiles/monster_bullet.glb', len: 0.9, noseYaw: -Math.PI / 2 },
+    missile: { color: 0xff8a1a, scale: 0.4, cap: 64, model: 'models/projectiles/missile.glb', len: 1.3, noseYaw: -Math.PI / 2, glow: 0xff6a10 },
   };
   const inst = {};
   const dummy = new THREE.Object3D();
@@ -353,7 +387,10 @@ export function createRenderer(container, bus) {
     const im = new THREE.InstancedMesh(k === 'yeetGun' ? G.box : G.sphereLo, E(d.color), d.cap);
     im.frustumCulled = false; im.count = 0;
     scene.add(im);
-    inst[k] = { im, n: 0, d };
+    inst[k] = { im, n: 0, d, modeled: false };
+    if (d.model) {
+      loadProjectileModel(d).then((m) => { if (!m) return; im.geometry = m.geometry; im.material = m.material; inst[k].modeled = true; });
+    }
   }
 
   // pickups instanced
@@ -657,7 +694,7 @@ export function createRenderer(container, bus) {
   });
   bus.on('meteorImpact', (ev) => { addBoom({ ...ev.pos, y: 0.5 }, 7, 0xff4400, 0.7); burstConfetti(ev.pos, 150, 12); addTrauma(1); });
   bus.on('splat', (ev) => burstConfetti(ev.pos, ev.element === 'fire' ? 18 : 10, 3, ev.element === 'fire' ? [new THREE.Color(0xff7a1a), new THREE.Color(0xffd166), new THREE.Color(0x553322)] : [new THREE.Color(0x9be33b), new THREE.Color(0x5aa02c)]));
-  bus.on('playerDamaged', (ev) => addTrauma(Math.min(0.5, ev.amount / 40)));
+  bus.on('playerDamaged', (ev) => addTrauma(ev.noDamage ? 0.3 : Math.min(0.5, ev.amount / 40)));
   bus.on('land', (ev) => { feel.landDip = Math.min(0.25, ev.speed / 60); });
   bus.on('dash', () => { feel.fovPunch += 8; });
   bus.on('slide', () => { feel.fovPunch += 4; });
@@ -808,19 +845,19 @@ export function createRenderer(container, bus) {
           else ch.play('idle');
         } else {
           const act = e.boss.action.id;
-          const map = e.type === 'dragon' ? {} : e.type === 'megaSproto'
-            ? { intro: 'victory', transition: 'hit', chase: 'run', charge: e.boss.action.t < 0.8 ? 'castBig' : 'run', stunned: 'stun', slam: 'jump', volley: 'castBig', summon: 'victory' }
+          const map = e.type === 'dragon' ? {} : BOSSES[e.type].ai === 'mega'
+            ? { intro: 'victory', transition: 'hit', chase: 'run', charge: e.boss.action.t < 0.8 ? 'castBig' : 'run', stunned: 'stun', slam: 'jump', volley: 'castBig', summon: 'victory', melee: 'castBig', missiles: 'cast' }
             : { intro: 'victory', transition: 'hit', drift: 'idle', ring: 'cast', fan: 'cast', spiral: 'cast', taxBolts: 'castBig', spiralRing: 'castBig', teleport: 'castBig' };
           const clip = map[act] || 'idle';
           ch.play(clip, { speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : 1 });
         }
         ch.update(fdt);
-        if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0 });
+        if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, speed: spd, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0 });
       }
       if (e.boss) {
         if (e.type === 'dragon') {
           o.position.y = ey + (e.ai.moving ? Math.abs(Math.sin(now * 0.008)) * 0.12 : Math.sin(now * 0.002) * 0.05);
-        } else if (e.type === 'megaSproto') {
+        } else if (BOSSES[e.type].ai === 'mega') {
           u.belly.visible = e.boss.action.id === 'stunned';
           o.rotation.z = e.boss.action.id === 'stunned' ? Math.sin(now * 0.02) * 0.06 : 0;
         } else {
@@ -878,6 +915,11 @@ export function createRenderer(container, bus) {
       if (pr.kind === 'rocket') { dummy.scale.set(s, s, s * 3); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
       else if (pr.kind === 'bullet' || pr.kind === 'pellet') { dummy.scale.set(s, s, s * 2.2); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
       else if (pr.kind === 'yeetGun') { dummy.scale.set(0.15, 0.2, 0.8); dummy.rotation.set(now * 0.02, now * 0.015, 0); }
+      else if (I.d.model) { // modeled boss projectiles fly nose-first
+        dummy.scale.setScalar(I.modeled ? 1 : s);
+        dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z);
+        if (pr.kind === 'missile') dummy.rotateZ(now * 0.01 + pr.id); // spin
+      }
       else { dummy.scale.setScalar(s); dummy.rotation.set(0, 0, 0); }
       dummy.updateMatrix();
       I.im.setMatrixAt(I.n++, dummy.matrix);

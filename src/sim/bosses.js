@@ -1,4 +1,4 @@
-// Boss phase machines: Mega Tinubu (physical, id megaSproto), Hex Sahil (magic, id hexAuditor). PLAN §4.11
+// Boss phase machines: physical bosses (ai 'mega': Mega Tinubu, Blue Monster) and Hex Sahil (ai 'hex'). PLAN §4.11
 // Each phase swaps the boss to the next Sproto Duel stage model (render side).
 import { BOSSES, ENEMY_BULLET_RADIUS } from '../data/enemies.js';
 import { TUNING, ARENA_R } from '../data/tuning.js';
@@ -36,12 +36,12 @@ export function bosses(state, dt) {
     if (state.tuning.freezeEnemies || !t) { continue; }
     const a = b.action;
     a.t += dt;
-    const impl = IMPLS[e.type];
+    const impl = IMPLS[e.type] || (def.ai === 'hex' ? HEX : MEGA); // physical bosses without their own AI use MEGA
     const done = impl(state, e, a, dt, def, t);
     if (done) {
       if (a.id === 'transition') {
         b.phaseIdx++; b.transitioning = false; b.invuln = false; b.patternIdx = 0;
-        if (e.type === 'megaSproto' && b.phaseIdx === 1) summonGrunts(state, e);
+        if (impl === MEGA && b.phaseIdx === 1) summonGrunts(state, e);
       }
       nextAction(state, e, def);
     }
@@ -99,6 +99,13 @@ function MEGA(state, e, a, dt, def, t) {
     }
   };
   e.ai.contactCd = (e.ai.contactCd || 0) - dt;
+  e.ai.meleeCd = (e.ai.meleeCd || 0) - dt;
+  // get close and the boss turns and swings (from chase, volley or missiles)
+  if (def.melee && (a.id === 'chase' || a.id === 'volley' || a.id === 'missiles') && e.ai.meleeCd <= 0 && e.pos.y <= 0.01
+    && Math.hypot(t.pos.x - e.pos.x, t.pos.z - e.pos.z) < def.radius + def.melee.range) {
+    start(e, 'melee');
+    return false;
+  }
 
   switch (a.id) {
     case 'intro': e.vel.x = e.vel.z = 0; integrate(); return a.t > 2.0;
@@ -139,13 +146,13 @@ function MEGA(state, e, a, dt, def, t) {
       if (a.t < 0.5) { if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'volley' }); } return false; }
       a.data.fired = a.data.fired || 0;
       while (a.data.fired < waves && a.t >= 0.5 + a.data.fired * v.gap) {
-        const from = { x: e.pos.x - Math.sin(e.yaw) * 2.2, y: 3.2, z: e.pos.z - Math.cos(e.yaw) * 2.2 };
+        const from = { x: e.pos.x - Math.sin(e.yaw) * (def.radius + 0.2), y: v.y || 3.2, z: e.pos.z - Math.cos(e.yaw) * (def.radius + 0.2) };
         const base = Math.atan2(t.pos.x - from.x, t.pos.z - from.z) + (a.data.fired % 2 ? deg(v.fan / v.count / 2) : 0);
         const pitch = Math.atan2(t.pos.y + 1.1 - from.y, Math.hypot(t.pos.x - from.x, t.pos.z - from.z));
         for (let i = 0; i < v.count; i++) {
           const yaw = base + deg(v.fan) * (i / (v.count - 1) - 0.5);
           const dir = { x: Math.sin(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: Math.cos(yaw) * Math.cos(pitch) };
-          createProjectile(state, { kind: 'bullet', faction: 'enemy', ownerId: e.id, sourceKind: 'boss', pos: { ...from },
+          createProjectile(state, { kind: v.kind || 'bullet', faction: 'enemy', ownerId: e.id, sourceKind: 'boss', pos: { ...from },
             vel: { x: dir.x * v.speed, y: dir.y * v.speed, z: dir.z * v.speed }, radius: ENEMY_BULLET_RADIUS * 1.5, damage: v.damage * e.dmgMult, ttl: 4 });
         }
         a.data.fired++;
@@ -169,6 +176,51 @@ function MEGA(state, e, a, dt, def, t) {
         return a.data.lt >= 1.6;
       }
       return a.t > 3;
+    }
+    case 'melee': {
+      // wind up facing you, then a heavy swipe in front; dodge out of reach during the windup
+      const m = def.melee;
+      e.vel.x = e.vel.z = 0; integrate();
+      if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'melee' }); }
+      if (a.t < m.windup) { e.yaw = yawTo(e.pos, t.pos); return false; }
+      if (!a.data.swung) {
+        a.data.swung = true;
+        e.ai.meleeCd = m.cd;
+        emit(state, 'bossCast', { id: e.id, kind: 'melee' });
+        const fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw);
+        for (const p of Object.values(state.players)) {
+          if (p.dead) continue;
+          const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z, d = Math.hypot(dx, dz) || 1;
+          const inFront = (dx * fx + dz * fz) / d > -0.2;
+          if (d < def.radius + m.range + TUNING.playerRadius && inFront && p.pos.y < def.height) {
+            damagePlayer(state, p, { base: m.damage * e.dmgMult, sourceKind: 'boss', fromPos: e.pos });
+            knockPlayer(p, e.pos, m.knockback, 7);
+          }
+        }
+      }
+      return a.t >= m.windup + m.recover;
+    }
+    case 'missiles': {
+      // homing missiles launched upward from the shoulders; they explode on impact
+      const m = def.missiles;
+      e.vel.x = e.vel.z = 0; integrate();
+      e.yaw = yawTo(e.pos, t.pos);
+      const n = m.count + (e.boss.phaseIdx >= 2 ? 1 : 0);
+      if (a.t < 0.6) { if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'missiles' }); } return false; }
+      a.data.fired = a.data.fired || 0;
+      while (a.data.fired < n && a.t >= 0.6 + a.data.fired * m.gap) {
+        const side = a.data.fired % 2 ? 1 : -1;
+        const rx = Math.cos(e.yaw) * side * def.radius * 0.7, rz = -Math.sin(e.yaw) * side * def.radius * 0.7;
+        const fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw);
+        createProjectile(state, { kind: 'missile', faction: 'enemy', ownerId: e.id, sourceKind: 'boss',
+          pos: { x: e.pos.x + rx, y: m.y, z: e.pos.z + rz },
+          vel: { x: fx * m.speed * 0.5 + rx * 1.5, y: m.speed * 0.6, z: fz * m.speed * 0.5 + rz * 1.5 },
+          radius: 0.5, damage: m.damage * e.dmgMult, homing: m.homing, homingSpeed: m.speed, ttl: m.ttl,
+          splash: { radius: m.splash, damage: m.damage * e.dmgMult } });
+        a.data.fired++;
+        emit(state, 'bossCast', { id: e.id, kind: 'missiles' });
+      }
+      return a.t >= 0.6 + n * m.gap + 0.5;
     }
     case 'summon': {
       e.vel.x = e.vel.z = 0; integrate();
