@@ -47,6 +47,7 @@ Assets load per level, not all at once (`render/assets.js` priority queue + `lev
 | WASD / Mouse | Move / aim (click the game to lock the mouse) |
 | LMB / RMB (hold) | Fire / aim (sniper scope) |
 | F | Aim on / off (Shift cancels it) |
+| 5 | Stats & powers panel (spells and perks show what unlocks them) |
 | P | God mode: you still get hit, but health never drops below 99 |
 | Shift · Space · C · Alt or V | Sprint · jump/double jump · slide · dash |
 | R · 1–4 / wheel | Reload · switch gun |

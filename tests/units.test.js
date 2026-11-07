@@ -314,6 +314,8 @@ describe('god mode', () => {
     expect(dealt).toBeGreaterThan(0); // shield and the 1 HP above the floor still take the hit
     expect(p.hp).toBe(99);
     expect(p.downed).toBe(false);
+    expect(p.tickets).toBe(999);
+    for (const v of Object.values(p.resources)) expect(v).toBe(99);
     damagePlayer(s, p, { base: 500, sourceKind: 'enemy' });
     expect(p.hp).toBe(99);
     run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
@@ -329,5 +331,33 @@ describe('god mode', () => {
     expect(s.tuning.godMode).toBe(true);
     run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
     expect(s.tuning.godMode).toBe(false);
+  });
+});
+
+describe('machine gun ammo', () => {
+  it('never runs out of spare ammo but still empties its magazine and takes time to reload', () => {
+    const s = createGameState({ seed: 9 });
+    const p = s.players[s.localPlayerId];
+    const g = p.guns[0];
+    expect(g.type).toBe('mg');
+    p.ammo.bullets = 0;
+    g.ammoInMag = 1;
+    const fire = () => cmd({ held: { fire: true } });
+    run(s, 10, fire); // fires the last round, then starts a reload instead of reporting empty
+    expect(g.ammoInMag).toBe(0);
+    expect(p.reloadT).toBeGreaterThan(2); // 2.5 s reload
+    const ev = run(s, Math.ceil(2.6 * 60), () => cmd());
+    expect(ev.some((e) => e.type === 'ammoEmpty')).toBe(false);
+    expect(g.ammoInMag).toBe(g.stats.magSize);
+    expect(p.ammo.bullets).toBe(0); // reserve untouched
+  });
+  it('enemies stop dropping bullets when the machine gun is the only gun', async () => {
+    const { rollDrops } = await import('../src/sim/drops.js');
+    const { createRng } = await import('../src/core/rng.js');
+    const rng = createRng(1);
+    for (let i = 0; i < 200; i++) {
+      const drops = rollDrops(rng, 'midget', { elite: true, tier: 5, playerGunTypes: [] });
+      expect(drops.some((d) => d.kind === 'ammo')).toBe(false);
+    }
   });
 });

@@ -1,6 +1,6 @@
 // Player input, movement, combat (firing/reload/swap), vitals. PLAN §4.4, §7.1
 import { TUNING, ARENA_R } from '../data/tuning.js';
-import { GUN_TYPES_BY_ID } from '../data/guns.js';
+import { GUN_TYPES_BY_ID, hasInfiniteReserve } from '../data/guns.js';
 import { float, range } from '../core/rng.js';
 import { dirFromYawPitch, deg, clamp } from '../core/math.js';
 import { emit } from './events.js';
@@ -128,7 +128,8 @@ function switchSlot(state, p, slot) {
 
 function startReload(state, p, g) {
   if (p.reloadT > 0 || g.ammoInMag >= g.stats.magSize) return;
-  if (!state.tuning.infiniteAmmo && p.ammo[g.ammoType] <= 0) { emit(state, 'ammoEmpty', { playerId: p.id }); return; }
+  const free = state.tuning.infiniteAmmo || hasInfiniteReserve(g);
+  if (!free && p.ammo[g.ammoType] <= 0) { emit(state, 'ammoEmpty', { playerId: p.id }); return; }
   const st = effectiveGunStats(g, p);
   p.reloadT = st.reloadTime;
   emit(state, 'reloadStart', { playerId: p.id, slot: p.activeSlot, time: st.reloadTime });
@@ -146,8 +147,9 @@ function startReload(state, p, g) {
 
 function finishReload(state, p, g) {
   const need = g.stats.magSize - g.ammoInMag;
-  const take = state.tuning.infiniteAmmo ? need : Math.min(need, p.ammo[g.ammoType]);
-  if (!state.tuning.infiniteAmmo) p.ammo[g.ammoType] -= take;
+  const free = state.tuning.infiniteAmmo || hasInfiniteReserve(g);
+  const take = free ? need : Math.min(need, p.ammo[g.ammoType]);
+  if (!free) p.ammo[g.ammoType] -= take;
   g.ammoInMag += take;
   emit(state, 'reloadEnd', { playerId: p.id, slot: p.activeSlot });
 }

@@ -7,8 +7,9 @@ const B = (o) => ({
 });
 
 export const GUN_TYPES = [
-  { id: 'mg', name: 'Machine Gun', short: 'MG', ammoType: 'bullets', weight: 60, fireMode: 'auto',
-    base: B({ damage: 9, fireRate: 10, spread: 1.2, adsSpread: 0.45, magSize: 36, reloadTime: 1.8, critMult: 2.0, critChance: 0.05, elementChance: 0.10, recoil: 0.35, recoilYaw: 0.15, swapTime: 0.5, zoomFov: 70 }) },
+  // infiniteReserve: spare ammo never runs out, but the magazine still empties and reloads
+  { id: 'mg', name: 'Machine Gun', short: 'MG', ammoType: 'bullets', weight: 60, fireMode: 'auto', infiniteReserve: true,
+    base: B({ damage: 9, fireRate: 10, spread: 1.2, adsSpread: 0.45, magSize: 36, reloadTime: 2.5, critMult: 2.0, critChance: 0.05, elementChance: 0.10, recoil: 0.35, recoilYaw: 0.15, swapTime: 0.5, zoomFov: 70 }) },
   { id: 'shotgun', name: 'Shotgun', short: 'SG', ammoType: 'shells', weight: 17, fireMode: 'auto',
     base: B({ damage: 8, pellets: 9, fireRate: 1.2, spread: 6.0, adsSpread: 4.5, magSize: 6, reloadTime: 2.4, critMult: 2.0, critChance: 0.03, elementChance: 0.06, recoil: 3.5, recoilYaw: 1.0, swapTime: 0.5, zoomFov: 75 }) },
   { id: 'sniper', name: 'Sniper', short: 'SN', ammoType: 'sniper', weight: 17, fireMode: 'auto',
@@ -80,5 +81,7 @@ export const MANUFACTURERS_BY_ID = byId(MANUFACTURERS);
 export const PARTS_BY_ID = byId(PARTS);
 export const ELEMENTS_BY_ID = byId(ELEMENTS);
 export const WACKY_BY_ID = byId(WACKY);
+/** True when this gun never runs out of spare ammo (the magazine still needs reloading). */
+export const hasInfiniteReserve = (gun) => !!(gun && GUN_TYPES_BY_ID[gun.type] && GUN_TYPES_BY_ID[gun.type].infiniteReserve);
 export const PARTS_BY_SLOT = Object.fromEntries(SLOTS.map((s) => [s, PARTS.filter((p) => p.slot === s)]));
 export const STAT_KEYS = ['damage', 'fireRate', 'spread', 'magSize', 'reloadTime', 'projectileSpeed', 'critMult', 'elementChance'];
