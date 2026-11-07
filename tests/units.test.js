@@ -151,6 +151,41 @@ describe('enemies shoot back (midgets never do)', () => {
   });
 });
 
+describe('flying midgets', () => {
+  it('fly fast above the ground and fire small, weak pellets', () => {
+    const s = createGameState({ seed: 8 });
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'setTuning', args: { key: 'godMode', value: true } }, { type: 'debug', op: 'spawnEnemy', args: { type: 'flyingMidget', count: 3 } }] }));
+    const ev = run(s, 60 * 8);
+    const fl = s.enemies.filter((e) => e.type === 'flyingMidget');
+    expect(fl.length).toBe(3);
+    for (const e of fl) expect(e.pos.y).toBeGreaterThan(2);
+    expect(Math.max(...fl.map((e) => Math.hypot(e.vel.x, e.vel.z)))).toBeGreaterThan(5);
+    const shots = ev.filter((e) => e.type === 'enemyShot' && e.enemyType === 'flyingMidget');
+    expect(shots.length).toBeGreaterThan(3);
+    const pellets = s.projectiles.filter((p) => p.kind === 'pellet');
+    for (const p of pellets) expect(p.damage).toBeLessThanOrEqual(3);
+  });
+  it('use the Midget stage 3 model', async () => {
+    const { enemyStage } = await import('../src/data/enemies.js');
+    expect(enemyStage({ type: 'flyingMidget', elite: false, tier: 1 })).toBe(3);
+  });
+});
+
+describe('level-scoped loading', () => {
+  it('level 1 needs only its stage and the models its wave spawns', async () => {
+    const { levelAssets } = await import('../src/data/stages.js');
+    const l1 = levelAssets(0, 1);
+    expect(l1.stage).toBe('city');
+    expect(l1.characters).toEqual([{ model: 'midget', stage: 1 }, { model: 'obama', stage: 1 }]);
+    expect(l1.bosses).toEqual([]);
+    const l2 = levelAssets(1, 1);
+    expect(l2.stage).toBe('volcano');
+    expect(l2.characters).toContainEqual({ model: 'midget', stage: 3 }); // flying midgets
+    expect(l2.bosses.map((b) => b.model)).toEqual(['tinubu', 'tinubu', 'tinubu']);
+    expect(levelAssets(2, 1).bosses.map((b) => b.model)).toContain('sahil');
+  });
+});
+
 describe('drops', () => {
   it('each enemy drops its own resource; elites drop double', () => {
     const r = createRng(1);

@@ -8,6 +8,14 @@ export const DROP_TABLES = {
     { kind: 'gun', chance: 0.02, table: 'enemyGun' },
     { kind: 'tickets', min: 1, max: 1, chance: 1 },
   ],
+  flyingMidget: [
+    { kind: 'resource', resId: 'scrap', min: 1, max: 2, chance: 1 },
+    { kind: 'resource', resId: 'springs', min: 2, max: 3, chance: 1 },
+    { kind: 'health', chance: 0.1 },
+    { kind: 'ammo', chance: 0.3 },
+    { kind: 'gun', chance: 0.04, table: 'enemyGun' },
+    { kind: 'tickets', min: 2, max: 2, chance: 1 },
+  ],
   obama: [
     { kind: 'resource', resId: 'scrap', min: 3, max: 5, chance: 1 },
     { kind: 'resource', resId: 'goo', min: 2, max: 3, chance: 1 },

@@ -6,8 +6,8 @@ import { QUALITIES_BY_ID, ELEMENTS_BY_ID, MANUFACTURERS_BY_ID } from '../data/gu
 import { RESOURCES } from '../data/drops.js';
 import { worldHitboxes } from '../sim/collision.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
-import { STAGES, stageAssets, stageFor, CHARACTER_MODELS } from '../data/stages.js';
-import { preloadAll, preloadStage, peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel } from './assets.js';
+import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
+import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY } from './assets.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const ELEM_COL = { none: 0xffe9a8, fire: 0xff7a1a, shock: 0x4fe3ff, goo: 0x9be33b };
@@ -58,8 +58,6 @@ export function createRenderer(container, bus) {
   };
 
   // ---------- arena + stage environment (Sproto Duel stages) ----------
-  preloadAll();
-  for (const id of Object.keys(STAGES)) preloadStage(id);
   const sky = new THREE.Mesh(new THREE.SphereGeometry(260, 48, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide, fog: false, depthWrite: false, toneMapped: false }));
   sky.renderOrder = -1;
   scene.add(sky);
@@ -86,6 +84,37 @@ export function createRenderer(container, bus) {
   scene.add(decor);
   let stageKey = '';
   let stageOverride = null;
+
+  /**
+   * Level-scoped loading. Each check requests only:
+   *  - now:   the current stage + every enemy model the current wave spawns + anything alive on screen
+   *  - later: this wave's boss models (all phases) once the above is in; the NEXT wave's stage and
+   *           enemies only once this wave is cleared (intermission), so level 1 downloads level-1 assets only.
+   */
+  let needsT = 0;
+  function requestNeeds(state) {
+    const { NOW, LATER } = PRIORITY;
+    const stageId = stageFor(state, stageOverride);
+    ensureStage(stageId, NOW);
+    for (const e of state.enemies) {
+      if (e.dead) continue;
+      if (e.boss) { const b = BOSSES[e.type]; b.phases.forEach((_, i) => ensureCharacter(b.model, i + 1, NOW)); continue; }
+      const def = ENEMY_DEFS[e.type];
+      if (def.model) ensureCharacter(def.model, enemyStage(e), NOW);
+    }
+    if (state.mode !== 'waves' || !state.wave) return;
+    const w = state.wave;
+    const lvl = levelAssets(w.index, state.tier);
+    for (const c of lvl.characters) ensureCharacter(c.model, c.stage, NOW);
+    const coreReady = stageReady(lvl.stage) && lvl.characters.every((c) => characterReady(c.model, c.stage));
+    if (coreReady) for (const c of lvl.bosses) ensureCharacter(c.model, c.stage, w.phase === 'bossIntro' || w.phase === 'boss' ? NOW : LATER);
+    const between = w.phase === 'cleared' || w.phase === 'intermission';
+    const next = between ? levelAssets(w.index + 1, state.tier) : null;
+    if (next) {
+      ensureStage(next.stage, LATER);
+      for (const c of next.characters) ensureCharacter(c.model, c.stage, LATER);
+    }
+  }
 
   function applyStage(id) {
     const st = STAGES[id], a = stageAssets(id);
@@ -200,6 +229,14 @@ export function createRenderer(container, bus) {
       const batt = new THREE.Mesh(G.box, MAT.weak); batt.scale.set(0.5, 0.6, 0.3); batt.position.set(0, 1.5, -0.95);
       g.add(shield, batt); parts.weak = batt;
     }
+    if (def.flying) {
+      // propeller beanie: the wacky reason it can fly
+      const cap = new THREE.Mesh(G.sphere, M(0xff5ec4)); cap.scale.set(0.2, 0.12, 0.2); cap.position.y = def.height + 0.02;
+      const prop = new THREE.Group();
+      for (const r of [0, Math.PI / 2]) { const blade = new THREE.Mesh(G.box, M(0xffd166)); blade.scale.set(0.7, 0.02, 0.09); blade.rotation.y = r; prop.add(blade); }
+      prop.position.y = def.height + 0.16;
+      g.add(cap, prop); parts.prop = prop;
+    }
     if (e.type === 'dummy') {
       const head = new THREE.Mesh(G.sphere, MAT.weak); head.scale.setScalar(0.3); head.position.y = 1.85; g.add(head); parts.weak = head;
     }
@@ -209,7 +246,7 @@ export function createRenderer(container, bus) {
       g.add(crown);
       parts.crown = crown;
     }
-    g.add(blob(def.radius * 1.3));
+    const sh = blob(def.radius * 1.3); g.add(sh); parts.shadow = sh;
     g.userData = parts;
     return { obj: g, key: viewKey(e) };
   }
@@ -295,6 +332,7 @@ export function createRenderer(container, bus) {
     rocket: { color: 0xff6a3d, scale: 0.22, cap: 32 }, duckBullet: { color: 0xffe14a, scale: 0.2, cap: 128 },
     megaBullet: { color: 0xffffff, scale: 0.6, cap: 16 }, yeetGun: { color: 0xaaaaaa, scale: 0.35, cap: 16 },
     bullet: { color: 0xffc93c, scale: 0.22, cap: 600 },
+    pellet: { color: 0xff5ec4, scale: 0.12, cap: 300 },
   };
   const inst = {};
   const dummy = new THREE.Object3D();
@@ -611,6 +649,8 @@ export function createRenderer(container, bus) {
     }
 
     // enemies
+    needsT -= fdt;
+    if (needsT <= 0) { needsT = 0.25; requestNeeds(state); }
     applyStage(stageFor(state, stageOverride));
     for (const e of state.enemies) {
       // Model-swap only when the needed stage model is loaded (avoid flicker between fallback and model).
@@ -636,6 +676,8 @@ export function createRenderer(container, bus) {
       }
       for (const ey2 of u.eyes) { const pu = ey2.userData.pupil; pu.position.x = Math.sin(now * 0.013 + e.id) * 0.04; pu.position.y = Math.cos(now * 0.017 + e.id) * 0.04; }
       if (u.crown) u.crown.rotation.y += fdt * 2;
+      if (u.prop) u.prop.rotation.y += fdt * 40;
+      if (u.shadow) { u.shadow.position.y = 0.02 - ey / Math.max(0.05, sc); u.shadow.visible = !ENEMY_DEFS[e.type]?.flying || ey < 10; }
       const spd = Math.hypot(e.vel.x, e.vel.z);
       if (u.char) {
         const ch = u.char;
@@ -643,6 +685,7 @@ export function createRenderer(container, bus) {
           if (e.state === 'stagger') ch.play('stun');
           else if (e.state === 'attack') ch.play(e.type === 'bigObama' ? 'castBig' : 'cast', { speed: e.type === 'midget' ? 1.8 : 1.2 });
           else if (e.ai.shooting) ch.play('cast', { speed: 1.4 });
+          else if (ENEMY_DEFS[e.type].flying) ch.play(ch.has('jump') ? 'jump' : 'idle', { speed: 0.8 });
           else if (spd > 0.6) { ch.play('run'); ch.setSpeed(Math.min(2.2, Math.max(0.6, spd / 4.5))); }
           else ch.play('idle');
         } else {
@@ -707,7 +750,7 @@ export function createRenderer(container, bus) {
       dummy.position.set(lerp(pr.prevPos.x, pr.pos.x, alpha), lerp(pr.prevPos.y, pr.pos.y, alpha), lerp(pr.prevPos.z, pr.pos.z, alpha));
       const s = I.d.scale * (pr.kind === 'orb' || pr.kind === 'taxBolt' ? 1 + Math.sin(now * 0.02 + pr.id) * 0.15 : 1);
       if (pr.kind === 'rocket') { dummy.scale.set(s, s, s * 3); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
-      else if (pr.kind === 'bullet') { dummy.scale.set(s, s, s * 2.2); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
+      else if (pr.kind === 'bullet' || pr.kind === 'pellet') { dummy.scale.set(s, s, s * 2.2); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
       else if (pr.kind === 'yeetGun') { dummy.scale.set(0.15, 0.2, 0.8); dummy.rotation.set(now * 0.02, now * 0.015, 0); }
       else { dummy.scale.setScalar(s); dummy.rotation.set(0, 0, 0); }
       dummy.updateMatrix();
@@ -805,6 +848,7 @@ export function createRenderer(container, bus) {
     render, project, resize, canvas: renderer.domElement, camera,
     setShowHitboxes(v) { showHitboxes = v; },
     setStage(id) { stageOverride = id || null; },
+    pendingDownloads,
     info: () => renderer.info,
   };
 }

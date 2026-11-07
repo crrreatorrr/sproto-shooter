@@ -73,8 +73,8 @@ function enemyGun(state, e, t, gun, dt, canFire) {
       const dl = Math.hypot(dx, dy, dz) || 1;
       const d = cone(state, { x: dx / dl, y: dy / dl, z: dz / dl }, gun.spread);
       createProjectile(state, {
-        kind: 'bullet', faction: 'enemy', ownerId: e.id, sourceKind: 'enemy', pos: from,
-        vel: { x: d.x * gun.speed, y: d.y * gun.speed, z: d.z * gun.speed }, radius: ENEMY_BULLET_RADIUS,
+        kind: gun.small ? 'pellet' : 'bullet', faction: 'enemy', ownerId: e.id, sourceKind: 'enemy', pos: from,
+        vel: { x: d.x * gun.speed, y: d.y * gun.speed, z: d.z * gun.speed }, radius: gun.small ? ENEMY_BULLET_RADIUS * 0.6 : ENEMY_BULLET_RADIUS,
         damage: gun.damage * e.dmgMult, ttl: 3,
       });
       emit(state, 'enemyShot', { id: e.id, enemyType: e.type, pos: from });
@@ -148,6 +148,30 @@ const BEHAVIORS = {
       approachVel(e, steer(state, e, t, w, inv), shooting ? speed * 0.35 : speed, def.accel, dt);
     },
   },
+  flyingMidget: {
+    update(state, e, t, def, speed, dt) {
+      const ai = e.ai;
+      ai.jinkT = (ai.jinkT ?? 0) - dt;
+      if (ai.jinkT <= 0) {
+        ai.jinkT = range(state.rng, def.jinkMin, def.jinkMax);
+        ai.orbitDir = float(state.rng) < 0.5 ? -1 : 1;
+        ai.alt = range(state.rng, def.altMin, def.altMax);
+        ai.orbitR = range(state.rng, def.orbitMin, def.orbitMax);
+      }
+      const dx = t.pos.x - e.pos.x, dz = t.pos.z - e.pos.z;
+      const d = Math.hypot(dx, dz) || 1;
+      const nx = dx / d, nz = dz / d;
+      const radial = Math.max(-1, Math.min(1, (d - ai.orbitR) / 4));
+      let wx = nx * radial + -nz * ai.orbitDir, wz = nz * radial + nx * ai.orbitDir;
+      const r = Math.hypot(e.pos.x, e.pos.z);
+      if (r > ARENA_R - 4) { wx -= e.pos.x / r; wz -= e.pos.z / r; }
+      const wl = Math.hypot(wx, wz) || 1;
+      approachVel(e, { x: wx / wl, z: wz / wl }, speed, def.accel, dt);
+      e.vel.y += ((ai.alt - e.pos.y) * 3 - e.vel.y) * Math.min(1, 4 * dt);
+      faceToward(e, t, deg(720), dt);
+      ai.shooting = enemyGun(state, e, t, def.gun, dt, true);
+    },
+  },
   bigObama: {
     update(state, e, t, def, speed, dt) {
       const d = Math.hypot(t.pos.x - e.pos.x, t.pos.z - e.pos.z);
@@ -207,11 +231,12 @@ export function enemyAI(state, dt) {
       const slow = e.status.goo ? 1 - e.status.goo.slow : 1;
       BEHAVIORS[e.type].update(state, e, target, def, def.speed * e.speedMult * slow, dt);
     }
-    // integrate
-    const grav = 30;
-    e.vel.y -= grav * dt;
+    // integrate (flyers hold altitude themselves; staggered flyers sag a bit)
+    if (def.flying) { if (e.state === 'stagger' || e.state === 'spawning') e.vel.y += ((e.state === 'spawning' ? 2 : -3) - e.vel.y) * Math.min(1, 5 * dt); }
+    else e.vel.y -= 30 * dt;
     e.pos.x += e.vel.x * dt; e.pos.y += e.vel.y * dt; e.pos.z += e.vel.z * dt;
-    if (e.pos.y <= 0) { e.pos.y = 0; if (e.vel.y < 0) e.vel.y = 0; }
+    const floorY = def.flying ? 0.6 : 0;
+    if (e.pos.y <= floorY) { e.pos.y = floorY; if (e.vel.y < 0) e.vel.y = 0; }
     // knockback damping
     if (e.state !== 'chase' && e.state !== 'attack') { e.vel.x *= Math.max(0, 1 - 4 * dt); e.vel.z *= Math.max(0, 1 - 4 * dt); }
   }
@@ -229,6 +254,7 @@ export function resolveOverlaps(state) {
       const b = es[j];
       if (b.dead) continue;
       if (a.type === 'hexAuditor' || b.type === 'hexAuditor') continue;
+      if (Math.abs(a.pos.y - b.pos.y) > 1.5) continue;
       const rb = entityDef(b).radius * b.scale;
       const mb = b.boss || b.type === 'bigObama' ? 5 : 1;
       const dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z;

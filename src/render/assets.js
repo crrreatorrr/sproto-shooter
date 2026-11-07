@@ -3,13 +3,39 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { CHARACTER_MODELS, CHARACTER_ROTATION_Y, STAGE_IDS, stageAssets } from '../data/stages.js';
+import { CHARACTER_MODELS, CHARACTER_ROTATION_Y, stageAssets } from '../data/stages.js';
 
 const BASE = `${import.meta.env.BASE_URL}assets/`;
 const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const texLoader = new THREE.TextureLoader();
 
 const models = new Map(); // path -> template {root, clips, height} | null
+
+// ---- download queue: 'now' (needed this level) before 'later' (prefetch); a few at a time ----
+const NOW = 0, LATER = 1;
+const MAX_PARALLEL = 4;
+const queue = []; // {path, start, prio, resolve}
+let active = 0, activeNow = 0;
+const requested = new Set(); // every path ever requested, for diagnostics
+function schedule(path, start, prio) {
+  requested.add(path);
+  return new Promise((resolve) => { queue.push({ path, start, prio, resolve }); pump(); });
+}
+function pump() {
+  while (active < MAX_PARALLEL && queue.length) {
+    queue.sort((a, b) => a.prio - b.prio);
+    // background prefetch never competes with something the current level needs
+    if (queue[0].prio === LATER && activeNow > 0) break;
+    const job = queue.shift();
+    const urgent = job.prio === NOW;
+    active++; if (urgent) activeNow++;
+    job.start().then(job.resolve, job.resolve).finally(() => { active--; if (urgent) activeNow--; pump(); });
+  }
+}
+function promote(path) { for (const q of queue) if (q.path === path) q.prio = NOW; pump(); }
+/** Downloads waiting or in flight (for the HUD's loading hint). */
+export const pendingDownloads = () => queue.length + active;
+export const requestedPaths = () => [...requested];
 const textures = new Map(); // path -> texture | null
 const jobs = new Map();
 let version = 0;
@@ -39,9 +65,10 @@ function pinRootMotion(template, clips) {
   }
 }
 
-function loadModel(path) {
-  if (jobs.has(path)) return jobs.get(path);
-  const job = gltf.loadAsync(BASE + path).then((g) => {
+function loadModel(path, prio = NOW) {
+  if (jobs.has(path)) { if (prio === NOW) promote(path); return jobs.get(path); }
+  const job = schedule(path, () => gltf.loadAsync(BASE + path), prio).then((g) => {
+    if (!g || !g.scene) throw new Error('load failed');
     const root = g.scene;
     root.traverse((o) => { if (o.isSkinnedMesh || o.isMesh) { o.frustumCulled = false; if (o.material) o.material.side = THREE.DoubleSide; } });
     pinRootMotion(root, g.animations);
@@ -60,9 +87,10 @@ function loadModel(path) {
   return job;
 }
 
-function loadStatic(path) {
-  if (jobs.has(path)) return jobs.get(path);
-  const job = gltf.loadAsync(BASE + path).then((g) => {
+function loadStatic(path, prio = NOW) {
+  if (jobs.has(path)) { if (prio === NOW) promote(path); return jobs.get(path); }
+  const job = schedule(path, () => gltf.loadAsync(BASE + path), prio).then((g) => {
+    if (!g || !g.scene) throw new Error('load failed');
     const holder = new THREE.Group();
     g.scene.rotation.y = THREE.MathUtils.degToRad(-90);
     g.scene.traverse((o) => { if (o.isMesh && o.material) o.material.side = THREE.DoubleSide; });
@@ -78,9 +106,10 @@ function loadStatic(path) {
   return job;
 }
 
-export function loadTexture(path, { color = true, repeat = null } = {}) {
-  if (jobs.has(path)) return jobs.get(path);
-  const job = texLoader.loadAsync(BASE + path).then((t) => {
+export function loadTexture(path, { color = true, repeat = null, prio = NOW } = {}) {
+  if (jobs.has(path)) { if (prio === NOW) promote(path); return jobs.get(path); }
+  const job = schedule(path, () => texLoader.loadAsync(BASE + path), prio).then((t) => {
+    if (!t || !t.isTexture) throw new Error('load failed');
     if (color) t.colorSpace = THREE.SRGBColorSpace;
     if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat, repeat); }
     t.anisotropy = 4;
@@ -95,14 +124,26 @@ export function loadTexture(path, { color = true, repeat = null } = {}) {
 export const peekTexture = (path) => textures.get(path) || null;
 export const peekModel = (path) => models.get(path) || null;
 
-/** Start loading everything in the background: characters first, then stages. */
-export function preloadAll() {
-  for (const list of Object.values(CHARACTER_MODELS)) for (const p of list) loadModel(p);
-  for (const id of STAGE_IDS) { const a = stageAssets(id); loadStatic(a.pillar); loadStatic(a.prop); }
-}
-export function preloadStage(id) {
+export const PRIORITY = { NOW, LATER };
+
+/** Request one stage's sky, floor, stone and decor. Sky and floor go first: they fill the screen. */
+export function ensureStage(id, prio = NOW) {
   const a = stageAssets(id);
-  return Promise.all([loadTexture(a.floor, { repeat: 1 }), loadTexture(a.sky), loadTexture(a.stone, { repeat: 1 }), loadStatic(a.pillar), loadStatic(a.prop)]);
+  return Promise.all([loadTexture(a.sky, { prio }), loadTexture(a.floor, { prio }), loadTexture(a.stone, { prio }), loadStatic(a.pillar, prio), loadStatic(a.prop, prio)]);
+}
+export function stageReady(id) {
+  const a = stageAssets(id);
+  return [a.sky, a.floor, a.stone, a.pillar, a.prop].every((p) => textures.has(p) || models.has(p));
+}
+
+/** Request one character model (model id + Sproto Duel stage 1..3). */
+export function ensureCharacter(model, stage, prio = NOW) {
+  const path = CHARACTER_MODELS[model] && CHARACTER_MODELS[model][stage - 1];
+  return path ? loadModel(path, prio) : Promise.resolve(null);
+}
+export function characterReady(model, stage) {
+  const path = CHARACTER_MODELS[model] && CHARACTER_MODELS[model][stage - 1];
+  return !path || models.has(path);
 }
 
 /** A static prop instance fitted to `fitHeight`, standing on y=0. */

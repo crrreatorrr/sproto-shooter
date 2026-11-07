@@ -13,6 +13,21 @@ export const ENEMIES = {
       { type: 'sphere', zone: 'weak', r: 0.22, x: 0, y: 1.1, z: 0.05 },
     ],
   },
+  // Flying minion (Midget stage 3 model + propeller beanie): fast, erratic, circles you in the air and
+  // peppers you with tiny weak pellets. Hard to hit, easy to kill.
+  flyingMidget: {
+    name: 'Flying Midget', hp: 30, speed: 10.5, accel: 26, radius: 0.4, height: 1.3, damage: 0,
+    flying: true, altMin: 3, altMax: 6.5, orbitMin: 7, orbitMax: 14, jinkMin: 0.5, jinkMax: 1.2,
+    poiseMax: 20, staggerTime: 0.35,
+    color: 0xff5ec4, affinity: { resist: null, weak: 'shock' },
+    weights: { seek: 1.0, sep: 1.2, wall: 2.0, strafe: 0.4 },
+    gun: { damage: 2, burst: 2, burstGap: 0.12, cooldownMin: 1.1, cooldownMax: 1.8, spread: 6, speed: 34, range: 30, windup: 0.2, small: true },
+    model: 'midget', stage: 3,
+    hitboxes: [
+      { type: 'capsule', zone: 'body', r: 0.4, y0: 0, y1: 1.15 },
+      { type: 'sphere', zone: 'weak', r: 0.22, x: 0, y: 1.1, z: 0.05 },
+    ],
+  },
   // Keeps its distance, strafes and shoots bursts of bitcoins. Slower and much less accurate than you.
   obama: {
     name: 'Bitcoin Obama', hp: 70, speed: 4.2, accel: 22, radius: 0.5, height: 2.1, damage: 0,

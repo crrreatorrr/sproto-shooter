@@ -1,5 +1,7 @@
 // Stages (environments) and character models reused from Sproto Duel. Paths are under public/assets/.
 // Lighting values are copied from sproto-duel src/arena/themes.ts.
+import { WAVES } from './waves.js';
+import { ENEMIES, BOSSES, enemyStage } from './enemies.js';
 export const STAGES = {
   city: {
     label: 'Los Angeles', background: 0x24102a, fog: 0x5a2c4a,
@@ -40,12 +42,45 @@ export const stageAssets = (id) => ({
   prop: `models/stages/${id}/prop.glb`,
 });
 
-/** Wave 1 → Los Angeles, wave 2 → Ashen Caldera, wave 3 → The Void. Sandbox and title use the Glacier unless overridden. */
+/**
+ * Wave 1 → Los Angeles, wave 2 → Ashen Caldera, wave 3 → The Void.
+ * Title and sandbox share wave 1's stage so the first download serves all three; Glacier is debug-only.
+ */
 export const WAVE_STAGES = ['city', 'volcano', 'void'];
+export const SANDBOX_STAGE = 'city';
 export function stageFor(state, override = null) {
   if (override) return override;
   if (state.mode === 'waves' && state.wave) return WAVE_STAGES[Math.min(WAVE_STAGES.length - 1, state.wave.index)];
-  return 'glacier';
+  return SANDBOX_STAGE;
+}
+
+/**
+ * Exactly what one level needs, derived from its wave config:
+ * - `stage`: the environment,
+ * - `characters`: every enemy model+stage the wave can spawn (type, elite, tier),
+ * - `bosses`: every boss model for every phase (loaded after the rest, before the boss fight).
+ */
+export function levelAssets(waveIdx, tier) {
+  const w = WAVES[waveIdx];
+  if (!w) return null;
+  const set = new Map();
+  const add = (model, stage) => set.set(`${model}:${stage}`, { model, stage });
+  for (const g of w.groups) {
+    for (const sp of g.spawns) {
+      const def = ENEMIES[sp.type];
+      if (!def || !def.model) continue;
+      if (sp.count - sp.elites > 0) add(def.model, enemyStage({ type: sp.type, elite: false, tier }));
+      if (sp.elites > 0) add(def.model, enemyStage({ type: sp.type, elite: true, tier }));
+    }
+  }
+  const bosses = new Map();
+  for (const type of w.boss ? w.boss.types : []) {
+    const b = BOSSES[type];
+    b.phases.forEach((_, i) => bosses.set(`${b.model}:${i + 1}`, { model: b.model, stage: Math.min(3, i + 1) }));
+    // bosses summon midgets
+    if (type === 'megaSproto') add('midget', enemyStage({ type: 'midget', elite: false, tier }));
+  }
+  return { stage: WAVE_STAGES[Math.min(WAVE_STAGES.length - 1, waveIdx)], characters: [...set.values()], bosses: [...bosses.values()] };
 }
 
 /** Rigged characters (24-joint humanoid with clips idle/run/cast/cast_big/hit/defeat/roll/victory/jump/stun/strafe_l/strafe_r). */
