@@ -184,8 +184,9 @@ export function createFirstPerson(camera) {
       root.updateMatrixWorld(true);
       gun.updateMatrixWorld(true);
       gun.getWorldQuaternion(gq);
-      const grip = gun.localToWorld(V().fromArray(FP.grip[gunType] || FP.grip.mg));
-      const fore = gun.localToWorld(V().fromArray(FP.fore[gunType] || FP.fore.mg));
+      // a gun mesh can carry its own hand targets (model guns do); otherwise use the per-type defaults
+      const grip = gun.localToWorld(V().fromArray(gun.userData.grip || FP.grip[gunType] || FP.grip.mg));
+      const fore = gun.localToWorld(V().fromArray(gun.userData.fore || FP.fore[gunType] || FP.fore.mg));
       solveArm(arms.Right, grip, FP.poleRight, gq, FP.right, FP.curl, true);
       solveArm(arms.Left, fore, FP.poleLeft, gq, FP.left, FP.curl, false);
     },

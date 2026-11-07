@@ -8,7 +8,7 @@ import { createRenderer } from '../render/renderer.js';
 import { createAudio } from '../audio/sfx.js';
 import { createUI } from '../ui/ui.js';
 import { ENEMIES, BOSSES } from '../data/enemies.js';
-import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY } from '../data/guns.js';
+import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY, zoomLevelsOf, zoomFovFor } from '../data/guns.js';
 import { SKILL_IDS } from '../data/skills.js';
 import { MAX_TIER } from '../data/waves.js';
 
@@ -40,6 +40,7 @@ export class Game {
     this.queue({ type: 'debug', op: 'spawnDummies' });
     if (mode === 'waves') this.start('waves', tier);
     else if (mode === 'sandbox') this.start('sandbox', tier);
+    else if (mode === 'test') this.start('test', tier);
     else this.showScreen('title');
 
     this.last = performance.now();
@@ -78,6 +79,7 @@ export class Game {
     inp.on('key', (e) => {
       if (e.code === 'Backquote') this.toggleDebug();
       if (e.code === 'KeyM') this.audio.toggleMute();
+      if (e.code === 'KeyP' && !e.repeat && !this.ui.menuOpen) this.queue({ type: 'debug', op: 'toggleGod' });
       if (e.code === 'Enter' && this.state.wave && this.state.wave.phase === 'intermission' && !this.ui.menuOpen) this._skip = true;
     });
   }
@@ -102,6 +104,7 @@ export class Game {
         <div class="menu">
           <button class="btn big" data-go="waves">▶ Wave Mode <small>3 waves + bosses</small></button>
           <button class="btn big alt" data-go="sandbox">🧪 Sandbox <small>debug spawn everything</small></button>
+          <button class="btn big alt" data-go="test">🎯 Test Range <small>every gun, infinite ammo</small></button>
           <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
         </div>
         ${controlsHtml()}</div>`;
@@ -184,7 +187,10 @@ export class Game {
     pl.add(d, 'skill', SKILL_IDS); pl.add({ go: () => q('levelSkill', { skill: d.skill }) }, 'go').name('Level up skill');
     pl.add({ go: () => q('maxSkills') }, 'go').name('Max all skills');
     pl.add({ go: () => q('heal') }, 'go').name('Heal / revive');
-    pl.add(d, 'god').name('God mode').onChange((v) => q('setTuning', { key: 'godMode', value: v }));
+    // reads the live setting so the P key and the Test Range stay in sync with the checkbox
+    const god = {};
+    Object.defineProperty(god, 'on', { get: () => this.state.tuning.godMode, set: (v) => q('setTuning', { key: 'godMode', value: v }) });
+    pl.add(god, 'on').name('God mode [P]').listen();
     pl.add(d, 'infAmmo').name('Infinite ammo').onChange((v) => q('setTuning', { key: 'infiniteAmmo', value: v }));
     pl.add(d, 'unlock').name('Unlock all recipes').onChange((v) => q('setTuning', { key: 'unlockAllRecipes', value: v }));
     const w = gui.addFolder('World & tuning');
@@ -236,8 +242,10 @@ export class Game {
     const alpha = this.acc / DT;
     const p = this.state.players[this.state.localPlayerId];
     const g = p.guns[p.activeSlot];
-    this.input.zoomSensitivity = p.zooming && g ? g.stats.zoomFov / 90 : 1;
-    this.renderer.render(this.state, alpha, this.input.liveLook(), { shake: this.settings.shake });
+    this.input.zoomLevels = zoomLevelsOf(g);
+    const zoomLevel = Math.max(1, this.input.zoomLevel);
+    this.input.zoomSensitivity = p.zooming && g ? zoomFovFor(g, zoomLevel) / 90 : 1;
+    this.renderer.render(this.state, alpha, this.input.liveLook(), { shake: this.settings.shake, zoomLevel });
     this.ui.update(this.state);
     requestAnimationFrame((t) => this.frame(t));
   }
@@ -246,9 +254,9 @@ export class Game {
 function controlsHtml() {
   const k = (a, b) => `<div><kbd>${a}</kbd><span>${b}</span></div>`;
   return `<div class="controls">
-    ${k('WASD', 'Move')}${k('Mouse', 'Aim · LMB fire · RMB zoom')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
+    ${k('WASD', 'Move')}${k('Mouse', 'Look · LMB fire · RMB hold to aim')}${k('F', 'Aim on / off (sniper: zoom 1 → zoom 2 → off)')}${k('Wheel while zoomed', 'Sniper zoom 1 / 2')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
     ${k('C', 'Slide (Ctrl works, but Ctrl+W closes the tab!)')}${k('Alt / V', 'Dash')}${k('R', 'Reload')}${k('1-4 / Wheel', 'Switch gun')}
-    ${k('G', 'Pick up gun · open Weapon Box')}${k('H', 'Use medkit')}${k('Q E Z X F', 'Spells (unlock with Magic XP)')}
-    ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('Enter', 'Ready / skip break')}${k('`', 'Debug panel')}${k('M', 'Mute')}
+    ${k('G', 'Pick up gun · open Weapon Box')}${k('H', 'Use medkit')}${k('Q E Z X T', 'Spells (unlock with Magic XP)')}
+    ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('5', 'Stats & powers')}${k('Enter', 'Ready / skip break')}${k('`', 'Debug panel')}${k('M', 'Mute')}${k('P', 'God mode (health stays at 99)')}
   </div>`;
 }

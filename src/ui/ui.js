@@ -1,7 +1,7 @@
 // DOM UI: HUD, crosshair, damage numbers, banners, loot card, skills, crafting, shop, boss bar, screens.
 // UI never writes game state; it queues actions via input.queueAction().
 import { SKILLS, SKILL_IDS, PERKS, PERKS_BY_ID, SPELLS, SPELL_IDS, xpToNext } from '../data/skills.js';
-import { QUALITIES_BY_ID, ELEMENTS_BY_ID, GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, PARTS_BY_ID, PARTS_BY_SLOT, SLOTS, WACKY_BY_ID, ELEMENTS } from '../data/guns.js';
+import { hasInfiniteReserve, QUALITIES_BY_ID, ELEMENTS_BY_ID, GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, PARTS_BY_ID, PARTS_BY_SLOT, SLOTS, WACKY_BY_ID, ELEMENTS } from '../data/guns.js';
 import { RESOURCES } from '../data/drops.js';
 import { GUN_RECIPES, ITEM_RECIPES, ARCANE_COST, REROLL_COST, SALVAGE_LEVEL, REROLL_LEVEL } from '../data/recipes.js';
 import { SHOP } from '../data/shop.js';
@@ -18,7 +18,7 @@ const SPELL_ICON = { gooBolt: '●', chainZap: 'ϟ', swarm: '✲', manaShield: '
 const TYPE_ICON = { mg: '▬', shotgun: '▮', sniper: '━', bazooka: '◉' };
 
 export function createUI(root, { input, bus, project, game }) {
-  const st = { menu: null, tabHeld: false, craftTab: 'guns', craftType: 'mg', choice: { element: null, part: null, arcane: false }, lastKey: {}, rerollSlot: 0 };
+  const st = { menu: null, tabHeld: false, statsOpen: false, craftTab: 'guns', craftType: 'mg', choice: { element: null, part: null, arcane: false }, lastKey: {}, rerollSlot: 0 };
 
   root.innerHTML = `
   <div id="hud">
@@ -49,7 +49,6 @@ export function createUI(root, { input, bus, project, game }) {
     <div id="feed"></div>
     <div id="downed"><div class="big">DOWNED!</div><div>Get a kill for a <b>Second Wind</b></div><div id="downed-t"></div></div>
     <div id="vignette"></div>
-    <div id="scope"></div>
   </div>
   <div id="dmgnums"></div>
   <div id="panel" hidden></div>`;
@@ -60,7 +59,7 @@ export function createUI(root, { input, bus, project, game }) {
     shield: $('.bar.shield', root), health: $('.bar.health', root), mana: $('.bar.mana', root), skills: $('#skills-mini', root),
     spells: $('#spells', root), gunName: $('#gun-name', root), mag: $('#mag', root), reserve: $('#reserve', root), slots: $('#slots', root), medkits: $('#medkits', root),
     prompt: $('#prompt', root), loot: $('#lootcard', root), banners: $('#banners', root), toasts: $('#toasts', root), feed: $('#feed', root),
-    downed: $('#downed', root), downedT: $('#downed-t', root), vignette: $('#vignette', root), scope: $('#scope', root),
+    downed: $('#downed', root), downedT: $('#downed-t', root), vignette: $('#vignette', root),
     dmg: $('#dmgnums', root), panel: $('#panel', root), screen: document.getElementById('screen'),
   };
 
@@ -189,6 +188,7 @@ export function createUI(root, { input, bus, project, game }) {
     if (e.repeat) return;
     if (e.code === 'Tab') { st.tabHeld = true; return; }
     if (!els.screen.hidden) return;
+    if (e.code === 'Digit5' && !st.menu) { st.statsOpen = !st.statsOpen; return; }
     if (e.code === 'KeyG' && !st.menu) {
       const s = game.state, p = s.players[s.localPlayerId];
       if (!p.nearGunPickupId && nearBox(s, p)) openMenu('craft');
@@ -361,9 +361,46 @@ export function createUI(root, { input, bus, project, game }) {
     }).join('')}</div><div class="hint">Hold TAB · Skills level up just by doing things. No points to spend.</div>`;
   }
 
+  // ---------- stats & powers overlay (5) ----------
+  const ICON = Object.fromEntries(SKILL_IDS.map((id) => [id, SKILLS[id].icon]));
+  function statsHtml(s, p) {
+    const g = p.guns[p.activeSlot];
+    const row = (k, v) => `<div class="srow"><span>${k}</span><b>${v}</b></div>`;
+    const dr = Math.round(3 * (p.skills.health.level - 1));
+    const ammo = Object.keys(p.ammoCap).map((t) => {
+      const inf = s.tuning.infiniteAmmo || s.tuning.godMode || p.guns.some((x) => x && x.ammoType === t && hasInfiniteReserve(x));
+      return row(`Ammo · ${t}`, inf ? '∞' : `${p.ammo[t]} / ${p.ammoCap[t]}`);
+    }).join('');
+    const gunRows = g ? row('Gun', `<span style="color:${QUALITIES_BY_ID[g.quality].color}">${g.name}</span>`) + row('Damage', g.stats.pellets > 1 ? `${Math.round(g.stats.damage)} × ${g.stats.pellets}` : Math.round(g.stats.damage))
+      + row('Fire rate', `${g.stats.fireRate.toFixed(1)} /s`) + row('Magazine', `${g.ammoInMag} / ${g.stats.magSize}`) + row('Reload', `${g.stats.reloadTime.toFixed(1)} s`)
+      + row('Crit', `${Math.round(g.stats.critChance * 100)}% · ×${g.stats.critMult.toFixed(1)}`) : '';
+    const stats = `<div class="skc" style="--c:#ffd166"><div class="skh">📊 Stats${s.tuning.godMode ? ' <span class="god">GOD MODE</span>' : ''}</div>
+      ${row('Health', `${Math.ceil(p.hp)} / ${p.maxHp}`)}${row('Shield', `${Math.ceil(p.shield)} / ${p.maxShield}`)}${row('Mana', `${Math.floor(p.mana)} / ${p.maxMana}`)}
+      ${row('Damage taken', dr ? `−${dr}%` : 'normal')}${row('Medkits', p.medkits)}${row('Tickets', p.tickets)}
+      ${SKILL_IDS.map((id) => row(`${ICON[id]} ${SKILLS[id].name}`, `Lv ${p.skills[id].level}`)).join('')}${gunRows}${ammo}</div>`;
+    const magic = p.skills.magic.level;
+    const spells = SPELL_IDS.map((id) => {
+      const sp = SPELLS[id], pk = PERKS_BY_ID[id];
+      const cost = id === 'meteor' ? p.maxMana : sp.mana;
+      const cd = p.spells.cd[id];
+      const status = !p.perks[id] ? `<em class="lock">🔒 LOCKED · needs Magic Lv ${pk.level} (you're Lv ${magic})</em>`
+        : id === 'manaShield' && p.spells.manaShieldOn ? '<em class="ok">ON</em>'
+        : cd > 0 ? `<em class="wait">Cooldown ${cd.toFixed(1)} s</em>`
+        : p.mana < cost - 0.5 ? '<em class="wait">Not enough mana</em>' : '<em class="ok">READY</em>';
+      const viaGod = p.perks[id] && magic < pk.level ? ' <em class="god">via god mode</em>' : '';
+      return `<div class="power ${p.perks[id] ? '' : 'locked'}"><kbd>${sp.key}</kbd><div><b>${SPELL_ICON[id]} ${sp.name}</b> ${status}${viaGod}
+        <small>${pk.desc} · ${id === 'meteor' ? 'all mana' : sp.mana + ' mana'}${id === 'manaShield' ? ' + drain' : ''} · ${sp.cd}s cooldown</small></div></div>`;
+    }).join('');
+    const perks = PERKS.filter((k) => !SPELLS[k.id]).map((k) => `<div class="power ${p.perks[k.id] ? '' : 'locked'}"><kbd>${ICON[k.skill]}</kbd><div><b>${k.name}</b> ${p.perks[k.id] ? '<em class="ok">ACTIVE</em>' : `<em class="lock">🔒 LOCKED · needs ${SKILLS[k.skill].name} Lv ${k.level} (you're Lv ${p.skills[k.skill].level})</em>`}<small>${k.desc}</small></div></div>`).join('');
+    return `<div class="stats-screen">${stats}
+      <div class="skc" style="--c:#9b6bff"><div class="skh">🔮 Spells <span>Magic Lv ${magic}</span></div>${spells}<div class="src">Level Magic by casting spells, spell kills and beating Magic bosses.</div></div>
+      <div class="skc" style="--c:#4fd1c5"><div class="skh">✨ Perks</div>${perks}</div>
+    </div><div class="hint">Press 5 to close · the game keeps running</div>`;
+  }
+
   // ---------- per-frame update ----------
   let lastT = performance.now();
-  let tabEl = null;
+  let tabEl = null, statsEl = null;
   function update(s) {
     const now = performance.now();
     const dt = Math.min(0.1, (now - lastT) / 1000);
@@ -398,8 +435,8 @@ export function createUI(root, { input, bus, project, game }) {
     if (g) {
       const q = QUALITIES_BY_ID[g.quality];
       html(els.gunName, 'gn', `<span style="color:${q.color}">${g.name}</span>${g.element !== 'none' ? ` <i style="color:${ELEMENTS_BY_ID[g.element].color}">●</i>` : ''}`);
-      text(els.mag, 'mag', p.reloadT > 0 ? 'RELOAD' : String(g.ammoInMag));
-      text(els.reserve, 'res', s.tuning.infiniteAmmo ? '/ ∞' : `/ ${p.ammo[g.ammoType]}`);
+      text(els.mag, 'mag', p.reloadT > 0 ? `RELOAD ${p.reloadT.toFixed(1)}s` : String(g.ammoInMag));
+      text(els.reserve, 'res', s.tuning.infiniteAmmo || s.tuning.godMode || hasInfiniteReserve(g) ? '/ ∞' : `/ ${p.ammo[g.ammoType]}`);
       set(els.mag, 'magLow', g.ammoInMag <= Math.max(1, g.stats.magSize * 0.2), (e, v) => e.classList.toggle('low', v));
     }
     const slotsKey = p.guns.map((x) => (x ? x.id + x.quality : '-')).join(',') + p.activeSlot + p.unlockedSlots;
@@ -411,7 +448,7 @@ export function createUI(root, { input, bus, project, game }) {
     text(els.tickets, 'tk', `🎟 ${p.tickets}`);
     html(els.resources, 'rs', RESOURCES.map((r) => `<span style="--c:${r.color}" title="${r.name}">${r.icon}${p.resources[r.id]}</span>`).join(''));
     let wave = '';
-    if (s.mode === 'sandbox') wave = `<b>SANDBOX</b> · Tier ${s.tier} <small>[\`] debug · [B] shop</small>`;
+    if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> · Tier ${s.tier} <small>[\`] debug · [B] shop</small>`;
     else if (s.wave) {
       const w = s.wave;
       const left = s.enemies.filter((e) => !e.dead && e.type !== 'dummy').length + w.spawnQueue.length;
@@ -419,6 +456,7 @@ export function createUI(root, { input, bus, project, game }) {
       const phaseTxt = { pre: 'Get ready…', combat: `Enemies left: ${left + remainingGroups}`, bossIntro: 'BOSS INCOMING', boss: 'BOSS FIGHT', cleared: 'Cleared!', intermission: `Intermission ${Math.ceil(w.intermissionT)}s · [B] Shop · [Enter] Ready`, victory: 'VICTORY', defeat: 'DEFEAT' }[w.phase];
       wave = `<b>WAVE ${w.index + 1}/3</b> · Tier ${s.tier} · ${phaseTxt}`;
     }
+    if (s.tuning.godMode) wave += ' · <b class="god">GOD MODE</b>';
     const pend = game.renderer && game.renderer.pendingDownloads ? game.renderer.pendingDownloads() : 0;
     if (pend > 0) wave += ` <small class="loading">⏳ loading ${pend}</small>`;
     html(els.wave, 'wave', wave);
@@ -438,9 +476,8 @@ export function createUI(root, { input, bus, project, game }) {
       const px = Math.round(6 + sp * 7 + p.recoil.heat * 6);
       set(els.cross, 'xh', px, (e, v) => e.style.setProperty('--gap', v + 'px'));
     }
-    const scoped = p.zooming && g && g.type === 'sniper';
-    set(els.scope, 'scope', scoped, (e, v) => e.classList.toggle('on', v));
-    set(els.cross, 'xhv', scoped || p.dead, (e, v) => e.classList.toggle('hidden', v));
+    // no scope overlay: the zoomed view fills the screen with the gun and the white crosshair still showing
+    set(els.cross, 'xhv', p.dead, (e, v) => e.classList.toggle('hidden', v));
 
     // downed
     set(els.downed, 'down', p.downed, (e, v) => e.classList.toggle('on', v));
@@ -464,6 +501,12 @@ export function createUI(root, { input, bus, project, game }) {
       const key = SKILL_IDS.map((id) => p.skills[id].level + ':' + Math.floor(p.skills[id].xp)).join(',');
       if (tabEl.dataset.k !== key) { tabEl.dataset.k = key; tabEl.innerHTML = skillsHtml(p); }
     } else if (tabEl) { tabEl.remove(); tabEl = null; }
+
+    // stats & powers overlay (toggle with 5); redrawn a few times a second for cooldowns
+    if (st.statsOpen && !st.tabHeld && !st.menu && els.screen.hidden) {
+      if (!statsEl) { statsEl = h('div', 'tab-overlay stats-overlay'); root.appendChild(statsEl); statsEl.dataset.t = 0; }
+      if (now - statsEl.dataset.t > 200) { statsEl.dataset.t = now; statsEl.innerHTML = statsHtml(s, p); }
+    } else if (statsEl) { statsEl.remove(); statsEl = null; }
 
     // live refresh of open panel (cooldowns, intermission timer, crafting progress)
     if (st.menu && (now - (st.lastPanel || 0) > 400)) { st.lastPanel = now; const y = els.panel.querySelector('.pwrap')?.scrollTop; renderPanel(); const w = els.panel.querySelector('.pwrap'); if (w && y) w.scrollTop = y; }

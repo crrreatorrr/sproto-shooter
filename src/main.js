@@ -1,4 +1,4 @@
-// Boot: URL params ?seed=123&mode=waves|sandbox&tier=3&debug=1
+// Boot: URL params ?seed=123&mode=waves|sandbox|test&tier=3&debug=1
 import { Game } from './game/Game.js';
 
 const q = new URLSearchParams(location.search);

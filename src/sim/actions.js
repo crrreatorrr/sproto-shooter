@@ -1,15 +1,16 @@
 // UI/debug actions arrive inside commands; dispatched here. Keeps the sim the only writer of state.
 import { next } from '../core/rng.js';
 import { RES_IDS } from '../data/drops.js';
-import { SKILL_IDS, xpToNext } from '../data/skills.js';
+import { SKILL_IDS, SPELL_IDS, PERKS_BY_ID, xpToNext } from '../data/skills.js';
 import { emit } from './events.js';
 import { createEnemy, createBoss, newRunStats, nextId } from './state.js';
 import { generateGun } from './guns.js';
 import { spawnGunPickup, rollGunType, rollQuality } from './drops.js';
 import { addXp, applySkillPassives } from './progression.js';
-import { onEnemyKilled } from './combat.js';
-import { respawn } from './player.js';
+import { onEnemyKilled, GOD_HP } from './combat.js';
+import { respawn, godTopUp } from './player.js';
 import { startWaves } from './waves.js';
+import { TUNING } from '../data/tuning.js';
 import {
   startCraft, salvage, reroll, pickupGun, dropGun, buyOffer, rerollShop, sellGun, vend, buyUpgrade, buySupply, rollShopOffers,
 } from './economy.js';
@@ -48,14 +49,77 @@ export function startMode(state, p, mode, tier = 1) {
   if (p.dead || p.downed) respawn(state, p);
   p.hp = p.maxHp; p.shield = p.maxShield; p.mana = p.maxMana;
   p.pos = { x: 0, y: 0, z: 8 }; p.prevPos = { ...p.pos }; p.vel = { x: 0, y: 0, z: 0 };
+  // leaving the test range takes its free loadout and infinite ammo back
+  if (state.testMode && mode !== 'test') { resetLoadout(state, p); state.tuning.infiniteAmmo = false; setGodMode(state, p, false); }
+  state.testMode = mode === 'test';
   if (mode === 'waves') {
     startWaves(state, tier);
   } else {
     state.mode = 'sandbox'; state.wave = null; state.tier = tier;
     p.unlockedSlots = 4;
     rollShopOffers(state);
-    emit(state, 'modeStart', { mode: 'sandbox', tier });
+    if (mode === 'test') giveTestLoadout(state, p);
+    emit(state, 'modeStart', { mode: state.testMode ? 'test' : 'sandbox', tier });
   }
+}
+
+/** Test range: one of every gun type in slots 1-4, full ammo, infinite reserve, target dummies. */
+export const TEST_GUN_TYPES = ['mg', 'shotgun', 'sniper', 'bazooka'];
+function giveTestLoadout(state, p) {
+  p.guns = TEST_GUN_TYPES.map((type, i) => {
+    const g = generateGun({ seed: 0x7E57 + i, level: state.tier, forced: { type, quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    g.id = nextId(state); g.source = 'test';
+    return g;
+  });
+  p.activeSlot = 0; p.reloadT = 0; p.swapT = 0;
+  for (const k of Object.keys(p.ammoCap)) p.ammo[k] = p.ammoCap[k];
+  state.tuning.infiniteAmmo = true;
+  setGodMode(state, p, true);
+  debugOp(state, p, 'spawnDummies', {});
+}
+
+/** God mode on: back up to at least GOD_HP (reviving if down) and stocked up on everything. Off: normal damage again. */
+export function setGodMode(state, p, on) {
+  state.tuning.godMode = !!on;
+  // every spell while god mode is on; turning it off keeps only what the Magic level has earned
+  for (const id of SPELL_IDS) p.perks[id] = on || p.skills[PERKS_BY_ID[id].skill].level >= PERKS_BY_ID[id].level;
+  if (!p.perks.manaShield) p.spells.manaShieldOn = false;
+  if (!on) return;
+  if (p.dead || p.downed) respawn(state, p);
+  p.hp = Math.max(p.hp, Math.min(GOD_HP, p.maxHp));
+  p.mana = p.maxMana;
+  godTopUp(p);
+  giveAllGuns(state, p);
+}
+
+/**
+ * One gun of every type in slots 1-4. Guns you already carry are kept for their type (your looted one beats a
+ * plain one); any that don't fit (a second shotgun, say) are dropped on the ground in front of you, not deleted.
+ */
+function giveAllGuns(state, p) {
+  p.unlockedSlots = Math.max(p.unlockedSlots, TEST_GUN_TYPES.length);
+  const carried = p.guns.filter(Boolean);
+  const active = p.guns[p.activeSlot];
+  const guns = TEST_GUN_TYPES.map((type, i) => {
+    const own = carried.find((g) => g.type === type);
+    if (own) return own;
+    const g = generateGun({ seed: 0x60D0 + i, level: state.tier, forced: { type, quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    g.id = nextId(state); g.source = 'god';
+    return g;
+  });
+  carried.filter((g) => !guns.includes(g)).forEach((g, i) => spawnGunPickup(state, g, aheadOf(p, 2 + i * 0.8), 'drop'));
+  p.guns = guns;
+  const keep = guns.indexOf(active);
+  if (keep >= 0) p.activeSlot = keep;
+  else { p.activeSlot = Math.max(0, guns.findIndex((g) => active && g.type === active.type)); p.reloadT = 0; p.swapT = 0; }
+}
+
+function resetLoadout(state, p) {
+  const start = generateGun({ seed: 0xC0FFEE, level: 1, forced: { type: 'mg', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+  start.id = nextId(state); start.source = 'start';
+  p.guns = [start, null, null, null];
+  p.activeSlot = 0; p.reloadT = 0; p.swapT = 0;
+  p.ammo = { ...TUNING.startAmmo };
 }
 
 function aheadOf(p, d = 10) { return { x: p.pos.x - Math.sin(p.yaw) * d, z: p.pos.z - Math.cos(p.yaw) * d }; }
@@ -112,7 +176,8 @@ export function debugOp(state, p, op, args) {
     case 'setTier': state.tier = Math.max(1, Math.min(10, args.tier | 0)); break;
     case 'refillAmmo': for (const k of Object.keys(p.ammo)) p.ammo[k] = p.ammoCap[k]; for (const g of p.guns) if (g) g.ammoInMag = g.stats.magSize; break;
     case 'heal': p.hp = p.maxHp; p.shield = p.maxShield; p.mana = p.maxMana; if (p.dead || p.downed) respawn(state, p); break;
-    case 'setTuning': state.tuning[args.key] = args.value; break;
+    case 'setTuning': if (args.key === 'godMode') setGodMode(state, p, args.value); else state.tuning[args.key] = args.value; break;
+    case 'toggleGod': setGodMode(state, p, !state.tuning.godMode); break;
     case 'setGunStat': { const g = p.guns[p.activeSlot]; if (g && args.key in g.stats) g.stats[args.key] = args.value; break; }
     case 'skipWave': if (state.wave) { for (const e of state.enemies) if (!e.dead) { e.lastHit = { sourceId: p.id, sourceKind: 'gun' }; onEnemyKilled(state, e); } state.wave.spawnQueue = []; state.wave.groupIdx = 99; } break;
   }

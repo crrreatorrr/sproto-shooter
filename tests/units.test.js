@@ -288,3 +288,130 @@ describe('determinism', () => {
     expect(play()).toBe(play());
   });
 });
+
+describe('test range', () => {
+  it('gives every gun type with infinite ammo, and leaving resets the loadout', () => {
+    const s = createGameState({ seed: 7 });
+    const p = s.players[s.localPlayerId];
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'test', tier: 1 }] }));
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka']);
+    expect(new Set(p.guns.map((g) => g.id)).size).toBe(4);
+    expect(s.tuning.infiniteAmmo).toBe(true);
+    expect(s.enemies.filter((e) => e.type === 'dummy').length).toBe(5);
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', null, null, null]);
+    expect(s.tuning.infiniteAmmo).toBe(false);
+  });
+});
+
+describe('god mode', () => {
+  it('hits still land but health never drops below 99, and P-style toggling revives', () => {
+    const s = createGameState({ seed: 3 });
+    const p = s.players[s.localPlayerId];
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    expect(s.tuning.godMode).toBe(true);
+    const dealt = damagePlayer(s, p, { base: 500, sourceKind: 'enemy' });
+    expect(dealt).toBeGreaterThan(0); // shield and the 1 HP above the floor still take the hit
+    expect(p.hp).toBe(99);
+    expect(p.downed).toBe(false);
+    expect(p.tickets).toBe(99999);
+    for (const v of Object.values(p.resources)) expect(v).toBe(9999);
+    p.tickets = 0; run(s, 1, () => cmd());
+    expect(p.tickets).toBe(99999); // kept topped up while god mode is on
+    for (const id of ['gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor']) expect(p.perks[id]).toBe(true);
+    damagePlayer(s, p, { base: 500, sourceKind: 'enemy' });
+    expect(p.hp).toBe(99);
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    expect(p.perks.gooBolt).toBe(true); // Magic Lv 1 spell stays
+    expect(p.perks.meteor).toBe(false); // god-mode-only spell locks again
+    damagePlayer(s, p, { base: 500, sourceKind: 'enemy' });
+    expect(p.downed).toBe(true);
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    expect(p.downed).toBe(false);
+    expect(p.hp).toBeGreaterThanOrEqual(99);
+  });
+  it('keeps mana full so spells can be cast back to back (cooldowns still apply)', () => {
+    const s = createGameState({ seed: 6 });
+    const p = s.players[s.localPlayerId];
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    run(s, 1, () => cmd({ pressed: { swarm: true } }));
+    expect(s.allies.length).toBeGreaterThan(0);
+    expect(p.mana).toBe(p.maxMana);
+    run(s, 1, () => cmd({ pressed: { meteor: true } }));
+    expect(p.spells.cd.meteor).toBeGreaterThan(0);
+    expect(p.mana).toBe(p.maxMana);
+  });
+  it('gives every gun endless spare ammo, still with reloads', () => {
+    const s = createGameState({ seed: 8 });
+    const p = s.players[s.localPlayerId];
+    const sn = generateGun({ seed: 3, level: 1, forced: { type: 'sniper', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    sn.id = 999; p.guns[1] = sn; p.activeSlot = 1; p.ammo.sniper = 0; sn.ammoInMag = 0;
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    p.ammo.sniper = 0; // god mode tops ammo up; empty it again to prove the reserve isn't used
+    run(s, 1, () => cmd({ pressed: { reload: true } }));
+    expect(p.reloadT).toBeGreaterThan(0);
+    run(s, 4 * 60, () => cmd());
+    expect(sn.ammoInMag).toBe(sn.stats.magSize);
+    expect(p.ammo.sniper).toBe(p.ammoCap.sniper); // god mode keeps the reserve topped up; the reload didn't use it
+  });
+  it('gives one of every gun type, keeping guns you carry and dropping extras', () => {
+    const s = createGameState({ seed: 10 });
+    const p = s.players[s.localPlayerId];
+    const mine = generateGun({ seed: 4, level: 1, forced: { type: 'shotgun', quality: 'epic', manufacturer: 'blastco', element: 'fire' } });
+    const extra = generateGun({ seed: 5, level: 1, forced: { type: 'shotgun', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    mine.id = 501; extra.id = 502; p.guns[1] = mine; p.guns[2] = extra; p.unlockedSlots = 3; p.activeSlot = 1;
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    expect(p.guns.map((g) => g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka']);
+    expect(p.guns[1]).toBe(mine); // your epic shotgun is kept
+    expect(p.activeSlot).toBe(1); // still holding it
+    expect(p.unlockedSlots).toBe(4);
+    expect(s.pickups.some((k) => k.kind === 'gun' && k.gun.id === 502)).toBe(true); // the spare is dropped, not deleted
+  });
+  it('is on in the Test Range and off again after leaving it', () => {
+    const s = createGameState({ seed: 4 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'test', tier: 1 }] }));
+    expect(s.tuning.godMode).toBe(true);
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
+    expect(s.tuning.godMode).toBe(false);
+  });
+});
+
+describe('machine gun ammo', () => {
+  it('never runs out of spare ammo but still empties its magazine and takes time to reload', () => {
+    const s = createGameState({ seed: 9 });
+    const p = s.players[s.localPlayerId];
+    const g = p.guns[0];
+    expect(g.type).toBe('mg');
+    p.ammo.bullets = 0;
+    g.ammoInMag = 1;
+    const fire = () => cmd({ held: { fire: true } });
+    run(s, 10, fire); // fires the last round, then starts a reload instead of reporting empty
+    expect(g.ammoInMag).toBe(0);
+    expect(p.reloadT).toBeGreaterThan(2); // 2.5 s reload
+    const ev = run(s, Math.ceil(2.6 * 60), () => cmd());
+    expect(ev.some((e) => e.type === 'ammoEmpty')).toBe(false);
+    expect(g.ammoInMag).toBe(g.stats.magSize);
+    expect(p.ammo.bullets).toBe(0); // reserve untouched
+  });
+  it('enemies drop ammo for the guns you carry', async () => {
+    const { rollDrops } = await import('../src/sim/drops.js');
+    const { createRng } = await import('../src/core/rng.js');
+    const rng = createRng(1);
+    const ammo = [];
+    for (let i = 0; i < 200; i++) ammo.push(...rollDrops(rng, 'obama', { tier: 1, playerGunTypes: ['bullets', 'sniper'] }).filter((d) => d.kind === 'ammo'));
+    expect(ammo.length).toBeGreaterThan(100); // 70% for an obama
+    expect(new Set(ammo.map((d) => d.ammoType))).toEqual(new Set(['bullets', 'sniper']));
+  });
+});
+
+describe('sniper zoom levels', () => {
+  it('the sniper has a second zoom three times stronger; other guns have one level', async () => {
+    const { zoomFovFor, zoomLevelsOf } = await import('../src/data/guns.js');
+    const sn = generateGun({ seed: 1, level: 1, forced: { type: 'sniper', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    const mg = generateGun({ seed: 2, level: 1, forced: { type: 'mg', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    expect(zoomLevelsOf(sn)).toBe(2);
+    expect(zoomLevelsOf(mg)).toBe(1);
+    expect(zoomFovFor(sn, 2)).toBeCloseTo(zoomFovFor(sn, 1) / 3);
+    expect(zoomFovFor(mg, 2)).toBe(zoomFovFor(mg, 1));
+  });
+});

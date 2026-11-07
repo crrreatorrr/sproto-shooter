@@ -57,10 +57,6 @@ kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var
 #hitmarker.kill { animation: hmk .35s ease-out; } #hitmarker.kill::before, #hitmarker.kill::after { background: var(--bad); }
 @keyframes hm { from { opacity: 1; transform: scale(1.3); } to { opacity: 0; transform: scale(1); } }
 @keyframes hmk { from { opacity: 1; transform: scale(1.8) rotate(20deg); } to { opacity: 0; transform: scale(1); } }
-#scope { position: absolute; inset: 0; display: none; background: radial-gradient(circle at center, transparent 0 34vh, #000 34.3vh); }
-#scope.on { display: block; }
-#scope::before, #scope::after { content: ''; position: absolute; background: rgba(0,0,0,.85); }
-#scope::before { left: 50%; top: 16vh; bottom: 16vh; width: 2px; } #scope::after { top: 50%; left: calc(50% - 34vh); right: calc(50% - 34vh); height: 2px; }
 
 #vitals { position: absolute; left: 16px; bottom: 16px; width: min(330px, 42vw); display: flex; flex-direction: column; gap: 5px; }
 .bar { position: relative; height: 20px; background: rgba(0,0,0,.55); border-radius: 10px; overflow: hidden; border: 2px solid rgba(255,255,255,.85); transform: skewX(-10deg); }
@@ -180,6 +176,14 @@ kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var
 .src { font-size: 12px; color: var(--ink-dim); margin-bottom: 6px; }
 .perk { font-size: 13px; padding: 4px 0; border-top: 1px solid var(--line); opacity: .45; } .perk.on { opacity: 1; } .perk b { color: var(--c); margin-right: 4px; }
 .perk small { display: block; color: var(--ink-dim); font-size: 11px; }
+.stats-overlay { overflow: auto; justify-content: flex-start; }
+.stats-screen { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; width: min(1100px, 100%); align-items: start; margin: auto 0; }
+.srow { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 3px 0; border-top: 1px solid var(--line); } .srow span { color: var(--ink-dim); }
+.power { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; padding: 6px 0; border-top: 1px solid var(--line); }
+.power kbd { min-width: 24px; text-align: center; font-size: 12px; }
+.power small { display: block; color: var(--ink-dim); font-size: 11px; } .power.locked { opacity: .6; }
+.power em { font-style: normal; font-size: 11px; font-weight: 800; margin-left: 4px; } .power em.ok { color: var(--mint, #4cd964); } .power em.wait { color: #ffd166; } .power em.lock { color: #ff6b8a; }
+.skh .god, .god { color: #ffd700; }
 
 /* ---------- screens ---------- */
 #screen { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: radial-gradient(circle at 50% 30%, rgba(42,27,74,.55), rgba(10,5,25,.92)); overflow: auto; padding: 16px; }
