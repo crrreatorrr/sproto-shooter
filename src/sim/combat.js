@@ -141,7 +141,7 @@ export function onEnemyKilled(state, e) {
   // Drops
   const p = state.players[state.localPlayerId];
   // ammo drops only for guns that use spare ammo (boss weapons never run out)
-  const ctx = { elite: e.elite, tier: e.tier, playerGunTypes: p.guns.filter((g) => g && !GUN_TYPES_BY_ID[g.type].bossOnly).map((g) => g.ammoType), summoned: e.summoned };
+  const ctx = { elite: e.elite, tier: e.tier, playerGunTypes: p.guns.filter((g) => g && !GUN_TYPES_BY_ID[g.type].bossOnly).map((g) => g.ammoType), summoned: e.summoned, boss: !!e.boss };
   const specs = rollDrops(state.rng, e.type, ctx);
   spawnDrops(state, specs, centerOf(e));
 }

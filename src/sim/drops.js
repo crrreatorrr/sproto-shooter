@@ -17,9 +17,13 @@ export function rollGunType(rng) {
   return weighted(rng, GUN_TYPES).id;
 }
 
-/** Pure: returns drop specs. ctx = {elite, tier, playerGunTypes(ammoTypes), summoned} */
+// every boss kill drops a boss weapon, including bosses whose table doesn't list one (or has no table)
+const BOSS_WEAPON_DROP = { kind: 'bossGun', chance: 1, table: 'boss' };
+
+/** Pure: returns drop specs. ctx = {elite, tier, playerGunTypes(ammoTypes), summoned, boss} */
 export function rollDrops(rng, tableId, ctx = {}) {
-  const table = DROP_TABLES[tableId] || [];
+  let table = DROP_TABLES[tableId] || [];
+  if (ctx.boss && !table.some((e) => e.kind === 'bossGun')) table = [...table, BOSS_WEAPON_DROP];
   const tierM = 1 + 0.1 * ((ctx.tier || 1) - 1);
   const eliteM = ctx.elite ? ELITE.dropMult : 1;
   const out = [];

@@ -25,7 +25,7 @@ describe('boss weapons (Ray Gun, Big Bullets)', () => {
 
   it('every boss drops one, at least rare', () => {
     for (const boss of Object.keys(BOSSES)) {
-      const specs = rollDrops(createRng(11), boss, { tier: 1 });
+      const specs = rollDrops(createRng(11), boss, { tier: 1, boss: true });
       const bossGuns = specs.filter((d) => d.kind === 'gun' && BOSS_GUN_TYPES.includes(d.type));
       expect(bossGuns.length, boss).toBe(1);
       expect(['rare', 'epic', 'legendary']).toContain(bossGuns[0].quality);
