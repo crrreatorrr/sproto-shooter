@@ -164,7 +164,7 @@ export class Game {
   buildDebug(open) {
     const gui = new GUI({ title: 'Sproto Debug [`]', width: 300 });
     this.gui = gui;
-    const d = { enemy: 'grunt', count: 1, elite: false, tier: 1, boss: 'megaSproto', gunType: 'random', quality: 'random', element: 'random', wacky: 'random',
+    const d = { enemy: 'grunt', count: 1, elite: false, tier: 1, boss: 'dragon', gunType: 'random', quality: 'random', element: 'random', wacky: 'random',
       tickets: 200, skill: 'magic', god: false, infAmmo: false, freeze: false, unlock: false, hitboxes: false, dummyInf: false, hpMult: 1, dmgMult: 1, timeScale: 1 };
     const q = (op, args) => this.queue({ type: 'debug', op, args });
     const sp = gui.addFolder('Spawn');

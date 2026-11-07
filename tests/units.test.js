@@ -181,7 +181,7 @@ describe('level-scoped loading', () => {
     const l2 = levelAssets(1, 1);
     expect(l2.stage).toBe('volcano');
     expect(l2.characters).toContainEqual({ model: 'midget', stage: 3 }); // flying midgets
-    expect(l2.bosses.map((b) => b.model)).toEqual(['tinubu', 'tinubu', 'tinubu']);
+    expect(l2.bosses.map((b) => b.model)).toEqual(['dragon', 'dragon', 'dragon']);
     expect(levelAssets(2, 1).bosses.map((b) => b.model)).toContain('sahil');
   });
 });
@@ -272,7 +272,7 @@ describe('waves config', () => {
       expect(mid / all.reduce((n, s) => n + s.count, 0)).toBeGreaterThan(0.5);
     }
     expect(WAVES[0].boss).toBeNull();
-    expect(WAVES[1].boss.types).toEqual(['megaSproto']);
+    expect(WAVES[1].boss.types).toEqual(['dragon']);
     expect(WAVES[2].boss.types).toEqual(['megaSproto', 'hexAuditor']);
   });
 });
@@ -413,5 +413,43 @@ describe('sniper zoom levels', () => {
     expect(zoomLevelsOf(mg)).toBe(1);
     expect(zoomFovFor(sn, 2)).toBeCloseTo(zoomFovFor(sn, 1) / 3);
     expect(zoomFovFor(mg, 2)).toBe(zoomFovFor(mg, 1));
+  });
+});
+
+describe('boss melee, missiles and sandbox', () => {
+  const setup = (mode) => {
+    const s = createGameState({ seed: 21 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode, tier: 1 }] }));
+    const p = s.players[s.localPlayerId];
+    const b = createBoss(s, 'dragon', { pos: { x: 0, z: 0 } });
+    b.boss.action = { id: 'chase', t: 0, data: {} };
+    return { s, p, b };
+  };
+  it('a boss swings for heavy damage when you get close', () => {
+    const { s, p } = setup('waves');
+    s.wave.phase = 'boss'; s.enemies = s.enemies.filter((e) => e.boss);
+    p.pos = { x: 0, y: 0, z: 4 }; p.prevPos = { ...p.pos }; p.shield = 0;
+    const ev = run(s, 60, () => cmd());
+    expect(ev.some((e) => e.type === 'bossCast' && e.kind === 'melee')).toBe(true);
+    expect(p.hp).toBeLessThan(p.maxHp - 30);
+  });
+  it('missiles home in and explode for splash damage', () => {
+    const { s, p, b } = setup('waves');
+    s.wave.phase = 'boss'; s.enemies = s.enemies.filter((e) => e.boss);
+    p.pos = { x: 0, y: 0, z: 25 }; p.prevPos = { ...p.pos }; p.shield = 0;
+    b.boss.action = { id: 'missiles', t: 0, data: {} };
+    const ev = run(s, 5 * 60, () => cmd());
+    expect(ev.some((e) => e.type === 'bossCast' && e.kind === 'missiles')).toBe(true);
+    expect(ev.some((e) => e.type === 'explosion' && e.enemy)).toBe(true);
+    expect(p.hp).toBeLessThan(p.maxHp);
+  });
+  it('in the sandbox boss hits land but deal no damage', () => {
+    const { s, p } = setup('sandbox');
+    p.pos = { x: 0, y: 0, z: 4 }; p.prevPos = { ...p.pos };
+    const hp = p.hp, sh = p.shield;
+    const ev = run(s, 5 * 60, () => cmd());
+    expect(ev.some((e) => e.type === 'playerDamaged' && e.noDamage)).toBe(true);
+    expect(p.hp).toBe(hp);
+    expect(p.shield).toBe(sh);
   });
 });

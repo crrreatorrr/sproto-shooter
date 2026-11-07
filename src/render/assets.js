@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { CHARACTER_MODELS, CHARACTER_ROTATION_Y, stageAssets } from '../data/stages.js';
+import { CHARACTER_MODELS, rotationForModelPath, stageAssets } from '../data/stages.js';
 
 const BASE = `${import.meta.env.BASE_URL}assets/`;
 const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -74,7 +74,7 @@ function loadModel(path, prio = NOW) {
     pinRootMotion(root, g.animations);
     // measure in bind pose with the -90° turn applied
     const holder = new THREE.Group();
-    root.rotation.y = THREE.MathUtils.degToRad(CHARACTER_ROTATION_Y);
+    root.rotation.y = THREE.MathUtils.degToRad(rotationForModelPath(path));
     holder.add(root);
     holder.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(holder, true);

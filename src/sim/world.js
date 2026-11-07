@@ -18,7 +18,8 @@ export function projectiles(state, dt) {
       if (tgt) {
         const dx = tgt.pos.x - p.pos.x, dy = tgt.pos.y + 1.1 - p.pos.y, dz = tgt.pos.z - p.pos.z;
         const dl = Math.hypot(dx, dy, dz) || 1;
-        const sp = Math.hypot(p.vel.x, p.vel.y, p.vel.z) || 1;
+        let sp = Math.hypot(p.vel.x, p.vel.y, p.vel.z) || 1;
+        if (p.homingSpeed) sp += (p.homingSpeed - sp) * Math.min(1, dt * 2); // missiles accelerate to cruise speed
         const k = Math.min(1, p.homing * dt);
         p.vel.x += ((dx / dl) * sp - p.vel.x) * k;
         p.vel.y += ((dy / dl) * sp - p.vel.y) * k;
@@ -48,7 +49,7 @@ export function projectiles(state, dt) {
       for (const pl of Object.values(state.players)) {
         if (pl.dead) continue;
         if (sphereHitsPlayer(end, p.radius, pl)) {
-          if (p.splash) { enemyAoE(state, end, p.splash.radius, p.splash.damage, p.sourceKind); emit(state, 'splat', { pos: end, element: p.element }); }
+          if (p.splash) { enemyAoE(state, end, p.splash.radius, p.splash.damage, p.sourceKind); emitEnemyBlast(state, p, end); }
           else damagePlayer(state, pl, { base: p.damage, sourceKind: p.sourceKind, fromPos: p.pos });
           p.dead = true; consumed = true; break;
         }
@@ -78,8 +79,14 @@ function detonate(state, p) {
       { elementChance: p.sourceKind === 'spell' ? 1 : p.elementChance, arcane: p.arcane, wacky: p.wacky });
   } else {
     enemyAoE(state, p.pos, p.splash.radius, p.splash.damage, p.sourceKind, p.pos.y + 1.8);
-    emit(state, 'splat', { pos: { ...p.pos }, element: p.element });
+    emitEnemyBlast(state, p, p.pos);
   }
+}
+
+/** Enemy splash effect: missiles explode, everything else (goo spit) splats. */
+function emitEnemyBlast(state, p, pos) {
+  if (p.kind === 'missile') emit(state, 'explosion', { pos: { x: pos.x, y: Math.max(0.3, pos.y), z: pos.z }, radius: p.splash.radius, element: 'none', enemy: true });
+  else emit(state, 'splat', { pos: { ...pos }, element: p.element });
 }
 
 // ---------------- Hazards ----------------
