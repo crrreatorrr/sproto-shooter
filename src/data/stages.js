@@ -89,6 +89,7 @@ export const CHARACTER_MODELS = {
   obama: [1, 2, 3].map((s) => `models/characters/obama_stage${s}.glb`),
   tinubu: [1, 2, 3].map((s) => `models/characters/tinubu_stage${s}.glb`),
   sahil: [1, 2, 3].map((s) => `models/characters/sahil_stage${s}.glb`),
+  dragon: [1, 2, 3].map(() => 'models/characters/dragon.glb'), // one model for every phase
 };
 /** Tripo exports face +X; turn -90° so they face +Z (Sproto Duel uses the same rotation). */
 export const CHARACTER_ROTATION_Y = -90;

@@ -89,6 +89,29 @@ export const BOSSES = {
       { type: 'sphere', zone: 'weak', r: 0.5, x: 0, y: 2.0, z: 1.9, onlyWhen: 'stunned' },
     ],
   },
+  // Jade Dragon: wave 1 boss (Tripo quadruped rig, no clips: animated procedurally in render/dragonRig.js).
+  // Long body along local +z, so its hitboxes are a chain of spheres from head to tail.
+  dragon: {
+    name: 'JADE DRAGON', tag: 'physical', hp: 2200, radius: 1.6, height: 3.2, color: 0x2fae5a, speed: 5,
+    breath: { damage: 6, speed: 18, rate: 0.07, duration: 1.6, sweep: 60, telegraph: 0.7 },
+    fireball: { damage: 15, splash: 2.6, count: 3, flight: 1.2 },
+    tail: { damage: 20, radius: 6.5, windup: 0.6 },
+    model: 'dragon', stageHeights: [3.2, 3.4, 3.6],
+    portraits: [],
+    phases: [
+      { hpBelow: 1.0, speedMult: 1.0, pattern: ['stalk', 'breath', 'stalk', 'fireballs', 'tailSwipe'] },
+      { hpBelow: 0.6, speedMult: 1.2, pattern: ['stalk', 'breath', 'fireballs', 'summon', 'tailSwipe', 'breath'] },
+      { hpBelow: 0.25, speedMult: 1.4, pattern: ['breath', 'fireballs', 'tailSwipe', 'breath', 'summon'] },
+    ],
+    hitboxes: [
+      { type: 'sphere', zone: 'weak', r: 0.55, x: 0, y: 2.55, z: 2.55 },
+      { type: 'sphere', zone: 'body', r: 0.95, x: 0, y: 2.0, z: 1.9 },
+      { type: 'sphere', zone: 'body', r: 1.15, x: 0, y: 1.35, z: 0.7 },
+      { type: 'sphere', zone: 'body', r: 1.15, x: 0, y: 1.2, z: -0.6 },
+      { type: 'sphere', zone: 'body', r: 0.9, x: 0, y: 0.95, z: -1.8 },
+      { type: 'sphere', zone: 'body', r: 0.6, x: 0, y: 0.7, z: -2.7 },
+    ],
+  },
   hexAuditor: {
     // Floats ~1.6 m off the ground: pos.y is the body centre, so hitboxes go below and above it.
     name: 'HEX SAHIL', tag: 'magic', hp: 3000, radius: 0.7, height: 2.5, color: 0x9b59ff, speed: 4.5, hoverY: 1.6,
