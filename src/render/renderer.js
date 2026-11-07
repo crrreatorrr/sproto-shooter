@@ -5,6 +5,7 @@ import { ENEMIES, BOSSES } from '../data/enemies.js';
 import { QUALITIES_BY_ID, ELEMENTS_BY_ID, MANUFACTURERS_BY_ID, zoomFovFor } from '../data/guns.js';
 import { RESOURCES } from '../data/drops.js';
 import { worldHitboxes } from '../sim/collision.js';
+import { createFirstPerson, FP } from './firstPerson.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
 import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY, ensureGunModel, instantiateGun } from './assets.js';
@@ -17,6 +18,7 @@ export function createRenderer(container, bus) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.localClippingEnabled = true; // first-person body clipping (firstPerson.js)
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -365,6 +367,13 @@ export function createRenderer(container, bus) {
 
   // Gun with a 3D model (e.g. the toy machine gun): model + element gem. Null if the type has none / not loaded yet.
   const GUN_MODEL_LEN = { mg: 0.7, shotgun: 0.75, sniper: 0.8, bazooka: 0.9 };
+  // where the hands hold each model, as fractions of its height (y, from the center) and length (z, + = back)
+  const HAND_FRAC = {
+    mg: { grip: [-0.3, 0.15], fore: [-0.15, -0.2] },
+    shotgun: { grip: [-0.3, 0.12], fore: [-0.05, -0.2] },
+    sniper: { grip: [-0.3, 0.1], fore: [-0.15, -0.15] },
+    bazooka: { grip: [-0.3, 0.12], fore: [-0.25, -0.15] },
+  };
   function buildGunModel(gun, length) {
     const inst = instantiateGun(gun.type, length);
     if (!inst) return null;
@@ -376,6 +385,10 @@ export function createRenderer(container, bus) {
     }
     g.userData.muzzle = inst.muzzle;
     g.userData.model = true;
+    // first-person hand targets: right hand on the grip under the back half, left hand on the handguard
+    const hf = HAND_FRAC[gun.type] || HAND_FRAC.mg, sz = inst.size;
+    g.userData.grip = [0, hf.grip[0] * sz.y, hf.grip[1] * sz.z];
+    g.userData.fore = [0, hf.fore[0] * sz.y, hf.fore[1] * sz.z];
     return g;
   }
 
@@ -543,36 +556,15 @@ export function createRenderer(container, bus) {
   // Viewmodel pose: [x, y, z] at rest / aiming, plus yaw/roll at rest. Modeled guns sit big in the lower right,
   // barrel angled in toward the crosshair; aiming pulls them to the center.
   const VM_POSE = {
-    box: { rest: [0.17, -0.15, -0.42], ads: [0, -0.1, -0.42], yaw: 0, roll: 0, scale: 0.45 },
+    box: { rest: FP.hip.pos, ads: FP.ads.pos, yaw: 0, roll: 0, scale: FP.gunScale }, // placeholder while a model loads
     model: { rest: [0.2, -0.17, -0.5], ads: [0, -0.27, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
     // slim shotgun sits a little higher; its barrel is the top of the model, so aiming can stay close to center
     shotgun: { rest: [0.19, -0.15, -0.5], ads: [0, -0.16, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
-    // Screen-anchored poses (`place`): where the barrel tip and the back of the gun appear on screen, as
-    // [x, y, depth] with x/y in screen fractions (-1 left/bottom … 1 right/top) and depth in metres. The gun
-    // is aimed from back to tip and slid so its muzzle sits on the tip. Zooming swings the tip to `zoomTip`
-    // around the back (the shoulder), so the gun only tilts; its size never changes.
-    // sniper: same rules as the machine gun and shotgun; aiming centers it low enough that the scope on top
-    // stays below the crosshair
-    sniper: { rest: [0.2, -0.17, -0.5], ads: [0, -0.26, -0.5], yaw: 0.06, roll: -0.03, scale: 1 },
-    // bazooka on the right shoulder: big tube from the right edge pointing in toward the center
-    bazooka: { place: { tip: [0.2, -0.08, 1.15], back: [1.05, -0.55, 0.3], zoomTip: [0.09, -0.07, 1.15], roll: 0, zoomRoll: -0.04 }, scale: 1 },
+    // bazooka: same rules as the other guns, a little lower because the tube is tall; aiming keeps its top
+    // below the crosshair
+    bazooka: { len: 0.72, rest: [0.22, -0.22, -0.55], ads: [0, -0.3, -0.55], yaw: 0.06, roll: -0.03, scale: 1 },
   };
-  const _tq = new THREE.Quaternion(), _te = new THREE.Euler(), _pT = new THREE.Vector3(), _pT2 = new THREE.Vector3(),
-    _pB = new THREE.Vector3(), _pD = new THREE.Vector3(), _pM = new THREE.Vector3(), _FWD = new THREE.Vector3(0, 0, -1);
-  /** Screen fraction [x, y, depth] → camera-space point, at the viewmodel's (base) field of view. */
-  function screenPoint(v, out) {
-    const t = Math.tan(THREE.MathUtils.degToRad(TUNING.fovBase / 2));
-    return out.set(v[0] * v[2] * t * camera.aspect, v[1] * v[2] * t, -v[2]);
-  }
-  /** Places a gun from a screen-anchored pose at aim amount `ads` (0..1): sets position and quaternion. */
-  function placeGun(gunObj, place, muzzle, ads) {
-    screenPoint(place.back, _pB);
-    screenPoint(place.tip, _pT).lerp(screenPoint(place.zoomTip || place.tip, _pT2), ads);
-    _pD.subVectors(_pT, _pB).normalize();
-    gunObj.quaternion.setFromUnitVectors(_FWD, _pD)
-      .premultiply(_tq.setFromAxisAngle(_pD, lerp(place.roll || 0, place.zoomRoll ?? place.roll ?? 0, ads)));
-    gunObj.position.copy(_pT).sub(_pM.copy(muzzle).applyQuaternion(gunObj.quaternion));
-  }
+  const fp = createFirstPerson(camera); // first-person arms (main): drawn in the viewmodel pass with the gun
   const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, reload: 0, swap: 0, lastYaw: 0, lastPitch: 0 };
 
   // ---------- reload animations ----------
@@ -742,26 +734,19 @@ export function createRenderer(container, bus) {
     if (vmGun) {
       const pose = vmGun.userData.pose, ia = 1 - vm.ads;
       const r = reloadOffsets(vmGun.userData.type, p.reloadT, vm.reloadTime);
-      // less sway and bob while aiming; none at full aim for screen-anchored guns so the tip stays put
-      const steady = 1 - (pose.place ? 1 : 0.75) * vm.ads;
-      const kickX = vm.kick * 0.25 + r.rx;
-      if (pose.place) {
-        placeGun(vmGun, pose.place, vmGun.userData.muzzle, vm.ads);
-        vmGun.position.x += vm.swayX * steady + r.x;
-        vmGun.position.y += -vm.swayY * steady + r.y - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006 * steady;
-        vmGun.position.z += vm.kick * 0.05 + r.z;
-        vmGun.quaternion.multiply(_tq.setFromEuler(_te.set(kickX, vm.swayX * steady + r.ry, r.rz)));
-      } else {
-        const ad = pose.ads;
-        vmGun.position.set(
-          lerp(pose.rest[0], ad[0], vm.ads) + vm.swayX * steady + r.x,
-          lerp(pose.rest[1], ad[1], vm.ads) - vm.swayY * steady + r.y - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006 * steady,
-          lerp(pose.rest[2], ad[2], vm.ads) + vm.kick * 0.05 + r.z);
-        vmGun.rotation.set(kickX, pose.yaw * ia + vm.swayX * steady + r.ry, pose.roll * ia + r.rz);
-      }
+      const steady = 1 - 0.75 * vm.ads; // less sway and bob while aiming
+      const ad = pose.ads;
+      vmGun.position.set(
+        lerp(pose.rest[0], ad[0], vm.ads) + vm.swayX * steady + r.x,
+        lerp(pose.rest[1], ad[1], vm.ads) - vm.swayY * steady + r.y - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006 * steady,
+        lerp(pose.rest[2], ad[2], vm.ads) + vm.kick * 0.05 + r.z);
+      vmGun.rotation.set(vm.kick * 0.25 + r.rx, pose.yaw * ia + vm.swayX * steady + r.ry, pose.roll * ia + r.rz);
       vmGun.updateMatrix();
       muzzleFlash.position.copy(vmGun.userData.muzzle).applyMatrix4(vmGun.matrix);
     }
+    if (vmGun && gun) fp.setGun(vmGun, gun.type);
+    fp.update(vmRoot.visible);
+    if (fp.ready && !fp.root.userData.vmLayer) { setVmLayer(fp.root); fp.root.userData.vmLayer = true; }
     flashT -= fdt;
     if (flashT <= 0) muzzleFlash.visible = false;
     flashLight.intensity = Math.max(0, flashLight.intensity - fdt * 120);
@@ -958,6 +943,9 @@ export function createRenderer(container, bus) {
       }
     }
 
+    // dev hook: window.__debugCam renders the scene from an outside camera (used to tune the first-person rig)
+    const debugCam = typeof window !== 'undefined' && window.__debugCam;
+    if (debugCam) { debugCam.layers.enableAll(); renderer.render(scene, debugCam); return; }
     renderer.render(scene, camera);
     // viewmodel pass: same camera, depth cleared, no sky redraw
     const bg = scene.background;
@@ -993,6 +981,8 @@ export function createRenderer(container, bus) {
     render, project, resize, canvas: renderer.domElement, camera,
     setShowHitboxes(v) { showHitboxes = v; },
     setStage(id) { stageOverride = id || null; },
+    firstPerson: fp,
+    THREE, scene,
     pendingDownloads,
     info: () => renderer.info,
   };
