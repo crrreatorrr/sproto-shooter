@@ -55,3 +55,23 @@ Dependencies decide the order: infrastructure first, then the post stack and VFX
 - Every target in plan A §1 and plan B §1 is met and recorded in the final PR.
 - First load stays level-scoped; first-load size and time-to-interactive meet plan B §1.
 - All tests pass, CI is green, and screenshot goldens are updated intentionally.
+
+
+## Campaign plan (part C)
+
+A 10-level, Halo-style campaign with big sectioned levels, a jetpack, basic world weapons, new
+monsters and the Sproto Duel bosses (same attacks). It's written for Cursor agents.
+
+- **C: engine and systems:** [`docs/codex/C-campaign-levels.md`](docs/codex/C-campaign-levels.md)
+- **C: the 10 levels:** [`docs/codex/C-level-designs.md`](docs/codex/C-level-designs.md)
+- **C: Sproto Duel bosses:** [`docs/codex/C-bosses-sproto-duel.md`](docs/codex/C-bosses-sproto-duel.md)
+- **C: milestones, Definition of Done, Cursor prompts:** [`docs/codex/C-milestones-cursor.md`](docs/codex/C-milestones-cursor.md)
+- Cursor rules: `.cursor/rules/campaign-levels.mdc`
+
+**Where it slots into the combined order above:** C-M0…C-M5 go right after #5 (B-M4 QA harness).
+A-M7 (#16) must use C-M3's navigation; A-M11 (#20) reuses C-M11's hazard volumes; plan A's decals
+use C-M1's surface normals; B-M8/B-M9 land before C-M9b (bitbug flocks). After C-M5, the campaign
+tracks run in parallel with the remaining A/B milestones (see C-milestones §1).
+
+Ground rules 1-5 above apply unchanged. The campaign adds: Wave Mode stays bit-identical
+(baseline hashes), levels are pure data, and section loading never affects the sim.
