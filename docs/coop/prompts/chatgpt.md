@@ -19,8 +19,10 @@ STYLE (apply to every image)
 - Weak points must be obvious in the design (they are targets for big headshot damage in the game).
 
 FRAMING
-- MONSTER: the full body in a neutral A-pose, front three-quarter view, arms and legs held clear of the
-  body, feet visible.
+- MONSTER: the full body in a T-pose: standing straight, arms stretched straight out to the sides at
+  shoulder height, palms down, legs slightly apart, feet visible, neutral face, front view. Hand tools
+  (drill, claws, rifle arm, magnet hands) stay on the arms in the same T-pose. A monster without arms
+  (the goo glob) stands in a neutral front pose.
 - GUN: the whole gun in a three-quarter side view, muzzle pointing right, grip and trigger clearly visible,
   sized for a toy-like chunky look.
 - PROP: the whole object, three-quarter view.
