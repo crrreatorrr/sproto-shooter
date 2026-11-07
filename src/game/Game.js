@@ -275,8 +275,9 @@ export class Game {
 
 /** One-line descriptions for the Boss Fight picker. */
 const BOSS_BLURB = {
-  dragon: 'Fire breath sweeps, lobbed fireballs, tail swipes.',
+  dragon: 'Takes flight to bomb you with fireballs, fire breath, tail swipes.',
   monster: 'Overhead arm smashes, homing missiles, bullet fans.',
+  sprotoBeast: 'Punch and kick combos, missile salvos, charges.',
   megaSproto: 'Charges, ground slams, missiles, swings up close.',
   hexAuditor: 'Floating caster: bullet hell, homing bolts, teleports.',
 };

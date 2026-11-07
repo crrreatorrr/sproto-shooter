@@ -49,6 +49,14 @@ export const DROP_TABLES = {
     { kind: 'gun', count: 2, chance: 1, table: 'boss' },
     { kind: 'tickets', min: 60, max: 60, chance: 1 },
   ],
+  sprotoBeast: [
+    { kind: 'resource', resId: 'scrap', min: 25, max: 25, chance: 1 },
+    { kind: 'resource', resId: 'bossCore', min: 1, max: 1, chance: 1, noScale: true },
+    { kind: 'bigHealth', count: 2, chance: 1 },
+    { kind: 'ammo', count: 3, chance: 1 },
+    { kind: 'gun', count: 2, chance: 1, table: 'boss' },
+    { kind: 'tickets', min: 60, max: 60, chance: 1 },
+  ],
   dragon: [
     { kind: 'resource', resId: 'scrap', min: 20, max: 20, chance: 1 },
     { kind: 'resource', resId: 'bossCore', min: 1, max: 1, chance: 1, noScale: true },

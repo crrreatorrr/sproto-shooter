@@ -1,6 +1,6 @@
 // Player input, movement, combat (firing/reload/swap), vitals. PLAN §4.4, §7.1
 import { TUNING, ARENA_R } from '../data/tuning.js';
-import { GUN_TYPES_BY_ID, hasInfiniteReserve } from '../data/guns.js';
+import { GUN_TYPES_BY_ID, hasInfiniteReserve, gunRange, rangeFalloff } from '../data/guns.js';
 import { float, range } from '../core/rng.js';
 import { dirFromYawPitch, deg, clamp } from '../core/math.js';
 import { emit } from './events.js';
@@ -170,14 +170,16 @@ function coneDir(state, aim, spreadDeg) {
 export function fireHitscan(state, p, g, st, origin, dir, extra = {}) {
   let o = origin;
   const ignore = {};
-  let remaining = TUNING.hitscanRange;
+  const rng = gunRange(g); // shots stop at the gun's max range and lose damage past its full-damage range
+  let remaining = Math.min(TUNING.hitscanRange, rng.max);
   let pierce = st.pierce;
   let end = null;
   for (let i = 0; i <= pierce; i++) {
     const hit = raycastEnemies(state, o, dir, remaining, ignore);
     if (!hit) break;
+    const dist = Math.hypot(hit.point.x - origin.x, hit.point.y - origin.y, hit.point.z - origin.z);
     damageEnemy(state, hit.e, {
-      sourceId: p.id, sourceKind: 'gun', base: st.damage * (extra.dmgMult || 1), element: g.element, elementChance: st.elementChance,
+      sourceId: p.id, sourceKind: 'gun', base: st.damage * (extra.dmgMult || 1) * rangeFalloff(rng, dist), element: g.element, elementChance: st.elementChance,
       zone: hit.zone, critChance: st.critChance, critMult: st.critMult, canCrit: true, pellet: st.pellets > 1, point: hit.point,
       gunId: g.id, arcane: g.arcane, wacky: g.wacky,
     });
@@ -188,7 +190,7 @@ export function fireHitscan(state, p, g, st, origin, dir, extra = {}) {
     if (i === pierce) break;
   }
   if (!end) {
-    const t = rayWorld(origin, dir, 60);
+    const t = rayWorld(origin, dir, Math.min(60, rng.max));
     end = { x: origin.x + dir.x * t, y: origin.y + dir.y * t, z: origin.z + dir.z * t };
     if (origin.y + dir.y * t <= 0.01) emit(state, 'impact', { pos: end, element: g.element });
   }

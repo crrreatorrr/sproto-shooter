@@ -476,3 +476,60 @@ describe('boss fight mode', () => {
     expect(p.guns.map((g) => g && g.type)).toEqual(['mg', null, null, null]); // leaving gives the starting loadout back
   });
 });
+
+describe('jade dragon flight and sproto beast combos', () => {
+  it('the dragon takes off, circles at altitude dropping fireballs, then lands', () => {
+    const s = createGameState({ seed: 41 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'boss', tier: 1, boss: 'dragon' }] }));
+    const b = s.enemies.find((e) => e.boss);
+    b.boss.action = { id: 'fly', t: 0, data: {} };
+    let maxY = 0; const kinds = new Set();
+    for (let i = 0; i < 6 * 60; i++) { run(s, 1, () => cmd()); maxY = Math.max(maxY, b.pos.y); s.projectiles.forEach((p) => kinds.add(p.kind)); if (b.boss.action.id !== 'fly') break; }
+    expect(maxY).toBeGreaterThan(5);
+    expect(kinds.has('fireball')).toBe(true);
+    run(s, 4 * 60, () => cmd());
+    expect(b.pos.y).toBe(0); // landed
+  });
+  it('the sproto beast mixes punches and kicks; kicks hit harder', () => {
+    const s = createGameState({ seed: 42 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'boss', tier: 1, boss: 'sprotoBeast' }] }));
+    const p = s.players[s.localPlayerId];
+    s.tuning.godMode = true; // keep the player standing for several swings
+    const variants = [];
+    for (let i = 0; i < 20 * 60 && variants.length < 4; i++) {
+      p.pos = { x: 0, y: 0, z: -14 }; p.prevPos = { ...p.pos };
+      const b = s.enemies.find((e) => e.boss); b.pos.x = 0; b.pos.z = -18;
+      for (const ev of run(s, 1, () => cmd())) if (ev.type === 'bossCast' && ev.kind === 'melee') variants.push(ev.variant);
+    }
+    expect(variants).toContain('punch');
+    expect(variants).toContain('kick');
+  });
+});
+
+describe('weapon range', () => {
+  it('shotgun pellets cannot hit past their range and lose damage with distance', async () => {
+    const { gunRange, rangeFalloff } = await import('../src/data/guns.js');
+    const { fireHitscan } = await import('../src/sim/player.js');
+    const sg = generateGun({ seed: 1, level: 1, forced: { type: 'shotgun', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    sg.parts.barrel = 'stock';
+    const r = gunRange(sg);
+    expect(r.max).toBe(16);
+    expect(rangeFalloff(r, 5)).toBe(1);
+    expect(rangeFalloff(r, 12)).toBeLessThan(1);
+    expect(rangeFalloff(r, 20)).toBe(0);
+    const shootAt = (dist) => {
+      const s = createGameState({ seed: 2 });
+      const p = s.players[s.localPlayerId];
+      const e = createEnemy(s, 'dummy', { pos: { x: 0, z: p.pos.z - dist } });
+      e.state = 'idle';
+      const hp = e.hp;
+      fireHitscan(s, p, sg, { ...sg.stats, pellets: 1, critChance: 0 }, { x: 0, y: 1.1, z: p.pos.z }, { x: 0, y: 0, z: -1 });
+      return hp - e.hp;
+    };
+    const near = shootAt(4), mid = shootAt(12), far = shootAt(22);
+    expect(near).toBeGreaterThan(0);
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(near);
+    expect(far).toBe(0);
+  });
+});
