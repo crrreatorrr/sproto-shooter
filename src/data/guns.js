@@ -27,9 +27,20 @@ export const GUN_TYPES = [
   // target and bursts on impact.
   { id: 'bigbullets', name: 'Big Bullets', short: 'BB', ammoType: 'heavy', weight: 0, bossOnly: true, projectile: 'bigBullet', fireMode: 'auto', infiniteReserve: true,
     base: B({ damage: 340, fireRate: 1.1, spread: 0.5, adsSpread: 0.1, magSize: 4, reloadTime: 2.6, projectileSpeed: 70, critMult: 2.5, critChance: 0.1, elementChance: 0.3, splashRadius: 2.5, splashDamage: 120, recoil: 6.5, recoilYaw: 1.0, swapTime: 0.7, zoomFov: 60, pierce: 1 }) },
+  // Duck Gun (legendaryOnly): always legendary, never rolled at random; the sandbox has one to grab. Lobs
+  // medium-sized rubber bullets that bounce once off the floor or arena wall and explode on whatever they hit
+  // (or when they land after the bounce), damaging everything nearby.
+  { id: 'duckgun', name: 'Duck Gun', short: 'DG', ammoType: 'rubber', weight: 0, legendaryOnly: true, projectile: 'rubberBullet', fireMode: 'auto', infiniteReserve: true,
+    base: B({ damage: 60, fireRate: 2.2, spread: 0.9, adsSpread: 0.3, magSize: 8, reloadTime: 2.4, projectileSpeed: 36, critMult: 2.0, critChance: 0.08, elementChance: 0.25, splashRadius: 3.6, splashDamage: 95, recoil: 3.0, recoilYaw: 0.6, swapTime: 0.6, zoomFov: 62 }) },
 ];
 /** Gun types that only drop from bosses. */
 export const BOSS_GUN_TYPES = GUN_TYPES.filter((t) => t.bossOnly).map((t) => t.id);
+
+// Slots: 1-4 are regular (4 needs the shop upgrade), the 5th (key L) only ever holds a legendary gun.
+export const LEGENDARY_SLOT = 4;
+export const SLOT_COUNT = 5;
+/** Can the player select this slot? */
+export const slotUsable = (p, i) => i === LEGENDARY_SLOT || (i >= 0 && i < p.unlockedSlots);
 
 export const QUALITIES = [
   { id: 'common', idx: 0, name: 'Common', color: '#cfcfcf', weight: 55, damageMult: 1.0, magMult: 1.0, reloadMult: 1.0, spreadMult: 1.0, partSlots: 1, priceMult: 1.0, sellMult: 1.0 },
@@ -72,11 +83,11 @@ export const ELEMENTS = [
 
 export const WACKY = [
   { id: 'rubberDuck', name: 'Rubber Duckie', desc: 'Shots become bouncing rubber ducks.', allowedTypes: ['mg', 'shotgun', 'sniper'] },
-  { id: 'yeetReload', name: 'Yeet Reload', desc: 'Reloading throws the gun as an explosive.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets'] },
+  { id: 'yeetReload', name: 'Yeet Reload', desc: 'Reloading throws the gun as an explosive.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun'] },
   { id: 'tenthMega', name: 'Every Tenth', desc: 'Every 10th shot fires a giant mega bullet.', allowedTypes: ['mg', 'shotgun', 'sniper'] },
-  { id: 'critSproto', name: 'Lil Buddy', desc: 'Weak-spot hits spawn a mini friendly Sproto.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets'] },
-  { id: 'confettiKill', name: 'Party Popper', desc: 'Kills explode in damaging confetti.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets'] },
-  { id: 'bigHead', name: 'Big Head Mode', desc: 'Enemies you hit get huge heads (bigger weak spots).', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets'] },
+  { id: 'critSproto', name: 'Lil Buddy', desc: 'Weak-spot hits spawn a mini friendly Sproto.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun'] },
+  { id: 'confettiKill', name: 'Party Popper', desc: 'Kills explode in damaging confetti.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun'] },
+  { id: 'bigHead', name: 'Big Head Mode', desc: 'Enemies you hit get huge heads (bigger weak spots).', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun'] },
 ];
 
 export const NAME_BITS = {
@@ -86,6 +97,7 @@ export const NAME_BITS = {
   bazooka: ['Big Yeet', 'Kaboomer', 'Rocket Pal', 'Sky Mail'],
   raygun: ['Zapper', 'Beam Buddy', 'Ray-o-Matic', 'Laser Lad'],
   bigbullets: ['Hand Cannon', 'Chonker', 'Big Bertha', 'Thumper'],
+  duckgun: ['Quackinator', 'Bath Time', 'Quack Attack', 'Rubber Ruckus'],
   element: { none: ['', 'Trusty', 'Basic'], fire: ['Spicy', 'Toasty', 'Hot'], shock: ['Zappy', 'Buzzy', 'Static'], goo: ['Gloopy', 'Sticky', 'Slimy'] },
 };
 

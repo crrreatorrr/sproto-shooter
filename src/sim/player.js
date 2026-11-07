@@ -1,6 +1,6 @@
 // Player input, movement, combat (firing/reload/swap), vitals. PLAN §4.4, §7.1
 import { TUNING, ARENA_R } from '../data/tuning.js';
-import { GUN_TYPES_BY_ID, hasInfiniteReserve, gunRange, rangeFalloff } from '../data/guns.js';
+import { GUN_TYPES_BY_ID, hasInfiniteReserve, gunRange, rangeFalloff, slotUsable, SLOT_COUNT } from '../data/guns.js';
 import { float, range } from '../core/rng.js';
 import { dirFromYawPitch, deg, clamp } from '../core/math.js';
 import { emit } from './events.js';
@@ -128,7 +128,7 @@ export function playerMovement(state, dt) {
 function activeGun(p) { return p.guns[p.activeSlot]; }
 
 function switchSlot(state, p, slot) {
-  if (slot === p.activeSlot || slot < 0 || slot >= p.unlockedSlots || !p.guns[slot]) return;
+  if (slot === p.activeSlot || !slotUsable(p, slot) || !p.guns[slot]) return;
   p.activeSlot = slot;
   p.reloadT = 0;
   const g = p.guns[slot];
@@ -227,9 +227,9 @@ export function playerCombat(state, dt) {
     // slot switching
     if (c.slot >= 0) switchSlot(state, p, c.slot);
     else if (c.wheel) {
-      for (let i = 1; i <= 4; i++) {
-        const s = (p.activeSlot + c.wheel * i + 4 * 4) % 4;
-        if (s < p.unlockedSlots && p.guns[s]) { switchSlot(state, p, s); break; }
+      for (let i = 1; i <= SLOT_COUNT; i++) {
+        const s = (p.activeSlot + c.wheel * i + SLOT_COUNT * SLOT_COUNT) % SLOT_COUNT;
+        if (slotUsable(p, s) && p.guns[s]) { switchSlot(state, p, s); break; }
       }
     }
 
@@ -265,6 +265,15 @@ export function playerCombat(state, dt) {
         kind: 'megaBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: aim.x * 40, y: aim.y * 40, z: aim.z * 40 },
         radius: 0.6, damage: st.damage * st.pellets * 6, element: g.element, elementChance: 1, critMult: st.critMult, pierce: 5, ttl: 3, arcane: g.arcane,
         splash: { radius: 3, damage: st.damage * st.pellets * 3, minFalloff: 0.4, selfMult: 0, knockback: 6 },
+      });
+    } else if (GUN_TYPES_BY_ID[g.type].projectile === 'rubberBullet') {
+      // Duck Gun: a lobbed rubber bullet; one bounce off the floor or wall, explodes on what it hits or where it lands
+      const d = coneDir(state, aim, st.spread);
+      createProjectile(state, {
+        kind: 'rubberBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: d.x * st.projectileSpeed, y: d.y * st.projectileSpeed + 2.5, z: d.z * st.projectileSpeed },
+        radius: 0.24, gravity: 14, bounces: 1, damage: st.damage, element: g.element, elementChance: st.elementChance, critMult: st.critMult,
+        critChance: st.critChance, ttl: 4, arcane: g.arcane, wacky: g.wacky,
+        splash: { radius: st.splashRadius, damage: st.splashDamage, minFalloff: 0.35, selfMult: 0, knockback: 9 },
       });
     } else if (GUN_TYPES_BY_ID[g.type].projectile === 'bigBullet') {
       // Big Bullets: a visible heavy round, slight drop, crits, punches through `pierce` targets, bursts on impact
