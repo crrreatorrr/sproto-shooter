@@ -288,3 +288,18 @@ describe('determinism', () => {
     expect(play()).toBe(play());
   });
 });
+
+describe('test range', () => {
+  it('gives every gun type with infinite ammo, and leaving resets the loadout', () => {
+    const s = createGameState({ seed: 7 });
+    const p = s.players[s.localPlayerId];
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'test', tier: 1 }] }));
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka']);
+    expect(new Set(p.guns.map((g) => g.id)).size).toBe(4);
+    expect(s.tuning.infiniteAmmo).toBe(true);
+    expect(s.enemies.filter((e) => e.type === 'dummy').length).toBe(5);
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', null, null, null]);
+    expect(s.tuning.infiniteAmmo).toBe(false);
+  });
+});

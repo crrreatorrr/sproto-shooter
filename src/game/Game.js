@@ -40,6 +40,7 @@ export class Game {
     this.queue({ type: 'debug', op: 'spawnDummies' });
     if (mode === 'waves') this.start('waves', tier);
     else if (mode === 'sandbox') this.start('sandbox', tier);
+    else if (mode === 'test') this.start('test', tier);
     else this.showScreen('title');
 
     this.last = performance.now();
@@ -102,6 +103,7 @@ export class Game {
         <div class="menu">
           <button class="btn big" data-go="waves">▶ Wave Mode <small>3 waves + bosses</small></button>
           <button class="btn big alt" data-go="sandbox">🧪 Sandbox <small>debug spawn everything</small></button>
+          <button class="btn big alt" data-go="test">🎯 Test Range <small>every gun, infinite ammo</small></button>
           <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
         </div>
         ${controlsHtml()}</div>`;
@@ -246,9 +248,9 @@ export class Game {
 function controlsHtml() {
   const k = (a, b) => `<div><kbd>${a}</kbd><span>${b}</span></div>`;
   return `<div class="controls">
-    ${k('WASD', 'Move')}${k('Mouse', 'Aim · LMB fire · RMB zoom')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
+    ${k('WASD', 'Move')}${k('Mouse', 'Look · LMB fire · RMB hold to aim')}${k('F', 'Aim on / off')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
     ${k('C', 'Slide (Ctrl works, but Ctrl+W closes the tab!)')}${k('Alt / V', 'Dash')}${k('R', 'Reload')}${k('1-4 / Wheel', 'Switch gun')}
-    ${k('G', 'Pick up gun · open Weapon Box')}${k('H', 'Use medkit')}${k('Q E Z X F', 'Spells (unlock with Magic XP)')}
+    ${k('G', 'Pick up gun · open Weapon Box')}${k('H', 'Use medkit')}${k('Q E Z X T', 'Spells (unlock with Magic XP)')}
     ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('Enter', 'Ready / skip break')}${k('`', 'Debug panel')}${k('M', 'Mute')}
   </div>`;
 }

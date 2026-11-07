@@ -3,7 +3,8 @@ const BIND = {
   forward: ['KeyW'], back: ['KeyS'], left: ['KeyA'], right: ['KeyD'],
   sprint: ['ShiftLeft', 'ShiftRight'], jump: ['Space'], slide: ['KeyC', 'ControlLeft'], dash: ['AltLeft', 'KeyV'],
   reload: ['KeyR'], interact: ['KeyG'], medkit: ['KeyH'],
-  gooBolt: ['KeyQ'], chainZap: ['KeyE'], swarm: ['KeyZ'], manaShield: ['KeyX'], meteor: ['KeyF'],
+  gooBolt: ['KeyQ'], chainZap: ['KeyE'], swarm: ['KeyZ'], manaShield: ['KeyX'], meteor: ['KeyT'],
+  aimToggle: ['KeyF'], // press to aim, press again to stop (holding right-click also aims)
   skip: ['Enter'],
 };
 const LATCHED = ['jump', 'slide', 'dash', 'reload', 'interact', 'medkit', 'gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor', 'skip'];
@@ -12,6 +13,7 @@ export function createInput(canvas) {
   const held = new Set();
   const latch = {};
   let mouseL = false, mouseR = false, wheel = 0, slot = -1;
+  let aimToggled = false;
   let yaw = 0, pitch = 0;
   let actions = [];
   let enabled = true; // false while a menu is open
@@ -20,7 +22,7 @@ export function createInput(canvas) {
     sensitivity: 0.0022,
     get locked() { return document.pointerLockElement === canvas; },
     on(type, fn) { (listeners[type] ||= []).push(fn); },
-    setEnabled(v) { enabled = v; if (!v) { mouseL = mouseR = false; held.clear(); } },
+    setEnabled(v) { enabled = v; if (!v) { mouseL = mouseR = false; aimToggled = false; held.clear(); } },
     get enabled() { return enabled; },
     lock() { try { const r = canvas.requestPointerLock({ unadjustedMovement: false }); if (r && r.catch) r.catch(() => {}); } catch { /* ignore */ } },
     unlock() { if (document.pointerLockElement) document.exitPointerLock(); },
@@ -35,7 +37,7 @@ export function createInput(canvas) {
         tick, yaw, pitch,
         moveX: enabled ? (has('right') ? 1 : 0) - (has('left') ? 1 : 0) : 0,
         moveZ: enabled ? (has('forward') ? 1 : 0) - (has('back') ? 1 : 0) : 0,
-        held: { fire: enabled && mouseL && api.locked, zoom: enabled && mouseR && api.locked, sprint: enabled && has('sprint') },
+        held: { fire: enabled && mouseL && api.locked, zoom: enabled && (mouseR || aimToggled) && api.locked, sprint: enabled && has('sprint') },
         pressed: enabled ? pressed : { skip: pressed.skip },
         slot: enabled ? slot : -1, wheel: enabled ? wheel : 0,
         actions,
@@ -54,9 +56,11 @@ export function createInput(canvas) {
     held.add(e.code);
     for (const k of LATCHED) if (BIND[k].includes(e.code)) latch[k] = true;
     if (/^Digit[1-4]$/.test(e.code)) slot = Number(e.code.slice(5)) - 1;
+    if (BIND.aimToggle.includes(e.code) && enabled && api.locked) aimToggled = !aimToggled;
+    if (BIND.sprint.includes(e.code)) aimToggled = false; // sprinting drops a toggled aim
   });
   window.addEventListener('keyup', (e) => { held.delete(e.code); if (e.code === 'AltLeft') e.preventDefault(); emit('keyup', e); });
-  window.addEventListener('blur', () => { held.clear(); mouseL = mouseR = false; });
+  window.addEventListener('blur', () => { held.clear(); mouseL = mouseR = false; aimToggled = false; });
   canvas.addEventListener('mousedown', (e) => {
     if (!api.locked) { emit('clickUnlocked', e); return; }
     if (e.button === 0) mouseL = true;
@@ -72,6 +76,6 @@ export function createInput(canvas) {
     pitch -= e.movementY * api.sensitivity * zoomK;
     pitch = Math.max(-1.5, Math.min(1.5, pitch));
   });
-  document.addEventListener('pointerlockchange', () => emit('lockchange', api.locked));
+  document.addEventListener('pointerlockchange', () => { if (!api.locked) aimToggled = false; emit('lockchange', api.locked); });
   return api;
 }

@@ -10,6 +10,7 @@ import { addXp, applySkillPassives } from './progression.js';
 import { onEnemyKilled } from './combat.js';
 import { respawn } from './player.js';
 import { startWaves } from './waves.js';
+import { TUNING } from '../data/tuning.js';
 import {
   startCraft, salvage, reroll, pickupGun, dropGun, buyOffer, rerollShop, sellGun, vend, buyUpgrade, buySupply, rollShopOffers,
 } from './economy.js';
@@ -48,14 +49,40 @@ export function startMode(state, p, mode, tier = 1) {
   if (p.dead || p.downed) respawn(state, p);
   p.hp = p.maxHp; p.shield = p.maxShield; p.mana = p.maxMana;
   p.pos = { x: 0, y: 0, z: 8 }; p.prevPos = { ...p.pos }; p.vel = { x: 0, y: 0, z: 0 };
+  // leaving the test range takes its free loadout and infinite ammo back
+  if (state.testMode && mode !== 'test') { resetLoadout(state, p); state.tuning.infiniteAmmo = false; }
+  state.testMode = mode === 'test';
   if (mode === 'waves') {
     startWaves(state, tier);
   } else {
     state.mode = 'sandbox'; state.wave = null; state.tier = tier;
     p.unlockedSlots = 4;
     rollShopOffers(state);
-    emit(state, 'modeStart', { mode: 'sandbox', tier });
+    if (mode === 'test') giveTestLoadout(state, p);
+    emit(state, 'modeStart', { mode: state.testMode ? 'test' : 'sandbox', tier });
   }
+}
+
+/** Test range: one of every gun type in slots 1-4, full ammo, infinite reserve, target dummies. */
+export const TEST_GUN_TYPES = ['mg', 'shotgun', 'sniper', 'bazooka'];
+function giveTestLoadout(state, p) {
+  p.guns = TEST_GUN_TYPES.map((type, i) => {
+    const g = generateGun({ seed: 0x7E57 + i, level: state.tier, forced: { type, quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    g.id = nextId(state); g.source = 'test';
+    return g;
+  });
+  p.activeSlot = 0; p.reloadT = 0; p.swapT = 0;
+  for (const k of Object.keys(p.ammoCap)) p.ammo[k] = p.ammoCap[k];
+  state.tuning.infiniteAmmo = true;
+  debugOp(state, p, 'spawnDummies', {});
+}
+
+function resetLoadout(state, p) {
+  const start = generateGun({ seed: 0xC0FFEE, level: 1, forced: { type: 'mg', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+  start.id = nextId(state); start.source = 'start';
+  p.guns = [start, null, null, null];
+  p.activeSlot = 0; p.reloadT = 0; p.swapT = 0;
+  p.ammo = { ...TUNING.startAmmo };
 }
 
 function aheadOf(p, d = 10) { return { x: p.pos.x - Math.sin(p.yaw) * d, z: p.pos.z - Math.cos(p.yaw) * d }; }

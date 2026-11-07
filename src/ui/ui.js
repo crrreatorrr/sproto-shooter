@@ -411,7 +411,7 @@ export function createUI(root, { input, bus, project, game }) {
     text(els.tickets, 'tk', `🎟 ${p.tickets}`);
     html(els.resources, 'rs', RESOURCES.map((r) => `<span style="--c:${r.color}" title="${r.name}">${r.icon}${p.resources[r.id]}</span>`).join(''));
     let wave = '';
-    if (s.mode === 'sandbox') wave = `<b>SANDBOX</b> · Tier ${s.tier} <small>[\`] debug · [B] shop</small>`;
+    if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> · Tier ${s.tier} <small>[\`] debug · [B] shop</small>`;
     else if (s.wave) {
       const w = s.wave;
       const left = s.enemies.filter((e) => !e.dead && e.type !== 'dummy').length + w.spawnQueue.length;
