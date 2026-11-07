@@ -6,6 +6,7 @@ import { QUALITIES_BY_ID, ELEMENTS_BY_ID, MANUFACTURERS_BY_ID, zoomFovFor } from
 import { RESOURCES } from '../data/drops.js';
 import { worldHitboxes } from '../sim/collision.js';
 import { createFirstPerson, FP } from './firstPerson.js';
+import { createDragonRig } from './dragonRig.js';
 import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
 import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY, ensureGunModel, instantiateGun } from './assets.js';
@@ -296,6 +297,10 @@ export function createRenderer(container, bus) {
       const belly = new THREE.Mesh(G.sphere, E(0xff3b3b)); belly.scale.setScalar(hb ? hb.r * 1.1 : 0.55);
       if (hb) belly.position.set(hb.x || 0, hb.y, hb.z || 0); belly.visible = false;
       g.add(belly, blob(def.radius * 1.3)); parts.belly = belly;
+    } else if (e.type === 'dragon') {
+      holder.rotation.y = Math.PI; // this model's head is at Tripo -X, the opposite of the other characters
+      g.add(blob(3.4));
+      if (ch) parts.rig = createDragonRig(ch);
     } else {
       holder.position.y = -1.3; // pos.y is the floating body centre
       const orb = new THREE.Mesh(G.sphere, MAT.weak); orb.scale.setScalar(0.45);
@@ -385,6 +390,7 @@ export function createRenderer(container, bus) {
     rocket: { color: 0xff6a3d, scale: 0.22, cap: 32 }, duckBullet: { color: 0xffe14a, scale: 0.2, cap: 128 },
     megaBullet: { color: 0xffffff, scale: 0.6, cap: 16 }, yeetGun: { color: 0xaaaaaa, scale: 0.35, cap: 16 },
     bullet: { color: 0xffc93c, scale: 0.22, cap: 600 },
+    flame: { color: 0xff7a1a, scale: 0.4, cap: 300 }, fireball: { color: 0xff4a1a, scale: 0.6, cap: 16 },
     pellet: { color: 0xff5ec4, scale: 0.12, cap: 300 },
     // boss projectiles drawn with 3D models (`model`, fitted to `len` metres, nose along +Z); a sphere until loaded
     monsterBullet: { color: 0x4a5a2a, scale: 0.35, cap: 200, model: 'models/projectiles/monster_bullet.glb', len: 0.9, noseYaw: -Math.PI / 2 },
@@ -420,11 +426,12 @@ export function createRenderer(container, bus) {
   // Gun with a 3D model (e.g. the toy machine gun): model + element gem. Null if the type has none / not loaded yet.
   const GUN_MODEL_LEN = { mg: 0.7, shotgun: 0.75, sniper: 0.8, bazooka: 0.9 };
   // where the hands hold each model, as fractions of its height (y, from the center) and length (z, + = back)
+  // Measured on the toy models from side views (gun drawn without arms, markers on the real grip/handguard).
   const HAND_FRAC = {
-    mg: { grip: [-0.3, 0.15], fore: [-0.15, -0.2] },
-    shotgun: { grip: [-0.3, 0.12], fore: [-0.05, -0.2] },
-    sniper: { grip: [-0.3, 0.1], fore: [-0.15, -0.15] },
-    bazooka: { grip: [-0.3, 0.12], fore: [-0.25, -0.15] },
+    mg: { grip: [-0.283, 0.257], fore: [-0.165, -0.214] },
+    shotgun: { grip: [-0.207, 0.24], fore: [-0.166, -0.293] },
+    sniper: { grip: [-0.311, 0.1375], fore: [0, -0.25] },
+    bazooka: { grip: [-0.276, 0.25], fore: [-0.23, -0.278] },
   };
   function buildGunModel(gun, length) {
     const inst = instantiateGun(gun.type, length);
@@ -701,7 +708,7 @@ export function createRenderer(container, bus) {
     addTrauma(Math.max(0, 0.6 - d / 25) * (ev.radius / 4));
   });
   bus.on('meteorImpact', (ev) => { addBoom({ ...ev.pos, y: 0.5 }, 7, 0xff4400, 0.7); burstConfetti(ev.pos, 150, 12); addTrauma(1); });
-  bus.on('splat', (ev) => burstConfetti(ev.pos, 10, 3, [new THREE.Color(0x9be33b), new THREE.Color(0x5aa02c)]));
+  bus.on('splat', (ev) => burstConfetti(ev.pos, ev.element === 'fire' ? 18 : 10, 3, ev.element === 'fire' ? [new THREE.Color(0xff7a1a), new THREE.Color(0xffd166), new THREE.Color(0x553322)] : [new THREE.Color(0x9be33b), new THREE.Color(0x5aa02c)]));
   bus.on('playerDamaged', (ev) => addTrauma(ev.noDamage ? 0.3 : Math.min(0.5, ev.amount / 40)));
   bus.on('land', (ev) => { feel.landDip = Math.min(0.25, ev.speed / 60); });
   bus.on('dash', () => { feel.fovPunch += 8; });
@@ -853,16 +860,19 @@ export function createRenderer(container, bus) {
           else ch.play('idle');
         } else {
           const act = e.boss.action.id;
-          const map = BOSSES[e.type].ai === 'mega'
+          const map = e.type === 'dragon' ? {} : BOSSES[e.type].ai === 'mega'
             ? { intro: 'victory', transition: 'hit', chase: 'run', charge: e.boss.action.t < 0.8 ? 'castBig' : 'run', stunned: 'stun', slam: 'jump', volley: 'castBig', summon: 'victory', melee: 'castBig', missiles: 'cast' }
             : { intro: 'victory', transition: 'hit', drift: 'idle', ring: 'cast', fan: 'cast', spiral: 'cast', taxBolts: 'castBig', spiralRing: 'castBig', teleport: 'castBig' };
           const clip = map[act] || 'idle';
           ch.play(clip, { speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : 1 });
         }
         ch.update(fdt);
+        if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0 });
       }
       if (e.boss) {
-        if (BOSSES[e.type].ai === 'mega') {
+        if (e.type === 'dragon') {
+          o.position.y = ey + (e.ai.moving ? Math.abs(Math.sin(now * 0.008)) * 0.12 : Math.sin(now * 0.002) * 0.05);
+        } else if (BOSSES[e.type].ai === 'mega') {
           u.belly.visible = e.boss.action.id === 'stunned';
           o.rotation.z = e.boss.action.id === 'stunned' ? Math.sin(now * 0.02) * 0.06 : 0;
           if (BOSSES[e.type].staticModel && u.holder) animateStaticBoss(u.holder, e, now, spd);
@@ -917,7 +927,7 @@ export function createRenderer(container, bus) {
     for (const pr of state.projectiles) {
       const I = inst[pr.kind]; if (!I || I.n >= I.d.cap) continue;
       dummy.position.set(lerp(pr.prevPos.x, pr.pos.x, alpha), lerp(pr.prevPos.y, pr.pos.y, alpha), lerp(pr.prevPos.z, pr.pos.z, alpha));
-      const s = I.d.scale * (pr.kind === 'orb' || pr.kind === 'taxBolt' ? 1 + Math.sin(now * 0.02 + pr.id) * 0.15 : 1);
+      const s = I.d.scale * (pr.kind === 'orb' || pr.kind === 'taxBolt' || pr.kind === 'fireball' ? 1 + Math.sin(now * 0.02 + pr.id) * 0.15 : 1) * (pr.kind === 'flame' ? 0.6 + (1.4 - pr.ttl) * 1.6 : 1);
       if (pr.kind === 'rocket') { dummy.scale.set(s, s, s * 3); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
       else if (pr.kind === 'bullet' || pr.kind === 'pellet') { dummy.scale.set(s, s, s * 2.2); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
       else if (pr.kind === 'yeetGun') { dummy.scale.set(0.15, 0.2, 0.8); dummy.rotation.set(now * 0.02, now * 0.015, 0); }

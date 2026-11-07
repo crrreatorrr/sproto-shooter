@@ -177,7 +177,7 @@ describe('level-scoped loading', () => {
     const l1 = levelAssets(0, 1);
     expect(l1.stage).toBe('city');
     expect(l1.characters).toEqual([{ model: 'midget', stage: 1 }, { model: 'obama', stage: 1 }]);
-    expect(l1.bosses).toEqual([]);
+    expect(l1.bosses.map((b) => b.model)).toEqual(['dragon', 'dragon', 'dragon']); // Jade Dragon, one model for all phases
     const l2 = levelAssets(1, 1);
     expect(l2.stage).toBe('volcano');
     expect(l2.characters).toContainEqual({ model: 'midget', stage: 3 }); // flying midgets
@@ -263,7 +263,7 @@ describe('crafting', () => {
 });
 
 describe('waves config', () => {
-  it('3 waves with growing counts, mostly midget swarms, bosses on waves 2 and 3', () => {
+  it('3 waves with growing counts, mostly midget swarms, a boss on every wave', () => {
     const counts = WAVES.map((w) => w.groups.reduce((n, g) => n + g.spawns.reduce((m, s) => m + s.count, 0), 0));
     expect(counts[1]).toBeGreaterThan(counts[0]); expect(counts[2]).toBeGreaterThan(counts[1]);
     for (const w of WAVES) {
@@ -271,7 +271,7 @@ describe('waves config', () => {
       const mid = all.filter((s) => s.type === 'midget').reduce((n, s) => n + s.count, 0);
       expect(mid / all.reduce((n, s) => n + s.count, 0)).toBeGreaterThan(0.5);
     }
-    expect(WAVES[0].boss).toBeNull();
+    expect(WAVES[0].boss.types).toEqual(['dragon']);
     expect(WAVES[1].boss.types).toEqual(['monster']);
     expect(WAVES[2].boss.types).toEqual(['megaSproto', 'hexAuditor']);
   });

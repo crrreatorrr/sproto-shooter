@@ -12,7 +12,7 @@ export const WAVES = [
       { at: 16, aliveBelow: 3, pattern: 'cluster', spawns: [S('midget', 6)] },
       { at: 26, aliveBelow: 3, pattern: 'spread', spawns: [S('obama', 2), S('midget', 2)] },
     ],
-    boss: null,
+    boss: { types: ['dragon'], introDelay: 3 },
   },
   {
     id: 2, name: 'Wave 2: Bitcoin Barrage', clearTickets: 35, maxAlive: 18,

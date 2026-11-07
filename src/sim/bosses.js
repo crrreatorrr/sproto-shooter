@@ -36,7 +36,7 @@ export function bosses(state, dt) {
     if (state.tuning.freezeEnemies || !t) { continue; }
     const a = b.action;
     a.t += dt;
-    const impl = def.ai === 'hex' ? HEX : MEGA;
+    const impl = IMPLS[e.type] || (def.ai === 'hex' ? HEX : MEGA); // physical bosses without their own AI use MEGA
     const done = impl(state, e, a, dt, def, t);
     if (done) {
       if (a.id === 'transition') {
@@ -352,5 +352,113 @@ function HEX(state, e, a, dt, def, t) {
   }
   return true;
 }
+
+// ---------------- Jade Dragon ----------------
+// Stalks you on the ground, sweeps a cone of fire breath, lobs fireballs, tail-swipes when you get close and
+// (phase 2+) calls midgets. Head is the weak spot. Dodge the breath by strafing across the sweep.
+function headPos(e, def) {
+  const fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw);
+  const hb = def.hitboxes[0];
+  return { x: e.pos.x + fx * hb.z, y: e.pos.y + hb.y, z: e.pos.z + fz * hb.z };
+}
+
+function DRAGON(state, e, a, dt, def, t) {
+  const phase = def.phases[e.boss.phaseIdx];
+  const sp = def.speed * (phase.speedMult || 1) * (e.status.goo ? 1 - e.status.goo.slow : 1);
+  const d = Math.hypot(t.pos.x - e.pos.x, t.pos.z - e.pos.z);
+  const turn = (rate) => {
+    const want = yawTo(e.pos, t.pos);
+    const diff = angleWrap(want - e.yaw);
+    e.yaw = angleWrap(e.yaw + Math.max(-rate * dt, Math.min(rate * dt, diff)));
+  };
+  const move = (speed) => {
+    const fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw);
+    e.vel.x = fx * speed; e.vel.z = fz * speed;
+    e.pos.x += e.vel.x * dt; e.pos.z += e.vel.z * dt;
+    const r = Math.hypot(e.pos.x, e.pos.z), maxR = ARENA_R - def.radius - 1;
+    if (r > maxR) { e.pos.x *= maxR / r; e.pos.z *= maxR / r; }
+  };
+  e.ai.moving = false;
+  switch (a.id) {
+    case 'intro': turn(1.5); return a.t > 2.2;
+    case 'transition': turn(2); return a.t >= 2;
+    case 'stalk': {
+      turn(2.2);
+      if (d > 11) { move(sp); e.ai.moving = true; }
+      else if (d < 6) { move(-sp * 0.6); e.ai.moving = true; }
+      return a.t > 2.4;
+    }
+    case 'breath': {
+      const b = def.breath;
+      const dur = b.duration * (e.boss.phaseIdx >= 2 ? 1.4 : 1);
+      if (a.t < b.telegraph) {
+        turn(3);
+        if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'breath' }); }
+        a.data.base = e.yaw;
+        return false;
+      }
+      const k = Math.min(1, (a.t - b.telegraph) / dur);
+      // sweep from one side to the other across the player
+      e.yaw = angleWrap(a.data.base + deg(b.sweep) * (k - 0.5) * (a.data.dir || (a.data.dir = float(state.rng) < 0.5 ? -1 : 1)));
+      a.data.acc = (a.data.acc || 0) + dt;
+      const h = headPos(e, def);
+      const pitch = Math.atan2(t.pos.y + 0.9 - h.y, Math.max(1, d));
+      while (a.data.acc >= b.rate) {
+        a.data.acc -= b.rate;
+        const yaw = e.yaw + range(state.rng, -0.06, 0.06);
+        const dir = { x: -Math.sin(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: -Math.cos(yaw) * Math.cos(pitch) };
+        createProjectile(state, { kind: 'flame', faction: 'enemy', ownerId: e.id, sourceKind: 'boss', pos: { ...h },
+          vel: { x: dir.x * b.speed, y: dir.y * b.speed, z: dir.z * b.speed }, radius: 0.45, damage: b.damage * e.dmgMult, ttl: 1.4, element: 'fire' });
+      }
+      return a.t >= b.telegraph + dur;
+    }
+    case 'fireballs': {
+      const f = def.fireball;
+      turn(2.5);
+      a.data.n = a.data.n || 0;
+      while (a.data.n < f.count && a.t >= 0.4 + a.data.n * 0.45) {
+        const h = headPos(e, def);
+        const T = f.flight, g = 14;
+        const tx = t.pos.x + t.vel.x * 0.35 * a.data.n, tz = t.pos.z + t.vel.z * 0.35 * a.data.n;
+        createProjectile(state, { kind: 'fireball', faction: 'enemy', ownerId: e.id, sourceKind: 'boss', pos: { ...h },
+          vel: { x: (tx - h.x) / T, y: (t.pos.y - h.y + 0.5 * g * T * T) / T, z: (tz - h.z) / T }, gravity: g, radius: 0.6,
+          damage: f.damage * e.dmgMult, ttl: 3, element: 'fire', splash: { radius: f.splash, damage: f.damage * e.dmgMult } });
+        a.data.n++;
+        emit(state, 'bossCast', { id: e.id, kind: 'fireball' });
+      }
+      return a.t > 0.4 + f.count * 0.45 + 0.3;
+    }
+    case 'tailSwipe': {
+      const tl = def.tail;
+      if (d > tl.radius + 3 && !a.data.started) return true; // too far: skip
+      a.data.started = true;
+      if (a.t < tl.windup) { if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'tail' }); } return false; }
+      if (!a.data.hit) {
+        a.data.hit = true;
+        createHazard(state, { kind: 'stompRing', pos: { x: e.pos.x, y: 0.05, z: e.pos.z }, radius: tl.radius, maxRadius: tl.radius, ttl: 0.45 });
+        for (const p of Object.values(state.players)) {
+          if (p.dead || p.pos.y > 1.6) continue;
+          if (Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z) < tl.radius) {
+            damagePlayer(state, p, { base: tl.damage * e.dmgMult, sourceKind: 'boss', fromPos: e.pos });
+            knockPlayer(p, e.pos, 14, 6);
+          }
+        }
+        emit(state, 'pound', { id: e.id, pos: { ...e.pos } });
+      }
+      return a.t > tl.windup + 0.6;
+    }
+    case 'summon': {
+      if (!a.data.done) {
+        a.data.done = true;
+        const alive = state.enemies.filter((o) => !o.dead && o.summoned).length;
+        if (alive < 8) summonGrunts(state, e);
+      }
+      return a.t > 1.2;
+    }
+  }
+  return true;
+}
+
+const IMPLS = { megaSproto: MEGA, hexAuditor: HEX, dragon: DRAGON };
 
 export { resolveOverlaps, float, angleWrap, hitPlayerSphere };

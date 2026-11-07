@@ -90,6 +90,7 @@ export const CHARACTER_MODELS = {
   tinubu: [1, 2, 3].map((s) => `models/characters/tinubu_stage${s}.glb`),
   sahil: [1, 2, 3].map((s) => `models/characters/sahil_stage${s}.glb`),
   monster: [1, 2, 3].map(() => 'models/characters/monster.glb'), // one static model, scaled up per phase
+  dragon: [1, 2, 3].map(() => 'models/characters/dragon.glb'), // one model for every phase
 };
 /** Models that don't use CHARACTER_ROTATION_Y (they already face +Z). */
 export const MODEL_ROTATION_Y = { monster: 0 };
