@@ -47,9 +47,18 @@ export function createDragonRig(ch, def = {}) {
   const tailLag = tail.map(() => spring());
   let prevYaw = null, prevAlt = null;
   const body = [...spine, ...tail]; // the undulating body (neck handled separately)
+  // Jaw: rigged in Blender (art/blender/boss_animations.blend). Flight clips animate it themselves; on the ground
+  // it opens through the breath stream and snaps open on each fireball. Opening = -angle about SIDE.
+  const jaw = bones.Jaw, jawOpen = spring();
+  let lastRoll = 0, lastNose = 0;
 
   return {
     ok: tail.length > 0 || spine.length > 0,
+    /** Re-apply flight banking/pitch on top of an authored clip blended in with weight w (clipLayer.js). */
+    post(w) {
+      if (!root || w <= 0) return;
+      rotWorld(root, _fwd, lastRoll * w); rotWorld(root, _side, lastNose * w);
+    },
     /** s = { moving, speed, action, actionT, altitude, yaw } from the boss sim state */
     update(dt, s) {
       dt = Math.min(dt, 0.05);
@@ -70,6 +79,7 @@ export function createDragonRig(ch, def = {}) {
       const roll = springTo(bank, Math.max(-0.5, Math.min(0.5, -yawRate * 0.35)) * flying, 0.2, dt);
       const nose = springTo(pitch, Math.max(-0.45, Math.min(0.45, -vy * 0.09)) * flying, 0.25, dt);
       if (root) { rotWorld(root, _fwd, roll); rotWorld(root, _side, nose); }
+      lastRoll = roll; lastNose = nose;
 
       // ---- ground walk: speed-matched duty-factor cycle ----
       walk += gaitAdvance(g > 0.05 ? (s.speed || 0) : 0, stepLen, dt);
@@ -119,6 +129,21 @@ export function createDragonRig(ch, def = {}) {
         // hind knees bend the other way from the elbows, so their lift goes the opposite direction
         if (l.bones[1]) rotWorld(l.bones[1], _side, lift * (l.front ? 1.0 : -1.0) + flying * (l.front ? -0.9 : 0.4) - paddle * 0.6);
         if (l.bones[2]) rotWorld(l.bones[2], _side, flying * 0.4 + paddle * 0.4 + lift * 0.4);
+      }
+
+      // ---- jaw: breath stream holds it open, each ground fireball snaps it open; idle breathing otherwise ----
+      if (jaw) {
+        let open = 0.03 + Math.max(0, Math.sin(time * 1.3)) * 0.04;
+        if (s.action === 'breath') {
+          const tel = (def.breath && def.breath.telegraph) || 0.7;
+          open = s.actionT < tel ? 0.14 * (s.actionT / tel) : 0.42 + Math.sin(time * 23) * 0.03;
+        } else if (s.action === 'fireballs') {
+          const n = (def.fireball && def.fireball.count) || 3;
+          let m = 0;
+          for (let i = 0; i < n; i++) { const d = s.actionT - (0.4 + i * 0.45); m = Math.max(m, d < 0 ? 1 + d / 0.2 : 1 - d / 0.25); }
+          open = 0.08 + 0.36 * Math.max(0, Math.min(1, m));
+        } else if (s.action === 'tailSwipe') open = 0.16;
+        rotWorld(jaw, _side, -springTo(jawOpen, open, 0.04, dt));
       }
     },
   };

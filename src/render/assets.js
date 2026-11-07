@@ -45,6 +45,10 @@ export const assetsVersion = () => version;
 export const onAssetsChanged = (fn) => listeners.push(fn);
 const bump = () => { version++; listeners.forEach((f) => f(version)); };
 
+// Boss clips are authored in place in Blender (art/blender/boss_animations.blend): their small hip sway and
+// recoil are part of the motion (feet are planted against it), so they must not be pinned.
+const IN_PLACE_CLIPS = /\/(dragon|monster|sproto_monster)\.glb$/;
+
 /** Root motion pinned in place (port of sproto-duel src/assets/rig.ts pinRootMotion) so clips run on the spot. */
 function pinRootMotion(template, clips) {
   let hips = null;
@@ -71,7 +75,7 @@ function loadModel(path, prio = NOW) {
     if (!g || !g.scene) throw new Error('load failed');
     const root = g.scene;
     root.traverse((o) => { if (o.isSkinnedMesh || o.isMesh) { o.frustumCulled = false; if (o.material) o.material.side = THREE.DoubleSide; } });
-    pinRootMotion(root, g.animations);
+    if (!IN_PLACE_CLIPS.test(path)) pinRootMotion(root, g.animations);
     // measure in bind pose with the -90° turn applied
     const holder = new THREE.Group();
     root.rotation.y = THREE.MathUtils.degToRad(rotationForModelPath(path));
@@ -130,6 +134,9 @@ export const GUN_MODELS = {
   shotgun: { path: 'models/guns/toy_shotgun.glb', yaw: -90, muzzleY: 0.85 },
   sniper: { path: 'models/guns/toy_sniper.glb', yaw: 90, muzzleY: 0.68 },
   bazooka: { path: 'models/guns/toy_bazooka.glb', yaw: 0, muzzleY: 0.47 },
+  raygun: { path: 'models/guns/toy_raygun.glb', yaw: 90, muzzleY: 0.64 }, // muzzle: centre of the emitter dish
+  bigbullets: { path: 'models/guns/toy_bigbullets.glb', yaw: 90, muzzleY: 0.59 }, // muzzle: centre of the flared bell
+  duckgun: { path: 'models/guns/toy_duckgun.glb', yaw: 90, muzzleY: 0.62 }, // muzzle: the duck's beak
 };
 
 function loadGun(type, prio = NOW) {
@@ -246,6 +253,7 @@ export function instantiateCharacter(model, stage, fitHeight) {
   let current = null, flash = -1;
   return {
     root, model, stage, path,
+    clips: t.clips, // raw clips, for layers that drive them directly (clipLayer.js)
     has: (k) => !!actions[k],
     play(k, { fade = 0.15, once = false, speed = 1, restart = false } = {}) {
       const a = actions[k] || actions.idle;
