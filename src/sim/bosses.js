@@ -1,5 +1,6 @@
-// Boss phase machines: Mega Sproto (physical), Hex Auditor (magic). PLAN §4.11
-import { BOSSES } from '../data/enemies.js';
+// Boss phase machines: Mega Tinubu (physical, id megaSproto), Hex Sahil (magic, id hexAuditor). PLAN §4.11
+// Each phase swaps the boss to the next Sproto Duel stage model (render side).
+import { BOSSES, ENEMY_BULLET_RADIUS } from '../data/enemies.js';
 import { TUNING, ARENA_R } from '../data/tuning.js';
 import { range, float } from '../core/rng.js';
 import { yawTo, angleWrap, deg } from '../core/math.js';
@@ -58,12 +59,12 @@ export function bosses(state, dt) {
 }
 
 function summonGrunts(state, e) {
-  const n = state.tier >= 5 ? 6 : 4;
+  const n = state.tier >= 5 ? 10 : 6;
   const pts = state.spawnPoints.slice().sort((p1, p2) => Math.hypot(p1.x - e.pos.x, p1.z - e.pos.z) - Math.hypot(p2.x - e.pos.x, p2.z - e.pos.z));
   for (let i = 0; i < n; i++) {
     const pt = pts[i % 4];
-    createHazard(state, { kind: 'spawnPortal', pos: { x: pt.x, y: 0, z: pt.z }, radius: 1.2, ttl: 0.8 });
-    createEnemy(state, 'grunt', { pos: { x: pt.x + range(state.rng, -1, 1), z: pt.z + range(state.rng, -1, 1) }, summoned: true });
+    if (i < 4) createHazard(state, { kind: 'spawnPortal', pos: { x: pt.x, y: 0, z: pt.z }, radius: 1.2, ttl: 0.8 });
+    createEnemy(state, 'midget', { pos: { x: pt.x + range(state.rng, -1, 1), z: pt.z + range(state.rng, -1, 1) }, summoned: true });
   }
   emit(state, 'bossRoar', { id: e.id });
 }
@@ -129,6 +130,29 @@ function MEGA(state, e, a, dt, def, t) {
       return a.t >= 2.8;
     }
     case 'stunned': e.vel.x = e.vel.z = 0; integrate(); return a.t >= 2.0;
+    case 'volley': {
+      // Fans of bitcoins: slow and spread out, so strafing dodges most of them.
+      e.vel.x = e.vel.z = 0; integrate();
+      e.yaw = yawTo(e.pos, t.pos);
+      const v = def.volley;
+      const waves = v.waves + (e.boss.phaseIdx >= 2 ? 1 : 0);
+      if (a.t < 0.5) { if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'volley' }); } return false; }
+      a.data.fired = a.data.fired || 0;
+      while (a.data.fired < waves && a.t >= 0.5 + a.data.fired * v.gap) {
+        const from = { x: e.pos.x - Math.sin(e.yaw) * 2.2, y: 3.2, z: e.pos.z - Math.cos(e.yaw) * 2.2 };
+        const base = Math.atan2(t.pos.x - from.x, t.pos.z - from.z) + (a.data.fired % 2 ? deg(v.fan / v.count / 2) : 0);
+        const pitch = Math.atan2(t.pos.y + 1.1 - from.y, Math.hypot(t.pos.x - from.x, t.pos.z - from.z));
+        for (let i = 0; i < v.count; i++) {
+          const yaw = base + deg(v.fan) * (i / (v.count - 1) - 0.5);
+          const dir = { x: Math.sin(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: Math.cos(yaw) * Math.cos(pitch) };
+          createProjectile(state, { kind: 'bullet', faction: 'enemy', ownerId: e.id, sourceKind: 'boss', pos: { ...from },
+            vel: { x: dir.x * v.speed, y: dir.y * v.speed, z: dir.z * v.speed }, radius: ENEMY_BULLET_RADIUS * 1.5, damage: v.damage * e.dmgMult, ttl: 4 });
+        }
+        a.data.fired++;
+        emit(state, 'bossCast', { id: e.id, kind: 'volley' });
+      }
+      return a.t >= 0.5 + waves * v.gap + 0.4;
+    }
     case 'slam': {
       if (!a.data.hopped) { a.data.hopped = true; e.vel.y = 10; e.vel.x = e.vel.z = 0; emit(state, 'bossTelegraph', { id: e.id, kind: 'slam' }); }
       integrate();
@@ -151,7 +175,7 @@ function MEGA(state, e, a, dt, def, t) {
       if (!a.data.done) {
         a.data.done = true;
         const alive = state.enemies.filter((o) => !o.dead && o.summoned).length;
-        if (alive < 6) summonGrunts(state, e);
+        if (alive < 10) summonGrunts(state, e);
       }
       return a.t > 1.2;
     }
@@ -185,7 +209,7 @@ function HEX(state, e, a, dt, def, t) {
   const cdMult = megaAlive ? 1.2 : 1;
   b.weakAngle += deg(p3 ? 200 : 120) * dt;
   // hover + drift toward point 12m from player
-  const hoverY = 3 + 0.3 * Math.sin(state.time * 2);
+  const hoverY = def.hoverY + 0.25 * Math.sin(state.time * 2);
   e.pos.y += (hoverY - e.pos.y) * Math.min(1, 5 * dt);
   if (a.id !== 'teleport') {
     const dx = e.pos.x - t.pos.x, dz = e.pos.z - t.pos.z, d = Math.hypot(dx, dz) || 1;
@@ -193,7 +217,7 @@ function HEX(state, e, a, dt, def, t) {
     const gx = goal.x - e.pos.x, gz = goal.z - e.pos.z, gl = Math.hypot(gx, gz);
     const sp = def.speed * (e.status.goo ? 1 - e.status.goo.slow : 1);
     if (gl > 0.5) { e.pos.x += (gx / gl) * Math.min(gl, sp * dt); e.pos.z += (gz / gl) * Math.min(gl, sp * dt); }
-    const r = Math.hypot(e.pos.x, e.pos.z); if (r > ARENA_R - 3) { e.pos.x *= (ARENA_R - 3) / r; e.pos.z *= (ARENA_R - 3) / r; }
+    const r = Math.hypot(e.pos.x, e.pos.z); if (r > ARENA_R - 4) { e.pos.x *= (ARENA_R - 4) / r; e.pos.z *= (ARENA_R - 4) / r; }
     e.yaw = yawTo(e.pos, t.pos);
   }
   // aura: drains mana
@@ -263,7 +287,7 @@ function HEX(state, e, a, dt, def, t) {
       if (!a.data.moved) {
         a.data.moved = true;
         for (let tries = 0; tries < 10; tries++) {
-          const ang = range(state.rng, 0, Math.PI * 2), r = range(state.rng, 10, 20);
+          const ang = range(state.rng, 0, Math.PI * 2), r = range(state.rng, 12, 30);
           const x = Math.cos(ang) * r, z = Math.sin(ang) * r;
           if (Math.hypot(x - t.pos.x, z - t.pos.z) >= 8 || tries === 9) { e.pos.x = x; e.pos.z = z; e.prevPos.x = x; e.prevPos.z = z; break; }
         }

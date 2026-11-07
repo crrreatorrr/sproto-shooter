@@ -1,8 +1,8 @@
 # Sproto Shooter
 
-A wacky first-person loot shooter built with Three.js, inspired by Borderlands. You fight waves of googly-eyed Sproto blobs in a circular arena, grab procedurally generated guns, craft better ones at Weapon Boxes, and level four skills just by playing.
+A wacky first-person loot shooter built with Three.js, inspired by Borderlands. You fight waves of Sproto Duel characters (midget swarms and bitcoin-shooting Obamas) across Sproto Duel's stages, grab procedurally generated guns, craft better ones at Weapon Boxes, and level four skills just by playing.
 
-This is the **mechanics sandbox** stage. All art is low-poly placeholder. There's no login, hub, saving or multiplayer yet; the code is structured so those can be added later (see `PLAN.md` §9).
+This is the **mechanics sandbox** stage. Characters, stages and boss portraits are reused from [sproto-duel](https://github.com/crrreatorrr/sproto-duel) (`public/assets/`); guns are still low-poly placeholders. There's no login, hub, saving or multiplayer yet; the code is structured so those can be added later (see `PLAN.md` §9).
 
 ## Run it
 
@@ -19,14 +19,14 @@ URL params: `?mode=waves|sandbox&tier=1-10&seed=123&debug=1`
 
 | Area | Details |
 |---|---|
-| Arena | Blank 60 m circle, glowing edge, 12 spawn points, 2 Weapon Boxes |
-| Modes | **Wave Mode**: 3 waves (8 / 14 / 20 enemies), Mega Sproto ends wave 2, Mega Sproto + Hex Auditor together end wave 3, 15 s shop break between waves, victory leads to the next tier (1–10). **Sandbox**: spawn anything from the debug panel |
+| Arena & stages | 90 m circle, 16 spawn points, 2 Weapon Boxes. Sproto Duel stages wrap it: wave 1 Los Angeles, wave 2 Ashen Caldera, wave 3 The Void, sandbox Aurora Glacier (sky, floor, stone, pillar and prop models) |
+| Modes | **Wave Mode**: 3 waves (20 / 33 / 50 enemies, mostly midget swarms), Mega Tinubu ends wave 2, Mega Tinubu + Hex Sahil together end wave 3, 15 s shop break between waves, victory leads to the next tier (1–10). **Sandbox**: spawn anything from the debug panel |
 | Guns | 4 types with drop rarity: Machine Gun (common ~60%), Shotgun (rare ~17%), Sniper (rare ~17%), Bazooka (very rare ~6%). Separate quality roll Common→Legendary, 4 manufacturers, 12 parts, 3 elements (Fire burn, Shock chain, Goo slow). Legendaries get a wacky perk: rubber-duck bullets, yeet reload, every-10th mega bullet, mini Sproto buddies, confetti kills, big-head mode |
-| Enemies | Grunt (melee rusher), Spitter (dodgeable lobs), Bouncer (hopping stomper), Tank (front shield, hit its back battery). Elites (crown, ×2.5 HP, double drops, random element affinity). Weak spots everywhere = **BONK** |
-| Bosses | **Mega Sproto** (Physical): charge (stuns itself on the wall, exposing a belly weak spot), jump-over shockwaves, summons Grunts. **Hex Auditor** (Magic): bullet-hell orbs, homing tax bolts, teleports, orbiting weak spot, mana-draining aura |
+| Enemies | **Midget**: fast melee runner that never shoots and comes in big swarms. **Bitcoin Obama**: keeps distance, strafes and fires 3-round bitcoin bursts (about 1 shot/s, 4.5° spread, 30 m/s, so you can dodge; your MG does 10 shots/s). **Big Bitcoin Obama**: heavy with a front shield, ground pound and a sloppy 6-round hose; hit the back battery. Models use Sproto Duel's stage 1/2/3 versions: elites and tier 4+ step up a stage. Elites wear a crown, have ×2.5 HP and drop double. Headshots = **BONK** |
+| Bosses | Each phase swaps to the next Sproto Duel stage model. **Mega Tinubu** (Physical, 3 phases): bitcoin volleys, charge (stuns itself on the wall, exposing a belly weak spot), jump-over shockwaves, summons midget swarms. **Hex Sahil** (Magic, 3 phases): floating caster with bullet-hell orbs, homing tax bolts, teleports, an orbiting weak spot and a mana-draining aura |
 | Skills | No skill points. Each skill levels from its own XP and perks unlock automatically. **Health**: kills, taking damage, healing pickups, Physical bosses. **Gunslinger**: gun kills, crits/weak spots, Physical bosses. **Magic**: casting spells, spell kills, Magic bosses. **Crafting**: crafting guns (T1 counts) and ammo |
 | Spells | Goo Bolt (Q, Lv1), Chain Zap (E, Lv3), Sproto Swarm (Z, Lv6), Mana Shield (X, Lv8), Meteor Bonk (F, Lv10, full mana) |
-| Crafting | Resources drop from monsters: Scrap (all), Springs (Bouncers), Goo (Spitters), Plating (Tanks), Boss Cores, Mana Crystals (Hex). Weapon Box recipes for 4 types × 5 tiers, cheap ammo, medkits. Higher Crafting levels unlock element choice, part choice, salvage and stat reroll |
+| Crafting | Resources drop from monsters: Scrap (all), Springs (Midgets), Goo (Bitcoin Obamas), Plating (Big Obamas), Boss Cores, Mana Crystals (Hex Sahil). Weapon Box recipes for 4 types × 5 tiers, cheap ammo, medkits. Higher Crafting levels unlock element choice, part choice, salvage and stat reroll |
 | Economy | Tickets from kills, wave clears and bosses. Between-wave shop: tier-scaled gun offers, gacha vending machine, ammo/shield/slot upgrades, sell guns |
 | Feel | Hitstop on big crits, screen shake, recoil climb, FOV punches, confetti deaths, damage numbers (pellets merged), magnet pickups, synthesized SFX |
 
@@ -49,10 +49,10 @@ URL params: `?mode=waves|sandbox&tier=1-10&seed=123&debug=1`
 ```
 src/
   core/    rng (seeded sfc32), math, eventBus
-  data/    all balance: guns, enemies+bosses, drops, recipes, skills, waves, shop, tuning
+  data/    all balance: guns, enemies+bosses, drops, recipes, skills, waves, shop, tuning; stages.js maps stages and character models
   sim/     pure deterministic simulation (no three.js/DOM): simulate() runs every system at 60 Hz
   input/   keyboard/mouse + pointer lock -> Command objects
-  render/  Three.js views, viewmodel, VFX (reads state only)
+  render/  Three.js views, viewmodel, VFX (reads state only); assets.js loads the Sproto Duel GLBs (meshopt) and stage textures
   ui/      DOM HUD + menus (queues actions, never writes state)
   audio/   WebAudio synth SFX
   game/    Game: loop, hitstop, screens, lil-gui debug panel

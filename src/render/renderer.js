@@ -5,6 +5,9 @@ import { ENEMIES, BOSSES } from '../data/enemies.js';
 import { QUALITIES_BY_ID, ELEMENTS_BY_ID, MANUFACTURERS_BY_ID } from '../data/guns.js';
 import { RESOURCES } from '../data/drops.js';
 import { worldHitboxes } from '../sim/collision.js';
+import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
+import { STAGES, stageAssets, stageFor, CHARACTER_MODELS } from '../data/stages.js';
+import { preloadAll, preloadStage, peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel } from './assets.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const ELEM_COL = { none: 0xffe9a8, fire: 0xff7a1a, shock: 0x4fe3ff, goo: 0x9be33b };
@@ -23,10 +26,14 @@ export function createRenderer(container, bus) {
   camera.rotation.order = 'YXZ';
   scene.add(camera);
 
-  scene.add(new THREE.HemisphereLight(0xffe6ff, 0x3a2a55, 1.1));
+  const hemi = new THREE.HemisphereLight(0xffe6ff, 0x3a2a55, 1.1);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff2d6, 1.4);
   sun.position.set(20, 40, 10);
   scene.add(sun);
+  const bounce = new THREE.DirectionalLight(0xff7a3a, 0.4);
+  bounce.position.set(0, 4, 40);
+  scene.add(bounce);
 
   // ---------- shared materials/geometries ----------
   const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.05, ...extra });
@@ -50,40 +57,80 @@ export function createRenderer(container, bus) {
     crown: M(0xffd700, { metalness: 0.8, roughness: 0.2, emissive: 0x553300 }),
   };
 
-  // ---------- arena ----------
-  const groundTex = (() => {
-    const c = document.createElement('canvas'); c.width = c.height = 512;
-    const g = c.getContext('2d');
-    const grd = g.createRadialGradient(256, 256, 20, 256, 256, 256);
-    grd.addColorStop(0, '#5b3f8f'); grd.addColorStop(1, '#3a2766');
-    g.fillStyle = grd; g.fillRect(0, 0, 512, 512);
-    g.strokeStyle = 'rgba(255,255,255,0.07)'; g.lineWidth = 2;
-    for (let r = 32; r < 256; r += 32) { g.beginPath(); g.arc(256, 256, r, 0, Math.PI * 2); g.stroke(); }
-    for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; g.beginPath(); g.moveTo(256, 256); g.lineTo(256 + Math.cos(a) * 256, 256 + Math.sin(a) * 256); g.stroke(); }
-    g.fillStyle = 'rgba(255,220,120,0.15)'; g.font = 'bold 54px sans-serif'; g.textAlign = 'center'; g.fillText('SPROTO', 256, 275);
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
-  })();
-  const ground = new THREE.Mesh(new THREE.CircleGeometry(ARENA_R, 96), M(0xffffff, { map: groundTex, roughness: 0.9 }));
+  // ---------- arena + stage environment (Sproto Duel stages) ----------
+  preloadAll();
+  for (const id of Object.keys(STAGES)) preloadStage(id);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(260, 48, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide, fog: false, depthWrite: false, toneMapped: false }));
+  sky.renderOrder = -1;
+  scene.add(sky);
+  const groundMat = M(0xffffff, { roughness: 0.92 });
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(ARENA_R, 128), groundMat);
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
-  const outer = new THREE.Mesh(new THREE.RingGeometry(ARENA_R, 140, 64), M(0x1b1033, { roughness: 1 }));
-  outer.rotation.x = -Math.PI / 2; outer.position.y = -0.4;
+  const outerMat = M(0x1b1033, { roughness: 1 });
+  const outer = new THREE.Mesh(new THREE.RingGeometry(ARENA_R + 0.5, 220, 96), outerMat);
+  outer.rotation.x = -Math.PI / 2; outer.position.y = -0.6;
   scene.add(outer);
-  const edgeRing = new THREE.Mesh(new THREE.TorusGeometry(ARENA_R, 0.18, 8, 128), E(0xff5ec4));
+  const rimMat = M(0x8a8296, { roughness: 0.9 });
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(ARENA_R + 0.5, ARENA_R + 0.5, 1.4, 128, 1, true), rimMat);
+  rim.position.y = 0.1; rimMat.side = THREE.DoubleSide;
+  scene.add(rim);
+  const edgeRing = new THREE.Mesh(new THREE.TorusGeometry(ARENA_R, 0.18, 8, 160), E(0xff5ec4));
   edgeRing.rotation.x = -Math.PI / 2; edgeRing.position.y = 0.1;
   scene.add(edgeRing);
-  const wall = new THREE.Mesh(new THREE.CylinderGeometry(ARENA_R, ARENA_R, 3, 96, 1, true),
-    new THREE.MeshBasicMaterial({ color: 0xff5ec4, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false }));
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(ARENA_R, ARENA_R, 3, 128, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xff5ec4, transparent: true, opacity: 0.05, side: THREE.DoubleSide, depthWrite: false }));
   wall.position.y = 1.5;
   scene.add(wall);
-  // random wacky pillars outside the arena for parallax
-  for (let i = 0; i < 28; i++) {
-    const a = (i / 28) * Math.PI * 2 + Math.random() * 0.1, r = 45 + Math.random() * 35;
-    const h = 4 + Math.random() * 18;
-    const m = new THREE.Mesh(i % 3 ? G.cyl : G.cone, M([0xff8a3d, 0x7fd34e, 0xff5ec4, 0x4fe3ff, 0xffd166][i % 5], { roughness: 0.8 }));
-    m.scale.set(1.5 + Math.random() * 3, h, 1.5 + Math.random() * 3);
-    m.position.set(Math.cos(a) * r, h / 2 - 0.4, Math.sin(a) * r);
-    scene.add(m);
+  const decor = new THREE.Group();
+  scene.add(decor);
+  let stageKey = '';
+  let stageOverride = null;
+
+  function applyStage(id) {
+    const st = STAGES[id], a = stageAssets(id);
+    const key = id + ':' + assetsVersion();
+    if (key === stageKey) return;
+    stageKey = key;
+    scene.background = new THREE.Color(st.background);
+    scene.fog = new THREE.Fog(st.fog, 60, 200);
+    hemi.color.setHex(st.hemi.sky); hemi.groundColor.setHex(st.hemi.ground); hemi.intensity = st.hemi.intensity * 1.2;
+    sun.color.setHex(st.sun.color); sun.intensity = st.sun.intensity * 0.9; sun.position.set(...st.sun.position);
+    bounce.color.setHex(st.bounce.color); bounce.intensity = st.bounce.intensity;
+    edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
+    const skyTex = peekTexture(a.sky);
+    sky.material.map = skyTex; sky.material.color.setHex(skyTex ? 0xffffff : st.background); sky.material.needsUpdate = true;
+    const floor = peekTexture(a.floor);
+    if (floor) { const f = floor.clone(); f.wrapS = f.wrapT = THREE.RepeatWrapping; f.repeat.set(st.floorRepeat, st.floorRepeat); f.needsUpdate = true; groundMat.map = f; }
+    else groundMat.map = null;
+    groundMat.color.setHex(floor ? 0xffffff : 0x4a3a66); groundMat.needsUpdate = true;
+    const stone = peekTexture(a.stone);
+    if (stone) { const t = stone.clone(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(60, 1); t.needsUpdate = true; rimMat.map = t; } else rimMat.map = null;
+    rimMat.needsUpdate = true;
+    outer.visible = st.ground != null;
+    if (st.ground != null) {
+      if (floor) { const f = floor.clone(); f.wrapS = f.wrapT = THREE.RepeatWrapping; f.repeat.set(40, 40); f.needsUpdate = true; outerMat.map = f; } else outerMat.map = null;
+      outerMat.color.setHex(st.ground); outerMat.needsUpdate = true;
+    }
+    decor.clear();
+    // pillars just outside the ring, props further out
+    for (let i = 0; i < 16; i++) {
+      const ang = (i / 16) * Math.PI * 2 + 0.1;
+      const pl = instantiateStatic(a.pillar, 6.5);
+      if (!pl) break;
+      pl.position.set(Math.cos(ang) * (ARENA_R + 4), 0, Math.sin(ang) * (ARENA_R + 4));
+      pl.rotation.y = -ang;
+      decor.add(pl);
+    }
+    for (let i = 0; i < 12; i++) {
+      const ang = (i / 12) * Math.PI * 2 + 0.26;
+      const r = ARENA_R + 16 + (i % 3) * 9;
+      const pr = instantiateStatic(a.prop, st.propHeight * (0.9 + (i % 4) * 0.12));
+      if (!pr) break;
+      pr.position.set(Math.cos(ang) * r, st.ground == null ? -1 : 0, Math.sin(ang) * r);
+      pr.rotation.y = -ang + Math.PI / 2;
+      decor.add(pr);
+    }
   }
 
   // weapon boxes
@@ -125,100 +172,88 @@ export function createRenderer(container, bus) {
     return g;
   }
 
-  function buildEnemy(e) {
-    const def = ENEMIES[e.type];
+  // Fallback while rigged models load: a coloured capsule with googly eyes.
+  function buildFallback(color, height, radius) {
     const g = new THREE.Group();
-    const bodyMat = M(def.color, { roughness: 0.5 });
-    const parts = { bodyMat, eyes: [] };
-    if (e.type === 'grunt') {
-      const body = new THREE.Mesh(G.capsule, bodyMat); body.scale.set(0.5, 0.3, 0.5); body.position.y = 0.8;
-      const ant = new THREE.Mesh(G.cyl, MAT.black); ant.scale.set(0.03, 0.3, 0.03); ant.position.y = 1.55;
-      const bulb = new THREE.Mesh(G.sphere, MAT.weak); bulb.scale.setScalar(0.22); bulb.position.y = 1.75;
-      const arms = new THREE.Mesh(G.box, bodyMat); arms.scale.set(1.3, 0.18, 0.18); arms.position.set(0, 0.9, 0.15);
-      g.add(body, ant, bulb, arms);
-      parts.body = body; parts.weak = bulb; parts.arms = arms;
-      for (const x of [-0.18, 0.18]) { const ey = googly(0.14); ey.position.set(x, 1.2, 0.42); g.add(ey); parts.eyes.push(ey); }
-    } else if (e.type === 'spitter') {
-      const body = new THREE.Mesh(G.sphere, bodyMat); body.scale.set(0.6, 0.55, 0.6); body.position.y = 0.6;
-      const neck = new THREE.Mesh(G.cyl, bodyMat); neck.scale.set(0.2, 0.5, 0.2); neck.position.y = 1.05;
-      const sac = new THREE.Mesh(G.sphere, MAT.weak); sac.scale.setScalar(0.25); sac.position.set(0, 1.0, 0.45);
-      const head = new THREE.Mesh(G.sphere, bodyMat); head.scale.set(0.32, 0.28, 0.4); head.position.set(0, 1.35, 0.1);
-      g.add(body, neck, sac, head);
-      parts.body = body; parts.weak = sac;
-      const ey = googly(0.2); ey.position.set(0, 1.5, 0.35); g.add(ey); parts.eyes.push(ey);
-    } else if (e.type === 'bouncer') {
-      const body = new THREE.Mesh(G.sphere, bodyMat); body.scale.setScalar(0.6); body.position.y = 0.65;
-      const spring = new THREE.Mesh(G.cyl, MAT.weak); spring.scale.set(0.25, 0.25, 0.25); spring.position.y = 0.08;
-      g.add(body, spring);
-      parts.body = body; parts.weak = spring;
-      for (const x of [-0.2, 0.2]) { const ey = googly(0.17); ey.position.set(x, 0.85, 0.45); g.add(ey); parts.eyes.push(ey); }
-    } else if (e.type === 'tank') {
-      const body = new THREE.Mesh(G.capsule, bodyMat); body.scale.set(0.9, 0.45, 0.9); body.position.y = 1.1;
-      const shield = new THREE.Mesh(G.box, MAT.shield); shield.scale.set(1.8, 1.9, 0.18); shield.position.set(0, 1.1, 0.95);
-      const batt = new THREE.Mesh(G.box, MAT.weak); batt.scale.set(0.5, 0.6, 0.3); batt.position.set(0, 1.3, -0.9);
-      const armL = new THREE.Mesh(G.box, bodyMat); armL.scale.set(0.3, 0.9, 0.3); armL.position.set(-1.0, 1.3, 0.3);
-      const armR = armL.clone(); armR.position.x = 1.0;
-      g.add(body, shield, batt, armL, armR);
-      parts.body = body; parts.weak = batt; parts.armL = armL; parts.armR = armR;
-      for (const x of [-0.25, 0.25]) { const ey = googly(0.15); ey.position.set(x, 2.05, 0.6); g.add(ey); parts.eyes.push(ey); }
-    } else {
-      const body = new THREE.Mesh(G.capsule, bodyMat); body.scale.set(0.5, 0.35, 0.5); body.position.y = 0.85;
-      const head = new THREE.Mesh(G.sphere, MAT.weak); head.scale.setScalar(0.3); head.position.y = 1.85;
-      const pole = new THREE.Mesh(G.cyl, M(0x6b4f2a)); pole.scale.set(0.06, 0.4, 0.06); pole.position.y = 0.2;
-      const target = new THREE.Mesh(G.ring, E(0xff3b3b)); target.scale.setScalar(0.3); target.position.set(0, 1.0, 0.51);
-      g.add(body, head, pole, target);
-      parts.body = body; parts.weak = head;
+    const bodyMat = M(color, { roughness: 0.5 });
+    const body = new THREE.Mesh(G.capsule, bodyMat); body.scale.set(radius, Math.max(0.1, (height - radius * 2) / 2 + radius * 0.6), radius); body.position.y = height / 2;
+    g.add(body);
+    const eyes = [];
+    for (const x of [-0.18, 0.18]) { const ey = googly(0.13); ey.position.set(x * radius * 2, height * 0.8, radius * 0.9); g.add(ey); eyes.push(ey); }
+    g.userData = { bodyMat, eyes };
+    return g;
+  }
+
+  function blob(r) { const b = new THREE.Mesh(G.disc, MAT.blob); b.rotation.x = -Math.PI / 2; b.position.y = 0.02; b.scale.setScalar(r); return b; }
+
+  /** Enemy view: Sproto Duel rigged character for its stage, plus gameplay markers (crown, shield plate, battery). */
+  function buildEnemy(e) {
+    const def = ENEMY_DEFS[e.type];
+    const g = new THREE.Group();
+    const parts = { eyes: [] };
+    let ch = null;
+    if (def.model) ch = instantiateCharacter(def.model, enemyStage(e), def.height);
+    if (ch) { g.add(ch.root); parts.char = ch; ch.play('idle'); }
+    else { const f = buildFallback(def.color, def.height, def.radius); g.add(f); Object.assign(parts, f.userData); }
+    if (e.type === 'bigObama') {
+      const shield = new THREE.Mesh(G.box, MAT.shield); shield.scale.set(1.8, 1.9, 0.14); shield.position.set(0, 1.3, 1.0);
+      const batt = new THREE.Mesh(G.box, MAT.weak); batt.scale.set(0.5, 0.6, 0.3); batt.position.set(0, 1.5, -0.95);
+      g.add(shield, batt); parts.weak = batt;
+    }
+    if (e.type === 'dummy') {
+      const head = new THREE.Mesh(G.sphere, MAT.weak); head.scale.setScalar(0.3); head.position.y = 1.85; g.add(head); parts.weak = head;
     }
     if (e.elite) {
       const crown = new THREE.Mesh(G.cone, MAT.crown); crown.scale.set(0.25, 0.3, 0.25);
-      crown.position.y = def.height + 0.45;
+      crown.position.y = def.height + 0.4;
       g.add(crown);
       parts.crown = crown;
     }
-    const blob = new THREE.Mesh(G.disc, MAT.blob); blob.rotation.x = -Math.PI / 2; blob.position.y = 0.02; blob.scale.setScalar(def.radius * 1.2);
-    g.add(blob);
-    parts.blob = blob;
-    g.scale.setScalar(e.scale);
+    g.add(blob(def.radius * 1.3));
     g.userData = parts;
-    return g;
+    return { obj: g, key: viewKey(e) };
   }
+
+  function bossStageIdx(e) { return Math.min(2, e.boss.phaseIdx); }
 
   function buildBoss(e) {
     const def = BOSSES[e.type];
     const g = new THREE.Group();
-    const bodyMat = M(def.color, { roughness: 0.45 });
-    const parts = { bodyMat, eyes: [] };
+    const parts = { eyes: [] };
+    const si = bossStageIdx(e);
+    const h = def.stageHeights[si];
+    const ch = instantiateCharacter(def.model, si + 1, h);
+    const holder = new THREE.Group();
+    g.add(holder);
+    if (ch) { holder.add(ch.root); parts.char = ch; ch.play('idle'); }
+    else { const f = buildFallback(def.color, h, def.radius); holder.add(f); Object.assign(parts, f.userData); }
+    const extra = [];
     if (e.type === 'megaSproto') {
-      const body = new THREE.Mesh(G.capsule, bodyMat); body.scale.set(2.0, 1.25, 2.0); body.position.y = 2.25;
-      const head = new THREE.Mesh(G.sphere, MAT.weak); head.scale.setScalar(0.6); head.position.set(0, 4.6, 0.6);
-      const belly = new THREE.Mesh(G.sphere, E(0xff3b3b)); belly.scale.setScalar(0.5); belly.position.set(0, 2.0, 1.9); belly.visible = false;
-      const mouth = new THREE.Mesh(G.box, MAT.black); mouth.scale.set(1.6, 0.35, 0.3); mouth.position.set(0, 2.9, 1.85);
-      const hornL = new THREE.Mesh(G.cone, M(0xffffff)); hornL.scale.set(0.35, 1.1, 0.35); hornL.position.set(-1.1, 4.4, 0); hornL.rotation.z = 0.4;
-      const hornR = hornL.clone(); hornR.position.x = 1.1; hornR.rotation.z = -0.4;
-      const armL = new THREE.Mesh(G.capsule, bodyMat); armL.scale.set(0.5, 0.8, 0.5); armL.position.set(-2.2, 2.4, 0.3);
-      const armR = armL.clone(); armR.position.x = 2.2;
-      g.add(body, head, belly, mouth, hornL, hornR, armL, armR);
-      for (const x of [-0.7, 0.7]) { const ey = googly(0.45); ey.position.set(x, 3.6, 1.6); g.add(ey); parts.eyes.push(ey); }
-      Object.assign(parts, { body, weak: head, belly, armL, armR });
-      const blob = new THREE.Mesh(G.disc, MAT.blob); blob.rotation.x = -Math.PI / 2; blob.position.y = 0.02; blob.scale.setScalar(2.6); g.add(blob);
+      const belly = new THREE.Mesh(G.sphere, E(0xff3b3b)); belly.scale.setScalar(0.55); belly.position.set(0, 2.0, 1.9); belly.visible = false;
+      g.add(belly, blob(2.6)); parts.belly = belly;
     } else {
-      const body = new THREE.Mesh(G.sphere, bodyMat); body.scale.setScalar(1.3);
-      const hat = new THREE.Mesh(G.cyl, M(0x222222)); hat.scale.set(0.8, 0.9, 0.8); hat.position.y = 1.5;
-      const brim = new THREE.Mesh(G.cyl, M(0x222222)); brim.scale.set(1.3, 0.08, 1.3); brim.position.y = 1.05;
-      const band = new THREE.Mesh(G.cyl, E(0xb07cff)); band.scale.set(0.82, 0.15, 0.82); band.position.y = 1.2;
-      const ledger = new THREE.Mesh(G.box, MAT.weak); ledger.scale.set(0.6, 0.75, 0.15);
-      const mono = new THREE.Mesh(G.torus, M(0xffd700, { metalness: 0.9 })); mono.scale.setScalar(0.3); mono.position.set(0.35, 0.3, 1.2);
+      holder.position.y = -1.3; // pos.y is the floating body centre
+      const orb = new THREE.Mesh(G.sphere, MAT.weak); orb.scale.setScalar(0.45);
       const aura = new THREE.Mesh(G.ring, new THREE.MeshBasicMaterial({ color: 0x9b59ff, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }));
       aura.rotation.x = -Math.PI / 2;
       const auraFill = new THREE.Mesh(G.disc, new THREE.MeshBasicMaterial({ color: 0x9b59ff, transparent: true, opacity: 0.08, depthWrite: false }));
       auraFill.rotation.x = -Math.PI / 2;
-      g.add(body, hat, brim, band, mono);
-      for (const x of [-0.45, 0.35]) { const ey = googly(0.3); ey.position.set(x, 0.3, 1.0); g.add(ey); parts.eyes.push(ey); }
-      scene.add(ledger, aura, auraFill);
-      Object.assign(parts, { body, weak: ledger, aura, auraFill, extra: [ledger, aura, auraFill] });
+      scene.add(orb, aura, auraFill);
+      extra.push(orb, aura, auraFill);
+      Object.assign(parts, { weak: orb, aura, auraFill });
     }
     g.userData = parts;
-    return g;
+    return { obj: g, extra, key: viewKey(e) };
+  }
+
+  /** A view is rebuilt when its model stage changes (boss phase) or when the rigged models finish loading. */
+  const loaded = (model, stage) => (peekModel(CHARACTER_MODELS[model][stage - 1]) ? 1 : 0);
+  function viewKey(e) {
+    if (e.boss) { const si = bossStageIdx(e); return `${e.type}:${si}:${loaded(BOSSES[e.type].model, si + 1)}`; }
+    const def = ENEMY_DEFS[e.type];
+    if (!def.model) return e.type;
+    const st = enemyStage(e);
+    return `${e.type}:${st}:${loaded(def.model, st)}`;
   }
 
   function buildAlly() {
@@ -234,20 +269,21 @@ export function createRenderer(container, bus) {
   // ---------- views sync ----------
   const views = new Map(); // id -> {obj, kind}
   const seen = new Set();
-  function syncView(id, make) {
+  function dropView(v) {
+    scene.remove(v.obj);
+    if (v.extra) v.extra.forEach((x) => scene.remove(x));
+    if (v.obj.userData.extra) v.obj.userData.extra.forEach((x) => scene.remove(x));
+  }
+  function syncView(id, make, key = null) {
     seen.add(id);
     let v = views.get(id);
+    if (v && key != null && v.key !== key) { dropView(v); v = null; }
     if (!v) { v = make(); views.set(id, v); if (v.obj.parent !== scene) scene.add(v.obj); }
     return v;
   }
   function releaseUnseen() {
     for (const [id, v] of views) {
-      if (!seen.has(id)) {
-        scene.remove(v.obj);
-        if (v.extra) v.extra.forEach((x) => scene.remove(x));
-        if (v.obj.userData.extra) v.obj.userData.extra.forEach((x) => scene.remove(x));
-        views.delete(id);
-      }
+      if (!seen.has(id)) { dropView(v); views.delete(id); }
     }
     seen.clear();
   }
@@ -258,6 +294,7 @@ export function createRenderer(container, bus) {
     spit: { color: 0x9be33b, scale: 0.3, cap: 64 }, gooBolt: { color: 0x7fff4a, scale: 0.28, cap: 64 },
     rocket: { color: 0xff6a3d, scale: 0.22, cap: 32 }, duckBullet: { color: 0xffe14a, scale: 0.2, cap: 128 },
     megaBullet: { color: 0xffffff, scale: 0.6, cap: 16 }, yeetGun: { color: 0xaaaaaa, scale: 0.35, cap: 16 },
+    bullet: { color: 0xffc93c, scale: 0.22, cap: 600 },
   };
   const inst = {};
   const dummy = new THREE.Object3D();
@@ -574,56 +611,66 @@ export function createRenderer(container, bus) {
     }
 
     // enemies
+    applyStage(stageFor(state, stageOverride));
     for (const e of state.enemies) {
-      const v = syncView(e.id, () => ({ obj: e.boss ? buildBoss(e) : buildEnemy(e) }));
+      // Model-swap only when the needed stage model is loaded (avoid flicker between fallback and model).
+      const v = syncView(e.id, () => (e.boss ? buildBoss(e) : buildEnemy(e)), viewKey(e));
       const o = v.obj, u = o.userData;
       const ex = lerp(e.prevPos.x, e.pos.x, alpha), ey = lerp(e.prevPos.y, e.pos.y, alpha), ez = lerp(e.prevPos.z, e.pos.z, alpha);
       o.position.set(ex, ey, ez);
       o.rotation.y = e.yaw + Math.PI;
-      // hit flash
-      const flash = e.hitFlash > 0;
-      u.bodyMat.emissive.setHex(flash ? 0xffffff : e.status.burn ? 0x772200 : e.status.goo ? 0x225500 : 0x000000);
-      u.bodyMat.emissiveIntensity = flash ? 0.9 : 0.6;
-      // squash & stretch by state
-      let sx = 1, sy = 1;
-      if (e.state === 'spawning') { const k = Math.min(1, e.stateT / 0.8); sx = sy = k; }
-      else if (e.state === 'attack' && e.attack.phase === 'windup') { const k = e.attack.t * 2; sy = 1 - 0.15 * Math.min(1, k); sx = 1 + 0.12 * Math.min(1, k); }
-      else if (e.state === 'stagger') { sx = 1 + Math.sin(now * 0.05) * 0.08; }
-      else if (e.type === 'bouncer') { sy = 1 + Math.min(0.3, Math.abs(e.vel.y) * 0.04); sx = 1 / Math.sqrt(sy); }
-      else { sy = 1 + Math.sin(t * 10 + e.id) * 0.03; }
-      if (e.dead) { sx = sy = 0.01; }
-      const base = e.boss ? 1 : e.scale;
-      o.scale.set(base * sx, base * sy, base * sx);
-      if (u.weak) {
+      // flash / status tint
+      const tint = e.hitFlash > 0 ? [0.9, 0.9, 0.9] : e.status.burn ? [0.45, 0.12, 0] : e.status.goo ? [0.08, 0.3, 0] : [0, 0, 0];
+      if (u.char) u.char.setTint(...tint);
+      else if (u.bodyMat) { u.bodyMat.emissive.setRGB(...tint); }
+      // scale: pop in while spawning, wobble when staggered
+      let sc = e.boss ? 1 : e.scale;
+      if (e.state === 'spawning') sc *= Math.min(1, 0.2 + e.stateT / 0.8);
+      if (e.dead) sc = 0.01;
+      o.scale.setScalar(sc);
+      o.rotation.z = e.state === 'stagger' ? Math.sin(now * 0.04) * 0.12 : 0;
+      if (u.weak && !e.boss) {
         const bh = e.bigHeadT > 0 ? 1.8 : 1;
         if (!u.weakBase) u.weakBase = u.weak.scale.clone();
         u.weak.scale.copy(u.weakBase).multiplyScalar(bh * (1 + Math.sin(now * 0.008) * 0.08));
       }
-      if (u.arms && e.state === 'attack') u.arms.position.z = e.attack.phase === 'active' ? 0.6 : 0.15;
-      if (u.armL) { const up = e.state === 'attack' && e.attack.phase === 'windup' ? Math.min(1, e.attack.t) : 0; u.armL.position.y = 1.3 + up * 1.2; u.armR.position.y = 1.3 + up * 1.2; }
       for (const ey2 of u.eyes) { const pu = ey2.userData.pupil; pu.position.x = Math.sin(now * 0.013 + e.id) * 0.04; pu.position.y = Math.cos(now * 0.017 + e.id) * 0.04; }
       if (u.crown) u.crown.rotation.y += fdt * 2;
+      const spd = Math.hypot(e.vel.x, e.vel.z);
+      if (u.char) {
+        const ch = u.char;
+        if (!e.boss) {
+          if (e.state === 'stagger') ch.play('stun');
+          else if (e.state === 'attack') ch.play(e.type === 'bigObama' ? 'castBig' : 'cast', { speed: e.type === 'midget' ? 1.8 : 1.2 });
+          else if (e.ai.shooting) ch.play('cast', { speed: 1.4 });
+          else if (spd > 0.6) { ch.play('run'); ch.setSpeed(Math.min(2.2, Math.max(0.6, spd / 4.5))); }
+          else ch.play('idle');
+        } else {
+          const act = e.boss.action.id;
+          const map = e.type === 'megaSproto'
+            ? { intro: 'victory', transition: 'hit', chase: 'run', charge: e.boss.action.t < 0.8 ? 'castBig' : 'run', stunned: 'stun', slam: 'jump', volley: 'castBig', summon: 'victory' }
+            : { intro: 'victory', transition: 'hit', drift: 'idle', ring: 'cast', fan: 'cast', spiral: 'cast', taxBolts: 'castBig', spiralRing: 'castBig', teleport: 'castBig' };
+          const clip = map[act] || 'idle';
+          ch.play(clip, { speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : 1 });
+        }
+        ch.update(fdt);
+      }
       if (e.boss) {
         if (e.type === 'megaSproto') {
           u.belly.visible = e.boss.action.id === 'stunned';
-          const slamUp = e.boss.action.id === 'charge' && e.boss.action.t < 0.8;
-          u.armL.rotation.x = slamUp ? -1.2 : Math.sin(now * 0.008) * 0.3;
-          u.armR.rotation.x = slamUp ? -1.2 : -Math.sin(now * 0.008) * 0.3;
-          if (e.boss.action.id === 'stunned') o.rotation.z = Math.sin(now * 0.02) * 0.08; else o.rotation.z = 0;
+          o.rotation.z = e.boss.action.id === 'stunned' ? Math.sin(now * 0.02) * 0.06 : 0;
         } else {
           const a = e.boss.weakAngle;
           u.weak.position.set(ex + Math.cos(a) * 1.9, ey + 0.2, ez + Math.sin(a) * 1.9);
-          u.weak.rotation.y = -a;
-          const ar = e.ai.auraR || 8;
+          u.weak.scale.setScalar(0.45 * (1 + Math.sin(now * 0.01) * 0.12) * (e.bigHeadT > 0 ? 1.8 : 1));
+          const ar = e.ai.auraR || 9;
           u.aura.position.set(ex, 0.05, ez); u.aura.scale.setScalar(ar);
           u.auraFill.position.set(ex, 0.04, ez); u.auraFill.scale.setScalar(ar);
           u.aura.material.opacity = 0.3 + Math.sin(now * 0.006) * 0.15;
           const fade = e.boss.fade ?? 1;
           o.visible = fade > 0.05;
           o.scale.setScalar(Math.max(0.05, fade));
-          u.weak.visible = !e.dead;
-          u.aura.visible = u.auraFill.visible = !e.dead;
-          o.rotation.y = e.yaw + Math.PI;
+          u.weak.visible = u.aura.visible = u.auraFill.visible = !e.dead && fade > 0.05;
         }
       }
     }
@@ -660,6 +707,7 @@ export function createRenderer(container, bus) {
       dummy.position.set(lerp(pr.prevPos.x, pr.pos.x, alpha), lerp(pr.prevPos.y, pr.pos.y, alpha), lerp(pr.prevPos.z, pr.pos.z, alpha));
       const s = I.d.scale * (pr.kind === 'orb' || pr.kind === 'taxBolt' ? 1 + Math.sin(now * 0.02 + pr.id) * 0.15 : 1);
       if (pr.kind === 'rocket') { dummy.scale.set(s, s, s * 3); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
+      else if (pr.kind === 'bullet') { dummy.scale.set(s, s, s * 2.2); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
       else if (pr.kind === 'yeetGun') { dummy.scale.set(0.15, 0.2, 0.8); dummy.rotation.set(now * 0.02, now * 0.015, 0); }
       else { dummy.scale.setScalar(s); dummy.rotation.set(0, 0, 0); }
       dummy.updateMatrix();
@@ -756,6 +804,7 @@ export function createRenderer(container, bus) {
   return {
     render, project, resize, canvas: renderer.domElement, camera,
     setShowHitboxes(v) { showHitboxes = v; },
+    setStage(id) { stageOverride = id || null; },
     info: () => renderer.info,
   };
 }

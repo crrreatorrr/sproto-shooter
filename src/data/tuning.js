@@ -1,9 +1,9 @@
 // Global tuning constants (PLAN §7.1)
 export const TUNING = {
-  arenaRadius: 30,
-  spawnRadius: 28.5,
-  spawnPointCount: 12,
-  weaponBoxes: [{ x: -20, z: 0 }, { x: 20, z: 0 }],
+  arenaRadius: 45,
+  spawnRadius: 43,
+  spawnPointCount: 16,
+  weaponBoxes: [{ x: -28, z: 0 }, { x: 28, z: 0 }],
   boxRadius: 1.0,
   boxInteractRadius: 3.0,
 

@@ -83,16 +83,16 @@ describe('collision', () => {
   });
   it('weak spot wins over body at the head', () => {
     const s = createGameState();
-    const e = createEnemy(s, 'grunt', { pos: { x: 0, z: -10 } }); e.state = 'chase';
-    const hit = raycastEnemies(s, { x: 0, y: 1.75, z: 0 }, { x: 0, y: 0, z: -1 }, 50);
+    const e = createEnemy(s, 'midget', { pos: { x: 0, z: -10 } }); e.state = 'chase';
+    const hit = raycastEnemies(s, { x: 0, y: 1.1, z: 0 }, { x: 0, y: 0, z: -1 }, 50);
     expect(hit.zone).toBe('weak');
-    const body = raycastEnemies(s, { x: 0, y: 0.8, z: 0 }, { x: 0, y: 0, z: -1 }, 50);
+    const body = raycastEnemies(s, { x: 0, y: 0.5, z: 0 }, { x: 0, y: 0, z: -1 }, 50);
     expect(body.zone).toBe('body');
   });
 });
 
 describe('damage pipeline', () => {
-  const setup = () => { const s = createGameState(); const p = s.players[s.localPlayerId]; const e = createEnemy(s, 'grunt', { pos: { x: 0, z: -5 } }); e.state = 'chase'; return { s, p, e }; };
+  const setup = () => { const s = createGameState(); const p = s.players[s.localPlayerId]; const e = createEnemy(s, 'midget', { pos: { x: 0, z: -5 } }); e.state = 'chase'; return { s, p, e }; };
   it('weak spot multiplies by critMult', () => {
     const { s, p, e } = setup();
     const d = damageEnemy(s, e, { sourceId: p.id, sourceKind: 'gun', base: 10, zone: 'weak', critMult: 2, canCrit: false });
@@ -100,12 +100,12 @@ describe('damage pipeline', () => {
   });
   it('tank shield only lets 10% through', () => {
     const s = createGameState(); const p = s.players[s.localPlayerId];
-    const t = createEnemy(s, 'tank', { pos: { x: 0, z: -5 } }); t.state = 'chase';
+    const t = createEnemy(s, 'bigObama', { pos: { x: 0, z: -5 } }); t.state = 'chase';
     expect(damageEnemy(s, t, { sourceId: p.id, sourceKind: 'gun', base: 100, zone: 'shield' })).toBe(10);
   });
   it('element weakness and resistance', () => {
     const s = createGameState(); const p = s.players[s.localPlayerId];
-    const sp = createEnemy(s, 'spitter', { pos: { x: 0, z: -5 } }); sp.state = 'chase';
+    const sp = createEnemy(s, 'obama', { pos: { x: 0, z: -5 } }); sp.state = 'chase';
     expect(damageEnemy(s, sp, { sourceId: p.id, sourceKind: 'gun', base: 10, zone: 'body', element: 'fire' })).toBe(15);
     expect(damageEnemy(s, sp, { sourceId: p.id, sourceKind: 'gun', base: 10, zone: 'body', element: 'goo' })).toBe(5);
   });
@@ -128,12 +128,35 @@ describe('damage pipeline', () => {
   });
 });
 
+describe('enemies shoot back (midgets never do)', () => {
+  it('obamas fire slow, inaccurate bitcoin bursts; midgets only melee', () => {
+    const s = createGameState({ seed: 4 }); const p = s.players[s.localPlayerId];
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'setTuning', args: { key: 'godMode', value: true } }, { type: 'debug', op: 'spawnEnemy', args: { type: 'midget', count: 5 } }] }));
+    let ev = run(s, 60 * 6);
+    expect(ev.some((e) => e.type === 'enemyShot')).toBe(false);
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'clearEnemies' }, { type: 'debug', op: 'spawnEnemy', args: { type: 'obama' } }] }));
+    ev = run(s, 60 * 10);
+    const shots = ev.filter((e) => e.type === 'enemyShot');
+    expect(shots.length).toBeGreaterThan(2);
+    expect(shots.length / 10).toBeLessThan(3); // < 3 shots/s, the player's MG does 10
+    const bullets = s.projectiles.filter((x) => x.kind === 'bullet');
+    for (const b of bullets) expect(Math.hypot(b.vel.x, b.vel.y, b.vel.z)).toBeLessThanOrEqual(31);
+  });
+  it('enemy stage models: base, +1 elite, +1 from tier 4', async () => {
+    const { enemyStage } = await import('../src/data/enemies.js');
+    expect(enemyStage({ type: 'midget', elite: false, tier: 1 })).toBe(1);
+    expect(enemyStage({ type: 'midget', elite: true, tier: 1 })).toBe(2);
+    expect(enemyStage({ type: 'obama', elite: true, tier: 5 })).toBe(3);
+    expect(enemyStage({ type: 'bigObama', elite: false, tier: 1 })).toBe(3);
+  });
+});
+
 describe('drops', () => {
   it('each enemy drops its own resource; elites drop double', () => {
     const r = createRng(1);
-    const tank = rollDrops(r, 'tank', { tier: 1 });
+    const tank = rollDrops(r, 'bigObama', { tier: 1 });
     expect(tank.some((d) => d.resId === 'plating')).toBe(true);
-    const sumScrap = (elite) => { const rr = createRng(9); let n = 0; for (let i = 0; i < 200; i++) n += rollDrops(rr, 'grunt', { elite, tier: 1 }).filter((d) => d.resId === 'scrap').reduce((a, d) => a + d.amount, 0); return n; };
+    const sumScrap = (elite) => { const rr = createRng(9); let n = 0; for (let i = 0; i < 200; i++) n += rollDrops(rr, 'obama', { elite, tier: 1 }).filter((d) => d.resId === 'scrap').reduce((a, d) => a + d.amount, 0); return n; };
     expect(sumScrap(true)).toBeGreaterThan(sumScrap(false) * 1.7);
   });
   it('bosses drop a Boss Core; Hex drops Mana Crystals', () => {
@@ -164,7 +187,7 @@ describe('use-based XP', () => {
   });
   it('kills give Health and Gunslinger XP; damage taken gives a little Health XP', () => {
     const s = createGameState(); const p = s.players[s.localPlayerId];
-    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'spawnEnemy', args: { type: 'grunt' } }] }));
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'spawnEnemy', args: { type: 'midget' } }] }));
     run(s, 60);
     const e = s.enemies.find((x) => !x.dead);
     e.hp = 1;
@@ -205,9 +228,14 @@ describe('crafting', () => {
 });
 
 describe('waves config', () => {
-  it('3 waves, growing enemy counts 8/14/20, bosses on waves 2 and 3', () => {
+  it('3 waves with growing counts, mostly midget swarms, bosses on waves 2 and 3', () => {
     const counts = WAVES.map((w) => w.groups.reduce((n, g) => n + g.spawns.reduce((m, s) => m + s.count, 0), 0));
-    expect(counts).toEqual([8, 14, 20]);
+    expect(counts[1]).toBeGreaterThan(counts[0]); expect(counts[2]).toBeGreaterThan(counts[1]);
+    for (const w of WAVES) {
+      const all = w.groups.flatMap((g) => g.spawns);
+      const mid = all.filter((s) => s.type === 'midget').reduce((n, s) => n + s.count, 0);
+      expect(mid / all.reduce((n, s) => n + s.count, 0)).toBeGreaterThan(0.5);
+    }
     expect(WAVES[0].boss).toBeNull();
     expect(WAVES[1].boss.types).toEqual(['megaSproto']);
     expect(WAVES[2].boss.types).toEqual(['megaSproto', 'hexAuditor']);

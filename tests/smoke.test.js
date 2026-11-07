@@ -4,10 +4,9 @@ describe('smoke', () => {
   it('sandbox runs with every enemy and boss while firing', () => {
     const s = createGameState({ seed: 7 });
     run(s, 1, () => cmd({ actions: [
-      { type: 'debug', op: 'spawnEnemy', args: { type: 'grunt', count: 3 } },
-      { type: 'debug', op: 'spawnEnemy', args: { type: 'spitter' } },
-      { type: 'debug', op: 'spawnEnemy', args: { type: 'bouncer' } },
-      { type: 'debug', op: 'spawnEnemy', args: { type: 'tank', elite: true } },
+      { type: 'debug', op: 'spawnEnemy', args: { type: 'midget', count: 6 } },
+      { type: 'debug', op: 'spawnEnemy', args: { type: 'obama', count: 2 } },
+      { type: 'debug', op: 'spawnEnemy', args: { type: 'bigObama', elite: true } },
       { type: 'debug', op: 'spawnBoss', args: { type: 'megaSproto' } },
       { type: 'debug', op: 'spawnBoss', args: { type: 'hexAuditor' } },
       { type: 'debug', op: 'maxSkills' },

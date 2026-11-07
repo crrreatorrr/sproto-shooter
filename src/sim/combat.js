@@ -31,7 +31,7 @@ export function damageEnemy(state, e, hit) {
   const isCrit = !!hit.canCrit && float(state.rng) < (hit.critChance ?? 0.05);
   if (isCrit) dmg *= 1.5;
   if (hit.zone === 'shield') dmg *= 0.1;
-  if (e.type === 'tank') { if (hit.isSplash) dmg *= 1.5; if (hit.pellet) dmg *= 1.3; }
+  if (e.type === 'bigObama') { if (hit.isSplash) dmg *= 1.5; if (hit.pellet) dmg *= 1.3; }
   const el = hit.element || 'none';
   if (el !== 'none') {
     if (e.affinity.weak === el) dmg *= 1.5;
@@ -214,13 +214,13 @@ export function explode(state, pos, splash, ownerId, element = 'none', sourceKin
     if (e.dead || e.state === 'spawning') continue;
     const def = entityDef(e);
     const d = e.type === 'hexAuditor'
-      ? Math.max(0, Math.hypot(pos.x - e.pos.x, pos.y - e.pos.y, pos.z - e.pos.z) - def.radius)
+      ? distToCapsule(pos, e.pos.x, e.pos.z, e.pos.y - 1.3, e.pos.y + 1.3, def.radius)
       : distToCapsule(pos, e.pos.x, e.pos.z, e.pos.y, e.pos.y + def.height * e.scale, def.radius * e.scale);
     if (d > splash.radius) continue;
     const f = 1 + (splash.minFalloff - 1) * (d / splash.radius);
     damageEnemy(state, e, { sourceId: ownerId, sourceKind, base: splash.damage * f, isSplash: true, zone: 'body', element,
       elementChance: extra.elementChance ?? (element !== 'none' ? 1 : 0), canCrit: false, noProc, arcane: extra.arcane, wacky: extra.wacky });
-    if (!e.boss && e.type !== 'tank' && e.type !== 'dummy' && !e.dead) {
+    if (!e.boss && e.type !== 'bigObama' && e.type !== 'dummy' && !e.dead) {
       const dx = e.pos.x - pos.x, dz = e.pos.z - pos.z, dd = Math.hypot(dx, dz) || 1;
       e.vel.x += (dx / dd) * splash.knockback * f;
       e.vel.z += (dz / dd) * splash.knockback * f;

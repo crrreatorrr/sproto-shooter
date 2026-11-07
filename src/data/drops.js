@@ -1,29 +1,22 @@
 // Drop tables (PLAN §4.13, §7.6)
 export const DROP_TABLES = {
-  grunt: [
-    { kind: 'resource', resId: 'scrap', min: 4, max: 7, chance: 1 },
-    { kind: 'health', chance: 0.2 },
-    { kind: 'ammo', chance: 0.35 },
-    { kind: 'gun', chance: 0.04, table: 'enemyGun' },
+  midget: [
+    { kind: 'resource', resId: 'scrap', min: 1, max: 3, chance: 1 },
+    { kind: 'resource', resId: 'springs', min: 1, max: 2, chance: 1 },
+    { kind: 'health', chance: 0.08 },
+    { kind: 'ammo', chance: 0.2 },
+    { kind: 'gun', chance: 0.02, table: 'enemyGun' },
     { kind: 'tickets', min: 1, max: 1, chance: 1 },
   ],
-  spitter: [
-    { kind: 'resource', resId: 'scrap', min: 2, max: 3, chance: 1 },
+  obama: [
+    { kind: 'resource', resId: 'scrap', min: 3, max: 5, chance: 1 },
     { kind: 'resource', resId: 'goo', min: 2, max: 3, chance: 1 },
-    { kind: 'health', chance: 0.15 },
-    { kind: 'ammo', chance: 0.35 },
-    { kind: 'gun', chance: 0.05, table: 'enemyGun' },
-    { kind: 'tickets', min: 1, max: 1, chance: 1 },
-  ],
-  bouncer: [
-    { kind: 'resource', resId: 'scrap', min: 2, max: 3, chance: 1 },
-    { kind: 'resource', resId: 'springs', min: 2, max: 4, chance: 1 },
     { kind: 'health', chance: 0.18 },
-    { kind: 'ammo', chance: 0.35 },
-    { kind: 'gun', chance: 0.05, table: 'enemyGun' },
+    { kind: 'ammo', chance: 0.4 },
+    { kind: 'gun', chance: 0.06, table: 'enemyGun' },
     { kind: 'tickets', min: 2, max: 2, chance: 1 },
   ],
-  tank: [
+  bigObama: [
     { kind: 'resource', resId: 'scrap', min: 5, max: 8, chance: 1 },
     { kind: 'resource', resId: 'plating', min: 3, max: 5, chance: 1 },
     { kind: 'health', chance: 0.25 },
@@ -61,9 +54,9 @@ export const QUALITY_TABLES = {
 
 export const RESOURCES = [
   { id: 'scrap', name: 'Scrap', color: '#b8b8b8', icon: '⚙' },
-  { id: 'springs', name: 'Springs', color: '#ff5ec4', icon: '➰' },
-  { id: 'goo', name: 'Goo', color: '#7fd34e', icon: '●' },
-  { id: 'plating', name: 'Plating', color: '#6a7bd1', icon: '▣' },
+  { id: 'springs', name: 'Springs', color: '#ff5ec4', icon: '➰' }, // from Midgets
+  { id: 'goo', name: 'Goo', color: '#7fd34e', icon: '●' }, // from Bitcoin Obamas
+  { id: 'plating', name: 'Plating', color: '#6a7bd1', icon: '▣' }, // from Big Bitcoin Obamas
   { id: 'bossCore', name: 'Boss Core', color: '#ff3b3b', icon: '◆' },
   { id: 'manaCrystal', name: 'Mana Crystal', color: '#b07cff', icon: '✦' },
 ];

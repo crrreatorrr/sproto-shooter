@@ -38,12 +38,14 @@ function pickPoints(state, pattern, n) {
   if (!pts.length) return [state.spawnPoints[0]];
   if (pattern === 'cluster') {
     const c = pts[Math.floor(float(state.rng) * pts.length)];
-    return Array.from({ length: n }, (_, k) => state.spawnPoints[(c.i + (k % 3) - 1 + 12) % 12]);
+    const N = state.spawnPoints.length;
+    return Array.from({ length: n }, (_, k) => state.spawnPoints[(c.i + (k % 3) - 1 + N) % N]);
   }
   if (pattern === 'spread') {
     pts.sort((a, b) => b.d - a.d);
     const out = [];
-    for (const s of pts) { if (out.every((o) => Math.abs(((o.i - s.i + 12) % 12)) >= 3 && Math.abs(((s.i - o.i + 12) % 12)) >= 3)) out.push(s); }
+    const N = state.spawnPoints.length;
+    for (const s of pts) { if (out.every((o) => ((o.i - s.i + N) % N) >= 4 && ((s.i - o.i + N) % N) >= 4)) out.push(s); }
     return Array.from({ length: n }, (_, k) => out[k % out.length]);
   }
   return Array.from({ length: n }, () => pts[Math.floor(float(state.rng) * pts.length)]);
@@ -103,7 +105,7 @@ export function waveDirector(state, dt) {
         const away = Math.atan2(-p.pos.x, -p.pos.z) + (Math.hypot(p.pos.x, p.pos.z) < 1 ? Math.PI : 0);
         cfg.boss.types.forEach((type, i) => {
           const ang = away + (paired ? (i === 0 ? -0.9 : 0.9) : 0);
-          const pos = { x: Math.sin(ang) * 16, z: Math.cos(ang) * 16 };
+          const pos = { x: Math.sin(ang) * 22, z: Math.cos(ang) * 22 };
           const b = createBoss(state, type, { pos, paired });
           w.bossIds.push(b.id);
           emit(state, 'bossSpawn', { id: b.id, bossType: type });

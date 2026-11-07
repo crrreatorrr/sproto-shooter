@@ -105,7 +105,7 @@ export function createBoss(state, type, { tier = state.tier, pos = { x: 0, z: -1
   const tm = tierEnemyMult(tier);
   const e = {
     id: nextId(state), kind: 'enemy', type, faction: 'enemy',
-    pos: { x: pos.x, y: type === 'hexAuditor' ? 3 : 0, z: pos.z }, prevPos: { x: pos.x, y: 0, z: pos.z }, vel: { x: 0, y: 0, z: 0 },
+    pos: { x: pos.x, y: def.hoverY || 0, z: pos.z }, prevPos: { x: pos.x, y: def.hoverY || 0, z: pos.z }, vel: { x: 0, y: 0, z: 0 },
     yaw: 0, radius: def.radius, height: def.height, scale: 1,
     hp: 0, maxHp: 0, dmgMult: tm, speedMult: 1, tier, elite: false,
     affinity: { resist: null, weak: null },

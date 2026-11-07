@@ -1,33 +1,35 @@
 // Wave configs (PLAN §7.8)
 const S = (type, count, elites = 0) => ({ type, count, elites });
 
+// Midgets come in big swarms; Bitcoin Obamas shoot from range; Big Obamas anchor later waves.
 export const WAVES = [
   {
-    id: 1, name: 'Wave 1: Warm-Up Sprotos', clearTickets: 20, maxAlive: 8,
+    id: 1, name: 'Wave 1: Midget Rush', clearTickets: 20, maxAlive: 14,
     groups: [
-      { at: 0, aliveBelow: null, pattern: 'spread', spawns: [S('grunt', 3)] },
-      { at: 8, aliveBelow: 1, pattern: 'cluster', spawns: [S('grunt', 2), S('spitter', 1)] },
-      { at: 16, aliveBelow: 2, pattern: 'spread', spawns: [S('spitter', 2)] },
+      { at: 0, aliveBelow: null, pattern: 'cluster', spawns: [S('midget', 5)] },
+      { at: 7, aliveBelow: 2, pattern: 'spread', spawns: [S('obama', 2), S('midget', 3)] },
+      { at: 16, aliveBelow: 3, pattern: 'cluster', spawns: [S('midget', 6)] },
+      { at: 26, aliveBelow: 3, pattern: 'spread', spawns: [S('obama', 2), S('midget', 2)] },
     ],
     boss: null,
   },
   {
-    id: 2, name: 'Wave 2: Bouncy Business', clearTickets: 35, maxAlive: 10,
+    id: 2, name: 'Wave 2: Bitcoin Barrage', clearTickets: 35, maxAlive: 18,
     groups: [
-      { at: 0, aliveBelow: null, pattern: 'spread', spawns: [S('grunt', 3), S('spitter', 1)] },
-      { at: 10, aliveBelow: 2, pattern: 'spread', spawns: [S('bouncer', 2), S('spitter', 1), S('grunt', 1)] },
-      { at: 20, aliveBelow: 2, pattern: 'cluster', spawns: [S('tank', 1), S('grunt', 2)] },
-      { at: 30, aliveBelow: 2, pattern: 'spread', spawns: [S('tank', 1, 1), S('bouncer', 1), S('spitter', 1, 1)] },
+      { at: 0, aliveBelow: null, pattern: 'spread', spawns: [S('midget', 6), S('obama', 2)] },
+      { at: 10, aliveBelow: 4, pattern: 'cluster', spawns: [S('midget', 8)] },
+      { at: 20, aliveBelow: 4, pattern: 'spread', spawns: [S('bigObama', 1), S('obama', 3), S('midget', 4, 1)] },
+      { at: 32, aliveBelow: 4, pattern: 'spread', spawns: [S('bigObama', 1, 1), S('obama', 2, 1), S('midget', 6)] },
     ],
     boss: { types: ['megaSproto'], introDelay: 3 },
   },
   {
-    id: 3, name: 'Wave 3: The Final Audit', clearTickets: 50, maxAlive: 12,
+    id: 3, name: 'Wave 3: The Final Audit', clearTickets: 50, maxAlive: 24,
     groups: [
-      { at: 0, aliveBelow: null, pattern: 'spread', spawns: [S('grunt', 3), S('spitter', 2)] },
-      { at: 10, aliveBelow: 3, pattern: 'spread', spawns: [S('bouncer', 3), S('grunt', 1, 1), S('tank', 1)] },
-      { at: 22, aliveBelow: 3, pattern: 'cluster', spawns: [S('tank', 1, 1), S('spitter', 2), S('bouncer', 2)] },
-      { at: 34, aliveBelow: 3, pattern: 'spread', spawns: [S('grunt', 3, 1), S('spitter', 1, 1), S('tank', 1)] },
+      { at: 0, aliveBelow: null, pattern: 'spread', spawns: [S('midget', 8), S('obama', 3)] },
+      { at: 10, aliveBelow: 5, pattern: 'cluster', spawns: [S('midget', 10, 1), S('bigObama', 1)] },
+      { at: 22, aliveBelow: 5, pattern: 'spread', spawns: [S('obama', 4, 1), S('midget', 8), S('bigObama', 1, 1)] },
+      { at: 34, aliveBelow: 5, pattern: 'spread', spawns: [S('midget', 10, 1), S('obama', 3, 1), S('bigObama', 2)] },
     ],
     boss: { types: ['megaSproto', 'hexAuditor'], introDelay: 3 },
   },

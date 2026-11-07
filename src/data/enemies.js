@@ -1,42 +1,42 @@
-// Enemy + boss + elite definitions (PLAN §4.10, §7.3)
+// Enemy + boss + elite definitions. Visuals reuse Sproto Duel's rigged characters (see data/stages.js MODELS).
+// Hitboxes are local: +z forward, y up, multiplied by the enemy's scale.
 export const ENEMIES = {
-  grunt: {
-    name: 'Grunt', hp: 60, speed: 5.5, accel: 30, radius: 0.5, height: 1.6, damage: 12,
-    range: 1.6, windup: 0.35, active: 0.15, recover: 0.6, poiseMax: 30, staggerTime: 0.5,
+  // Fast melee runner that comes in swarms. Never shoots.
+  midget: {
+    name: 'Midget', hp: 40, speed: 7.8, accel: 40, radius: 0.45, height: 1.3, damage: 9,
+    range: 1.3, windup: 0.25, active: 0.15, recover: 0.45, poiseMax: 25, staggerTime: 0.4,
     color: 0xff8a3d, affinity: { resist: null, weak: null },
-    weights: { seek: 1.0, sep: 1.5, wall: 2.0, strafe: 0.15 },
+    weights: { seek: 1.0, sep: 1.2, wall: 2.0, strafe: 0.25 },
+    model: 'midget', stage: 1,
     hitboxes: [
-      { type: 'capsule', zone: 'body', r: 0.5, y0: 0, y1: 1.6 },
-      { type: 'sphere', zone: 'weak', r: 0.22, x: 0, y: 1.75, z: 0 },
+      { type: 'capsule', zone: 'body', r: 0.45, y0: 0, y1: 1.15 },
+      { type: 'sphere', zone: 'weak', r: 0.22, x: 0, y: 1.1, z: 0.05 },
     ],
   },
-  spitter: {
-    name: 'Spitter', hp: 45, speed: 3.8, accel: 20, radius: 0.55, height: 1.3, damage: 14,
-    windup: 0.5, cooldown: 2.4, keepMin: 10, keepMax: 18, poiseMax: 25, staggerTime: 0.6,
+  // Keeps its distance, strafes and shoots bursts of bitcoins. Slower and much less accurate than you.
+  obama: {
+    name: 'Bitcoin Obama', hp: 70, speed: 4.2, accel: 22, radius: 0.5, height: 2.1, damage: 0,
+    keepMin: 9, keepMax: 20, poiseMax: 30, staggerTime: 0.5,
     color: 0x7fd34e, affinity: { resist: 'goo', weak: 'fire' },
     weights: { seek: 1.0, sep: 1.5, wall: 2.0, strafe: 0.8 },
+    gun: { damage: 6, burst: 3, burstGap: 0.22, cooldownMin: 2.0, cooldownMax: 3.0, spread: 4.5, speed: 30, range: 34, windup: 0.45 },
+    model: 'obama', stage: 1,
     hitboxes: [
-      { type: 'capsule', zone: 'body', r: 0.55, y0: 0, y1: 1.3 },
-      { type: 'sphere', zone: 'weak', r: 0.25, x: 0, y: 1.0, z: 0.45 },
+      { type: 'capsule', zone: 'body', r: 0.5, y0: 0, y1: 1.85 },
+      { type: 'sphere', zone: 'weak', r: 0.24, x: 0, y: 1.9, z: 0.05 },
     ],
   },
-  bouncer: {
-    name: 'Bouncer', hp: 50, speed: 9, accel: 10, radius: 0.6, height: 1.2, damage: 15,
-    hopMin: 0.7, hopMax: 1.3, hopVy: 7, stompRadius: 2.5, poiseMax: 30, staggerTime: 0.6,
-    color: 0xff5ec4, affinity: { resist: null, weak: 'shock' },
-    hitboxes: [
-      { type: 'sphere', zone: 'body', r: 0.6, x: 0, y: 0.6, z: 0 },
-      { type: 'sphere', zone: 'weak', r: 0.3, x: 0, y: 0.05, z: 0 },
-    ],
-  },
-  tank: {
-    name: 'Tank', hp: 320, speed: 2.2, accel: 8, radius: 0.9, height: 2.2, damage: 25,
+  // Heavy: slow, front shield, ground pound up close and a sloppy bullet hose at range. Hit the back battery.
+  bigObama: {
+    name: 'Big Bitcoin Obama', hp: 320, speed: 2.4, accel: 8, radius: 0.9, height: 2.6, damage: 25,
     turnRate: 70, range: 3.5, poundRadius: 3.2, windup: 0.9, recover: 1.2, poiseMax: 150, staggerTime: 0.8,
     color: 0x6a7bd1, affinity: { resist: 'fire', weak: 'shock' }, weakMultOverride: 2.5,
+    gun: { damage: 5, burst: 6, burstGap: 0.12, cooldownMin: 3.0, cooldownMax: 4.0, spread: 7, speed: 26, range: 28, windup: 0.7 },
+    model: 'obama', stage: 3,
     hitboxes: [
-      { type: 'capsule', zone: 'body', r: 0.9, y0: 0, y1: 2.2 },
-      { type: 'sphere', zone: 'shield', r: 0.95, x: 0, y: 1.1, z: 0.85 },
-      { type: 'sphere', zone: 'weak', r: 0.35, x: 0, y: 1.3, z: -0.85 },
+      { type: 'capsule', zone: 'body', r: 0.9, y0: 0, y1: 2.6 },
+      { type: 'sphere', zone: 'shield', r: 1.0, x: 0, y: 1.3, z: 0.95 },
+      { type: 'sphere', zone: 'weak', r: 0.38, x: 0, y: 1.5, z: -0.9 },
     ],
   },
   dummy: {
@@ -52,33 +52,51 @@ export const ENEMIES = {
 export const ELITE = { hpMult: 2.5, dmgMult: 1.3, speedMult: 1.1, scale: 1.25, poiseMult: 2, dropMult: 2, gunMult: 3, xpMult: 3 };
 export const AFFINITY_POOL = ['fire', 'shock', 'goo'];
 
+/** Enemy projectile ("bitcoin") radius. */
+export const ENEMY_BULLET_RADIUS = 0.2;
+
+// Bosses: each phase swaps to the next Sproto Duel stage model (stage 1 → 2 → 3).
 export const BOSSES = {
   megaSproto: {
-    name: 'MEGA SPROTO', tag: 'physical', hp: 3500, radius: 2.0, height: 4.5, color: 0xff6a3d, speed: 4.5,
+    name: 'MEGA TINUBU', tag: 'physical', hp: 3500, radius: 2.0, height: 4.5, color: 0xff6a3d, speed: 4.5,
     contactDamage: 15, chargeDamage: 35, chargeSpeed: 22, slamDamage: 25,
+    volley: { damage: 10, count: 7, fan: 50, speed: 24, waves: 2, gap: 0.4 },
+    model: 'tinubu', stageHeights: [4.2, 4.6, 5.0],
+    portraits: ['ui/bosses/tinubu.png', 'ui/bosses/tinubu_stage2.png', 'ui/bosses/tinubu_stage3.png'],
     phases: [
-      { hpBelow: 1.0, speedMult: 1.0, pattern: ['chase', 'charge', 'chase', 'slam'] },
-      { hpBelow: 0.5, speedMult: 1.3, pattern: ['chase', 'charge', 'slam', 'charge', 'slam', 'summon'] },
+      { hpBelow: 1.0, speedMult: 1.0, pattern: ['chase', 'volley', 'charge', 'chase', 'slam'] },
+      { hpBelow: 0.5, speedMult: 1.3, pattern: ['chase', 'charge', 'volley', 'slam', 'charge', 'slam', 'summon'] },
+      { hpBelow: 0.2, speedMult: 1.5, pattern: ['volley', 'charge', 'slam', 'volley', 'charge', 'summon'] },
     ],
     hitboxes: [
       { type: 'capsule', zone: 'body', r: 2.0, y0: 0, y1: 4.5 },
-      { type: 'sphere', zone: 'weak', r: 0.6, x: 0, y: 4.6, z: 0.6 },
+      { type: 'sphere', zone: 'weak', r: 0.6, x: 0, y: 4.4, z: 0.6 },
       { type: 'sphere', zone: 'weak', r: 0.5, x: 0, y: 2.0, z: 1.9, onlyWhen: 'stunned' },
     ],
   },
   hexAuditor: {
-    name: 'THE HEX AUDITOR', tag: 'magic', hp: 3000, radius: 1.3, height: 2.6, color: 0x9b59ff, speed: 4,
-    orbDamage: 8, taxDamage: 12, auraRadius: 8, auraRadiusP3: 12, auraDrain: 15,
+    // Floats ~1.6 m off the ground: pos.y is the body centre, so hitboxes go below and above it.
+    name: 'HEX SAHIL', tag: 'magic', hp: 3000, radius: 0.7, height: 2.5, color: 0x9b59ff, speed: 4.5, hoverY: 1.6,
+    orbDamage: 8, taxDamage: 12, auraRadius: 9, auraRadiusP3: 13, auraDrain: 15,
+    model: 'sahil', stageHeights: [2.6, 2.8, 3.1],
+    portraits: ['ui/bosses/sahil.png', 'ui/bosses/sahil_stage2.png', 'ui/bosses/sahil_stage3.png'],
     phases: [
       { hpBelow: 1.0, pattern: ['drift', 'ring', 'fan', 'spiral', 'teleport'] },
       { hpBelow: 0.6, pattern: ['ring', 'taxBolts', 'spiral', 'fan', 'teleport'] },
       { hpBelow: 0.25, pattern: ['spiralRing', 'taxBolts', 'fan', 'teleport'] },
     ],
     hitboxes: [
-      { type: 'sphere', zone: 'body', r: 1.3, x: 0, y: 0, z: 0 },
+      { type: 'capsule', zone: 'body', r: 0.7, y0: -1.3, y1: 1.3 },
       { type: 'sphere', zone: 'weak', r: 0.45, orbit: 1.9 },
     ],
   },
 };
 
 export const ALLY = { ttl: 8, speed: 7, damage: 30, splashRadius: 2, fireCd: 0.8, range: 14 };
+
+/** Which Sproto Duel stage model an enemy shows: base stage, +1 if elite, +1 from tier 4. */
+export function enemyStage(e) {
+  const def = ENEMIES[e.type];
+  if (!def || !def.stage) return 1;
+  return Math.min(3, def.stage + (e.elite ? 1 : 0) + (e.tier >= 4 ? 1 : 0));
+}

@@ -120,7 +120,7 @@ export function createAudio(bus) {
       if (ev.outcome === 'chicken') tone({ freq: 1200, end: 2400, dur: 0.3, type: 'square', vol: 0.2, delay: 0.35 });
       else if (ev.outcome === 'jackpot') [0, 1, 2, 3].forEach((i) => tone({ freq: 1000 + i * 200, dur: 0.12, type: 'triangle', vol: 0.2, delay: 0.35 + i * 0.08 }));
     },
-    enemyAttack(ev) { if (throttle('tele', 2, 100)) tone({ freq: ev.type === 'tank' ? 90 : 260, end: ev.type === 'tank' ? 60 : 380, dur: 0.18, type: 'sawtooth', vol: 0.08 }); },
+    enemyAttack(ev) { if (throttle('tele', 2, 100)) tone({ freq: ev.enemyType === 'bigObama' ? 90 : 260, end: ev.enemyType === 'bigObama' ? 60 : 380, dur: 0.18, type: 'sawtooth', vol: 0.08 }); },
     stomp() { if (throttle('stomp', 2, 80)) tone({ freq: 140, end: 50, dur: 0.15, type: 'sine', vol: 0.25 }); },
     pound() { noise({ dur: 0.4, vol: 0.4, freq: 600, end: 60 }); },
     splat() { if (throttle('splat', 2, 80)) noise({ dur: 0.2, vol: 0.2, freq: 500, end: 150 }); },
