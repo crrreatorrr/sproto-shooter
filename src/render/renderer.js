@@ -362,7 +362,17 @@ export function createRenderer(container, bus) {
       let mesh = null;
       g.scene.traverse((o) => { if (!mesh && o.isMesh) mesh = o; });
       if (!mesh) return null;
+      // compressed models store quantized (KHR_mesh_quantization) attributes that only decode through the node
+      // transform: dequantize to floats first, or baking the transform in clamps everything to ±1 (a box)
+      g.scene.updateMatrixWorld(true);
       const geo = mesh.geometry.clone();
+      for (const name of Object.keys(geo.attributes)) {
+        const a = geo.attributes[name];
+        if (a.array instanceof Float32Array && !a.normalized) continue;
+        const f = new Float32Array(a.count * a.itemSize);
+        for (let i = 0; i < a.count; i++) for (let j = 0; j < a.itemSize; j++) f[i * a.itemSize + j] = a.getComponent(i, j); // denormalizes
+        geo.setAttribute(name, new THREE.BufferAttribute(f, a.itemSize));
+      }
       geo.applyMatrix4(mesh.matrixWorld);
       geo.computeBoundingBox();
       const c = geo.boundingBox.getCenter(new THREE.Vector3());
@@ -392,7 +402,7 @@ export function createRenderer(container, bus) {
     monsterBullet: { color: 0x4a5a2a, scale: 0.35, cap: 200, model: 'models/projectiles/monster_bullet.glb', len: 0.9, noseYaw: -Math.PI / 2 },
     missile: { color: 0xff8a1a, scale: 0.4, cap: 64, model: 'models/projectiles/missile.glb', len: 1.3, noseYaw: -Math.PI / 2, glow: 0xff6a10 },
     // Car Part Monster's tyres (tumble end over end, glowing hot) and the Mole Monster's drill heads (spin nose-first)
-    tyre: { color: 0x222222, scale: 0.6, cap: 48, model: 'models/projectiles/tyre.glb', len: 1.5, noseYaw: 0, glow: 0xff5a10 },
+    tyre: { color: 0x222222, scale: 0.6, cap: 48, model: 'models/projectiles/tyre.glb', len: 1.5, noseYaw: 0, glow: 0x5a1c04 }, // dark rubber, ember glow
     drill: { color: 0x9a7a5a, scale: 0.4, cap: 96, model: 'models/projectiles/drill_head.glb', len: 1.1, noseYaw: Math.PI / 2 },
     // robot lasers: stretched bolts along their flight
     laser: { color: 0xff2a2a, scale: 0.13, cap: 300 }, bigLaser: { color: 0x6ff6ff, scale: 0.42, cap: 32 },
@@ -1153,7 +1163,7 @@ export function createRenderer(container, bus) {
         dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z);
         if (pr.kind === 'missile') dummy.rotateZ(now * 0.01 + pr.id); // spin
         else if (pr.kind === 'drill') dummy.rotateZ(now * 0.04 + pr.id); // the drill bit keeps spinning
-        else if (pr.kind === 'tyre') dummy.rotateX(now * 0.015 + pr.id); // tumbling end over end
+        else if (pr.kind === 'tyre') { dummy.rotateY(now * 0.009 + pr.id); dummy.rotateX(now * 0.015 + pr.id); } // tumbles: face and tread both show
       }
       else { dummy.scale.setScalar(s); dummy.rotation.set(0, 0, 0); }
       dummy.updateMatrix();

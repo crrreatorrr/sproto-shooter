@@ -39,6 +39,7 @@ export const DROP_TABLES = {
     { kind: 'bigHealth', count: 2, chance: 1 },
     { kind: 'ammo', count: 3, chance: 1 },
     { kind: 'gun', count: 2, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
     { kind: 'tickets', min: 60, max: 60, chance: 1 },
   ],
   moleMonster: [
@@ -47,6 +48,7 @@ export const DROP_TABLES = {
     { kind: 'bigHealth', count: 2, chance: 1 },
     { kind: 'ammo', count: 3, chance: 1 },
     { kind: 'gun', count: 2, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
     { kind: 'tickets', min: 60, max: 60, chance: 1 },
   ],
   robotLaser: [

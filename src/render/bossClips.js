@@ -59,7 +59,8 @@ export function gunClipTime(ai, slot, gun, release) {
   if (K('aimT') > 0) return release * (1 - K('aimT') / gun.windup);
   if (K('burstLeft') > 0) {
     const fired = gun.burst - K('burstLeft'); // shots already out
-    return release + Math.max(0, fired - 1) * gun.burstGap + (gun.burstGap - Math.max(0, K('burstT')));
+    if (fired === 0) return release; // aim just finished; the first shot leaves this tick
+    return release + (fired - 1) * gun.burstGap + (gun.burstGap - Math.max(0, K('burstT')));
   }
   if (K('doneT') != null) return release + (gun.burst - 1) * gun.burstGap + K('doneT');
   return null;
