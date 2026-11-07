@@ -181,20 +181,24 @@ function MEGA(state, e, a, dt, def, t) {
       // wind up facing you, then a heavy swipe in front; dodge out of reach during the windup
       const m = def.melee;
       e.vel.x = e.vel.z = 0; integrate();
-      if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'melee' }); }
+      // variant: bosses with a combo alternate punches and kicks; others smash
+      if (!a.data.variant) { a.data.variant = m.combo ? m.combo[(e.ai.meleeN = (e.ai.meleeN || 0) + 1) % m.combo.length] : 'smash'; }
+      const kick = a.data.variant === 'kick' && m.kick;
+      const reach = m.range + (kick ? kick.range : 0);
+      if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'melee', variant: a.data.variant }); }
       if (a.t < m.windup) { e.yaw = yawTo(e.pos, t.pos); return false; }
       if (!a.data.swung) {
         a.data.swung = true;
         e.ai.meleeCd = m.cd;
-        emit(state, 'bossCast', { id: e.id, kind: 'melee' });
+        emit(state, 'bossCast', { id: e.id, kind: 'melee', variant: a.data.variant });
         const fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw);
         for (const p of Object.values(state.players)) {
           if (p.dead) continue;
           const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z, d = Math.hypot(dx, dz) || 1;
           const inFront = (dx * fx + dz * fz) / d > -0.2;
-          if (d < def.radius + m.range + TUNING.playerRadius && inFront && p.pos.y < def.height) {
-            damagePlayer(state, p, { base: m.damage * e.dmgMult, sourceKind: 'boss', fromPos: e.pos });
-            knockPlayer(p, e.pos, m.knockback, 7);
+          if (d < def.radius + reach + TUNING.playerRadius && inFront && p.pos.y < def.height) {
+            damagePlayer(state, p, { base: m.damage * (kick ? kick.damage : 1) * e.dmgMult, sourceKind: 'boss', fromPos: e.pos });
+            knockPlayer(p, e.pos, m.knockback * (kick ? kick.knockback : 1), kick ? 9 : 7);
           }
         }
       }
@@ -427,6 +431,46 @@ function DRAGON(state, e, a, dt, def, t) {
         emit(state, 'bossCast', { id: e.id, kind: 'fireball' });
       }
       return a.t > 0.4 + f.count * 0.45 + 0.3;
+    }
+    case 'fly': {
+      // take off, circle the player at altitude dropping fireballs, then land
+      const f = def.fly;
+      const dur = f.duration * (e.boss.phaseIdx >= 2 ? 1.3 : 1);
+      const ease = (k) => k * k * (3 - 2 * k);
+      e.ai.moving = true;
+      if (a.t < f.rise) { // take-off: climb while gliding forward
+        e.pos.y = f.height * ease(a.t / f.rise);
+        turn(1.5); move(sp * 0.8);
+        if (!a.data.tele) { a.data.tele = true; emit(state, 'bossTelegraph', { id: e.id, kind: 'takeoff' }); }
+        return false;
+      }
+      if (a.t < f.rise + dur) { // circle around the player
+        if (a.data.dir === undefined) a.data.dir = float(state.rng) < 0.5 ? -1 : 1;
+        const ang = Math.atan2(e.pos.x - t.pos.x, e.pos.z - t.pos.z) + a.data.dir * (f.speed / f.radius) * dt;
+        const tx = t.pos.x + Math.sin(ang) * f.radius, tz = t.pos.z + Math.cos(ang) * f.radius;
+        const want = Math.atan2(-(tx - e.pos.x), -(tz - e.pos.z));
+        e.yaw = angleWrap(e.yaw + Math.max(-3 * dt, Math.min(3 * dt, angleWrap(want - e.yaw))));
+        const spd = Math.min(f.speed, Math.hypot(tx - e.pos.x, tz - e.pos.z) / dt);
+        move(spd);
+        e.pos.y = f.height + Math.sin(a.t * 2.2) * 0.4;
+        // drop a fireball at the player every few moments
+        a.data.shot = a.data.shot ?? f.shotEvery * 0.5;
+        if (a.t - f.rise >= a.data.shot) {
+          a.data.shot += f.shotEvery;
+          const fb = def.fireball, h = headPos(e, def), T = 0.9, g = 14;
+          createProjectile(state, { kind: 'fireball', faction: 'enemy', ownerId: e.id, sourceKind: 'boss', pos: { ...h },
+            vel: { x: (t.pos.x - h.x) / T, y: (t.pos.y - h.y + 0.5 * g * T * T) / T, z: (t.pos.z - h.z) / T }, gravity: g, radius: 0.6,
+            damage: fb.damage * e.dmgMult, ttl: 3, element: 'fire', splash: { radius: fb.splash, damage: fb.damage * e.dmgMult } });
+          emit(state, 'bossCast', { id: e.id, kind: 'fireball' });
+        }
+        return false;
+      }
+      // landing: glide down
+      const k = (a.t - f.rise - dur) / f.land;
+      turn(2); move(sp * 0.6 * (1 - k));
+      e.pos.y = f.height * (1 - ease(Math.min(1, k)));
+      if (k >= 1) { e.pos.y = 0; emit(state, 'pound', { id: e.id, pos: { ...e.pos } }); return true; }
+      return false;
     }
     case 'tailSwipe': {
       const tl = def.tail;

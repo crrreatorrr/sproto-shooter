@@ -121,12 +121,14 @@ export const BOSSES = {
     breath: { damage: 6, speed: 18, rate: 0.07, duration: 1.6, sweep: 60, telegraph: 0.7 },
     fireball: { damage: 15, splash: 2.6, count: 3, flight: 1.2 },
     tail: { damage: 20, radius: 6.5, windup: 0.6 },
+    // flight: take off, circle you at altitude dropping fireballs, land
+    fly: { height: 7, rise: 1.2, duration: 5.5, land: 1.2, speed: 11, radius: 13, shotEvery: 1.1 },
     model: 'dragon', stageHeights: [3.2, 3.4, 3.6],
     portraits: [],
     phases: [
-      { hpBelow: 1.0, speedMult: 1.0, pattern: ['stalk', 'breath', 'stalk', 'fireballs', 'tailSwipe'] },
-      { hpBelow: 0.6, speedMult: 1.2, pattern: ['stalk', 'breath', 'fireballs', 'summon', 'tailSwipe', 'breath'] },
-      { hpBelow: 0.25, speedMult: 1.4, pattern: ['breath', 'fireballs', 'tailSwipe', 'breath', 'summon'] },
+      { hpBelow: 1.0, speedMult: 1.0, pattern: ['stalk', 'breath', 'fly', 'stalk', 'fireballs', 'tailSwipe'] },
+      { hpBelow: 0.6, speedMult: 1.2, pattern: ['stalk', 'fly', 'breath', 'fireballs', 'summon', 'tailSwipe', 'fly'] },
+      { hpBelow: 0.25, speedMult: 1.4, pattern: ['fly', 'breath', 'fireballs', 'tailSwipe', 'fly', 'summon'] },
     ],
     hitboxes: [
       { type: 'sphere', zone: 'weak', r: 0.55, x: 0, y: 2.55, z: 2.55 },
@@ -135,6 +137,26 @@ export const BOSSES = {
       { type: 'sphere', zone: 'body', r: 1.15, x: 0, y: 1.2, z: -0.6 },
       { type: 'sphere', zone: 'body', r: 0.9, x: 0, y: 0.95, z: -1.8 },
       { type: 'sphere', zone: 'body', r: 0.6, x: 0, y: 0.7, z: -2.7 },
+    ],
+  },
+  sprotoBeast: {
+    // Rigged humanoid (Tripo skeleton) without clips, animated by humanoidRig.js. Fights with punches and kicks.
+    name: 'SPROTO BEAST', tag: 'physical', ai: 'mega', hp: 4500, radius: 2.4, height: 7.5, color: 0x7a3cff, speed: 5.4,
+    contactDamage: 20, chargeDamage: 45, chargeSpeed: 25, slamDamage: 32,
+    volley: { damage: 11, count: 7, fan: 55, speed: 26, waves: 2, gap: 0.35, y: 6.0 },
+    melee: { range: 3.4, damage: 55, windup: 0.42, recover: 0.6, cd: 1.2, knockback: 15, combo: ['punch', 'kick', 'punch', 'punch', 'kick'], kick: { range: 1.0, damage: 1.2, knockback: 1.4 } },
+    missiles: { count: 4, damage: 34, splash: 4.5, speed: 14, homing: 1.3, ttl: 6, gap: 0.25, y: 6.4 },
+    model: 'sprotoBeast', rig: 'humanoid', stageHeights: [7.5, 8.0, 8.6],
+    portraits: [],
+    phases: [
+      { hpBelow: 1.0, speedMult: 1.0, pattern: ['chase', 'missiles', 'chase', 'volley', 'charge', 'slam'] },
+      { hpBelow: 0.55, speedMult: 1.25, pattern: ['chase', 'charge', 'missiles', 'chase', 'slam', 'summon'] },
+      { hpBelow: 0.2, speedMult: 1.5, pattern: ['missiles', 'chase', 'charge', 'slam', 'volley', 'chase', 'summon'] },
+    ],
+    hitboxes: [
+      { type: 'capsule', zone: 'body', r: 2.4, y0: 0, y1: 7.5 },
+      { type: 'sphere', zone: 'weak', r: 0.9, x: 0, y: 6.4, z: 1.9 },
+      { type: 'sphere', zone: 'weak', r: 0.75, x: 0, y: 3.9, z: 1.6, onlyWhen: 'stunned' },
     ],
   },
   hexAuditor: {

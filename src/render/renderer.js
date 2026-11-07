@@ -284,7 +284,7 @@ export function createRenderer(container, bus) {
       if (ch && def.rig === 'humanoid') parts.rig = createHumanoidRig(ch, def); // skeleton animated in code
     } else if (e.type === 'dragon') {
       holder.rotation.y = Math.PI; // this model's head is at Tripo -X, the opposite of the other characters
-      g.add(blob(3.4));
+      parts.groundShadow = blob(3.4); g.add(parts.groundShadow); // stays on the ground while it flies
       if (ch) parts.rig = createDragonRig(ch);
     } else {
       holder.position.y = -1.3; // pos.y is the floating body centre
@@ -852,11 +852,17 @@ export function createRenderer(container, bus) {
           ch.play(clip, { speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : 1 });
         }
         ch.update(fdt);
-        if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, speed: spd, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0 });
+        if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, speed: spd, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0,
+          variant: e.boss ? e.boss.action.data.variant : null, altitude: ey, yaw: e.yaw });
       }
       if (e.boss) {
         if (e.type === 'dragon') {
-          o.position.y = ey + (e.ai.moving ? Math.abs(Math.sin(now * 0.008)) * 0.12 : Math.sin(now * 0.002) * 0.05);
+          const airborne = ey > 0.4;
+          o.position.y = ey + (airborne ? Math.sin(now * 0.004) * 0.15 : e.ai.moving ? Math.abs(Math.sin(now * 0.008)) * 0.12 : Math.sin(now * 0.002) * 0.05);
+          if (u.groundShadow) { // shadow stays on the floor, shrinking and fading with altitude
+            u.groundShadow.position.y = 0.02 - (o.position.y) / Math.max(0.05, o.scale.y);
+            u.groundShadow.scale.setScalar(3.4 * Math.max(0.5, 1 - ey * 0.05));
+          }
         } else if (BOSSES[e.type].ai === 'mega') {
           u.belly.visible = e.boss.action.id === 'stunned';
           o.rotation.z = e.boss.action.id === 'stunned' ? Math.sin(now * 0.02) * 0.06 : 0;
