@@ -35,7 +35,7 @@ export function projectiles(state, dt) {
       if (hit) {
         damageEnemy(state, hit.e, {
           sourceId: p.ownerId, sourceKind: p.sourceKind, base: p.damage, element: p.element, elementChance: p.elementChance,
-          zone: hit.zone, critMult: p.critMult, critChance: p.critChance, canCrit: p.kind === 'duckBullet' || p.kind === 'megaBullet',
+          zone: hit.zone, critMult: p.critMult, critChance: p.critChance, canCrit: p.kind === 'duckBullet' || p.kind === 'megaBullet' || p.kind === 'bigBullet',
           point: hit.point, gunId: p.gunId, arcane: p.arcane, wacky: p.wacky, pellet: !!p.pellet,
         });
         p.hitIds[hit.e.id] = true;

@@ -1,7 +1,7 @@
 // Drop rolling (pure) + spawning. PLAN §4.13
 import { float, int, range, weighted, next } from '../core/rng.js';
 import { DROP_TABLES, QUALITY_TABLES } from '../data/drops.js';
-import { QUALITIES, GUN_TYPES } from '../data/guns.js';
+import { QUALITIES, GUN_TYPES, BOSS_GUN_TYPES } from '../data/guns.js';
 import { ELITE } from '../data/enemies.js';
 import { TUNING } from '../data/tuning.js';
 import { generateGun } from './guns.js';
@@ -57,6 +57,13 @@ export function rollDrops(rng, tableId, ctx = {}) {
           const quality = rollQuality(rng, entry.table, shift);
           const type = rollGunType(rng);
           out.push({ kind: 'gun', type, quality, seed: next(rng), level: ctx.tier || 1 });
+          break;
+        }
+        case 'bossGun': {
+          // boss-only weapon (Ray Gun / Big Bullets), at least rare
+          const type = BOSS_GUN_TYPES[Math.min(BOSS_GUN_TYPES.length - 1, Math.floor(float(rng) * BOSS_GUN_TYPES.length))];
+          const quality = rollQuality(rng, entry.table, 1);
+          out.push({ kind: 'gun', type, quality, seed: next(rng), level: ctx.tier || 1, source: 'boss' });
           break;
         }
       }

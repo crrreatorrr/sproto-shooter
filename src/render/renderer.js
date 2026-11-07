@@ -375,6 +375,7 @@ export function createRenderer(container, bus) {
     spit: { color: 0x9be33b, scale: 0.3, cap: 64 }, gooBolt: { color: 0x7fff4a, scale: 0.28, cap: 64 },
     rocket: { color: 0xff6a3d, scale: 0.22, cap: 32 }, duckBullet: { color: 0xffe14a, scale: 0.2, cap: 128 },
     megaBullet: { color: 0xffffff, scale: 0.6, cap: 16 }, yeetGun: { color: 0xaaaaaa, scale: 0.35, cap: 16 },
+    bigBullet: { color: 0xffa21f, scale: 0.26, cap: 32 }, // Big Bullets round: fat, stretched along its flight
     bullet: { color: 0xffc93c, scale: 0.22, cap: 600 },
     flame: { color: 0xff7a1a, scale: 0.4, cap: 300 }, fireball: { color: 0xff4a1a, scale: 0.6, cap: 16 },
     pellet: { color: 0xff5ec4, scale: 0.12, cap: 300 },
@@ -410,11 +411,12 @@ export function createRenderer(container, bus) {
   const PK_COL = { health: new THREE.Color(0xff4d6d), bigHealth: new THREE.Color(0xff2255), mana: new THREE.Color(0x6aa8ff), tickets: new THREE.Color(0xffd700) };
 
   // Gun with a 3D model (e.g. the toy machine gun): model + element gem. Null if the type has none / not loaded yet.
-  const GUN_MODEL_LEN = { mg: 0.7, shotgun: 0.75, sniper: 0.8, bazooka: 0.9 };
+  const GUN_MODEL_LEN = { mg: 0.7, shotgun: 0.75, sniper: 0.8, bazooka: 0.9, raygun: 0.62, bigbullets: 0.78 };
   // Where the hands hold each model: anchors inside the part each hand grabs, as fractions of the model's size
   // [x (+ = right), y (from the center, + = up), z (+ = back)]. The first-person rig slides each palm out of the
   // gun from its anchor until it rests on the surface, so anchors sit inside the grip / handguard, not on it.
-  // Hand frames: `rake` tilts the right hand's fingers down around a raked pistol grip; `left` picks how the
+  // Hand frames: `rake` tilts the right hand's fingers down around a raked pistol grip (`thumb` < 0 wraps the
+  // thumb over the grip instead of laying it along the right side); `left` picks how the
   // support hand holds: 'cup' (palm up under a handguard) or 'foregrip' (wrapped around a vertical grip or the
   // side of the handguard, thumb up). Calibrated with dev/fpLab.js (no hand, arm or finger more than 1 cm inside
   // the gun at hip or aim).
@@ -423,6 +425,9 @@ export function createRenderer(container, bus) {
     shotgun: { grip: [0, -0.29, 0.373], fore: [0, -0.041, -0.373], left: 'cup', rake: -0.6 },
     sniper: { grip: [0, -0.4, 0.1375], fore: [0.108, 0.067, -0.175], left: 'foregrip', rake: -0.35 },
     bazooka: { grip: [0, -0.415, 0.208], fore: [0, -0.32, -0.042], left: 'foregrip', rake: -0.35 },
+    // boss pistols: right hand wrapped round the grip's middle, left hand cupped under the front of the body
+    raygun: { grip: [0, -0.298, 0.31], fore: [-0.113, -0.059, -0.13], left: 'cup', rake: -1.2 },
+    bigbullets: { grip: [0, -0.401, 0.405], fore: [-0.09, -0.294, -0.206], left: 'cup', rake: -1.2, thumb: -0.3 },
   };
   const LEFT_SPEC = {
     cup: { fingers: [1, 0.25, 0.15], thumb: [0, 0.2, -1] },
@@ -445,7 +450,7 @@ export function createRenderer(container, bus) {
     const hf = HAND_FRAC[gun.type] || HAND_FRAC.mg, sz = inst.size;
     g.userData.grip = [hf.grip[0] * sz.x, hf.grip[1] * sz.y, hf.grip[2] * sz.z];
     g.userData.fore = [hf.fore[0] * sz.x, hf.fore[1] * sz.y, hf.fore[2] * sz.z];
-    g.userData.rightSpec = { fingers: [0, hf.rake, -1], thumb: [0.3, 1, -0.2] }; // thumb rests along the right side
+    g.userData.rightSpec = { fingers: [0, hf.rake, -1], thumb: [hf.thumb ?? 0.3, 1, -0.2] }; // thumb along the right side (or wrapped, < 0)
     g.userData.leftSpec = LEFT_SPEC[hf.left] || LEFT_SPEC.cup;
     return g;
   }
@@ -461,7 +466,7 @@ export function createRenderer(container, bus) {
     const bodyMat = M(man.color, { roughness: 0.4, metalness: 0.3 });
     const accent = M(new THREE.Color(q.color), { emissive: new THREE.Color(q.color), emissiveIntensity: 0.35 });
     const elCol = ELEM_COL[gun.element];
-    const dims = { mg: [0.12, 0.14, 0.6], shotgun: [0.14, 0.14, 0.55], sniper: [0.09, 0.11, 0.85], bazooka: [0.2, 0.2, 0.9] }[gun.type];
+    const dims = { mg: [0.12, 0.14, 0.6], shotgun: [0.14, 0.14, 0.55], sniper: [0.09, 0.11, 0.85], bazooka: [0.2, 0.2, 0.9], raygun: [0.12, 0.16, 0.55], bigbullets: [0.16, 0.18, 0.7] }[gun.type] || [0.12, 0.14, 0.6];
     const body = new THREE.Mesh(G.box, bodyMat); body.scale.set(...dims);
     g.add(body);
     if (gun.type === 'bazooka') {
@@ -596,6 +601,40 @@ export function createRenderer(container, bus) {
     scene.add(m);
     booms.push({ m, life, max: life, radius });
   }
+  // Ray Gun lasers: a white-hot core inside a coloured additive glow, stretched from muzzle to hit point; they
+  // flare for a few frames and thin out as they fade
+  const BEAM_N = 24, RAY_COL = 0x5dfcff;
+  const beamGeo = new THREE.CylinderGeometry(1, 1, 1, 10, 1, true).rotateX(Math.PI / 2); // axis along +Z, unit length
+  const beams = Array.from({ length: BEAM_N }, () => {
+    const glow = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({ color: RAY_COL, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+    const core = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthWrite: false, toneMapped: false }));
+    const g = new THREE.Group(); g.add(glow, core); g.visible = false; g.frustumCulled = false;
+    glow.frustumCulled = core.frustumCulled = false;
+    scene.add(g);
+    return { g, glow, core, life: 0, max: 0.16, len: 1 };
+  });
+  let beamIdx = 0;
+  function addBeam(from, to, color) {
+    const b = beams[beamIdx++ % BEAM_N];
+    const len = Math.max(0.01, Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z));
+    b.g.position.set((from.x + to.x) / 2, (from.y + to.y) / 2, (from.z + to.z) / 2);
+    b.g.lookAt(to.x, to.y, to.z);
+    b.len = len; b.life = b.max; b.g.visible = true;
+    b.glow.material.color.set(color);
+    addBoom(to, 0.35, color, 0.12); // hit flare
+  }
+  function updateBeams(fdt) {
+    for (const b of beams) {
+      if (b.life <= 0) continue;
+      b.life -= fdt;
+      if (b.life <= 0) { b.g.visible = false; continue; }
+      const k = b.life / b.max; // 1 → 0
+      b.glow.scale.set(0.14 * k + 0.03, 0.14 * k + 0.03, b.len);
+      b.core.scale.set(0.045 * k + 0.01, 0.045 * k + 0.01, b.len);
+      b.glow.material.opacity = 0.55 * k; b.core.material.opacity = 0.95 * k;
+    }
+  }
+
   const flashLight = new THREE.PointLight(0xffcc66, 0, 12);
   scene.add(flashLight);
   let flashT = 0;
@@ -621,6 +660,10 @@ export function createRenderer(container, bus) {
     // bazooka: same rules as the other guns, a little lower because the tube is tall; aiming keeps its top
     // below the crosshair
     bazooka: { len: 0.72, rest: [0.22, -0.22, -0.55], ads: [0, -0.3, -0.55], yaw: 0.06, roll: -0.03, scale: 1 },
+    // boss weapons: chunky two-handed pistols, held a little closer; aiming lines the dish / bell up under the
+    // crosshair
+    raygun: { len: 0.5, rest: [0.17, -0.17, -0.45], ads: [0, -0.2, -0.42], yaw: 0.08, roll: -0.03, scale: 1 },
+    bigbullets: { len: 0.58, rest: [0.18, -0.19, -0.48], ads: [0, -0.24, -0.46], yaw: 0.08, roll: -0.03, scale: 1 },
   };
   const fp = createFirstPerson(camera); // first-person arms (main): drawn in the viewmodel pass with the gun
   // The arms' gun collider takes ~50 ms to build per model: build it in idle time for every gun carried, so
@@ -665,6 +708,18 @@ export function createRenderer(container, bus) {
       x: -0.04 * e, y: -0.05 * e - 0.04 * pulse(t, 0.5, 0.05) + 0.03 * pulse(t, 0.62, 0.04), z: 0.1 * e + 0.04 * pulse(t, 0.25, 0.05) - 0.04 * pulse(t, 0.86, 0.04),
       rx: 0.15 * e, ry: 0.12 * e, rz: 0.35 * e + 0.15 * pulse(t, 0.25, 0.05) - 0.12 * pulse(t, 0.86, 0.04),
     }),
+    // swing the back of the gun round in front, swap the power cell there, then a charge-up twirl
+    raygun: (t, e) => ({
+      x: -0.05 * e, y: -0.03 * e, z: -0.05 * e,
+      rx: 0.15 * e, ry: -0.6 * e, rz: 0.25 * e + 0.6 * pulse(t, 0.84, 0.05),
+    }),
+    // roll the drum toward the left hand, thumb in four big rounds (a nudge per round), flick the drum shut
+    bigbullets: (t, e) => {
+      let push = 0;
+      for (let i = 0; i < 4; i++) push += pulse(t, 0.3 + i * 0.11, 0.03);
+      return { x: -0.03 * e, y: -0.05 * e, z: 0.07 * e,
+        rx: 0.2 * e + 0.03 * push, ry: -0.2 * e, rz: -0.6 * e - 0.5 * pulse(t, 0.84, 0.05) };
+    },
     // swing the tube out to the right so its open back end comes round in front, load a rocket, swing back
     bazooka: (t, e) => ({
       x: -0.06 * e, y: -0.08 * e + 0.02 * pulse(t, 0.6, 0.05), z: -0.1 * e - 0.03 * pulse(t, 0.6, 0.05),
@@ -725,6 +780,21 @@ export function createRenderer(container, bus) {
           spec: { fingers: [1, 0.25, 0.15], thumb: [0, 0.2, -1] } },
       };
     },
+    // left hand pulls the power cell out of the back, fetches a fresh one from below, plugs it in
+    raygun: (t) => {
+      const cell = [0, 0.2, 0.5], out = [-0.4, 0.35, 0.95], low = [-1.3, -0.7, 0.4];
+      return { left: { spec: PUSH_FWD_L, w: track(t, [[0.08, 0], [0.2, 1], [0.74, 1], [0.86, 0]]),
+        at: track(t, [[0.2, cell], [0.3, cell], [0.4, out], [0.5, low], [0.6, out], [0.68, cell], [0.74, cell]]) } };
+    },
+    // left hand on the side of the drum, pushing a round in per nudge (out to fetch the next between)
+    bigbullets: (t) => {
+      const drum = [-0.3, 0.08, -0.09], away = [-1.1, -0.1, -0.05], fore = HAND_FRAC.bigbullets.fore;
+      const below = [fore[0] - 0.3, fore[1] - 0.6, fore[2]]; // drop clear of the gun before turning the hand
+      const keys = [[0.12, below], [0.2, away]];
+      for (let i = 0; i < 4; i++) { const c = 0.3 + i * 0.11; keys.push([c - 0.04, away], [c, drum], [c + 0.04, away]); }
+      keys.push([0.8, away], [0.86, below]);
+      return { left: { spec: LEFT_SPEC.foregrip, w: track(t, [[0.04, 0], [0.12, 1], [0.86, 1], [0.94, 0]]), at: track(t, keys) } };
+    },
     // left hand leaves the foregrip, takes a rocket from behind the tube and pushes it in, back to the grip
     bazooka: (t) => {
       const behind = [0, 0.05, 0.85], mouth = [0, 0.05, 0.56], low = [-0.6, -0.5, 0.6];
@@ -749,13 +819,14 @@ export function createRenderer(container, bus) {
 
   // ---------- event listeners ----------
   bus.on('shot', (ev) => {
-    vm.kick = Math.min(1, vm.kick + (ev.gunType === 'mg' ? 0.25 : 1));
+    vm.kick = Math.min(1, vm.kick + (ev.gunType === 'mg' || ev.gunType === 'raygun' ? 0.25 : 1));
     muzzleFlash.visible = true; flashT = 0.05;
-    const big = ev.gunType !== 'mg';
+    const big = ev.gunType !== 'mg' && ev.gunType !== 'raygun';
     muzzleFlash.scale.setScalar(big ? 0.12 : 0.07 * (ev.manufacturer === 'blastco' ? 1.6 : 1));
-    muzzleFlash.material.color.set(ELEM_COL[ev.element]);
-    addTrauma(ev.mega ? 0.5 : ev.gunType === 'mg' ? 0.03 : ev.gunType === 'sniper' ? 0.25 : 0.2);
-    feel.fovPunch += ev.gunType === 'mg' ? 0.2 : 2;
+    muzzleFlash.material.color.set(ev.gunType === 'raygun' && ev.element === 'none' ? RAY_COL : ELEM_COL[ev.element]);
+    if (ev.gunType === 'bigbullets') muzzleFlash.scale.setScalar(0.2);
+    addTrauma(ev.mega ? 0.5 : ev.gunType === 'mg' ? 0.03 : ev.gunType === 'raygun' ? 0.02 : ev.gunType === 'sniper' ? 0.25 : ev.gunType === 'bigbullets' ? 0.4 : 0.2);
+    feel.fovPunch += ev.gunType === 'mg' || ev.gunType === 'raygun' ? 0.2 : ev.gunType === 'bigbullets' ? 3.5 : 2;
   });
   bus.on('tracer', (ev) => {
     const col = ev.zap ? 0x9ff3ff : ELEM_COL[ev.element] || 0xffe9a8;
@@ -765,7 +836,8 @@ export function createRenderer(container, bus) {
       const mp = new THREE.Vector3(); muzzleFlash.getWorldPosition(mp);
       if (Math.hypot(ev.from.x - camera.position.x, ev.from.z - camera.position.z) < 1.5) from = { x: mp.x, y: mp.y, z: mp.z };
     }
-    addTracer(from, ev.to, col, ev.zap ? 0.18 : ev.gunType === 'sniper' ? 0.15 : 0.05, !!ev.zap);
+    if (ev.gunType === 'raygun') addBeam(from, ev.to, ev.element && ev.element !== 'none' ? ELEM_COL[ev.element] : RAY_COL);
+    else addTracer(from, ev.to, col, ev.zap ? 0.18 : ev.gunType === 'sniper' ? 0.15 : 0.05, !!ev.zap);
     if (ev.mega) addTracer(from, ev.to, 0xffffff, 0.2);
   });
   bus.on('impact', (ev) => burstConfetti({ ...ev.pos, y: Math.max(0.05, ev.pos.y) }, 3, 2, [new THREE.Color(ELEM_COL[ev.element])]));
@@ -1025,6 +1097,10 @@ export function createRenderer(container, bus) {
       dummy.position.set(lerp(pr.prevPos.x, pr.pos.x, alpha), lerp(pr.prevPos.y, pr.pos.y, alpha), lerp(pr.prevPos.z, pr.pos.z, alpha));
       const s = I.d.scale * (pr.kind === 'orb' || pr.kind === 'taxBolt' || pr.kind === 'fireball' ? 1 + Math.sin(now * 0.02 + pr.id) * 0.15 : 1) * (pr.kind === 'flame' ? 0.6 + (1.4 - pr.ttl) * 1.6 : 1);
       if (pr.kind === 'rocket') { dummy.scale.set(s, s, s * 3); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
+      else if (pr.kind === 'bigBullet') {
+        dummy.scale.set(s, s, s * 2.4); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z);
+        addTracer(pr.prevPos, dummy.position, 0xffd27a, 0.09); // hot streak behind the round
+      }
       else if (pr.kind === 'bullet' || pr.kind === 'pellet') { dummy.scale.set(s, s, s * 2.2); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
       else if (pr.kind === 'yeetGun') { dummy.scale.set(0.15, 0.2, 0.8); dummy.rotation.set(now * 0.02, now * 0.015, 0); }
       else if (I.d.model) { // modeled boss projectiles fly nose-first
@@ -1056,6 +1132,7 @@ export function createRenderer(container, bus) {
     }
     for (const k in PK) { const I = PK[k]; I.im.count = I.n; I.im.instanceMatrix.needsUpdate = true; if (I.im.instanceColor) I.im.instanceColor.needsUpdate = true; }
 
+    updateBeams(fdt);
     // tracers
     for (let i = 0; i < TRACER_N; i++) {
       const tr = tracers[i];

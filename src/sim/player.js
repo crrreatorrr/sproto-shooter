@@ -255,6 +255,15 @@ export function playerCombat(state, dt) {
         radius: 0.6, damage: st.damage * st.pellets * 6, element: g.element, elementChance: 1, critMult: st.critMult, pierce: 5, ttl: 3, arcane: g.arcane,
         splash: { radius: 3, damage: st.damage * st.pellets * 3, minFalloff: 0.4, selfMult: 0, knockback: 6 },
       });
+    } else if (GUN_TYPES_BY_ID[g.type].projectile === 'bigBullet') {
+      // Big Bullets: a visible heavy round, slight drop, crits, punches through `pierce` targets, bursts on impact
+      const d = coneDir(state, aim, st.spread);
+      createProjectile(state, {
+        kind: 'bigBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: d.x * st.projectileSpeed, y: d.y * st.projectileSpeed, z: d.z * st.projectileSpeed },
+        radius: 0.32, gravity: 4, damage: st.damage, element: g.element, elementChance: st.elementChance, critMult: st.critMult, critChance: st.critChance,
+        pierce: st.pierce, ttl: 3, arcane: g.arcane, wacky: g.wacky,
+        splash: { radius: st.splashRadius, damage: st.splashDamage, minFalloff: 0.4, selfMult: 0, knockback: 7 },
+      });
     } else if (st.projectileSpeed > 0) {
       const d = coneDir(state, aim, st.spread);
       createProjectile(state, {

@@ -200,3 +200,31 @@ export async function shot(name, url = 'http://127.0.0.1:5192/') {
   const res = await fetch(url + encodeURIComponent(name), { method: 'POST', body: data });
   return res.text();
 }
+
+/** Equip exactly these gun types in slots 1-4 (e.g. boss weapons that never drop in the sandbox), then setup(). */
+export async function loadout(types) {
+  const { generateGun } = await import('/src/sim/guns.js');
+  const p = player();
+  p.unlockedSlots = Math.max(p.unlockedSlots, types.length);
+  types.forEach((type, i) => {
+    const g = generateGun({ seed: 21 + i, level: 1, forced: { type, quality: 'rare', manufacturer: 'reliable', element: 'none' } });
+    g.id = 9000 + i;
+    p.guns[i] = g;
+  });
+  return setup({ guns: types });
+}
+
+/** Side profile of the held gun: solid z-runs (gun local, + = back) per height at the centre plane. */
+export async function profile(step = 0.02) {
+  const g = gunMesh(), col = R().firstPerson.debug().collider, sz = g.userData.size, p = new THREE.Vector3(), rows = [];
+  for (let y = -sz.y / 2; y <= sz.y / 2; y += step) {
+    const runs = []; let start = null;
+    for (let z = -sz.z / 2; z <= sz.z / 2 + 0.005; z += 0.005) {
+      const solid = [-0.02, 0, 0.02].some((x) => col.inside(p.set(x, y, z)));
+      if (solid && start === null) start = z;
+      if (!solid && start !== null) { runs.push(`${start.toFixed(2)}..${z.toFixed(2)}`); start = null; }
+    }
+    rows.push(`y=${y.toFixed(2)}: ${runs.join(' ')}`);
+  }
+  return { type: g.userData.type, size: [sz.x, sz.y, sz.z].map((v) => +v.toFixed(3)), rows };
+}
