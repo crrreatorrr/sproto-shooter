@@ -36,7 +36,7 @@ stable; skeletal animations and the normal render loop continue. The view
 faces yaw 0, pitch −0.05. After assets finish and a 2-second warm-up, collect
 8 seconds of rAF intervals. Report mean fps, p95/max frame duration, draw calls,
 triangles, programs, textures and geometries. Fail on browser exceptions,
-failed requests/HTTP errors or an incorrect live-enemy count.
+failed game requests/HTTP errors or an incorrect live-enemy count. The existing\nmissing `/favicon.ico` is recorded separately and is not a game asset failure.
 
 This is a reproducible rendering baseline, not evidence that 1080p gameplay
 meets the final reference-GPU quality bar. The frozen-AI setup must be preserved

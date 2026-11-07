@@ -39,7 +39,7 @@ try {
   await new Promise((resolve, reject) => { socket.addEventListener('open', resolve, { once: true }); socket.addEventListener('error', reject, { once: true }); });
   let seq = 0;
   const pending = new Map(), requests = new Map();
-  let responses = [], errors = [];
+  let responses = [], errors = [], ignoredHttpErrors = [];
   socket.addEventListener('message', ({ data }) => {
     const msg = JSON.parse(data);
     if (msg.id) {
@@ -51,7 +51,11 @@ try {
     if (msg.method === 'Network.responseReceived') {
       const r = msg.params.response;
       requests.set(msg.params.requestId, { url: r.url, status: r.status });
-      if (r.status >= 400) errors.push({ url: r.url, status: r.status });
+      if (r.status >= 400) {
+        const error = { url: r.url, status: r.status };
+        if (new URL(r.url).pathname === '/favicon.ico') ignoredHttpErrors.push(error);
+        else errors.push(error);
+      }
     }
     if (msg.method === 'Network.loadingFinished') {
       const r = requests.get(msg.params.requestId);
@@ -76,7 +80,7 @@ try {
   await send('Network.setCacheDisabled', { cacheDisabled: true });
   await send('Emulation.setDeviceMetricsOverride', { width: 800, height: 450, deviceScaleFactor: 1, mobile: false });
   async function load(query) {
-    responses = []; errors = []; requests.clear();
+    responses = []; errors = []; ignoredHttpErrors = []; requests.clear();
     await send('Page.navigate', { url: `http://127.0.0.1:4174/?seed=123&${query}` });
     await poll(() => evaluate('Boolean(window.__game && window.__game.state.tick > 2)'), 'game ticks');
     await poll(() => evaluate('window.__game.renderer.pendingDownloads() === 0'), 'assets');
@@ -127,7 +131,7 @@ try {
       chunks.push({ path: `${dir}/${name}`, bytes: b.length, gzipBytes: gzipSync(b).length });
     }
   }
-  const report = { commit: execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(), capturedAt: new Date().toISOString(), environment: {node:process.version, platform:platform(), release:release(), cpu:cpus()[0].model, chrome:execFileSync(process.env.CHROME_BIN || 'google-chrome',['--version'],{encoding:'utf8'}).trim(), viewport:[800,450], gpu:'SwiftShader'}, chunks, titleNetwork, wave1Network, stress: {...counts,...summarizeFrames(frames)}, errors };
+  const report = { commit: execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(), capturedAt: new Date().toISOString(), environment: {node:process.version, platform:platform(), release:release(), cpu:cpus()[0].model, chrome:execFileSync(process.env.CHROME_BIN || 'google-chrome',['--version'],{encoding:'utf8'}).trim(), viewport:[800,450], gpu:'SwiftShader'}, chunks, titleNetwork, wave1Network, stress: {...counts,...summarizeFrames(frames)}, errors, ignoredHttpErrors };
   await writeFile(join(out,'metrics.json'), JSON.stringify(report,null,2)+'\n');
   console.log('BASELINE_RESULT\n'+JSON.stringify(report,null,2));
 } finally {
