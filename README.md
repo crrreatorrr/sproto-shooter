@@ -1,5 +1,7 @@
 # Sproto Shooter
 
+**Development has moved** to [sproto-duel](https://github.com/crrreatorrr/sproto-duel) at `src/shooter`. This repository is frozen. The plan is [COOP_PLAN.md](COOP_PLAN.md).
+
 A wacky first-person loot shooter built with Three.js, inspired by Borderlands. You fight waves of Sproto Duel characters (midget swarms and bitcoin-shooting Obamas) across Sproto Duel's stages, grab procedurally generated guns, craft better ones at Weapon Boxes, and level four skills just by playing.
 
 This is the **mechanics sandbox** stage. Characters, stages and boss portraits are reused from [sproto-duel](https://github.com/crrreatorrr/sproto-duel) (`public/assets/`). All four guns (machine gun, shotgun, sniper, bazooka) use toy gun models (`public/assets/models/guns/`). There's no login, hub, saving or multiplayer yet; the code is structured so those can be added later (see `PLAN.md` §9).
@@ -13,7 +15,7 @@ npm test           # 30 unit/sim tests (Vitest)
 npm run build      # static build in dist/
 ```
 
-URL params: `?mode=waves|sandbox|test&tier=1-10&seed=123&debug=1`
+URL params: `?mode=waves|sandbox|test&tier=1-10&seed=123&debug=1&stats=1`
 
 ## What's in
 
@@ -56,7 +58,7 @@ Assets load per level, not all at once (`render/assets.js` priority queue + `lev
 | H | Use medkit |
 | Q E Z X T | Spells (Meteor Bonk is T) |
 | Tab (hold) · B · I | Skills · shop (between waves) · your guns |
-| Enter · ` · M · Esc | Ready for next wave · debug panel · mute · pause |
+| Enter · ` · F3 · M · Esc | Ready for next wave · debug panel · frame-time stats · mute · pause |
 
 ## Code layout
 
