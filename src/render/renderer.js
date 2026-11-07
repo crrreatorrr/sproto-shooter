@@ -374,11 +374,12 @@ export function createRenderer(container, bus) {
   // Gun with a 3D model (e.g. the toy machine gun): model + element gem. Null if the type has none / not loaded yet.
   const GUN_MODEL_LEN = { mg: 0.7, shotgun: 0.75, sniper: 0.8, bazooka: 0.9 };
   // where the hands hold each model, as fractions of its height (y, from the center) and length (z, + = back)
+  // Measured on the toy models from side views (gun drawn without arms, markers on the real grip/handguard).
   const HAND_FRAC = {
-    mg: { grip: [-0.3, 0.15], fore: [-0.15, -0.2] },
-    shotgun: { grip: [-0.3, 0.12], fore: [-0.05, -0.2] },
-    sniper: { grip: [-0.3, 0.1], fore: [-0.15, -0.15] },
-    bazooka: { grip: [-0.3, 0.12], fore: [-0.25, -0.15] },
+    mg: { grip: [-0.283, 0.257], fore: [-0.165, -0.214] },
+    shotgun: { grip: [-0.207, 0.24], fore: [-0.166, -0.293] },
+    sniper: { grip: [-0.311, 0.1375], fore: [0, -0.25] },
+    bazooka: { grip: [-0.276, 0.25], fore: [-0.23, -0.278] },
   };
   function buildGunModel(gun, length) {
     const inst = instantiateGun(gun.type, length);

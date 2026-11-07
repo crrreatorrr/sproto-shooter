@@ -176,7 +176,7 @@ export function createFirstPerson(camera) {
     /** The gun mesh currently held (a child of the viewmodel root) and its type. */
     setGun(mesh, type) { gun = mesh; gunType = type; },
     update(visible) {
-      root.visible = ready && visible && !!gun;
+      root.visible = ready && visible && !!gun && !(typeof window !== 'undefined' && window.__hideFP); // __hideFP: dev hook to inspect the gun alone
       if (!root.visible) return;
       for (const [b, q] of bind) b.quaternion.copy(q);
       camera.updateMatrixWorld(true);
