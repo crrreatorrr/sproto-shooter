@@ -66,6 +66,12 @@ export function createAudio(bus) {
         case 'shotgun': noise({ dur: 0.25, vol: 0.5, freq: j(1400 * zip), end: 200 }); tone({ freq: 110, end: 40, dur: 0.2, type: 'sine', vol: 0.4 }); break;
         case 'sniper': noise({ dur: 0.35, vol: 0.45, freq: j(3200), end: 300 }); tone({ freq: 900, end: 60, dur: 0.3, type: 'sawtooth', vol: 0.2 }); break;
         case 'bazooka': noise({ dur: 0.3, vol: 0.4, freq: 600, end: 150 }); tone({ freq: 160, end: 60, dur: 0.3, type: 'triangle', vol: 0.3 }); break;
+        // ray gun: a falling sci-fi "pew" with a bright overtone
+        case 'raygun': tone({ freq: j(1800), end: 420, dur: 0.12, type: 'sawtooth', vol: 0.16 }); tone({ freq: j(3600), end: 900, dur: 0.08, type: 'sine', vol: 0.1 }); break;
+        // big bullets: a deep cannon thump
+        case 'bigbullets': noise({ dur: 0.45, vol: 0.55, freq: 700, end: 90 }); tone({ freq: 90, end: 30, dur: 0.45, type: 'sine', vol: 0.55 }); break;
+        // duck gun: a rubbery "thwonk" with a quack on top
+        case 'duckgun': tone({ freq: j(240), end: 120, dur: 0.16, type: 'triangle', vol: 0.4 }); tone({ freq: j(820), end: 560, dur: 0.12, type: 'square', vol: 0.14, delay: 0.03 }); noise({ dur: 0.12, vol: 0.2, freq: 1200, end: 300 }); break;
       }
     },
     damage(ev) {

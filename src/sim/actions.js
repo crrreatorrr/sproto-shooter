@@ -13,6 +13,7 @@ import { startWaves } from './waves.js';
 import { startCampaign, transitionDone } from './campaign/campaign.js';
 import { TUNING } from '../data/tuning.js';
 import { BOSSES } from '../data/enemies.js';
+import { LEGENDARY_SLOT } from '../data/guns.js';
 import {
   startCraft, salvage, reroll, pickupGun, dropGun, buyOffer, rerollShop, sellGun, vend, buyUpgrade, buySupply, rollShopOffers,
 } from './economy.js';
@@ -69,6 +70,7 @@ export function startMode(state, p, mode, tier = 1, opts = {}) {
     p.unlockedSlots = 4;
     rollShopOffers(state);
     if (mode === 'test') giveTestLoadout(state, p);
+    else placeSandboxLegendary(state, p, tier);
     emit(state, 'modeStart', { mode: state.testMode ? 'test' : 'sandbox', tier });
   }
 }
@@ -101,6 +103,17 @@ export function bossFightDirector(state) {
   else if (p.dead) { f.over = 'lost'; emit(state, 'bossFightOver', { won: false, boss: f.type, hpLeft: boss.hp / boss.maxHp }); }
 }
 
+/** Sandbox: a Duck Gun (always legendary) waiting just ahead of the spawn point, unless you already have one. */
+export const SANDBOX_DUCK_POS = { x: 1.5, z: 4.5 };
+function placeSandboxLegendary(state, p, tier) {
+  const has = p.guns.some((g) => g && g.type === 'duckgun') || state.pickups.some((k) => !k.dead && k.gun && k.gun.type === 'duckgun');
+  if (has) return;
+  const gun = generateGun({ seed: 0xD0C4, level: tier, forced: { type: 'duckgun', manufacturer: 'blastco', element: 'none' } });
+  const k = spawnGunPickup(state, gun, SANDBOX_DUCK_POS, 'sandbox');
+  k.ttl = Infinity; // stays until you take it
+  k.vel = { x: 0, y: 0, z: 0 };
+}
+
 /** Test range: one of every gun type in slots 1-4, full ammo, infinite reserve, target dummies. */
 export const TEST_GUN_TYPES = ['mg', 'shotgun', 'sniper', 'bazooka'];
 function giveTestLoadout(state, p) {
@@ -109,6 +122,7 @@ function giveTestLoadout(state, p) {
     g.id = nextId(state); g.source = 'test';
     return g;
   });
+  p.guns.push(null); // legendary slot
   p.activeSlot = 0; p.reloadT = 0; p.swapT = 0;
   for (const k of Object.keys(p.ammoCap)) p.ammo[k] = p.ammoCap[k];
   state.tuning.infiniteAmmo = true;
@@ -136,7 +150,8 @@ export function setGodMode(state, p, on) {
  */
 function giveAllGuns(state, p) {
   p.unlockedSlots = Math.max(p.unlockedSlots, TEST_GUN_TYPES.length);
-  const carried = p.guns.filter(Boolean);
+  const legendary = p.guns[LEGENDARY_SLOT] || null; // the legendary slot is left alone
+  const carried = p.guns.filter((g, i) => g && i !== LEGENDARY_SLOT);
   const active = p.guns[p.activeSlot];
   const guns = TEST_GUN_TYPES.map((type, i) => {
     const own = carried.find((g) => g.type === type);
@@ -146,8 +161,8 @@ function giveAllGuns(state, p) {
     return g;
   });
   carried.filter((g) => !guns.includes(g)).forEach((g, i) => spawnGunPickup(state, g, aheadOf(p, 2 + i * 0.8), 'drop'));
-  p.guns = guns;
-  const keep = guns.indexOf(active);
+  p.guns = [...guns, legendary];
+  const keep = p.guns.indexOf(active);
   if (keep >= 0) p.activeSlot = keep;
   else { p.activeSlot = Math.max(0, guns.findIndex((g) => active && g.type === active.type)); p.reloadT = 0; p.swapT = 0; }
 }
@@ -155,7 +170,7 @@ function giveAllGuns(state, p) {
 function resetLoadout(state, p) {
   const start = generateGun({ seed: 0xC0FFEE, level: 1, forced: { type: 'mg', quality: 'common', manufacturer: 'reliable', element: 'none' } });
   start.id = nextId(state); start.source = 'start';
-  p.guns = [start, null, null, null];
+  p.guns = [start, null, null, null, null];
   p.activeSlot = 0; p.reloadT = 0; p.swapT = 0;
   p.ammo = { ...TUNING.startAmmo };
 }

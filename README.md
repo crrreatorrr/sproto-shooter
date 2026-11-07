@@ -15,7 +15,7 @@ npm test           # 30 unit/sim tests (Vitest)
 npm run build      # static build in dist/
 ```
 
-URL params: `?mode=waves|sandbox|test&tier=1-10&seed=123&debug=1`
+URL params: `?mode=waves|sandbox|test&tier=1-10&seed=123&debug=1&stats=1`
 
 Hub (same shape as the other games):
 
@@ -66,7 +66,7 @@ Assets load per level, not all at once (`render/assets.js` priority queue + `lev
 | H | Use medkit |
 | Q E Z X T | Spells (Meteor Bonk is T) |
 | Tab (hold) · B · I | Skills · shop (between waves) · your guns |
-| Enter · ` · M · Esc | Ready for next wave · debug panel · mute · pause |
+| Enter · ` · F3 · M · Esc | Ready for next wave · debug panel · frame-time stats · mute · pause |
 
 ## Code layout
 

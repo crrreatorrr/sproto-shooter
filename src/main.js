@@ -1,4 +1,4 @@
-// Boot: URL params ?seed=123&mode=waves|sandbox|test|boss|campaign&level=L01&boss=monster&tier=3&debug=1
+// Boot: URL params ?seed=123&mode=waves|sandbox|test|boss|campaign&level=L01&boss=monster&tier=3&debug=1&stats=1
 // A hub visit arrives as /#t=<ticket>. connectHub redeems it before the title screen.
 import { Game } from './game/Game.js';
 import { connectHub } from './hub/link.js';
@@ -13,6 +13,7 @@ async function boot() {
     debug: q.get('debug') === '1',
     boss: q.get('boss'),
     level: q.get('level'),
+    stats: q.get('stats') === '1',
     hub,
   });
 }
