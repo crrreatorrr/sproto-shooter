@@ -352,6 +352,19 @@ describe('god mode', () => {
     expect(sn.ammoInMag).toBe(sn.stats.magSize);
     expect(p.ammo.sniper).toBe(0);
   });
+  it('gives one of every gun type, keeping guns you carry and dropping extras', () => {
+    const s = createGameState({ seed: 10 });
+    const p = s.players[s.localPlayerId];
+    const mine = generateGun({ seed: 4, level: 1, forced: { type: 'shotgun', quality: 'epic', manufacturer: 'blastco', element: 'fire' } });
+    const extra = generateGun({ seed: 5, level: 1, forced: { type: 'shotgun', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    mine.id = 501; extra.id = 502; p.guns[1] = mine; p.guns[2] = extra; p.unlockedSlots = 3; p.activeSlot = 1;
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    expect(p.guns.map((g) => g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka']);
+    expect(p.guns[1]).toBe(mine); // your epic shotgun is kept
+    expect(p.activeSlot).toBe(1); // still holding it
+    expect(p.unlockedSlots).toBe(4);
+    expect(s.pickups.some((k) => k.kind === 'gun' && k.gun.id === 502)).toBe(true); // the spare is dropped, not deleted
+  });
   it('is on in the Test Range and off again after leaving it', () => {
     const s = createGameState({ seed: 4 });
     run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'test', tier: 1 }] }));

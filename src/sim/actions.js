@@ -95,6 +95,29 @@ export function setGodMode(state, p, on) {
   for (const k of Object.keys(p.resources)) p.resources[k] = Math.max(p.resources[k], GOD_RESOURCES);
   for (const k of Object.keys(p.ammoCap)) p.ammo[k] = Math.max(p.ammo[k], p.ammoCap[k]);
   p.medkits = Math.max(p.medkits, TUNING.medkitCarry);
+  giveAllGuns(state, p);
+}
+
+/**
+ * One gun of every type in slots 1-4. Guns you already carry are kept for their type (your looted one beats a
+ * plain one); any that don't fit (a second shotgun, say) are dropped on the ground in front of you, not deleted.
+ */
+function giveAllGuns(state, p) {
+  p.unlockedSlots = Math.max(p.unlockedSlots, TEST_GUN_TYPES.length);
+  const carried = p.guns.filter(Boolean);
+  const active = p.guns[p.activeSlot];
+  const guns = TEST_GUN_TYPES.map((type, i) => {
+    const own = carried.find((g) => g.type === type);
+    if (own) return own;
+    const g = generateGun({ seed: 0x60D0 + i, level: state.tier, forced: { type, quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    g.id = nextId(state); g.source = 'god';
+    return g;
+  });
+  carried.filter((g) => !guns.includes(g)).forEach((g, i) => spawnGunPickup(state, g, aheadOf(p, 2 + i * 0.8), 'drop'));
+  p.guns = guns;
+  const keep = guns.indexOf(active);
+  if (keep >= 0) p.activeSlot = keep;
+  else { p.activeSlot = Math.max(0, guns.findIndex((g) => active && g.type === active.type)); p.reloadT = 0; p.swapT = 0; }
 }
 
 function resetLoadout(state, p) {
