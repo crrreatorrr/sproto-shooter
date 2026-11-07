@@ -562,3 +562,28 @@ describe('boss movement feel', () => {
     expect(maxStep).toBeLessThan(0.1); // ≤ ~6° per tick, never a 180° snap
   });
 });
+
+describe('animation math (anim.js)', () => {
+  it('the critically damped spring is frame-rate independent', async () => {
+    const { springTo, spring } = await import('../src/render/anim.js');
+    const run = (fps) => { const s = spring(); for (let i = 0; i < fps * 0.5; i++) springTo(s, 1, 0.1, 1 / fps); return s.x; };
+    expect(Math.abs(run(30) - run(144))).toBeLessThan(1e-6);
+    expect(run(60)).toBeGreaterThan(0.9); // mostly there after 5 half-lives
+  });
+  it('a boss strike holds its windup, then reaches full extension exactly on the damage frame', async () => {
+    const { attackEnvelope, STRIKE } = await import('../src/render/anim.js');
+    const w = 0.75, rec = 0.9;
+    expect(attackEnvelope(w * 0.7, w, rec)).toMatchObject({ wind: 1, hit: 0 }); // held, cocked
+    expect(attackEnvelope(w - STRIKE / 2, w, rec).hit).toBeLessThan(0.2); // accelerating: slow start
+    expect(attackEnvelope(w, w, rec).hit).toBe(1); // contact on the damage frame
+    expect(attackEnvelope(w + 0.1, w, rec).rec).toBe(0); // impact hold
+    expect(attackEnvelope(w + rec, w, rec).rec).toBe(1); // recovered
+  });
+  it('the leg cycle keeps the foot planted for the duty factor and sweeps it back while planted', async () => {
+    const { legCycle } = await import('../src/render/anim.js');
+    let planted = 0;
+    for (let i = 0; i < 1000; i++) if (legCycle(i / 1000, 0.77).lift === 0) planted++;
+    expect(planted / 1000).toBeCloseTo(0.77, 2);
+    expect(legCycle(0, 0.77).swing).toBeGreaterThan(legCycle(0.5, 0.77).swing); // stance moves the leg back
+  });
+});
