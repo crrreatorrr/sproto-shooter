@@ -1,3 +1,4 @@
+// @ts-check
 // Global tuning constants (PLAN §7.1)
 export const TUNING = {
   arenaRadius: 45,

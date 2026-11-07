@@ -1,3 +1,4 @@
+// @ts-check
 // Collision: arena clamp, ray vs sphere/capsule, world hitboxes, raycastEnemies. PLAN §4.9–4.10
 import { ENEMIES, BOSSES } from '../data/enemies.js';
 import { TUNING, ARENA_R } from '../data/tuning.js';

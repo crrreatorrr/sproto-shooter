@@ -1,3 +1,4 @@
+// @ts-check
 // Crafting (weapon boxes), shop, vending, gun pickup/sell. PLAN §3.11, §7.7, §7.9
 import { RECIPES_BY_ID, ARCANE_COST, REROLL_COST, REROLL_LEVEL, SALVAGE_LEVEL } from '../data/recipes.js';
 import { SHOP } from '../data/shop.js';

@@ -1,3 +1,4 @@
+// @ts-check
 // Enemy + boss + elite definitions. Visuals reuse Sproto Duel's rigged characters (see data/stages.js MODELS).
 // Hitboxes are local: +z forward, y up, multiplied by the enemy's scale.
 export const ENEMIES = {

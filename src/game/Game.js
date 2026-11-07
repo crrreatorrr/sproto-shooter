@@ -1,5 +1,4 @@
 // Wires state + fixed-timestep loop + input + renderer + audio + UI + debug panel. PLAN §1.3
-import GUI from 'lil-gui';
 import { createGameState } from '../sim/state.js';
 import { simulate, DT } from '../sim/simulate.js';
 import { createEventBus } from '../core/eventBus.js';
@@ -28,7 +27,7 @@ export class Game {
     this.input = createInput(this.renderer.canvas);
     this.audio = createAudio(this.bus);
     this.ui = createUI(app.querySelector('#ui'), { input: this.input, bus: this.bus, project: (p) => this.renderer.project(p), game: this });
-    this.screen = app.querySelector('#screen');
+    this.screen = /** @type {HTMLElement} */ (app.querySelector('#screen'));
 
     this.input.setLook(this.state.players[this.state.localPlayerId].yaw, 0);
     this.wireFeel();
@@ -45,7 +44,7 @@ export class Game {
     this.last = performance.now();
     this.acc = 0;
     requestAnimationFrame((t) => this.frame(t));
-    window.__game = this; // for debugging in devtools
+    /** @type {any} */ (window).__game = this; // for debugging in devtools
   }
 
   queue(a) { this.input.queueAction(a); }
@@ -124,11 +123,12 @@ export class Game {
     this.screen.innerHTML = body;
     this.screen.hidden = false;
     this.screen.onclick = (e) => {
-      const b = e.target.closest('[data-go]');
+      const b = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('[data-go]'));
       if (!b) return;
       const go = b.dataset.go;
       if (go === 'continue') { this.hideScreen(); this.paused = false; this.input.lock(); return; }
-      const tier = b.dataset.tier ? +b.dataset.tier : +(this.screen.querySelector('#tier-sel')?.value || s.tier);
+      const tierSel = /** @type {HTMLSelectElement | null} */ (this.screen.querySelector('#tier-sel'));
+      const tier = b.dataset.tier ? +b.dataset.tier : +(tierSel?.value || s.tier);
       this.start(go, tier);
     };
   }
@@ -144,21 +144,29 @@ export class Game {
       ${controlsHtml()}</div>`;
     this.screen.hidden = false;
     this.screen.onclick = (e) => {
-      const b = e.target.closest('[data-p]');
+      const b = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('[data-p]'));
       if (!b) return;
       if (b.dataset.p === 'resume') { this.hideScreen(); this.input.lock(); }
       else this.showScreen('title');
     };
     this.screen.oninput = (e) => {
-      if (e.target.id === 'sens') { this.settings.sensitivity = +e.target.value; this.input.sensitivity = 0.0022 * this.settings.sensitivity; }
-      if (e.target.id === 'hs') this.settings.hitstop = e.target.checked;
-      if (e.target.id === 'shk') this.settings.shake = +e.target.value;
+      const t = /** @type {HTMLInputElement} */ (e.target);
+      if (t.id === 'sens') { this.settings.sensitivity = +t.value; this.input.sensitivity = 0.0022 * this.settings.sensitivity; }
+      if (t.id === 'hs') this.settings.hitstop = t.checked;
+      if (t.id === 'shk') this.settings.shake = +t.value;
     };
   }
   hidePause() { if (this.screen.querySelector('.pause')) this.hideScreen(); }
 
   // ---------- debug panel ----------
+  // lil-gui is a separate async chunk so the entry bundle stays inside the gzip budget.
   buildDebug(open) {
+    this.debugOpen = !!open;
+    import('lil-gui').then(({ default: GUI }) => this.mountDebug(GUI));
+  }
+  mountDebug(GUI) {
+    if (this.gui) return;
+    const open = this.debugOpen;
     const gui = new GUI({ title: 'Sproto Debug [`]', width: 300 });
     this.gui = gui;
     const d = { enemy: 'grunt', count: 1, elite: false, tier: 1, boss: 'megaSproto', gunType: 'random', quality: 'random', element: 'random', wacky: 'random',
@@ -202,11 +210,11 @@ export class Game {
     this.gunStatCtrls = Object.entries(ranges).map(([k, [lo, hi]]) => gs.add(this.gunStatProxy, k, lo, hi).onChange((v) => q('setGunStat', { key: k, value: k === 'magSize' ? Math.round(v) : v })));
     gs.close();
     if (!open) gui.hide();
-    this.debugOpen = open;
     gui.domElement.style.zIndex = 50;
   }
   toggleDebug() {
     this.debugOpen = !this.debugOpen;
+    if (!this.gui) return;
     if (this.debugOpen) {
       const g = this.state.players[this.state.localPlayerId].guns[this.state.players[this.state.localPlayerId].activeSlot];
       if (g) { for (const k of Object.keys(this.gunStatProxy)) this.gunStatProxy[k] = g.stats[k]; this.gunStatCtrls.forEach((c) => c.updateDisplay()); }
@@ -227,7 +235,7 @@ export class Game {
     while (this.acc >= DT && n < MAX_TICKS) {
       const cmd = this.input.buildCommand(this.state.tick);
       if (this._skip) { cmd.pressed.skip = true; this._skip = false; }
-      if (titleUp) { cmd.held = {}; cmd.moveX = cmd.moveZ = 0; cmd.pressed = {}; cmd.yaw = this.state.time * 0.15; cmd.pitch = -0.05; this.input.setLook(cmd.yaw, cmd.pitch); }
+      if (titleUp) { cmd.held = { fire: false, zoom: false, sprint: false }; cmd.moveX = cmd.moveZ = 0; cmd.pressed = {}; cmd.yaw = this.state.time * 0.15; cmd.pitch = -0.05; this.input.setLook(cmd.yaw, cmd.pitch); }
       simulate(this.state, { [this.state.localPlayerId]: cmd }, DT);
       this.bus.emitAll(this.state.events);
       this.acc -= DT; n++;

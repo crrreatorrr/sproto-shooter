@@ -1,3 +1,4 @@
+// @ts-check
 // Gun definitions: types, qualities, manufacturers, parts, elements, wacky perks (PLAN §3.10, §7.2)
 
 const B = (o) => ({

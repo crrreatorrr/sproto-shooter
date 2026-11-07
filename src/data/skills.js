@@ -1,3 +1,4 @@
+// @ts-check
 // Skills, perks, spells (PLAN §3.12, §7.4, §7.5)
 export const SKILLS = {
   health: { id: 'health', name: 'Health', icon: '❤', color: '#ff4d6d', xpBase: 100, xpGrowth: 1.45, maxLevel: 10 },

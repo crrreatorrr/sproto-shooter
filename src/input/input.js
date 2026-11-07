@@ -47,7 +47,8 @@ export function createInput(canvas) {
   const emit = (t, e) => (listeners[t] || []).forEach((f) => f(e));
 
   window.addEventListener('keydown', (e) => {
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
+    const target = /** @type {HTMLElement | null} */ (e.target);
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT')) return;
     if (e.code === 'AltLeft' || e.code === 'Tab' || e.code === 'Space' || e.code === 'Backquote' || (e.ctrlKey && e.code !== 'ControlLeft')) e.preventDefault();
     emit('key', e);
     if (e.repeat) return;

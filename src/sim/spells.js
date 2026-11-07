@@ -1,3 +1,4 @@
+// @ts-check
 // Spells: Goo Bolt, Chain Zap, Sproto Swarm, Mana Shield, Meteor Bonk. PLAN §7.5
 import { SPELLS } from '../data/skills.js';
 import { dirFromYawPitch } from '../core/math.js';

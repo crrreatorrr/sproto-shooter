@@ -1,3 +1,4 @@
+// @ts-check
 // Stages (environments) and character models reused from Sproto Duel. Paths are under public/assets/.
 // Lighting values are copied from sproto-duel src/arena/themes.ts.
 import { WAVES } from './waves.js';

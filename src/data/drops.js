@@ -1,3 +1,4 @@
+// @ts-check
 // Drop tables (PLAN §4.13, §7.6)
 export const DROP_TABLES = {
   midget: [

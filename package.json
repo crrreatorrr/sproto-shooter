@@ -1,24 +1,33 @@
 {
   "name": "sproto-shooter",
   "version": "1.0.0",
-  "description": "",
+  "description": "Wacky first-person looter-shooter",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.strict.json",
+    "check:bundle": "node scripts/check-bundle.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "lil-gui": "^0.19.2",
-    "three": "^0.170.0"
+    "three": "^0.186.1"
   },
   "devDependencies": {
-    "vite": "^5.4.11",
-    "vitest": "^2.1.8"
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^22.19.1",
+    "@types/three": "^0.186.0",
+    "eslint": "^9.39.1",
+    "globals": "^16.4.0",
+    "typescript": "~5.9.3",
+    "vite": "^6.4.1",
+    "vitest": "^3.2.4"
   },
   "type": "module",
   "private": true

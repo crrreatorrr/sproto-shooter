@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRng, float, weighted } from '../src/core/rng.js';
-import { generateGun, compareGuns, sellValue, salvageYield, effectiveGunStats } from '../src/sim/guns.js';
+import { generateGun, compareGuns, sellValue, salvageYield } from '../src/sim/guns.js';
 import { raySphere, rayCapsule, raycastEnemies } from '../src/sim/collision.js';
 import { damageEnemy, damagePlayer } from '../src/sim/combat.js';
 import { rollDrops } from '../src/sim/drops.js';
@@ -11,7 +11,7 @@ import { validateCraft, startCraft } from '../src/sim/economy.js';
 import { xpToNext } from '../src/data/skills.js';
 import { WAVES } from '../src/data/waves.js';
 import { GUN_RECIPES, RECIPES_BY_ID } from '../src/data/recipes.js';
-import { createGameState, createEnemy, createBoss } from '../src/sim/state.js';
+import { createGameState, createEnemy } from '../src/sim/state.js';
 import { run, cmd } from './helpers.js';
 
 describe('architecture', () => {
@@ -130,7 +130,7 @@ describe('damage pipeline', () => {
 
 describe('enemies shoot back (midgets never do)', () => {
   it('obamas fire slow, inaccurate bitcoin bursts; midgets only melee', () => {
-    const s = createGameState({ seed: 4 }); const p = s.players[s.localPlayerId];
+    const s = createGameState({ seed: 4 });
     run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'setTuning', args: { key: 'godMode', value: true } }, { type: 'debug', op: 'spawnEnemy', args: { type: 'midget', count: 5 } }] }));
     let ev = run(s, 60 * 6);
     expect(ev.some((e) => e.type === 'enemyShot')).toBe(false);

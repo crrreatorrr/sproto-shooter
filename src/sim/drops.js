@@ -1,3 +1,4 @@
+// @ts-check
 // Drop rolling (pure) + spawning. PLAN §4.13
 import { float, int, range, weighted, next } from '../core/rng.js';
 import { DROP_TABLES, QUALITY_TABLES } from '../data/drops.js';

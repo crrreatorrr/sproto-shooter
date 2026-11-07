@@ -1,3 +1,4 @@
+// @ts-check
 // Wave director: 3 waves, staggered groups, bosses, intermission, victory/defeat. PLAN §4.12
 import { WAVES, INTERMISSION_TIME, VICTORY_TICKETS, tierRewardMult } from '../data/waves.js';
 import { range, float, next } from '../core/rng.js';

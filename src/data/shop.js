@@ -1,3 +1,4 @@
+// @ts-check
 // Shop & economy (PLAN §7.9)
 export const SHOP = {
   offerCount: 4,

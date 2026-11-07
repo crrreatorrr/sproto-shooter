@@ -7,7 +7,8 @@ export function createAudio(bus) {
   function ensure() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return true; }
     try {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const AC = window.AudioContext || /** @type {typeof AudioContext} */ (/** @type {any} */ (window).webkitAudioContext);
+      ctx = new AC();
       comp = ctx.createDynamicsCompressor();
       master = ctx.createGain();
       master.gain.value = 0.35;

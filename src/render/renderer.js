@@ -1,11 +1,10 @@
 // Three.js renderer. Reads state only; interpolates prevPos -> pos with alpha. Placeholder low-poly "Sproto" art.
 import * as THREE from 'three';
 import { TUNING, ARENA_R } from '../data/tuning.js';
-import { ENEMIES, BOSSES } from '../data/enemies.js';
-import { QUALITIES_BY_ID, ELEMENTS_BY_ID, MANUFACTURERS_BY_ID } from '../data/guns.js';
+import { BOSSES, ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
+import { QUALITIES_BY_ID, MANUFACTURERS_BY_ID } from '../data/guns.js';
 import { RESOURCES } from '../data/drops.js';
 import { worldHitboxes } from '../sim/collision.js';
-import { ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { STAGES, stageAssets, stageFor, CHARACTER_MODELS, levelAssets } from '../data/stages.js';
 import { peekTexture, instantiateStatic, instantiateCharacter, assetsVersion, peekModel, ensureStage, stageReady, ensureCharacter, characterReady, pendingDownloads, PRIORITY } from './assets.js';
 
@@ -124,7 +123,7 @@ export function createRenderer(container, bus) {
     scene.background = new THREE.Color(st.background);
     scene.fog = new THREE.Fog(st.fog, 60, 200);
     hemi.color.setHex(st.hemi.sky); hemi.groundColor.setHex(st.hemi.ground); hemi.intensity = st.hemi.intensity * 1.2;
-    sun.color.setHex(st.sun.color); sun.intensity = st.sun.intensity * 0.9; sun.position.set(...st.sun.position);
+    sun.color.setHex(st.sun.color); sun.intensity = st.sun.intensity * 0.9; sun.position.set(st.sun.position[0], st.sun.position[1], st.sun.position[2]);
     bounce.color.setHex(st.bounce.color); bounce.intensity = st.bounce.intensity;
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
     const skyTex = peekTexture(a.sky);
@@ -366,7 +365,7 @@ export function createRenderer(container, bus) {
     const accent = M(new THREE.Color(q.color), { emissive: new THREE.Color(q.color), emissiveIntensity: 0.35 });
     const elCol = ELEM_COL[gun.element];
     const dims = { mg: [0.12, 0.14, 0.6], shotgun: [0.14, 0.14, 0.55], sniper: [0.09, 0.11, 0.85], bazooka: [0.2, 0.2, 0.9] }[gun.type];
-    const body = new THREE.Mesh(G.box, bodyMat); body.scale.set(...dims);
+    const body = new THREE.Mesh(G.box, bodyMat); body.scale.set(dims[0], dims[1], dims[2]);
     g.add(body);
     if (gun.type === 'bazooka') {
       const tube = new THREE.Mesh(G.cyl, bodyMat); tube.scale.set(0.13, 0.95, 0.13); tube.rotation.x = Math.PI / 2;
@@ -585,7 +584,6 @@ export function createRenderer(container, bus) {
     const fdt = Math.min(0.05, (now - lastNow) / 1000);
     lastNow = now;
     const p = state.players[state.localPlayerId];
-    const t = state.time;
 
     // camera
     const px = lerp(p.prevPos.x, p.pos.x, alpha), py = lerp(p.prevPos.y, p.pos.y, alpha), pz = lerp(p.prevPos.z, p.pos.z, alpha);

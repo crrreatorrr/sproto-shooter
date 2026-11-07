@@ -1,3 +1,4 @@
+// @ts-check
 // Boss phase machines: Mega Tinubu (physical, id megaSproto), Hex Sahil (magic, id hexAuditor). PLAN §4.11
 // Each phase swaps the boss to the next Sproto Duel stage model (render side).
 import { BOSSES, ENEMY_BULLET_RADIUS } from '../data/enemies.js';

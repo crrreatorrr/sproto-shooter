@@ -1,3 +1,4 @@
+// @ts-check
 // Wave configs (PLAN §7.8)
 const S = (type, count, elites = 0) => ({ type, count, elites });
 

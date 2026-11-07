@@ -1,3 +1,4 @@
+// @ts-check
 // Projectiles, hazards, pickups, allies, status effects, cleanup.
 import { TUNING, ARENA_R } from '../data/tuning.js';
 import { ALLY } from '../data/enemies.js';

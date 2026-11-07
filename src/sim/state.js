@@ -1,3 +1,4 @@
+// @ts-check
 // GameState creation + entity factories. Everything is plain JSON data with numeric ids. PLAN §3
 import { createRng, next } from '../core/rng.js';
 import { TUNING } from '../data/tuning.js';

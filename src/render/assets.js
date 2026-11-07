@@ -47,6 +47,7 @@ const bump = () => { version++; listeners.forEach((f) => f(version)); };
 
 /** Root motion pinned in place (port of sproto-duel src/assets/rig.ts pinRootMotion) so clips run on the spot. */
 function pinRootMotion(template, clips) {
+  /** @type {import('three').Object3D | null} */
   let hips = null;
   template.traverse((o) => { if (!hips && o.isBone && !(o.parent && o.parent.isBone)) hips = o; });
   const parent = hips && hips.parent;
@@ -170,7 +171,7 @@ export function instantiateCharacter(model, stage, fitHeight) {
   if (!t) return null;
   const inner = cloneSkinned(t.root);
   const mats = [];
-  inner.traverse((o) => {
+  inner.traverse((/** @type {import('three').Object3D & { isMesh?: boolean, material?: import('three').Material & { emissive?: unknown } }} */ o) => {
     if (o.isMesh && o.material) {
       o.material = o.material.clone();
       if (o.material.emissive) mats.push(o.material);

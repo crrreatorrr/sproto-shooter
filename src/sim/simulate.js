@@ -1,3 +1,4 @@
+// @ts-check
 // Pure sim entry point. No rendering, DOM, unseeded randomness or wall clock in src/sim or src/data. PLAN §1.5
 import { applyActions } from './actions.js';
 import { playerInput, playerMovement, playerCombat, playerVitals } from './player.js';

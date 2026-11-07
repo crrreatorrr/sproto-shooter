@@ -1,3 +1,4 @@
+// @ts-check
 // Player input, movement, combat (firing/reload/swap), vitals. PLAN §4.4, §7.1
 import { TUNING, ARENA_R } from '../data/tuning.js';
 import { GUN_TYPES_BY_ID } from '../data/guns.js';
@@ -6,7 +7,7 @@ import { dirFromYawPitch, deg, clamp } from '../core/math.js';
 import { emit } from './events.js';
 import { clampToArena, pushOutOfBoxes, raycastEnemies, rayWorld, eyePos } from './collision.js';
 import { effectiveGunStats } from './guns.js';
-import { damageEnemy, healPlayer, explode } from './combat.js';
+import { damageEnemy, healPlayer } from './combat.js';
 import { createProjectile } from './state.js';
 
 const EMPTY_CMD = { yaw: 0, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [] };

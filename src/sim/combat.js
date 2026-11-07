@@ -1,7 +1,8 @@
+// @ts-check
 // Damage pipeline, splash, element procs, kills, healing. PLAN §4.5–4.6, §4.9
 import { float, range } from '../core/rng.js';
 import { emit } from './events.js';
-import { ENEMIES, ELITE, ALLY } from '../data/enemies.js';
+import { ENEMIES, ALLY } from '../data/enemies.js';
 import { ELEMENTS_BY_ID } from '../data/guns.js';
 import { TUNING } from '../data/tuning.js';
 import { distToCapsule, entityDef, sphereHitsPlayer } from './collision.js';

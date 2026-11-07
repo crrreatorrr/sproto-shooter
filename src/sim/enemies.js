@@ -1,3 +1,4 @@
+// @ts-check
 // Enemy AI: FSM + steering + behaviors (midget runner, obama shooter, bigObama heavy, dummy). PLAN §4.8
 import { ENEMIES, ENEMY_BULLET_RADIUS } from '../data/enemies.js';
 import { ARENA_R, TUNING } from '../data/tuning.js';

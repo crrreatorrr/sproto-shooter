@@ -1,3 +1,4 @@
+// @ts-check
 // Small vector helpers on plain {x,y,z} objects. Pure, no three.js.
 
 export const v3 = (x = 0, y = 0, z = 0) => ({ x, y, z });

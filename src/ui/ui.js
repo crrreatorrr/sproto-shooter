@@ -80,7 +80,7 @@ export function createUI(root, { input, bus, project, game }) {
 
   // ---------- damage numbers (pooled) ----------
   const DN = 48;
-  const nums = Array.from({ length: DN }, () => { const d = h('div', 'dn'); els.dmg.appendChild(d); return { el: d, life: 0, pos: null, vy: 0, vx: 0, y: 0 }; });
+  const nums = Array.from({ length: DN }, () => { const d = h('div', 'dn'); els.dmg.appendChild(d); return { el: d, life: 0, pos: null, vy: 0, vx: 0, y: 0, amount: 0, count: 0 }; });
   let numIdx = 0;
   const merged = new Map(); // targetId -> num (merge pellets within a tick)
   bus.on('damage', (ev) => {
@@ -193,7 +193,6 @@ export function createUI(root, { input, bus, project, game }) {
       const s = game.state, p = s.players[s.localPlayerId];
       if (!p.nearGunPickupId && nearBox(s, p)) openMenu('craft');
     } else if (e.code === 'KeyB' && !st.menu) {
-      const s = game.state;
       if (game.shopOpen()) openMenu('shop'); else toast('Shop opens between waves', 'bad');
     } else if (e.code === 'KeyI' && !st.menu) openMenu('inventory');
     else if ((e.code === 'Escape' || e.code === 'KeyB' || e.code === 'KeyG' || e.code === 'KeyI') && st.menu) closeMenu();
@@ -425,7 +424,6 @@ export function createUI(root, { input, bus, project, game }) {
 
     // boss bars
     const bossList = s.enemies.filter((e) => e.boss && !e.dead);
-    const bk = bossList.map((b) => `${b.id}:${Math.round((b.hp / b.maxHp) * 200)}:${b.boss.phaseIdx}:${b.boss.invuln}`).join('|');
     html(els.bossbars, 'boss', bossList.map((b) => {
       const def = BOSSES[b.type];
       const pips = def.phases.map((ph, i) => `<i class="${i <= b.boss.phaseIdx ? 'on' : ''}" style="left:${ph.hpBelow * 100}%"></i>`).slice(1).join('');

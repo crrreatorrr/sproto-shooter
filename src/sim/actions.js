@@ -1,3 +1,4 @@
+// @ts-check
 // UI/debug actions arrive inside commands; dispatched here. Keeps the sim the only writer of state.
 import { next } from '../core/rng.js';
 import { RES_IDS } from '../data/drops.js';
