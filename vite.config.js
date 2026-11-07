@@ -1,6 +1,17 @@
 import { defineConfig } from 'vite';
+
+const HTTP_KEY = /http[_-]?key|defaulthttpkey|NAKAMA_HTTP_KEY\s*=\s*['"][^'"]+['"]/i;
+
 export default defineConfig({
   base: './',
+  plugins: [{
+    name: 'no-http-key',
+    generateBundle(_options, bundle) {
+      for (const item of Object.values(bundle)) {
+        if (item.type === 'chunk' && HTTP_KEY.test(item.code)) this.error('HTTP key in client bundle');
+      }
+    },
+  }],
   build: {
     rollupOptions: {
       output: {

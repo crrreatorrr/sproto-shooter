@@ -1,5 +1,5 @@
 /** Game ids stored on the server and used in `/hub#from=<game>` and `play/<game>`. */
-export declare const GAME_IDS: readonly ["hpos10i", "nobu", "peoples-bitcoin", "sproto", "sproto-fighter", "sproto-arcade", "sproto-shooter"];
+export declare const GAME_IDS: readonly ["hpos10i", "nobu", "peoples-bitcoin", "sproto", "sproto-fighter", "sproto-arcade", "sproto-shooter", "sproto-coop-battle"];
 export type GameId = (typeof GAME_IDS)[number];
 /** Earn-once relics. The primary key on the server is (user, relic). */
 export declare const RELIC_IDS: readonly ["hpos10i_core", "genesis_shard", "cones_tip", "tinubu_crown", "tidebreaker_belt", "breakwater_coin"];
@@ -10,10 +10,8 @@ export type RelicId = (typeof RELIC_IDS)[number];
  * So does the Breakwater Coin (Sproto Arcade, the Bar cabinet's second game).
  */
 export declare const FOUR_LIGHTS_RELIC_IDS: readonly ["hpos10i_core", "genesis_shard", "cones_tip", "tinubu_crown"];
-/** Games with no entry do not grant a Relic. Sproto Shooter is one of those. */
-export declare const RELIC_BY_GAME: {
-    [K in GameId]?: RelicId;
-};
+/** Games with no entry here have no Relic. Shooter and Coop Battle are in that set. */
+export declare const RELIC_BY_GAME: Partial<Record<GameId, RelicId>>;
 /**
  * Nakama leaderboard ids. Sort direction matches the architecture:
  * times are ascending best, XP and meta are set, Sproto wins increment.
