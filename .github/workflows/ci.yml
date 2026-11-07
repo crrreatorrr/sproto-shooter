@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: test, build, budgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: lint
+        run: npm run lint
+
+      - name: typecheck
+        run: npm run typecheck
+
+      - name: test
+        run: npm test
+
+      - name: build
+        run: npm run build
+
+      - name: asset manifest
+        run: npm run assets:check
+
+      - name: budgets
+        run: npm run budgets
+
+      - name: playwright chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: load profile smoke
+        run: npm run profile:check
+        env:
+          LOAD_PROFILE_OUT: ci-artifacts/load-profile.json
+
+      - name: upload load profile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-profile
+          path: |
+            ci-artifacts/load-profile.json
+            tests/fixtures/load-profile.json
+            tests/fixtures/screenshots/
+          if-no-files-found: warn
