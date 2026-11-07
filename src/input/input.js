@@ -18,17 +18,26 @@ export function createInput(canvas) {
   let yaw = 0, pitch = 0;
   let actions = [];
   let enabled = true; // false while a menu is open
+  let lockEl = canvas;
+  let relay = null;
   const listeners = {};
   const api = {
     sensitivity: 0.0022,
     zoomLevels: 1, // set each frame from the active gun
     /** 0 when not aiming, else the zoom level (1 or 2). */
     get zoomLevel() { return enabled && api.locked && (mouseR || aimToggled) ? Math.min(zoomStep, api.zoomLevels) : 0; },
-    get locked() { return document.pointerLockElement === canvas; },
+    get locked() { return document.pointerLockElement === lockEl; },
+    // Free-arena practice locks a different canvas. Campaign play leaves this on the game view.
+    setLockElement(el) {
+      if (lockEl && lockEl !== canvas) lockEl.removeEventListener('mousedown', onMouseDown);
+      lockEl = el || canvas;
+      if (lockEl !== canvas) lockEl.addEventListener('mousedown', onMouseDown);
+    },
+    setRelay(fn) { relay = typeof fn === 'function' ? fn : null; },
     on(type, fn) { (listeners[type] ||= []).push(fn); },
     setEnabled(v) { enabled = v; if (!v) { mouseL = mouseR = false; aimToggled = false; zoomStep = 1; held.clear(); } },
     get enabled() { return enabled; },
-    lock() { try { const r = canvas.requestPointerLock({ unadjustedMovement: false }); if (r && r.catch) r.catch(() => {}); } catch { /* ignore */ } },
+    lock() { try { const r = lockEl.requestPointerLock({ unadjustedMovement: false }); if (r && r.catch) r.catch(() => {}); } catch { /* ignore */ } },
     unlock() { if (document.pointerLockElement) document.exitPointerLock(); },
     queueAction(a) { actions.push(a); },
     liveLook() { return { yaw, pitch }; },
@@ -47,9 +56,15 @@ export function createInput(canvas) {
         actions,
       };
       slot = -1; wheel = 0; actions = [];
+      if (relay) relay(cmd);
       return cmd;
     },
   };
+  function onMouseDown(e) {
+    if (!api.locked) { emit('clickUnlocked', e); return; }
+    if (e.button === 0) mouseL = true;
+    if (e.button === 2) { if (!aimToggled) zoomStep = 1; mouseR = true; }
+  }
   const emit = (t, e) => (listeners[t] || []).forEach((f) => f(e));
 
   window.addEventListener('keydown', (e) => {
@@ -70,11 +85,7 @@ export function createInput(canvas) {
   });
   window.addEventListener('keyup', (e) => { held.delete(e.code); if (e.code === 'AltLeft') e.preventDefault(); emit('keyup', e); });
   window.addEventListener('blur', () => { held.clear(); mouseL = mouseR = false; aimToggled = false; zoomStep = 1; });
-  canvas.addEventListener('mousedown', (e) => {
-    if (!api.locked) { emit('clickUnlocked', e); return; }
-    if (e.button === 0) mouseL = true;
-    if (e.button === 2) { if (!aimToggled) zoomStep = 1; mouseR = true; }
-  });
+  canvas.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mouseup', (e) => { if (e.button === 0) mouseL = false; if (e.button === 2) { mouseR = false; if (!aimToggled) zoomStep = 1; } });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   window.addEventListener('wheel', (e) => {

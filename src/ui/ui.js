@@ -553,5 +553,10 @@ export function createUI(root, { input, bus, project, game }) {
     if (st.menu === 'craft' && !nearBox(s, p)) closeMenu();
   }
 
-  return { update, closeMenu, openMenu, banner, toast, get menuOpen() { return !!st.menu; }, els };
+  function setPvp(on) {
+    const hud = $('#hud', root);
+    if (hud) hud.style.visibility = on ? 'hidden' : '';
+  }
+
+  return { update, closeMenu, openMenu, banner, toast, setPvp, get menuOpen() { return !!st.menu; }, els };
 }
