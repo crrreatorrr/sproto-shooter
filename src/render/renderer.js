@@ -1282,7 +1282,7 @@ export function createRenderer(container, bus) {
 
     // dev hook: window.__debugCam renders the scene from an outside camera (used to tune the first-person rig)
     const debugCam = typeof window !== 'undefined' && window.__debugCam;
-    if (debugCam) { debugCam.layers.enableAll(); renderer.render(scene, debugCam); return; }
+    if (debugCam) { debugCam.layers.enableAll(); renderer.render(scene, debugCam); endGpu(); return; }
     renderer.render(scene, camera);
     // viewmodel pass: same camera, depth cleared, no sky redraw
     const bg = scene.background;
