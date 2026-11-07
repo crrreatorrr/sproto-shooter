@@ -565,6 +565,43 @@ export function createRenderer(container, bus) {
   }
   const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, reload: 0, swap: 0, lastYaw: 0, lastPitch: 0 };
 
+  // ---------- reload animations ----------
+  // Procedural, per gun type, driven by reload progress t (0..1) so they always fit the real reload time.
+  // Returns camera-space offsets { x, y, z } and local rotations { rx, ry, rz }.
+  const smooth = (a, b, t) => { const k = Math.min(1, Math.max(0, (t - a) / (b - a))); return k * k * (3 - 2 * k); };
+  const pulse = (t, c, w) => Math.exp(-(((t - c) / w) ** 2));
+  const RELOAD_ANIM = {
+    // magazine swap: tilt the gun over, mag out, slap a new one in, rack the charging handle
+    mg: (t, e) => ({
+      x: 0.03 * e, y: -0.08 * e - 0.03 * pulse(t, 0.35, 0.06) + 0.035 * pulse(t, 0.6, 0.04), z: 0.04 * pulse(t, 0.82, 0.04),
+      rx: 0.25 * e - 0.1 * pulse(t, 0.35, 0.06) + 0.1 * pulse(t, 0.82, 0.04), ry: 0.1 * e, rz: 0.5 * e - 0.12 * pulse(t, 0.6, 0.04),
+    }),
+    // shell by shell: gun canted up and left, a push per shell, then a big pump
+    shotgun: (t, e) => {
+      let push = 0;
+      for (let i = 0; i < 5; i++) push += pulse(t, 0.22 + i * 0.12, 0.03);
+      return { x: -0.02 * e, y: -0.06 * e, z: -0.02 * push + 0.07 * pulse(t, 0.88, 0.04),
+        rx: 0.35 * e + 0.05 * push, ry: -0.15 * e, rz: -0.35 * e };
+    },
+    // bolt action + mag: turn the gun to show its side, bolt up and back, swap the mag, bolt home
+    sniper: (t, e) => ({
+      x: 0.02 * e, y: -0.07 * e - 0.04 * pulse(t, 0.5, 0.05) + 0.03 * pulse(t, 0.62, 0.04), z: 0.04 * pulse(t, 0.25, 0.05) - 0.04 * pulse(t, 0.86, 0.04),
+      rx: 0.15 * e, ry: 0.25 * e, rz: 0.35 * e + 0.15 * pulse(t, 0.25, 0.05) - 0.12 * pulse(t, 0.86, 0.04),
+    }),
+    // lower the tube, load a rocket at the back, lift it back up
+    bazooka: (t, e) => ({
+      x: 0, y: -0.22 * e + 0.03 * pulse(t, 0.6, 0.05), z: 0.06 * e - 0.05 * pulse(t, 0.6, 0.05),
+      rx: -0.45 * e, ry: 0.1 * e, rz: 0.15 * e,
+    }),
+  };
+  const NO_RELOAD = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0 };
+  function reloadOffsets(type, reloadT, total) {
+    if (!(reloadT > 0) || !total) return NO_RELOAD;
+    const t = Math.min(1, Math.max(0, 1 - reloadT / total));
+    const e = smooth(0, 0.15, t) * (1 - smooth(0.85, 1, t)); // ease in and out of the reload pose
+    return (RELOAD_ANIM[type] || RELOAD_ANIM.mg)(t, e);
+  }
+
   // ---------- camera feel ----------
   const feel = { trauma: 0, fovPunch: 0, fov: TUNING.fovBase, landDip: 0 };
   function addTrauma(t) { feel.trauma = Math.min(1, feel.trauma + t); }
@@ -674,6 +711,7 @@ export function createRenderer(container, bus) {
         if (vmGun) vmRoot.remove(vmGun);
         vmGun = modeled || buildGunMesh(gun, true);
         vmGun.userData.gunId = gun.id;
+        vmGun.userData.type = gun.type;
         vmGun.userData.pose = modeled ? VM_POSE[gun.type] || VM_POSE.model : VM_POSE.box;
         vmGun.scale.setScalar(vmGun.userData.pose.scale);
         setVmLayer(vmGun);
@@ -691,21 +729,22 @@ export function createRenderer(container, bus) {
     vm.ads = lerp(vm.ads || 0, ads, Math.min(1, fdt * 14));
     vmRoot.visible = !p.dead;
     if (vmGun) {
-      const rl = vm.reload, pose = vmGun.userData.pose, ia = 1 - vm.ads;
+      const pose = vmGun.userData.pose, ia = 1 - vm.ads;
+      const r = reloadOffsets(vmGun.userData.type, p.reloadT, vm.reloadTime);
       const ad = pose.tilt ? pose.rest : pose.ads;
       // less sway and bob while aiming; none at full aim for a tilted gun so its tip stays on the crosshair
       const steady = 1 - (pose.tilt ? 1 : 0.75) * vm.ads;
       vmGun.position.set(
-        lerp(pose.rest[0], ad[0], vm.ads) + vm.swayX * steady,
-        lerp(pose.rest[1], ad[1], vm.ads) - vm.swayY * steady - rl * 0.1 - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006 * steady,
-        lerp(pose.rest[2], ad[2], vm.ads) + vm.kick * 0.05);
-      const kickX = vm.kick * 0.25 + rl * 0.6 * (0.5 + 0.5 * Math.sin(now * 0.01));
+        lerp(pose.rest[0], ad[0], vm.ads) + vm.swayX * steady + r.x,
+        lerp(pose.rest[1], ad[1], vm.ads) - vm.swayY * steady + r.y - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006 * steady,
+        lerp(pose.rest[2], ad[2], vm.ads) + vm.kick * 0.05 + r.z);
+      const kickX = vm.kick * 0.25 + r.rx;
       if (pose.tilt) {
         const tilt = vmGun.userData.tiltQ ||= tiltQuaternion(pose, vmGun.userData.muzzle);
         vmGun.quaternion.setFromEuler(_te.set(0, pose.yaw, pose.roll)).slerp(tilt, vm.ads)
-          .multiply(_tq.setFromEuler(_te.set(kickX, vm.swayX * steady, rl * 0.4)));
+          .multiply(_tq.setFromEuler(_te.set(kickX, vm.swayX * steady + r.ry, r.rz)));
       } else {
-        vmGun.rotation.set(kickX, pose.yaw * ia + vm.swayX * steady, pose.roll * ia + rl * 0.4);
+        vmGun.rotation.set(kickX, pose.yaw * ia + vm.swayX * steady + r.ry, pose.roll * ia + r.rz);
       }
       vmGun.updateMatrix();
       muzzleFlash.position.copy(vmGun.userData.muzzle).applyMatrix4(vmGun.matrix);

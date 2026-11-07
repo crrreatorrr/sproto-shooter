@@ -319,9 +319,17 @@ export function playerVitals(state, dt) {
     } else if (!inAura) {
       p.mana = Math.min(p.maxMana, p.mana + (TUNING.manaRegen + (p.skills.magic.level - 1)) * dt);
     }
-    if (state.tuning.godMode) p.mana = p.maxMana; // god mode: infinite mana (spell cooldowns still apply)
+    if (state.tuning.godMode) { p.mana = p.maxMana; godTopUp(p); } // god mode: infinite mana (cooldowns still apply), vast resources
     if (p.inAuraT > 0) p.inAuraT -= dt;
   }
+}
+
+/** God mode: tickets, resources, ammo and medkits never drop below these (called on toggle and every tick). */
+export function godTopUp(p) {
+  if (p.tickets < TUNING.godTickets) p.tickets = TUNING.godTickets;
+  for (const k of Object.keys(p.resources)) if (p.resources[k] < TUNING.godResources) p.resources[k] = TUNING.godResources;
+  for (const k of Object.keys(p.ammoCap)) if (p.ammo[k] < p.ammoCap[k]) p.ammo[k] = p.ammoCap[k];
+  if (p.medkits < TUNING.medkitCarry) p.medkits = TUNING.medkitCarry;
 }
 
 export function respawn(state, p) {

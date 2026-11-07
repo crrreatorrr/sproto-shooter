@@ -18,6 +18,8 @@ export const TUNING = {
   dashSpeed: 24, dashTime: 0.15, dashCd: 2.0, dashInvuln: 0.12,
 
   fovBase: 90, fovSprint: 6, fovAds: 70, fovScope: 12,
+  // god mode keeps you at or above these while it's on
+  godTickets: 99999, godResources: 9999,
 
   maxHp: 100, maxShield: 50, maxMana: 100,
   shieldDelay: 3.0, shieldRegen: 25,

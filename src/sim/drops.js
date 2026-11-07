@@ -46,8 +46,8 @@ export function rollDrops(rng, tableId, ctx = {}) {
         case 'health': out.push({ kind: 'health', amount: TUNING.healthOrb }); break;
         case 'bigHealth': out.push({ kind: 'bigHealth', amount: TUNING.bigOrb }); break;
         case 'ammo': {
-          // only ammo the player can use up (none for infinite-reserve guns like the machine gun)
-          const types = ctx.playerGunTypes || ['bullets'];
+          // ammo for one of the guns the player carries
+          const types = ctx.playerGunTypes && ctx.playerGunTypes.length ? ctx.playerGunTypes : ['bullets'];
           const t = types[Math.floor(float(rng) * types.length)];
           if (t) out.push({ kind: 'ammo', ammoType: t, amount: TUNING.ammoDrop[t] });
           break;

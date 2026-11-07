@@ -8,7 +8,7 @@ import { generateGun } from './guns.js';
 import { spawnGunPickup, rollGunType, rollQuality } from './drops.js';
 import { addXp, applySkillPassives } from './progression.js';
 import { onEnemyKilled, GOD_HP } from './combat.js';
-import { respawn } from './player.js';
+import { respawn, godTopUp } from './player.js';
 import { startWaves } from './waves.js';
 import { TUNING } from '../data/tuning.js';
 import {
@@ -78,9 +78,6 @@ function giveTestLoadout(state, p) {
   debugOp(state, p, 'spawnDummies', {});
 }
 
-/** God mode amounts handed out when it turns on (topped up, never taken away). */
-export const GOD_TICKETS = 999, GOD_RESOURCES = 99;
-
 /** God mode on: back up to at least GOD_HP (reviving if down) and stocked up on everything. Off: normal damage again. */
 export function setGodMode(state, p, on) {
   state.tuning.godMode = !!on;
@@ -91,10 +88,7 @@ export function setGodMode(state, p, on) {
   if (p.dead || p.downed) respawn(state, p);
   p.hp = Math.max(p.hp, Math.min(GOD_HP, p.maxHp));
   p.mana = p.maxMana;
-  p.tickets = Math.max(p.tickets, GOD_TICKETS);
-  for (const k of Object.keys(p.resources)) p.resources[k] = Math.max(p.resources[k], GOD_RESOURCES);
-  for (const k of Object.keys(p.ammoCap)) p.ammo[k] = Math.max(p.ammo[k], p.ammoCap[k]);
-  p.medkits = Math.max(p.medkits, TUNING.medkitCarry);
+  godTopUp(p);
   giveAllGuns(state, p);
 }
 

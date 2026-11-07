@@ -314,8 +314,10 @@ describe('god mode', () => {
     expect(dealt).toBeGreaterThan(0); // shield and the 1 HP above the floor still take the hit
     expect(p.hp).toBe(99);
     expect(p.downed).toBe(false);
-    expect(p.tickets).toBe(999);
-    for (const v of Object.values(p.resources)) expect(v).toBe(99);
+    expect(p.tickets).toBe(99999);
+    for (const v of Object.values(p.resources)) expect(v).toBe(9999);
+    p.tickets = 0; run(s, 1, () => cmd());
+    expect(p.tickets).toBe(99999); // kept topped up while god mode is on
     for (const id of ['gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor']) expect(p.perks[id]).toBe(true);
     damagePlayer(s, p, { base: 500, sourceKind: 'enemy' });
     expect(p.hp).toBe(99);
@@ -350,7 +352,7 @@ describe('god mode', () => {
     expect(p.reloadT).toBeGreaterThan(0);
     run(s, 4 * 60, () => cmd());
     expect(sn.ammoInMag).toBe(sn.stats.magSize);
-    expect(p.ammo.sniper).toBe(0);
+    expect(p.ammo.sniper).toBe(p.ammoCap.sniper); // god mode keeps the reserve topped up; the reload didn't use it
   });
   it('gives one of every gun type, keeping guns you carry and dropping extras', () => {
     const s = createGameState({ seed: 10 });
@@ -391,14 +393,14 @@ describe('machine gun ammo', () => {
     expect(g.ammoInMag).toBe(g.stats.magSize);
     expect(p.ammo.bullets).toBe(0); // reserve untouched
   });
-  it('enemies stop dropping bullets when the machine gun is the only gun', async () => {
+  it('enemies drop ammo for the guns you carry', async () => {
     const { rollDrops } = await import('../src/sim/drops.js');
     const { createRng } = await import('../src/core/rng.js');
     const rng = createRng(1);
-    for (let i = 0; i < 200; i++) {
-      const drops = rollDrops(rng, 'midget', { elite: true, tier: 5, playerGunTypes: [] });
-      expect(drops.some((d) => d.kind === 'ammo')).toBe(false);
-    }
+    const ammo = [];
+    for (let i = 0; i < 200; i++) ammo.push(...rollDrops(rng, 'obama', { tier: 1, playerGunTypes: ['bullets', 'sniper'] }).filter((d) => d.kind === 'ammo'));
+    expect(ammo.length).toBeGreaterThan(100); // 70% for an obama
+    expect(new Set(ammo.map((d) => d.ammoType))).toEqual(new Set(['bullets', 'sniper']));
   });
 });
 

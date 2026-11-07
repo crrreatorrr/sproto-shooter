@@ -2,7 +2,7 @@
 import { float, range } from '../core/rng.js';
 import { emit } from './events.js';
 import { ENEMIES, ELITE, ALLY } from '../data/enemies.js';
-import { ELEMENTS_BY_ID, hasInfiniteReserve } from '../data/guns.js';
+import { ELEMENTS_BY_ID } from '../data/guns.js';
 import { TUNING } from '../data/tuning.js';
 import { distToCapsule, entityDef, sphereHitsPlayer } from './collision.js';
 import { rollDrops, spawnDrops } from './drops.js';
@@ -140,7 +140,7 @@ export function onEnemyKilled(state, e) {
   }
   // Drops
   const p = state.players[state.localPlayerId];
-  const ctx = { elite: e.elite, tier: e.tier, playerGunTypes: p.guns.filter((g) => g && !hasInfiniteReserve(g)).map((g) => g.ammoType), summoned: e.summoned };
+  const ctx = { elite: e.elite, tier: e.tier, playerGunTypes: p.guns.filter(Boolean).map((g) => g.ammoType), summoned: e.summoned };
   const specs = rollDrops(state.rng, e.type, ctx);
   spawnDrops(state, specs, centerOf(e));
 }
