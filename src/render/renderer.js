@@ -548,15 +548,17 @@ export function createRenderer(container, bus) {
     // slim shotgun sits a little higher; its barrel is the top of the model, so aiming can stay close to center
     shotgun: { rest: [0.19, -0.15, -0.5], ads: [0, -0.16, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
     // sniper: zooming doesn't move or resize the gun; it only tilts it about its own center until the barrel
-    // tip sits exactly on the screen center (the crosshair), then cants it by `roll` around the center→tip line
-    sniper: { rest: [0.2, -0.17, -0.5], tilt: { roll: -0.2 }, yaw: 0.06, roll: -0.03, scale: 1 },
+    // tip lands just to the lower right of the crosshair (`tip`: camera-space x/y offset from the screen
+    // center), then cants it by `roll` around the center→tip line
+    sniper: { rest: [0.2, -0.17, -0.5], tilt: { tip: [0.12, -0.03], roll: -0.05 }, yaw: 0.06, roll: -0.03, scale: 1 },
   };
   const _tq = new THREE.Quaternion(), _te = new THREE.Euler(), _tA = new THREE.Vector3(), _tB = new THREE.Vector3();
-  /** Rotation (quaternion) that, with the gun at its rest position, puts its muzzle on the view axis. */
+  /** Rotation (quaternion) that, with the gun at its rest position, puts its muzzle at pose.tilt.tip. */
   function tiltQuaternion(pose, muzzle) {
-    const [x, y, z] = pose.rest;
-    const reach = muzzle.lengthSq() - x * x - y * y; // how far down the view axis the tip can land
-    _tB.set(-x, -y, -Math.sqrt(Math.max(1e-4, reach))).normalize();
+    const [x, y] = pose.rest, [tx, ty] = pose.tilt.tip || [0, 0];
+    const dx = tx - x, dy = ty - y;
+    const reach = muzzle.lengthSq() - dx * dx - dy * dy; // how far ahead the tip can land
+    _tB.set(dx, dy, -Math.sqrt(Math.max(1e-4, reach))).normalize();
     _tA.copy(muzzle).normalize();
     const q = new THREE.Quaternion().setFromUnitVectors(_tA, _tB);
     return q.premultiply(_tq.setFromAxisAngle(_tB, pose.tilt.roll));
