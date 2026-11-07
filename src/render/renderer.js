@@ -395,6 +395,8 @@ export function createRenderer(container, bus) {
     rocket: { color: 0xff6a3d, scale: 0.22, cap: 32 }, duckBullet: { color: 0xffe14a, scale: 0.2, cap: 128 },
     megaBullet: { color: 0xffffff, scale: 0.6, cap: 16 }, yeetGun: { color: 0xaaaaaa, scale: 0.35, cap: 16 },
     bigBullet: { color: 0xffa21f, scale: 0.26, cap: 32 }, // Big Bullets round: fat, stretched along its flight
+    // Duck Gun rubber bullet: the modelled round, medium sized, tumbling as it flies
+    rubberBullet: { color: 0xffd23a, scale: 0.3, cap: 64, model: 'models/projectiles/rubber_bullet.glb', len: 0.42, noseYaw: 0 },
     bullet: { color: 0xffc93c, scale: 0.22, cap: 600 },
     flame: { color: 0xff7a1a, scale: 0.4, cap: 300 }, fireball: { color: 0xff4a1a, scale: 0.6, cap: 16 },
     pellet: { color: 0xff5ec4, scale: 0.12, cap: 300 },
@@ -435,7 +437,7 @@ export function createRenderer(container, bus) {
   const PK_COL = { health: new THREE.Color(0xff4d6d), bigHealth: new THREE.Color(0xff2255), mana: new THREE.Color(0x6aa8ff), tickets: new THREE.Color(0xffd700) };
 
   // Gun with a 3D model (e.g. the toy machine gun): model + element gem. Null if the type has none / not loaded yet.
-  const GUN_MODEL_LEN = { mg: 0.7, shotgun: 0.75, sniper: 0.8, bazooka: 0.9, raygun: 0.62, bigbullets: 0.78 };
+  const GUN_MODEL_LEN = { mg: 0.7, shotgun: 0.75, sniper: 0.8, bazooka: 0.9, raygun: 0.62, bigbullets: 0.78, duckgun: 0.8 };
   // Where the hands hold each model: anchors inside the part each hand grabs, as fractions of the model's size
   // [x (+ = right), y (from the center, + = up), z (+ = back)]. The first-person rig slides each palm out of the
   // gun from its anchor until it rests on the surface, so anchors sit inside the grip / handguard, not on it.
@@ -452,6 +454,7 @@ export function createRenderer(container, bus) {
     // boss pistols: right hand wrapped round the grip's middle, left hand cupped under the front of the body
     raygun: { grip: [0, -0.298, 0.31], fore: [-0.113, -0.059, -0.13], left: 'cup', rake: -1.2 },
     bigbullets: { grip: [0, -0.401, 0.405], fore: [-0.09, -0.294, -0.206], left: 'cup', rake: -1.2, thumb: -0.3 },
+    duckgun: { grip: [0, -0.4, 0.219], fore: [0, -0.258, -0.125], left: 'cup', rake: -0.6 },
   };
   const LEFT_SPEC = {
     cup: { fingers: [1, 0.25, 0.15], thumb: [0, 0.2, -1] },
@@ -490,7 +493,7 @@ export function createRenderer(container, bus) {
     const bodyMat = M(man.color, { roughness: 0.4, metalness: 0.3 });
     const accent = M(new THREE.Color(q.color), { emissive: new THREE.Color(q.color), emissiveIntensity: 0.35 });
     const elCol = ELEM_COL[gun.element];
-    const dims = { mg: [0.12, 0.14, 0.6], shotgun: [0.14, 0.14, 0.55], sniper: [0.09, 0.11, 0.85], bazooka: [0.2, 0.2, 0.9], raygun: [0.12, 0.16, 0.55], bigbullets: [0.16, 0.18, 0.7] }[gun.type] || [0.12, 0.14, 0.6];
+    const dims = { mg: [0.12, 0.14, 0.6], shotgun: [0.14, 0.14, 0.55], sniper: [0.09, 0.11, 0.85], bazooka: [0.2, 0.2, 0.9], raygun: [0.12, 0.16, 0.55], bigbullets: [0.16, 0.18, 0.7], duckgun: [0.16, 0.18, 0.7] }[gun.type] || [0.12, 0.14, 0.6];
     const body = new THREE.Mesh(G.box, bodyMat); body.scale.set(...dims);
     g.add(body);
     if (gun.type === 'bazooka') {
@@ -688,6 +691,8 @@ export function createRenderer(container, bus) {
     // crosshair
     raygun: { len: 0.5, rest: [0.17, -0.17, -0.45], ads: [0, -0.2, -0.42], yaw: 0.08, roll: -0.03, scale: 1 },
     bigbullets: { len: 0.58, rest: [0.18, -0.19, -0.48], ads: [0, -0.24, -0.46], yaw: 0.08, roll: -0.03, scale: 1 },
+    // legendary Duck Gun: a stocked rifle with a duck head on the front
+    duckgun: { len: 0.72, rest: [0.2, -0.19, -0.5], ads: [0, -0.25, -0.47], yaw: 0.07, roll: -0.03, scale: 1 },
   };
   const fp = createFirstPerson(camera); // first-person arms (main): drawn in the viewmodel pass with the gun
   // The arms' gun collider takes ~50 ms to build per model: build it in idle time for every gun carried, so
@@ -743,6 +748,13 @@ export function createRenderer(container, bus) {
       for (let i = 0; i < 4; i++) push += pulse(t, 0.3 + i * 0.11, 0.03);
       return { x: -0.03 * e, y: -0.05 * e, z: 0.07 * e,
         rx: 0.2 * e + 0.03 * push, ry: -0.2 * e, rz: -0.6 * e - 0.5 * pulse(t, 0.84, 0.05) };
+    },
+    // tilt the duck so its back faces the left hand, a nudge per rubber round fed in, then a squeeze of the head
+    duckgun: (t, e) => {
+      let push = 0;
+      for (let i = 0; i < 3; i++) push += pulse(t, 0.32 + i * 0.13, 0.03);
+      return { x: -0.03 * e, y: -0.05 * e, z: 0.05 * e,
+        rx: 0.25 * e - 0.04 * push, ry: 0.2 * e, rz: 0.45 * e - 0.15 * pulse(t, 0.8, 0.04) };
     },
     // swing the tube out to the right so its open back end comes round in front, load a rocket, swing back
     bazooka: (t, e) => ({
@@ -818,6 +830,15 @@ export function createRenderer(container, bus) {
       for (let i = 0; i < 4; i++) { const c = 0.3 + i * 0.11; keys.push([c - 0.04, away], [c, drum], [c + 0.04, away]); }
       keys.push([0.8, away], [0.86, below]);
       return { left: { spec: LEFT_SPEC.foregrip, w: track(t, [[0.04, 0], [0.12, 1], [0.86, 1], [0.94, 0]]), at: track(t, keys) } };
+    },
+    // left hand: down for a rubber round, push it into the hatch on the duck's back (×3), then squeeze its head
+    duckgun: (t) => {
+      const fore = HAND_FRAC.duckgun.fore, below = [fore[0] - 1.2, fore[1] - 0.7, fore[2]];
+      const hatch = [-0.05, 0.36, -0.18], over = [-1.0, 0.9, -0.1], head = [0, 0.4, -0.22];
+      const keys = [[0.08, below], [0.18, over]];
+      for (let i = 0; i < 3; i++) { const c = 0.32 + i * 0.13; keys.push([c - 0.05, over], [c, hatch], [c + 0.04, over]); }
+      keys.push([0.74, over], [0.8, head], [0.84, over], [0.9, below]);
+      return { left: { spec: PALM_DOWN_L, w: track(t, [[0.03, 0], [0.1, 1], [0.9, 1], [0.97, 0]]), at: track(t, keys) } };
     },
     // left hand leaves the foregrip, takes a rocket from behind the tube and pushes it in, back to the grip
     bazooka: (t) => {
@@ -1164,6 +1185,7 @@ export function createRenderer(container, bus) {
         if (pr.kind === 'missile') dummy.rotateZ(now * 0.01 + pr.id); // spin
         else if (pr.kind === 'drill') dummy.rotateZ(now * 0.04 + pr.id); // the drill bit keeps spinning
         else if (pr.kind === 'tyre') { dummy.rotateY(now * 0.009 + pr.id); dummy.rotateX(now * 0.015 + pr.id); } // tumbles: face and tread both show
+        else if (pr.kind === 'rubberBullet') dummy.rotateZ(now * 0.02 + pr.id); // rubber rounds spin as they fly
       }
       else { dummy.scale.setScalar(s); dummy.rotation.set(0, 0, 0); }
       dummy.updateMatrix();

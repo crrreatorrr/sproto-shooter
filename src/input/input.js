@@ -60,6 +60,7 @@ export function createInput(canvas) {
     held.add(e.code);
     for (const k of LATCHED) if (BIND[k].includes(e.code)) latch[k] = true;
     if (/^Digit[1-4]$/.test(e.code)) slot = Number(e.code.slice(5)) - 1;
+    if (e.code === 'KeyL') slot = 4; // legendary slot (5 opens the stats panel)
     // F: off → zoom 1 → (sniper) zoom 2 → off
     if (BIND.aimToggle.includes(e.code) && enabled && api.locked) {
       const aiming = mouseR || aimToggled;

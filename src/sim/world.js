@@ -35,7 +35,7 @@ export function projectiles(state, dt) {
       if (hit) {
         damageEnemy(state, hit.e, {
           sourceId: p.ownerId, sourceKind: p.sourceKind, base: p.damage, element: p.element, elementChance: p.elementChance,
-          zone: hit.zone, critMult: p.critMult, critChance: p.critChance, canCrit: p.kind === 'duckBullet' || p.kind === 'megaBullet' || p.kind === 'bigBullet',
+          zone: hit.zone, critMult: p.critMult, critChance: p.critChance, canCrit: p.kind === 'duckBullet' || p.kind === 'megaBullet' || p.kind === 'bigBullet' || p.kind === 'rubberBullet',
           point: hit.point, gunId: p.gunId, arcane: p.arcane, wacky: p.wacky, pellet: !!p.pellet,
         });
         p.hitIds[hit.e.id] = true;
@@ -58,7 +58,14 @@ export function projectiles(state, dt) {
     if (consumed) continue;
     p.pos = end;
     if (p.pos.y <= 0) {
-      if (p.bounces > 0) { p.bounces--; p.pos.y = 0.01; p.vel.y = Math.abs(p.vel.y) * 0.7; emit(state, p.kind === 'duckBullet' ? 'duckBounce' : 'bounce', { pos: { ...p.pos }, kind: p.kind }); }
+      if (p.bounces > 0) {
+        p.bounces--; p.pos.y = 0.01; p.vel.y = Math.abs(p.vel.y) * 0.7;
+        // duck rounds quack; anything else (the Car Part Monster's tyres) just thuds
+        const duck = p.kind === 'duckBullet' || p.kind === 'rubberBullet';
+        emit(state, duck ? 'duckBounce' : 'bounce', { pos: { ...p.pos }, kind: p.kind });
+        // rubber rounds lose most of their speed on the bounce and pop shortly after, close to where they landed
+        if (p.kind === 'rubberBullet') { p.vel.x *= 0.4; p.vel.z *= 0.4; p.vel.y *= 0.7; p.ttl = Math.min(p.ttl, 0.35); }
+      }
       else { detonate(state, p); continue; }
     }
     const r = Math.hypot(p.pos.x, p.pos.z);
