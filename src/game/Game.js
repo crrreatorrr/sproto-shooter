@@ -17,6 +17,7 @@ import { MAX_TIER } from '../data/waves.js';
 import { createPerfCounters } from '../render/debug/perfCounters.js';
 import { createStatsOverlay } from '../render/debug/StatsOverlay.js';
 import { createFeel, wireHitstop } from './feel.js';
+import { crashGuard } from '../core/crashGuard.js';
 
 const MAX_FRAME = 0.25, MAX_TICKS = 5;
 
@@ -35,6 +36,8 @@ export class Game {
     this.feel = createFeel();
     // Optional observer for a server-issued run log. Null leaves gameplay unchanged.
     this.onSimCommand = null;
+    // Counts frames that throw; halts the loop and shows the "Something broke" panel after a streak.
+    this.crash = crashGuard;
 
     const app = document.getElementById('app');
     this.renderer = createRenderer(app.querySelector('#view'), this.bus);
@@ -386,7 +389,23 @@ export class Game {
   }
 
   // ---------- loop ----------
+  // The whole frame runs inside the crash guard and the next frame is always scheduled. A throw ends
+  // the frame (no more sim ticks on a half-applied state) and drops the tick backlog; a streak of
+  // failing frames halts the game (the panel shows, nothing steps). The console gets each distinct
+  // error once. A frame where a tick was due but none ran (120 Hz) neither clears nor extends a streak.
   frame(now) {
+    try {
+      if (!this.crash.halted && this.step(now)) this.crash.frameOk();
+    } catch (err) {
+      this.acc = 0;
+      this.crash.frameFailed(err);
+    } finally {
+      requestAnimationFrame((t) => this.frame(t));
+    }
+  }
+
+  /** One rendered frame. Returns false when the sim is running but no tick fell due (proves nothing). */
+  step(now) {
     const frameMs = now - this.last;
     let ft = Math.min(frameMs / 1000, MAX_FRAME);
     this.last = now;
@@ -394,13 +413,13 @@ export class Game {
     if (this.pvpActive) {
       const cmd = this.input.buildCommand(this.state.tick);
       if (this.pvp) this.pvp.frame(stepped, cmd);
-      requestAnimationFrame((t) => this.frame(t));
-      return;
+      return true;
     }
     // Shop/crafting menus and the debug panel do NOT pause. The pause and end screens do. The title runs a demo behind it.
     const scr = this.screen.hidden ? null : this.screen.querySelector('.title') ? 'title' : 'other';
     const titleUp = scr === 'title';
-    if (scr === null || titleUp) this.acc += stepped * this.timeScale;
+    const advancing = scr === null || titleUp;
+    if (advancing) this.acc += stepped * this.timeScale;
     const sim0 = performance.now();
     let n = 0;
     while (this.acc >= DT && n < MAX_TICKS) {
@@ -435,7 +454,7 @@ export class Game {
       frameMs, simMs, renderCpuMs, hudMs, ticks: n, gpuMs: this.renderer.takeGpuMs(),
     }, now);
     if (this.statsOn) this.drawStats(now);
-    requestAnimationFrame((t) => this.frame(t));
+    return n > 0 || !advancing;
   }
 
   async openPvp(opts = {}) {
