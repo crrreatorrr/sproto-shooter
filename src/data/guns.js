@@ -1,4 +1,3 @@
-// @ts-check
 // Gun definitions: types, qualities, manufacturers, parts, elements, wacky perks (PLAN §3.10, §7.2)
 
 const B = (o) => ({
@@ -8,15 +7,40 @@ const B = (o) => ({
 });
 
 export const GUN_TYPES = [
-  { id: 'mg', name: 'Machine Gun', short: 'MG', ammoType: 'bullets', weight: 60, fireMode: 'auto',
-    base: B({ damage: 9, fireRate: 10, spread: 1.2, adsSpread: 0.45, magSize: 36, reloadTime: 1.8, critMult: 2.0, critChance: 0.05, elementChance: 0.10, recoil: 0.35, recoilYaw: 0.15, swapTime: 0.5, zoomFov: 70 }) },
-  { id: 'shotgun', name: 'Shotgun', short: 'SG', ammoType: 'shells', weight: 17, fireMode: 'auto',
+  // infiniteReserve: spare ammo never runs out, but the magazine still empties and reloads
+  // range (hitscan): full damage up to `full` metres, falling off to `min`× at `max`; nothing hits beyond `max`
+  { id: 'mg', name: 'Machine Gun', short: 'MG', ammoType: 'bullets', weight: 60, fireMode: 'auto', infiniteReserve: true, range: { full: 30, max: 75, min: 0.5 },
+    base: B({ damage: 9, fireRate: 10, spread: 1.2, adsSpread: 0.45, magSize: 36, reloadTime: 2.5, critMult: 2.0, critChance: 0.05, elementChance: 0.10, recoil: 0.35, recoilYaw: 0.15, swapTime: 0.5, zoomFov: 70 }) },
+  { id: 'shotgun', name: 'Shotgun', short: 'SG', ammoType: 'shells', weight: 17, fireMode: 'auto', range: { full: 7, max: 16, min: 0.3 },
     base: B({ damage: 8, pellets: 9, fireRate: 1.2, spread: 6.0, adsSpread: 4.5, magSize: 6, reloadTime: 2.4, critMult: 2.0, critChance: 0.03, elementChance: 0.06, recoil: 3.5, recoilYaw: 1.0, swapTime: 0.5, zoomFov: 75 }) },
-  { id: 'sniper', name: 'Sniper', short: 'SN', ammoType: 'sniper', weight: 17, fireMode: 'auto',
-    base: B({ damage: 85, fireRate: 0.8, spread: 3.0, adsSpread: 0, magSize: 4, reloadTime: 2.6, critMult: 3.0, critChance: 0.08, elementChance: 0.35, recoil: 5.0, recoilYaw: 0.8, swapTime: 0.6, zoomFov: 25, pierce: 1 }) },
+  // zoomLevels: 2 = a second, much stronger zoom (field of view × SCOPE_ZOOM2) for long range
+  { id: 'sniper', name: 'Sniper', short: 'SN', ammoType: 'sniper', weight: 17, fireMode: 'auto', zoomLevels: 2, range: { full: 120, max: 150, min: 1 },
+    base: B({ damage: 85, fireRate: 0.8, spread: 3.0, adsSpread: 0, magSize: 4, reloadTime: 2.6, critMult: 3.0, critChance: 0.08, elementChance: 0.35, recoil: 5.0, recoilYaw: 0.8, swapTime: 0.6, zoomFov: 12, pierce: 1 }) },
   { id: 'bazooka', name: 'Bazooka', short: 'BZ', ammoType: 'rockets', weight: 6, fireMode: 'auto',
     base: B({ damage: 140, fireRate: 0.6, spread: 0.5, adsSpread: 0.2, magSize: 1, reloadTime: 2.2, projectileSpeed: 28, critMult: 1.5, critChance: 0, elementChance: 0.5, splashRadius: 4.0, splashDamage: 110, recoil: 4.0, recoilYaw: 0.5, swapTime: 0.7, zoomFov: 70 }) },
+  // Boss weapons (bossOnly): never rolled at random (weight 0), not crafted or sold in the shop. Every boss kill
+  // drops one (data/drops.js 'bossGun'). Endless spare ammo; the magazine still reloads.
+  // Ray Gun: a piercing laser beam (hitscan, drawn as a glowing ray), fast and accurate.
+  { id: 'raygun', name: 'Ray Gun', short: 'RG', ammoType: 'energy', weight: 0, bossOnly: true, beam: true, fireMode: 'auto', infiniteReserve: true, range: { full: 60, max: 100, min: 0.6 },
+    base: B({ damage: 24, fireRate: 7, spread: 0.3, adsSpread: 0.08, magSize: 30, reloadTime: 2.2, critMult: 2.2, critChance: 0.08, elementChance: 0.2, recoil: 0.3, recoilYaw: 0.08, swapTime: 0.55, zoomFov: 60, pierce: 2 }) },
+  // Big Bullets: huge, slow-firing rounds you can watch fly; each hit does massive damage, punches through one
+  // target and bursts on impact.
+  { id: 'bigbullets', name: 'Big Bullets', short: 'BB', ammoType: 'heavy', weight: 0, bossOnly: true, projectile: 'bigBullet', fireMode: 'auto', infiniteReserve: true,
+    base: B({ damage: 340, fireRate: 1.1, spread: 0.5, adsSpread: 0.1, magSize: 4, reloadTime: 2.6, projectileSpeed: 70, critMult: 2.5, critChance: 0.1, elementChance: 0.3, splashRadius: 2.5, splashDamage: 120, recoil: 6.5, recoilYaw: 1.0, swapTime: 0.7, zoomFov: 60, pierce: 1 }) },
+  // Duck Gun (legendaryOnly): always legendary, never rolled at random; the sandbox has one to grab. Lobs
+  // medium-sized rubber bullets that bounce once off the floor or arena wall and explode on whatever they hit
+  // (or when they land after the bounce), damaging everything nearby.
+  { id: 'duckgun', name: 'Duck Gun', short: 'DG', ammoType: 'rubber', weight: 0, legendaryOnly: true, projectile: 'rubberBullet', fireMode: 'auto', infiniteReserve: true,
+    base: B({ damage: 60, fireRate: 2.2, spread: 0.9, adsSpread: 0.3, magSize: 8, reloadTime: 2.4, projectileSpeed: 36, critMult: 2.0, critChance: 0.08, elementChance: 0.25, splashRadius: 3.6, splashDamage: 95, recoil: 3.0, recoilYaw: 0.6, swapTime: 0.6, zoomFov: 62 }) },
 ];
+/** Gun types that only drop from bosses. */
+export const BOSS_GUN_TYPES = GUN_TYPES.filter((t) => t.bossOnly).map((t) => t.id);
+
+// Slots: 1-4 are regular (4 needs the shop upgrade), the 5th (key L) only ever holds a legendary gun.
+export const LEGENDARY_SLOT = 4;
+export const SLOT_COUNT = 5;
+/** Can the player select this slot? */
+export const slotUsable = (p, i) => i === LEGENDARY_SLOT || (i >= 0 && i < p.unlockedSlots);
 
 export const QUALITIES = [
   { id: 'common', idx: 0, name: 'Common', color: '#cfcfcf', weight: 55, damageMult: 1.0, magMult: 1.0, reloadMult: 1.0, spreadMult: 1.0, partSlots: 1, priceMult: 1.0, sellMult: 1.0 },
@@ -59,11 +83,11 @@ export const ELEMENTS = [
 
 export const WACKY = [
   { id: 'rubberDuck', name: 'Rubber Duckie', desc: 'Shots become bouncing rubber ducks.', allowedTypes: ['mg', 'shotgun', 'sniper'] },
-  { id: 'yeetReload', name: 'Yeet Reload', desc: 'Reloading throws the gun as an explosive.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka'] },
+  { id: 'yeetReload', name: 'Yeet Reload', desc: 'Reloading throws the gun as an explosive.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun'] },
   { id: 'tenthMega', name: 'Every Tenth', desc: 'Every 10th shot fires a giant mega bullet.', allowedTypes: ['mg', 'shotgun', 'sniper'] },
-  { id: 'critSproto', name: 'Lil Buddy', desc: 'Weak-spot hits spawn a mini friendly Sproto.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka'] },
-  { id: 'confettiKill', name: 'Party Popper', desc: 'Kills explode in damaging confetti.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka'] },
-  { id: 'bigHead', name: 'Big Head Mode', desc: 'Enemies you hit get huge heads (bigger weak spots).', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka'] },
+  { id: 'critSproto', name: 'Lil Buddy', desc: 'Weak-spot hits spawn a mini friendly Sproto.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun'] },
+  { id: 'confettiKill', name: 'Party Popper', desc: 'Kills explode in damaging confetti.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun'] },
+  { id: 'bigHead', name: 'Big Head Mode', desc: 'Enemies you hit get huge heads (bigger weak spots).', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun'] },
 ];
 
 export const NAME_BITS = {
@@ -71,6 +95,9 @@ export const NAME_BITS = {
   shotgun: ['Boomstick', 'Door Knocker', 'Pellet Party', 'Splatterer'],
   sniper: ['Long Boi', 'Pokey Stick', 'Eyeball', 'Far Bonker'],
   bazooka: ['Big Yeet', 'Kaboomer', 'Rocket Pal', 'Sky Mail'],
+  raygun: ['Zapper', 'Beam Buddy', 'Ray-o-Matic', 'Laser Lad'],
+  bigbullets: ['Hand Cannon', 'Chonker', 'Big Bertha', 'Thumper'],
+  duckgun: ['Quackinator', 'Bath Time', 'Quack Attack', 'Rubber Ruckus'],
   element: { none: ['', 'Trusty', 'Basic'], fire: ['Spicy', 'Toasty', 'Hot'], shock: ['Zappy', 'Buzzy', 'Static'], goo: ['Gloopy', 'Sticky', 'Slimy'] },
 };
 
@@ -81,5 +108,24 @@ export const MANUFACTURERS_BY_ID = byId(MANUFACTURERS);
 export const PARTS_BY_ID = byId(PARTS);
 export const ELEMENTS_BY_ID = byId(ELEMENTS);
 export const WACKY_BY_ID = byId(WACKY);
+/** Second zoom level multiplies the gun's zoom field of view by this (12° → 4° on a plain sniper). */
+export const SCOPE_ZOOM2 = 1 / 3;
+/** Hitscan range for a gun: { full, max, min } in metres, scaled by its barrel (long +20%, short -15%). */
+export function gunRange(gun) {
+  const r = (GUN_TYPES_BY_ID[gun.type] && GUN_TYPES_BY_ID[gun.type].range) || { full: 999, max: 999, min: 1 };
+  const k = gun.parts && gun.parts.barrel === 'long' ? 1.2 : gun.parts && gun.parts.barrel === 'short' ? 0.85 : 1;
+  return { full: r.full * k, max: r.max * k, min: r.min };
+}
+/** Damage multiplier at distance d (0 beyond max range). */
+export function rangeFalloff(range, d) {
+  if (d > range.max) return 0;
+  if (d <= range.full) return 1;
+  return 1 + (range.min - 1) * ((d - range.full) / Math.max(1e-6, range.max - range.full));
+}
+export const zoomLevelsOf = (gun) => (gun && GUN_TYPES_BY_ID[gun.type] && GUN_TYPES_BY_ID[gun.type].zoomLevels) || 1;
+/** Field of view while aiming at zoom `level` (1 or 2). */
+export const zoomFovFor = (gun, level) => gun.stats.zoomFov * (level >= 2 && zoomLevelsOf(gun) >= 2 ? SCOPE_ZOOM2 : 1);
+/** True when this gun never runs out of spare ammo (the magazine still needs reloading). */
+export const hasInfiniteReserve = (gun) => !!(gun && GUN_TYPES_BY_ID[gun.type] && GUN_TYPES_BY_ID[gun.type].infiniteReserve);
 export const PARTS_BY_SLOT = Object.fromEntries(SLOTS.map((s) => [s, PARTS.filter((p) => p.slot === s)]));
 export const STAT_KEYS = ['damage', 'fireRate', 'spread', 'magSize', 'reloadTime', 'projectileSpeed', 'critMult', 'elementChance'];

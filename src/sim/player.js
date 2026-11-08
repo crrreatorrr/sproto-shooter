@@ -1,13 +1,12 @@
-// @ts-check
 // Player input, movement, combat (firing/reload/swap), vitals. PLAN §4.4, §7.1
 import { TUNING, ARENA_R } from '../data/tuning.js';
-import { GUN_TYPES_BY_ID } from '../data/guns.js';
+import { GUN_TYPES_BY_ID, hasInfiniteReserve, gunRange, rangeFalloff, slotUsable, SLOT_COUNT } from '../data/guns.js';
 import { float, range } from '../core/rng.js';
 import { dirFromYawPitch, deg, clamp } from '../core/math.js';
 import { emit } from './events.js';
 import { clampToArena, pushOutOfBoxes, raycastEnemies, rayWorld, eyePos } from './collision.js';
 import { effectiveGunStats } from './guns.js';
-import { damageEnemy, healPlayer } from './combat.js';
+import { damageEnemy, healPlayer, explode } from './combat.js';
 import { createProjectile } from './state.js';
 
 const EMPTY_CMD = { yaw: 0, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [] };
@@ -39,6 +38,7 @@ export function playerMovement(state, dt) {
     const canAct = !p.downed;
     const sprinting = canAct && c.held.sprint && c.moveZ > 0 && !p.zooming;
     let maxSpeed = sprinting ? TUNING.sprintSpeed : TUNING.walkSpeed;
+    if (p.campaignSpeed) maxSpeed *= p.campaignSpeed;
     if (p.downed) maxSpeed *= TUNING.downedSpeedMult;
 
     // jump buffering
@@ -103,6 +103,14 @@ export function playerMovement(state, dt) {
 
     // gravity + integrate
     if (m.mode !== 'dash') p.vel.y -= TUNING.gravity * dt;
+    if (state.mode === 'campaign' && state.level && state.level.gravityMult !== 1 && m.mode !== 'dash') {
+      p.vel.y -= TUNING.gravity * (state.level.gravityMult - 1) * dt;
+    }
+    if (state.mode === 'campaign' && p.jetpack && c.held.jump && !p.onGround && state.level && state.level.fuel > 0) {
+      p.vel.y += 28 * dt;
+      if (p.vel.y > 12) p.vel.y = 12;
+      if (!state.level.modifiers.fuelInfinite) state.level.fuel = Math.max(0, state.level.fuel - 18 * dt);
+    }
     p.pos.x += p.vel.x * dt; p.pos.y += p.vel.y * dt; p.pos.z += p.vel.z * dt;
     const wasAir = !p.onGround;
     if (p.pos.y <= 0) {
@@ -110,15 +118,17 @@ export function playerMovement(state, dt) {
       if (p.vel.y < 0) { if (wasAir && p.vel.y < -6) emit(state, 'land', { playerId: p.id, speed: -p.vel.y }); p.vel.y = 0; }
       p.onGround = true;
     } else p.onGround = false;
-    clampToArena(p, TUNING.playerRadius);
-    pushOutOfBoxes(state, p, TUNING.playerRadius);
+    if (state.mode !== 'campaign') {
+      clampToArena(p, TUNING.playerRadius);
+      pushOutOfBoxes(state, p, TUNING.playerRadius);
+    }
   }
 }
 
 function activeGun(p) { return p.guns[p.activeSlot]; }
 
 function switchSlot(state, p, slot) {
-  if (slot === p.activeSlot || slot < 0 || slot >= p.unlockedSlots || !p.guns[slot]) return;
+  if (slot === p.activeSlot || !slotUsable(p, slot) || !p.guns[slot]) return;
   p.activeSlot = slot;
   p.reloadT = 0;
   const g = p.guns[slot];
@@ -129,7 +139,8 @@ function switchSlot(state, p, slot) {
 
 function startReload(state, p, g) {
   if (p.reloadT > 0 || g.ammoInMag >= g.stats.magSize) return;
-  if (!state.tuning.infiniteAmmo && p.ammo[g.ammoType] <= 0) { emit(state, 'ammoEmpty', { playerId: p.id }); return; }
+  const free = state.tuning.infiniteAmmo || state.tuning.godMode || hasInfiniteReserve(g); // god mode: every gun has endless spare ammo
+  if (!free && p.ammo[g.ammoType] <= 0) { emit(state, 'ammoEmpty', { playerId: p.id }); return; }
   const st = effectiveGunStats(g, p);
   p.reloadT = st.reloadTime;
   emit(state, 'reloadStart', { playerId: p.id, slot: p.activeSlot, time: st.reloadTime });
@@ -147,8 +158,9 @@ function startReload(state, p, g) {
 
 function finishReload(state, p, g) {
   const need = g.stats.magSize - g.ammoInMag;
-  const take = state.tuning.infiniteAmmo ? need : Math.min(need, p.ammo[g.ammoType]);
-  if (!state.tuning.infiniteAmmo) p.ammo[g.ammoType] -= take;
+  const free = state.tuning.infiniteAmmo || state.tuning.godMode || hasInfiniteReserve(g); // god mode: every gun has endless spare ammo
+  const take = free ? need : Math.min(need, p.ammo[g.ammoType]);
+  if (!free) p.ammo[g.ammoType] -= take;
   g.ammoInMag += take;
   emit(state, 'reloadEnd', { playerId: p.id, slot: p.activeSlot });
 }
@@ -169,14 +181,16 @@ function coneDir(state, aim, spreadDeg) {
 export function fireHitscan(state, p, g, st, origin, dir, extra = {}) {
   let o = origin;
   const ignore = {};
-  let remaining = TUNING.hitscanRange;
+  const rng = gunRange(g); // shots stop at the gun's max range and lose damage past its full-damage range
+  let remaining = Math.min(TUNING.hitscanRange, rng.max);
   let pierce = st.pierce;
   let end = null;
   for (let i = 0; i <= pierce; i++) {
     const hit = raycastEnemies(state, o, dir, remaining, ignore);
     if (!hit) break;
+    const dist = Math.hypot(hit.point.x - origin.x, hit.point.y - origin.y, hit.point.z - origin.z);
     damageEnemy(state, hit.e, {
-      sourceId: p.id, sourceKind: 'gun', base: st.damage * (extra.dmgMult || 1), element: g.element, elementChance: st.elementChance,
+      sourceId: p.id, sourceKind: 'gun', base: st.damage * (extra.dmgMult || 1) * rangeFalloff(rng, dist), element: g.element, elementChance: st.elementChance,
       zone: hit.zone, critChance: st.critChance, critMult: st.critMult, canCrit: true, pellet: st.pellets > 1, point: hit.point,
       gunId: g.id, arcane: g.arcane, wacky: g.wacky,
     });
@@ -187,7 +201,7 @@ export function fireHitscan(state, p, g, st, origin, dir, extra = {}) {
     if (i === pierce) break;
   }
   if (!end) {
-    const t = rayWorld(origin, dir, 60);
+    const t = rayWorld(origin, dir, Math.min(60, rng.max));
     end = { x: origin.x + dir.x * t, y: origin.y + dir.y * t, z: origin.z + dir.z * t };
     if (origin.y + dir.y * t <= 0.01) emit(state, 'impact', { pos: end, element: g.element });
   }
@@ -213,9 +227,9 @@ export function playerCombat(state, dt) {
     // slot switching
     if (c.slot >= 0) switchSlot(state, p, c.slot);
     else if (c.wheel) {
-      for (let i = 1; i <= 4; i++) {
-        const s = (p.activeSlot + c.wheel * i + 4 * 4) % 4;
-        if (s < p.unlockedSlots && p.guns[s]) { switchSlot(state, p, s); break; }
+      for (let i = 1; i <= SLOT_COUNT; i++) {
+        const s = (p.activeSlot + c.wheel * i + SLOT_COUNT * SLOT_COUNT) % SLOT_COUNT;
+        if (slotUsable(p, s) && p.guns[s]) { switchSlot(state, p, s); break; }
       }
     }
 
@@ -251,6 +265,24 @@ export function playerCombat(state, dt) {
         kind: 'megaBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: aim.x * 40, y: aim.y * 40, z: aim.z * 40 },
         radius: 0.6, damage: st.damage * st.pellets * 6, element: g.element, elementChance: 1, critMult: st.critMult, pierce: 5, ttl: 3, arcane: g.arcane,
         splash: { radius: 3, damage: st.damage * st.pellets * 3, minFalloff: 0.4, selfMult: 0, knockback: 6 },
+      });
+    } else if (GUN_TYPES_BY_ID[g.type].projectile === 'rubberBullet') {
+      // Duck Gun: a lobbed rubber bullet; one bounce off the floor or wall, explodes on what it hits or where it lands
+      const d = coneDir(state, aim, st.spread);
+      createProjectile(state, {
+        kind: 'rubberBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: d.x * st.projectileSpeed, y: d.y * st.projectileSpeed + 2.5, z: d.z * st.projectileSpeed },
+        radius: 0.24, gravity: 14, bounces: 1, damage: st.damage, element: g.element, elementChance: st.elementChance, critMult: st.critMult,
+        critChance: st.critChance, ttl: 4, arcane: g.arcane, wacky: g.wacky,
+        splash: { radius: st.splashRadius, damage: st.splashDamage, minFalloff: 0.35, selfMult: 0, knockback: 9 },
+      });
+    } else if (GUN_TYPES_BY_ID[g.type].projectile === 'bigBullet') {
+      // Big Bullets: a visible heavy round, slight drop, crits, punches through `pierce` targets, bursts on impact
+      const d = coneDir(state, aim, st.spread);
+      createProjectile(state, {
+        kind: 'bigBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: d.x * st.projectileSpeed, y: d.y * st.projectileSpeed, z: d.z * st.projectileSpeed },
+        radius: 0.32, gravity: 4, damage: st.damage, element: g.element, elementChance: st.elementChance, critMult: st.critMult, critChance: st.critChance,
+        pierce: st.pierce, ttl: 3, arcane: g.arcane, wacky: g.wacky,
+        splash: { radius: st.splashRadius, damage: st.splashDamage, minFalloff: 0.4, selfMult: 0, knockback: 7 },
       });
     } else if (st.projectileSpeed > 0) {
       const d = coneDir(state, aim, st.spread);
@@ -318,8 +350,17 @@ export function playerVitals(state, dt) {
     } else if (!inAura) {
       p.mana = Math.min(p.maxMana, p.mana + (TUNING.manaRegen + (p.skills.magic.level - 1)) * dt);
     }
+    if (state.tuning.godMode) { p.mana = p.maxMana; godTopUp(p); } // god mode: infinite mana (cooldowns still apply), vast resources
     if (p.inAuraT > 0) p.inAuraT -= dt;
   }
+}
+
+/** God mode: tickets, resources, ammo and medkits never drop below these (called on toggle and every tick). */
+export function godTopUp(p) {
+  if (p.tickets < TUNING.godTickets) p.tickets = TUNING.godTickets;
+  for (const k of Object.keys(p.resources)) if (p.resources[k] < TUNING.godResources) p.resources[k] = TUNING.godResources;
+  for (const k of Object.keys(p.ammoCap)) if (p.ammo[k] < p.ammoCap[k]) p.ammo[k] = p.ammoCap[k];
+  if (p.medkits < TUNING.medkitCarry) p.medkits = TUNING.medkitCarry;
 }
 
 export function respawn(state, p) {

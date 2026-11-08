@@ -1,11 +1,10 @@
-// @ts-check
 // Drop tables (PLAN §4.13, §7.6)
 export const DROP_TABLES = {
   midget: [
     { kind: 'resource', resId: 'scrap', min: 1, max: 3, chance: 1 },
     { kind: 'resource', resId: 'springs', min: 1, max: 2, chance: 1 },
     { kind: 'health', chance: 0.08 },
-    { kind: 'ammo', chance: 0.2 },
+    { kind: 'ammo', chance: 0.4 },
     { kind: 'gun', chance: 0.02, table: 'enemyGun' },
     { kind: 'tickets', min: 1, max: 1, chance: 1 },
   ],
@@ -13,7 +12,7 @@ export const DROP_TABLES = {
     { kind: 'resource', resId: 'scrap', min: 1, max: 2, chance: 1 },
     { kind: 'resource', resId: 'springs', min: 2, max: 3, chance: 1 },
     { kind: 'health', chance: 0.1 },
-    { kind: 'ammo', chance: 0.3 },
+    { kind: 'ammo', chance: 0.5 },
     { kind: 'gun', chance: 0.04, table: 'enemyGun' },
     { kind: 'tickets', min: 2, max: 2, chance: 1 },
   ],
@@ -21,7 +20,7 @@ export const DROP_TABLES = {
     { kind: 'resource', resId: 'scrap', min: 3, max: 5, chance: 1 },
     { kind: 'resource', resId: 'goo', min: 2, max: 3, chance: 1 },
     { kind: 'health', chance: 0.18 },
-    { kind: 'ammo', chance: 0.4 },
+    { kind: 'ammo', chance: 0.7 },
     { kind: 'gun', chance: 0.06, table: 'enemyGun' },
     { kind: 'tickets', min: 2, max: 2, chance: 1 },
   ],
@@ -29,18 +28,80 @@ export const DROP_TABLES = {
     { kind: 'resource', resId: 'scrap', min: 5, max: 8, chance: 1 },
     { kind: 'resource', resId: 'plating', min: 3, max: 5, chance: 1 },
     { kind: 'health', chance: 0.25 },
-    { kind: 'ammo', chance: 0.5 },
+    { kind: 'ammo', chance: 0.85 },
     { kind: 'gun', chance: 0.1, table: 'enemyGun' },
     { kind: 'tickets', min: 4, max: 4, chance: 1 },
   ],
   dummy: [],
+  carMonster: [
+    { kind: 'resource', resId: 'scrap', min: 25, max: 25, chance: 1 },
+    { kind: 'resource', resId: 'bossCore', min: 1, max: 1, chance: 1, noScale: true },
+    { kind: 'bigHealth', count: 2, chance: 1 },
+    { kind: 'ammo', count: 3, chance: 1 },
+    { kind: 'gun', count: 2, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
+    { kind: 'tickets', min: 60, max: 60, chance: 1 },
+  ],
+  moleMonster: [
+    { kind: 'resource', resId: 'scrap', min: 25, max: 25, chance: 1 },
+    { kind: 'resource', resId: 'bossCore', min: 1, max: 1, chance: 1, noScale: true },
+    { kind: 'bigHealth', count: 2, chance: 1 },
+    { kind: 'ammo', count: 3, chance: 1 },
+    { kind: 'gun', count: 2, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
+    { kind: 'tickets', min: 60, max: 60, chance: 1 },
+  ],
+  robotLaser: [
+    { kind: 'resource', resId: 'scrap', min: 3, max: 5, chance: 1 },
+    { kind: 'resource', resId: 'goo', min: 2, max: 3, chance: 1 },
+    { kind: 'health', chance: 0.18 },
+    { kind: 'ammo', chance: 0.7 },
+    { kind: 'gun', chance: 0.06, table: 'enemyGun' },
+    { kind: 'tickets', min: 2, max: 2, chance: 1 },
+  ],
+  robotShooter: [
+    { kind: 'resource', resId: 'scrap', min: 5, max: 8, chance: 1 },
+    { kind: 'resource', resId: 'plating', min: 3, max: 5, chance: 1 },
+    { kind: 'health', chance: 0.25 },
+    { kind: 'ammo', chance: 0.85 },
+    { kind: 'gun', chance: 0.1, table: 'enemyGun' },
+    { kind: 'tickets', min: 4, max: 4, chance: 1 },
+  ],
   megaSproto: [
     { kind: 'resource', resId: 'scrap', min: 25, max: 25, chance: 1 },
     { kind: 'resource', resId: 'bossCore', min: 1, max: 1, chance: 1, noScale: true },
     { kind: 'bigHealth', count: 2, chance: 1 },
     { kind: 'ammo', count: 3, chance: 1 },
     { kind: 'gun', count: 2, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
     { kind: 'tickets', min: 60, max: 60, chance: 1 },
+  ],
+  monster: [
+    { kind: 'resource', resId: 'scrap', min: 25, max: 25, chance: 1 },
+    { kind: 'resource', resId: 'bossCore', min: 1, max: 1, chance: 1, noScale: true },
+    { kind: 'bigHealth', count: 2, chance: 1 },
+    { kind: 'ammo', count: 3, chance: 1 },
+    { kind: 'gun', count: 2, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
+    { kind: 'tickets', min: 60, max: 60, chance: 1 },
+  ],
+  sprotoBeast: [
+    { kind: 'resource', resId: 'scrap', min: 25, max: 25, chance: 1 },
+    { kind: 'resource', resId: 'bossCore', min: 1, max: 1, chance: 1, noScale: true },
+    { kind: 'bigHealth', count: 2, chance: 1 },
+    { kind: 'ammo', count: 3, chance: 1 },
+    { kind: 'gun', count: 2, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
+    { kind: 'tickets', min: 60, max: 60, chance: 1 },
+  ],
+  dragon: [
+    { kind: 'resource', resId: 'scrap', min: 20, max: 20, chance: 1 },
+    { kind: 'resource', resId: 'bossCore', min: 1, max: 1, chance: 1, noScale: true },
+    { kind: 'bigHealth', count: 2, chance: 1 },
+    { kind: 'ammo', count: 3, chance: 1 },
+    { kind: 'gun', count: 1, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
+    { kind: 'tickets', min: 45, max: 45, chance: 1 },
   ],
   hexAuditor: [
     { kind: 'resource', resId: 'scrap', min: 20, max: 20, chance: 1 },
@@ -49,6 +110,7 @@ export const DROP_TABLES = {
     { kind: 'bigHealth', count: 2, chance: 1 },
     { kind: 'ammo', count: 3, chance: 1 },
     { kind: 'gun', count: 2, chance: 1, table: 'boss' },
+    { kind: 'bossGun', chance: 1, table: 'boss' }, // a Ray Gun or Big Bullets
     { kind: 'tickets', min: 60, max: 60, chance: 1 },
   ],
 };

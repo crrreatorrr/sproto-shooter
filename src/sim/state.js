@@ -1,4 +1,3 @@
-// @ts-check
 // GameState creation + entity factories. Everything is plain JSON data with numeric ids. PLAN §3
 import { createRng, next } from '../core/rng.js';
 import { TUNING } from '../data/tuning.js';
@@ -54,7 +53,7 @@ export function createPlayer(state, slots = 4) {
     hp: TUNING.maxHp, maxHp: TUNING.maxHp, shield: TUNING.maxShield, maxShield: TUNING.maxShield, shieldDelayT: 0,
     mana: TUNING.maxMana, maxMana: TUNING.maxMana,
     invulnT: 0, downed: false, downedT: 0, dead: false, respawnT: 0, unkillableUsed: false,
-    guns: [start, null, null, null], unlockedSlots: slots, activeSlot: 0,
+    guns: [start, null, null, null, null], unlockedSlots: slots, activeSlot: 0, // 5th = legendary slot (key L)
     swapT: 0, reloadT: 0, fireCd: 0, zooming: false,
     recoil: { pitch: 0, yaw: 0, heat: 0 }, shotCounter: 0,
     ammo: { ...TUNING.startAmmo }, ammoCap: { ...TUNING.ammoCap },

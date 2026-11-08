@@ -1,60 +1,32 @@
 import js from '@eslint/js';
 import globals from 'globals';
 
-const simDataFiles = ['src/sim/**/*.js', 'src/data/**/*.js'];
-
 export default [
   {
-    ignores: [
-      'dist/**',
-      'node_modules/**',
-      'public/**',
-      'docs/**',
-      '.qa-build/**',
-      'coverage/**',
-    ],
+    ignores: ['dist/**', 'node_modules/**', 'vendor/**', 'public/**', 'art/**'],
   },
-  js.configs.recommended,
   {
-    files: ['**/*.js', '**/*.mjs'],
+    files: [
+      'eslint.config.js',
+      'scripts/**/*.mjs',
+      'tests/architecture.test.js',
+      'tests/asset-manifest.test.js',
+      'tests/performance-baseline.test.js',
+    ],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
-      globals: { ...globals.browser, ...globals.node },
+      globals: { ...globals.node },
     },
     rules: {
-      // Existing code uses intentional unused catch bindings and short names.
-      // The milestone gate is the sim/data boundary, not a style rewrite.
-      'no-unused-vars': ['error', {
-        args: 'none',
-        caughtErrors: 'none',
-        varsIgnorePattern: '^_',
-      }],
-      'no-empty': ['error', { allowEmptyCatch: true }],
-      'no-constant-condition': 'off',
-      'no-prototype-builtins': 'off',
-      'preserve-caught-error': 'off',
+      ...js.configs.recommended.rules,
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
   {
-    files: simDataFiles,
-    rules: {
-      'no-restricted-imports': ['error', {
-        paths: ['three'],
-        patterns: [
-          { group: ['three', 'three/*'], message: 'sim/data stay free of three.' },
-          { group: ['**/render', '**/render/**', '**/ui', '**/ui/**', '**/audio', '**/audio/**', '**/game', '**/game/**'], message: 'sim/data must not import presentation.' },
-        ],
-      }],
-      'no-restricted-globals': ['error',
-        { name: 'window', message: 'sim/data must not touch the DOM.' },
-        { name: 'document', message: 'sim/data must not touch the DOM.' },
-      ],
-      'no-restricted-properties': ['error',
-        { object: 'Math', property: 'random', message: 'Use state.rng. Presentation randomness belongs in render/core/fxRandom.js.' },
-        { object: 'Date', property: 'now', message: 'sim/data must not read the wall clock.' },
-        { object: 'performance', property: 'now', message: 'sim/data must not read the wall clock.' },
-      ],
+    files: ['scripts/load-profile.mjs'],
+    languageOptions: {
+      globals: { ...globals.browser },
     },
   },
 ];

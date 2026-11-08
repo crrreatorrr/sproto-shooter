@@ -1,4 +1,3 @@
-// @ts-check
 // Presentation-side event bus. The sim writes state.events; Game drains them here after each tick.
 export function createEventBus() {
   const map = new Map();

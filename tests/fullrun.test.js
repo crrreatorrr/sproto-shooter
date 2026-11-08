@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createGameState, run, cmd } from './helpers.js';
 import { generateGun } from '../src/sim/guns.js';
 describe('full wave run (autopilot, god mode)', () => {
-  it('reaches victory with both bosses defeated', () => {
+  it('reaches victory with every boss defeated (Jade Dragon, Mega Tinubu twice, Hex Sahil)', () => {
     const s = createGameState({ seed: 11 });
     const p = s.players[s.localPlayerId];
     const g = generateGun({ seed: 5, level: 4, forced: { type: 'mg', quality: 'legendary', wacky: 'tenthMega' } }); g.id = 999;
@@ -24,6 +24,6 @@ describe('full wave run (autopilot, god mode)', () => {
     console.log(JSON.stringify(summary));
     expect(types).toContain('bossSpawn');
     expect(s.wave.phase).toBe('victory');
-    expect(s.run.bossKills).toBe(3);
+    expect(s.run.bossKills).toBe(4);
   });
 });

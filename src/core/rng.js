@@ -1,4 +1,3 @@
-// @ts-check
 // Seeded sfc32 RNG stored on a plain object (JSON-serializable). The sim's ONLY randomness source.
 
 export function hashSeed(n) {

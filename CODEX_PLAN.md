@@ -6,6 +6,7 @@ This file is the entry point. The detail lives in two companion plans:
 
 - **A: gameplay, game feel, VFX, audio:** [`docs/codex/A-gameplay-feel-vfx-audio.md`](docs/codex/A-gameplay-feel-vfx-audio.md)
 - **B: rendering, architecture, assets, performance, QA:** [`docs/codex/B-rendering-architecture-assets.md`](docs/codex/B-rendering-architecture-assets.md)
+- **C: campaign levels, jetpack, world weapons, Sproto Duel bosses:** [`docs/codex/C-campaign-levels.md`](docs/codex/C-campaign-levels.md), [`docs/codex/C-level-designs.md`](docs/codex/C-level-designs.md), [`docs/codex/C-bosses-sproto-duel.md`](docs/codex/C-bosses-sproto-duel.md), [`docs/codex/C-milestones-cursor.md`](docs/codex/C-milestones-cursor.md)
 
 Milestone IDs below refer to those files (A-M3 = plan A, milestone M3). Read both files' section 0 ("what I found") before starting.
 
@@ -16,6 +17,11 @@ Milestone IDs below refer to those files (A-M3 = plan A, milestone M3). Read bot
 3. **Level-scoped loading stays.** Never load all assets at boot. Extend `levelAssets()` (`src/data/stages.js`) and the priority queue (`src/render/assets.js`) instead.
 4. **Every milestone ships on its own branch** (`codex/<milestone>-<slug>`) as a pull request to `crrreatorrr/sproto-shooter`. Each PR passes `npm test` and `npm run build`, adds tests, and includes before/after screenshots from the Playwright harness once B-M4 exists.
 5. Assets come from Sproto Duel (`crrreatorrr/sproto-duel`, `public/assets/`) where possible. New art follows that repo's `docs/higgsfield-workflow-guide.md`.
+
+## Campaign plan (part C)
+
+The 10-level campaign is specified in the part C docs and implemented as `mode=campaign`.
+Wave Mode and Sandbox stay on the arena path. Milestones and the level checklist are in [`docs/codex/C-milestones-cursor.md`](docs/codex/C-milestones-cursor.md).
 
 ## Combined milestone order
 

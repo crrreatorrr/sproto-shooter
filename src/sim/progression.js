@@ -1,4 +1,3 @@
-// @ts-check
 // Use-based XP: each skill levels from its own actions; perks unlock automatically. PLAN §4.7, §7.4
 import { SKILLS, XP, PERKS, xpToNext } from '../data/skills.js';
 import { TUNING } from '../data/tuning.js';

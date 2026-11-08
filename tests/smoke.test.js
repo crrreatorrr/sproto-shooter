@@ -8,6 +8,9 @@ describe('smoke', () => {
       { type: 'debug', op: 'spawnEnemy', args: { type: 'obama', count: 2 } },
       { type: 'debug', op: 'spawnEnemy', args: { type: 'bigObama', elite: true } },
       { type: 'debug', op: 'spawnBoss', args: { type: 'megaSproto' } },
+      { type: 'debug', op: 'spawnBoss', args: { type: 'monster' } },
+      { type: 'debug', op: 'spawnBoss', args: { type: 'sprotoBeast' } },
+      { type: 'debug', op: 'spawnBoss', args: { type: 'dragon' } },
       { type: 'debug', op: 'spawnBoss', args: { type: 'hexAuditor' } },
       { type: 'debug', op: 'maxSkills' },
     ] }) );

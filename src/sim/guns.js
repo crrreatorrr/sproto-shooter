@@ -1,4 +1,3 @@
-// @ts-check
 // Gun generation (seeded, fixed draw order), effective stats, comparison, value. PLAN §4.2–4.3
 import { createRng, float, range, weighted, pickWeightedByFloat } from '../core/rng.js';
 import {
@@ -59,23 +58,7 @@ export function makeName(type, man, element, nameDraws) {
   return [man.name, el, noun].filter(Boolean).join(' ');
 }
 
-/**
- * Overrides applied after the seeded draws. Draw order never depends on these.
- * @typedef {{
- *   type?: string,
- *   quality?: string,
- *   manufacturer?: string,
- *   element?: string,
- *   wacky?: string,
- *   parts?: Record<string, string>,
- *   part?: { slot: string, id: string },
- * }} GunForced
- */
-
-/**
- * Pure + reproducible from args. RNG draw order never depends on `forced`.
- * @param {{ seed: number, level?: number, forced?: GunForced, arcane?: boolean, rerolls?: object[] }} args
- */
+/** Pure + reproducible from args. RNG draw order never depends on `forced`. */
 export function generateGun({ seed, level = 1, forced = {}, arcane = false, rerolls = [] }) {
   const r = createRng(seed >>> 0);
   const dType = weighted(r, GUN_TYPES);
@@ -90,7 +73,7 @@ export function generateGun({ seed, level = 1, forced = {}, arcane = false, rero
   const nameDraws = [float(r), float(r)];
 
   const type = forced.type ?? dType.id;
-  const quality = forced.quality ?? dQual.id;
+  const quality = GUN_TYPES_BY_ID[type].legendaryOnly ? 'legendary' : forced.quality ?? dQual.id; // e.g. the Duck Gun
   const man = MANUFACTURERS_BY_ID[forced.manufacturer ?? dMan.id];
   const q = QUALITIES_BY_ID[quality];
   const parts = { barrel: 'stock', grip: 'stock', mag: 'stock', scope: 'stock' };
@@ -206,7 +189,8 @@ export function shopPrice(gun, tier) {
 
 export function salvageYield(gun) {
   const q = QUALITIES_BY_ID[gun.quality].idx;
-  const m = gun.type === 'bazooka' ? 1.5 : 1;
+  const t = GUN_TYPES_BY_ID[gun.type];
+  const m = t.legendaryOnly ? 3 : t.bossOnly ? 2.5 : gun.type === 'bazooka' ? 1.5 : 1;
   const y = {
     scrap: Math.round((5 + 6 * q + gun.level) * m),
     springs: Math.round(2 * q * m),

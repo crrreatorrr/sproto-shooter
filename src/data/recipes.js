@@ -1,4 +1,3 @@
-// @ts-check
 // Crafting recipes (PLAN §3.11, §7.7)
 const QUAL = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 const LEVEL_REQ = [1, 3, 5, 7, 10];

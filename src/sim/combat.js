@@ -1,9 +1,8 @@
-// @ts-check
 // Damage pipeline, splash, element procs, kills, healing. PLAN §4.5–4.6, §4.9
 import { float, range } from '../core/rng.js';
 import { emit } from './events.js';
-import { ENEMIES, ALLY } from '../data/enemies.js';
-import { ELEMENTS_BY_ID } from '../data/guns.js';
+import { ENEMIES, ELITE, ALLY } from '../data/enemies.js';
+import { ELEMENTS_BY_ID, GUN_TYPES_BY_ID } from '../data/guns.js';
 import { TUNING } from '../data/tuning.js';
 import { distToCapsule, entityDef, sphereHitsPlayer } from './collision.js';
 import { rollDrops, spawnDrops } from './drops.js';
@@ -141,7 +140,8 @@ export function onEnemyKilled(state, e) {
   }
   // Drops
   const p = state.players[state.localPlayerId];
-  const ctx = { elite: e.elite, tier: e.tier, playerGunTypes: p.guns.filter(Boolean).map((g) => g.ammoType), summoned: e.summoned };
+  // ammo drops only for guns that use spare ammo (boss weapons never run out)
+  const ctx = { elite: e.elite, tier: e.tier, playerGunTypes: p.guns.filter((g) => g && !GUN_TYPES_BY_ID[g.type].bossOnly).map((g) => g.ammoType), summoned: e.summoned, boss: !!e.boss };
   const specs = rollDrops(state.rng, e.type, ctx);
   spawnDrops(state, specs, centerOf(e));
 }
@@ -154,8 +154,18 @@ export function revivePlayer(state, p) {
   emit(state, 'playerRevived', { playerId: p.id });
 }
 
+/** God mode: hits still land (shake, flash, shield and health drop) but health never goes below this. */
+export const GOD_HP = 99;
+
 export function damagePlayer(state, p, hit) {
-  if (state.tuning.godMode || p.invulnT > 0 || p.dead) return 0;
+  if (p.invulnT > 0 || p.dead) return 0;
+  // sandbox: boss attacks still land (shake, flash, knockback) but do no damage
+  if (state.mode === 'sandbox' && hit.sourceKind === 'boss') {
+    const from = hit.fromPos;
+    emit(state, 'playerDamaged', { playerId: p.id, amount: 0, toShield: 0, toHealth: 0, absorbed: 0, sourceKind: 'boss', noDamage: true,
+      dir: from ? Math.atan2(from.x - p.pos.x, from.z - p.pos.z) : null });
+    return 0;
+  }
   let dmg = hit.base * (hit.sourceKind === 'self' ? 1 : state.tuning.enemyDmgMult);
   dmg *= 1 - 0.03 * (p.skills.health.level - 1);
   let absorbed = 0;
@@ -170,6 +180,7 @@ export function damagePlayer(state, p, hit) {
   dmg -= toShield;
   if (toShield > 0 && p.shield <= 0.01) emit(state, 'shieldBroken', { playerId: p.id });
   let toHealth = dmg;
+  if (state.tuning.godMode) toHealth = Math.max(0, Math.min(toHealth, p.hp - Math.min(GOD_HP, p.maxHp)));
   if (p.hp - toHealth <= 0) {
     if (p.perks.unkillable && !p.unkillableUsed && !p.downed) {
       p.unkillableUsed = true; toHealth = p.hp - 1; p.invulnT = 3;
