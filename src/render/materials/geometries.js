@@ -1,7 +1,4 @@
-// @ts-check
 import * as THREE from 'three';
-
-export const ELEM_COL = { none: 0xffe9a8, fire: 0xff7a1a, shock: 0x4fe3ff, goo: 0x9be33b };
 
 export function createMaterials() {
   const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.05, ...extra });

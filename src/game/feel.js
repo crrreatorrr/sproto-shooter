@@ -33,5 +33,6 @@ export function wireHitstop(game) {
   });
   game.bus.on('bossDefeated', () => stop(200));
   game.bus.on('bossPhase', () => stop(120));
+  game.bus.on('bossMeleeHit', () => stop(110));
   game.bus.on('meteorImpact', () => stop(90));
 }

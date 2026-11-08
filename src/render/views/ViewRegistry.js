@@ -4,8 +4,9 @@
 
 /**
  * @param {{ add: (o: any) => void, remove: (o: any) => void }} scene
+ * @param {{ dispose?: (v: any) => void }} [hooks]
  */
-export function createViewRegistry(scene) {
+export function createViewRegistry(scene, hooks = {}) {
   /** @type {Map<number, any>} */
   const views = new Map();
   /** @type {Map<string, any[]>} */
@@ -22,6 +23,7 @@ export function createViewRegistry(scene) {
     if (v.extra) for (const x of v.extra) x.visible = false;
   }
   function drop(v) {
+    if (hooks.dispose) { hooks.dispose(v); return; }
     scene.remove(v.obj);
     if (v.extra) v.extra.forEach((x) => scene.remove(x));
   }

@@ -15,15 +15,31 @@ function clamp(value, lo, hi, fallback) {
 }
 
 export function defaultSettings() {
-  return { sensitivity: 1, hitstop: true, shake: 1 };
+  return {
+    sensitivity: 1,
+    hitstop: true,
+    shake: 1,
+    fxQuality: 'high',
+    screenFx: 1,
+    volumes: { master: 1, music: 1, sfx: 1 },
+  };
 }
 
 function settingsOf(value) {
   const src = value && typeof value === 'object' ? value : {};
+  const volumes = src.volumes && typeof src.volumes === 'object' ? src.volumes : {};
+  const fx = src.fxQuality;
   return {
     sensitivity: clamp(src.sensitivity, 0.3, 3, 1),
     hitstop: typeof src.hitstop === 'boolean' ? src.hitstop : true,
     shake: clamp(src.shake, 0, 1.5, 1),
+    fxQuality: fx === 'low' || fx === 'medium' || fx === 'high' ? fx : 'high',
+    screenFx: clamp(src.screenFx, 0, 1, 1),
+    volumes: {
+      master: clamp(volumes.master, 0, 1, 1),
+      music: clamp(volumes.music, 0, 1, 1),
+      sfx: clamp(volumes.sfx, 0, 1, 1),
+    },
   };
 }
 

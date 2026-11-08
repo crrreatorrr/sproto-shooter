@@ -1,24 +1,10 @@
-// @ts-check
 import * as THREE from 'three';
-import { ARENA_R } from '../../data/tuning.js';
-import { STAGES, stageAssets, stageFor } from '../../data/stages.js';
+import { STAGES, stageAssets } from '../../data/stages.js';
 import { peekTexture, instantiateStatic, assetsVersion } from '../assets.js';
-import { createLevelStreamer } from '../assets/LevelStreamer.js';
+import { createLevelView } from '../level/levelView.js';
 
-export function createStage(ctx, mats) {
-  const { scene } = ctx;
-  const { M, E } = mats;
-  const streamer = createLevelStreamer();
-
-  const hemi = new THREE.HemisphereLight(0xffe6ff, 0x3a2a55, 1.1);
-  scene.add(hemi);
-  const sun = new THREE.DirectionalLight(0xfff2d6, 1.4);
-  sun.position.set(20, 40, 10);
-  scene.add(sun);
-  const bounce = new THREE.DirectionalLight(0xff7a3a, 0.4);
-  bounce.position.set(0, 4, 40);
-  scene.add(bounce);
-
+export function mountStage(env) {
+  const { ARENA_R, E, M, bounce, hemi, scene, sun } = env;
   const sky = new THREE.Mesh(new THREE.SphereGeometry(260, 48, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide, fog: false, depthWrite: false, toneMapped: false }));
   sky.renderOrder = -1;
   scene.add(sky);
@@ -43,7 +29,23 @@ export function createStage(ctx, mats) {
   scene.add(wall);
   const decor = new THREE.Group();
   scene.add(decor);
+  const levelView = createLevelView();
+  scene.add(levelView.group);
+  const arenaBits = [ground, outer, rim, edgeRing, wall, decor];
   let stageKey = '';
+  function setStageMap(mat, tex, rx, ry) {
+    const prev = mat.map;
+    if (prev && prev.userData?.stageClone) prev.dispose();
+    if (tex) {
+      const clone = tex.clone();
+      clone.userData.stageClone = true;
+      clone.wrapS = clone.wrapT = THREE.RepeatWrapping;
+      clone.repeat.set(rx, ry);
+      clone.needsUpdate = true;
+      mat.map = clone;
+    } else mat.map = null;
+    mat.needsUpdate = true;
+  }
 
   function applyStage(id) {
     const st = STAGES[id], a = stageAssets(id);
@@ -53,25 +55,24 @@ export function createStage(ctx, mats) {
     scene.background = new THREE.Color(st.background);
     scene.fog = new THREE.Fog(st.fog, 60, 200);
     hemi.color.setHex(st.hemi.sky); hemi.groundColor.setHex(st.hemi.ground); hemi.intensity = st.hemi.intensity * 1.2;
-    sun.color.setHex(st.sun.color); sun.intensity = st.sun.intensity * 0.9;
-    sun.position.set(st.sun.position[0], st.sun.position[1], st.sun.position[2]);
+    sun.color.setHex(st.sun.color); sun.intensity = st.sun.intensity * 0.9; sun.position.set(...st.sun.position);
     bounce.color.setHex(st.bounce.color); bounce.intensity = st.bounce.intensity;
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
     const skyTex = peekTexture(a.sky);
     sky.material.map = skyTex; sky.material.color.setHex(skyTex ? 0xffffff : st.background); sky.material.needsUpdate = true;
     const floor = peekTexture(a.floor);
-    if (floor) { const f = floor.clone(); f.wrapS = f.wrapT = THREE.RepeatWrapping; f.repeat.set(st.floorRepeat, st.floorRepeat); f.needsUpdate = true; groundMat.map = f; }
-    else groundMat.map = null;
-    groundMat.color.setHex(floor ? 0xffffff : 0x4a3a66); groundMat.needsUpdate = true;
+    setStageMap(groundMat, floor, st.floorRepeat, st.floorRepeat);
+    groundMat.color.setHex(floor ? 0xffffff : 0x4a3a66);
     const stone = peekTexture(a.stone);
-    if (stone) { const t = stone.clone(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(60, 1); t.needsUpdate = true; rimMat.map = t; } else rimMat.map = null;
-    rimMat.needsUpdate = true;
+    setStageMap(rimMat, stone, 60, 1);
     outer.visible = st.ground != null;
     if (st.ground != null) {
-      if (floor) { const f = floor.clone(); f.wrapS = f.wrapT = THREE.RepeatWrapping; f.repeat.set(40, 40); f.needsUpdate = true; outerMat.map = f; } else outerMat.map = null;
-      outerMat.color.setHex(st.ground); outerMat.needsUpdate = true;
+      setStageMap(outerMat, floor, 40, 40);
+      outerMat.color.setHex(st.ground);
     }
+    env.disposeTree(decor);
     decor.clear();
+    // pillars just outside the ring, props further out
     for (let i = 0; i < 16; i++) {
       const ang = (i / 16) * Math.PI * 2 + 0.1;
       const pl = instantiateStatic(a.pillar, 6.5);
@@ -90,12 +91,5 @@ export function createStage(ctx, mats) {
       decor.add(pr);
     }
   }
-
-  return {
-    setStage(id) { streamer.setStage(id); },
-    update(state, dt) {
-      streamer.update(state, dt);
-      applyStage(stageFor(state, streamer.override));
-    },
-  };
+  Object.assign(env, { sky, groundMat, ground, outerMat, outer, rimMat, rim, edgeRing, wall, decor, levelView, arenaBits, setStageMap, applyStage });
 }
