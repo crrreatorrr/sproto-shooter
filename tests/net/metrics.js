@@ -1,0 +1,191 @@
+// Netcode metrics for the harness. Everything is derived from what the real director returns
+// and what the real clients receive; the director and sim are only observed, never edited.
+import { decodeInput } from '../../src/net/inputCodec.js';
+import { OP } from '../../src/net/protocol.js';
+import { hashState } from '../../src/sim/pvp/sim.js';
+
+const OP_NAMES = Object.fromEntries(Object.entries(OP).map(([name, code]) => [code, name]));
+
+export function percentile(values, p) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const rank = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
+  return sorted[rank];
+}
+
+function round(n, places = 4) {
+  if (n == null || !Number.isFinite(n)) return n;
+  const k = 10 ** places;
+  return Math.round(n * k) / k;
+}
+
+function summary(values) {
+  return {
+    count: values.length,
+    p50: round(percentile(values, 50), 2),
+    p95: round(percentile(values, 95), 2),
+    p99: round(percentile(values, 99), 2),
+    max: values.length ? round(Math.max(...values), 2) : null,
+  };
+}
+
+function blankPeer() {
+  return {
+    inputsSent: 0,
+    inputsDroppedWhileDown: 0,
+    inputsAccepted: 0,
+    acceptedFrames: new Set(),
+    rejects: {},
+    rejectsByOp: {},
+    lateRejects: 0,
+    snapshotArrivals: [],
+    renderFrames: 0,
+    heldFrames: 0,
+    lateFrames: 0,
+    starvedFrames: 0,
+    lastViewKey: null,
+    disconnects: [],
+    rejoins: [],
+    joinRefusals: [],
+    acceptedAfterRejoin: 0,
+    rejectsAfterRejoin: {},
+  };
+}
+
+export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}) {
+  // Keyed by peer (account order), not by director seat: seats go to whoever says HELLO first.
+  const stats = accounts.map(() => blankPeer());
+  const loops = [];
+  let liveAt = null;
+  // Stubs for S3. Prediction corrections are in metres; rewind checks are per confirmed shot.
+  const corrections = [[], []];
+  const rewindChecks = { checks: 0, agree: 0 };
+
+  function bump(map, key) {
+    map[key] = (map[key] || 0) + 1;
+  }
+
+  return {
+    /** Wrap the director's handle so every server verdict is recorded. */
+    watchDirector(director) {
+      const handle = director.handle;
+      director.handle = (sender, op, data, now) => {
+        const cursor = director.sim ? director.sim.tick : null;
+        const out = handle(sender, op, data, now);
+        const index = sender ? accounts.indexOf(sender.userId) : -1;
+        if (index < 0) return out;
+        const seat = stats[index];
+        const rejoined = seat.rejoins.length > 0;
+        let frame = null;
+        if (op === OP.INPUT && data instanceof Uint8Array) {
+          try { frame = decodeInput(data).frame; } catch { frame = null; }
+        }
+        if (out && out.ok === false) {
+          bump(seat.rejects, out.reason);
+          bump(seat.rejectsByOp, `${OP_NAMES[op] || op}:${out.reason}`);
+          if (rejoined) bump(seat.rejectsAfterRejoin, out.reason);
+          if (op === OP.INPUT && out.reason === 'frame' && frame != null && cursor != null && frame < cursor) {
+            seat.lateRejects += 1;
+          }
+        } else if (out && out.ok && op === OP.INPUT) {
+          seat.inputsAccepted += 1;
+          if (frame != null) seat.acceptedFrames.add(frame);
+          if (rejoined) seat.acceptedAfterRejoin += 1;
+        }
+        return out;
+      };
+    },
+    live(at) { liveAt = at; },
+    loopRan(at) { loops.push(at); },
+    inputSent(index) { stats[index].inputsSent += 1; },
+    sendWhileDown(index) { stats[index].inputsDroppedWhileDown += 1; },
+    snapshotArrived(index, at) { stats[index].snapshotArrivals.push(at); },
+    /**
+     * One client render frame. `viewKey` identifies what the client would draw (sample tick and
+     * player positions). A frame is starved when the view did not move on since the last frame
+     * (held), or when the newest snapshot is older than `starveMs` (it would have to extrapolate).
+     */
+    renderFrame(index, at, viewKey) {
+      const seat = stats[index];
+      seat.renderFrames += 1;
+      const last = seat.snapshotArrivals[seat.snapshotArrivals.length - 1];
+      const since = last == null ? at - (liveAt ?? at) : at - last;
+      const held = viewKey != null && viewKey === seat.lastViewKey;
+      seat.lastViewKey = viewKey;
+      if (held) seat.heldFrames += 1;
+      if (since > starveMs) seat.lateFrames += 1;
+      if (held || since > starveMs) seat.starvedFrames += 1;
+    },
+    disconnected(index, at, sessionId) { stats[index].disconnects.push({ at, sessionId }); },
+    rejoined(index, at, sessionId) { stats[index].rejoins.push({ at, sessionId }); },
+    joinRefused(index, reason) { stats[index].joinRefusals.push(reason); },
+    /** S3 hook: record one prediction correction, in metres. */
+    correction(index, metres) { corrections[index].push(metres); },
+    /** S2b/S3 hook: did the server's rewound hit test agree with what the shooter saw? */
+    rewindCheck(agree) {
+      rewindChecks.checks += 1;
+      if (agree) rewindChecks.agree += 1;
+    },
+
+    report({ director, links = [], endedAt = null, options = {} } = {}) {
+      const ticks = director.sim ? director.sim.tick : 0;
+      const result = director.result;
+      const loopGaps = loops.slice(1).map((t, i) => t - loops[i]);
+      return {
+        options,
+        liveAt,
+        endedAt,
+        ticks,
+        stateHash: director.sim ? hashState(director.sim) : null,
+        result: result
+          ? { outcome: result.outcome, winner: result.winner, reason: result.reason, tick: result.tick }
+          : null,
+        stallForfeits: result && result.reason === 'stall' ? 1 : 0,
+        bothStalled: result && result.reason === 'both_stall' ? 1 : 0,
+        loopGap: summary(loopGaps),
+        links,
+        peers: stats.map((seat, index) => {
+          const applied = [...seat.acceptedFrames].filter((frame) => frame < ticks).length;
+          const arrivals = seat.snapshotArrivals.filter((at) => liveAt == null || at >= liveAt);
+          const gaps = arrivals.slice(1).map((t, i) => t - arrivals[i]);
+          const rejectTotal = Object.values(seat.rejects).reduce((a, b) => a + b, 0);
+          return {
+            accountId: accounts[index],
+            seat: director.seatOf(accounts[index]),
+            inputsSent: seat.inputsSent,
+            inputsDroppedWhileDown: seat.inputsDroppedWhileDown,
+            inputsAccepted: seat.inputsAccepted,
+            appliedTicks: applied,
+            appliedFraction: ticks ? round(applied / ticks) : 0,
+            rejects: { ...seat.rejects },
+            rejectsByOp: { ...seat.rejectsByOp },
+            rejectTotal,
+            lateRejects: seat.lateRejects,
+            lateFraction: seat.inputsSent ? round(seat.lateRejects / seat.inputsSent) : 0,
+            rejectFraction: seat.inputsSent ? round(rejectTotal / seat.inputsSent) : 0,
+            snapshotInterArrivalMs: summary(gaps),
+            renderFrames: seat.renderFrames,
+            heldFrames: seat.heldFrames,
+            snapshotLateFrames: seat.lateFrames,
+            starvedFrames: seat.starvedFrames,
+            starvedFraction: seat.renderFrames ? round(seat.starvedFrames / seat.renderFrames) : 0,
+            disconnects: seat.disconnects.length,
+            rejoins: seat.rejoins.length,
+            joinRefusals: [...seat.joinRefusals],
+            acceptedAfterRejoin: seat.acceptedAfterRejoin,
+            rejectsAfterRejoin: { ...seat.rejectsAfterRejoin },
+            // Stub until S3 adds client prediction: no samples today.
+            correctionP99Cm: corrections[index].length
+              ? round(percentile(corrections[index], 99) * 100, 2)
+              : null,
+          };
+        }),
+        // Stub until S2b adds viewTick rewind: no checks today.
+        rewind: {
+          checks: rewindChecks.checks,
+          agreement: rewindChecks.checks ? round(rewindChecks.agree / rewindChecks.checks) : null,
+        },
+      };
+    },
+  };
+}

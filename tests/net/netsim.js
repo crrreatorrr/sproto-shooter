@@ -1,0 +1,446 @@
+// Seeded discrete-event model of a Nakama match over TCP/WebSocket, on a virtual clock.
+//
+// It drives the real PvP code: two createPvpClient clients, and registerFreeMatch's match
+// handler (which owns a real createDirector). Nothing in src/ is replaced. The harness only
+// stands in for the network, the Nakama match loop and the SDK's realtime match handle.
+//
+// TCP rules: delivery is ordered and reliable. Loss shows up as a head-of-line stall followed
+// by a burst, never as a drop. Only a connection reset loses in-flight data, and the client
+// then comes back on a NEW session id, the way the hub SDK's reconnect does.
+//
+// No wall clock and no Math.random: the same seed and profile give the same run.
+import { createPvpClient, registerFreeMatch } from '../../src/net/client.js';
+import { decodeInput } from '../../src/net/inputCodec.js';
+import { OP } from '../../src/net/protocol.js';
+import { practiceWish } from '../../src/sim/pvp/practice.js';
+import { STEP_MS } from '../../src/sim/pvp/rules.js';
+import { createMetrics } from './metrics.js';
+
+/** §R.8 launch gates. S1, S2a and S3 turn the pending baseline tests on against these. */
+export const TARGETS = Object.freeze({
+  lateFraction: 0.01,
+  correctionP99Cm: 5,
+  rewindAgreement: 0.98,
+  starvedFraction: 0.01,
+});
+
+/**
+ * Link profiles. `latencyMs` and `jitterMs` are ONE-WAY, so RTT 100±30 ms is 50±15 each way.
+ * `stall` adds head-of-line stalls: a Poisson process with mean gap `everyMs`, each lasting
+ * `minMs..maxMs` (a retransmission timeout). `bandwidth` is bytes per second, per direction.
+ */
+export const PROFILES = Object.freeze({
+  rtt0: Object.freeze({ latencyMs: 0, jitterMs: 0 }),
+  rtt100j30: Object.freeze({ latencyMs: 50, jitterMs: 15 }),
+  rtt150: Object.freeze({ latencyMs: 75, jitterMs: 0 }),
+  stallBurst: Object.freeze({
+    latencyMs: 40,
+    jitterMs: 5,
+    stall: Object.freeze({ everyMs: 2000, minMs: 200, maxMs: 400 }),
+  }),
+});
+
+/** Deterministic 32-bit PRNG (mulberry32). Returns floats in [0, 1). */
+export function createRng(seed) {
+  let a = seed >>> 0;
+  const next = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  return {
+    next,
+    range(lo, hi) { return lo + (hi - lo) * next(); },
+    fork() { return createRng(Math.floor(next() * 4294967296)); },
+  };
+}
+
+/**
+ * Virtual clock with a discrete-event queue. Events at the same time run in the order they
+ * were scheduled, so runs are reproducible.
+ */
+export function createScheduler() {
+  const heap = [];
+  let now = 0;
+  let order = 0;
+
+  function less(a, b) {
+    return a.at < b.at || (a.at === b.at && a.order < b.order);
+  }
+
+  function push(event) {
+    heap.push(event);
+    let i = heap.length - 1;
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (!less(heap[i], heap[parent])) break;
+      [heap[i], heap[parent]] = [heap[parent], heap[i]];
+      i = parent;
+    }
+  }
+
+  function pop() {
+    const top = heap[0];
+    const last = heap.pop();
+    if (heap.length) {
+      heap[0] = last;
+      let i = 0;
+      for (;;) {
+        const l = i * 2 + 1;
+        const r = l + 1;
+        let best = i;
+        if (l < heap.length && less(heap[l], heap[best])) best = l;
+        if (r < heap.length && less(heap[r], heap[best])) best = r;
+        if (best === i) break;
+        [heap[i], heap[best]] = [heap[best], heap[i]];
+        i = best;
+      }
+    }
+    return top;
+  }
+
+  return {
+    get now() { return now; },
+    at(time, fn) {
+      if (!Number.isFinite(time)) throw new Error(`bad event time ${time}`);
+      push({ at: Math.max(time, now), order: order++, fn });
+    },
+    after(delay, fn) { this.at(now + delay, fn); },
+    every(period, fn, start = now) {
+      const tick = (time) => {
+        this.at(time, () => {
+          if (fn() !== false) tick(time + period);
+        });
+      };
+      tick(start);
+    },
+    /** Run events up to and including `time`, or until `stop()` returns true. */
+    runUntil(time, stop = () => false) {
+      while (heap.length && heap[0].at <= time) {
+        const event = pop();
+        now = event.at;
+        event.fn();
+        if (stop()) return true;
+      }
+      now = Math.max(now, time);
+      return false;
+    },
+    get pending() { return heap.length; },
+  };
+}
+
+/** Bytes on the wire for one Nakama match message: base64 payload inside a JSON envelope. */
+export function wireBytes(payloadBytes, envelopeBytes = 64) {
+  return Math.ceil(payloadBytes / 3) * 4 + envelopeBytes;
+}
+
+/**
+ * One direction of a TCP connection. `send(bytes, payload)` schedules `deliver(payload)`.
+ * Ordered (arrival never precedes an earlier send's arrival), reliable (never drops), with a
+ * bandwidth queue and head-of-line stalls. `reset()` loses everything in flight.
+ */
+export function createTcpLink({ scheduler, rng, profile = {}, deliver, horizonMs = 600000 }) {
+  const latency = profile.latencyMs || 0;
+  const jitter = profile.jitterMs || 0;
+  const bandwidth = profile.bandwidth || 0;
+  const stalls = [];
+  if (profile.stall) {
+    const { everyMs, minMs, maxMs } = profile.stall;
+    let t = -Math.log(1 - rng.next()) * everyMs;
+    while (t < horizonMs) {
+      const length = rng.range(minMs, maxMs);
+      stalls.push([t, t + length]);
+      t += length - Math.log(1 - rng.next()) * everyMs;
+    }
+  }
+  let epoch = 0;
+  let wireFree = 0;
+  let lastArrival = 0;
+  const stats = { sent: 0, delivered: 0, lostToReset: 0, bytes: 0, stalled: 0 };
+
+  function stallEnd(time) {
+    for (const [start, end] of stalls) {
+      if (time < start) return null;
+      if (time < end) return end;
+    }
+    return null;
+  }
+
+  return {
+    stats,
+    stalls,
+    send(bytes, payload) {
+      const now = scheduler.now;
+      const serial = bandwidth > 0 ? (bytes * 1000) / bandwidth : 0;
+      const departs = Math.max(now, wireFree) + serial;
+      wireFree = departs;
+      let arrival = departs + latency + (jitter > 0 ? rng.range(-jitter, jitter) : 0);
+      const held = stallEnd(departs);
+      if (held != null) {
+        arrival = Math.max(arrival, held + latency);
+        stats.stalled += 1;
+      }
+      arrival = Math.max(arrival, lastArrival, now);
+      lastArrival = arrival;
+      stats.sent += 1;
+      stats.bytes += bytes;
+      const sentEpoch = epoch;
+      scheduler.at(arrival, () => {
+        if (sentEpoch !== epoch) {
+          stats.lostToReset += 1;
+          return;
+        }
+        stats.delivered += 1;
+        deliver(payload);
+      });
+    },
+    /** Connection reset: in-flight data is gone, and a fresh connection starts empty. */
+    reset() {
+      epoch += 1;
+      wireFree = scheduler.now;
+      lastArrival = scheduler.now;
+    },
+  };
+}
+
+function textBytes(text) {
+  const buf = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) buf[i] = text.charCodeAt(i) & 255;
+  return buf;
+}
+
+function bytesText(buf) {
+  let out = '';
+  for (let i = 0; i < buf.length; i++) out += String.fromCharCode(buf[i]);
+  return out;
+}
+
+function encodePayload(data) {
+  if (data instanceof Uint8Array) return new Uint8Array(data);
+  return textBytes(JSON.stringify(data));
+}
+
+/** A movement-heavy bot built on the shipped practice bot, with a seeded strafe. */
+export function botWish(sample, seat, frame, { fire = false, strafe = 0 } = {}) {
+  const self = sample.players[seat];
+  const other = sample.players[1 - seat];
+  const wish = practiceWish(Math.max(0, sample.tick), self, other);
+  wish.moveX = Math.sin((frame + strafe) / 23) > 0 ? 1 : -1;
+  wish.moveZ = 1;
+  if (!fire) wish.fire = false;
+  return wish;
+}
+
+/**
+ * Run one scenario and return its metrics report.
+ *
+ * options:
+ *   seed            harness seed (links, strafe phases, render offsets)
+ *   matchSeed       director seed
+ *   durationMs      how long to run after both seats are live
+ *   profile         link profile for both directions, or { up, down }
+ *   disconnects     [{ peer, atMs, downMs }], peer 0 = 'ada', 1 = 'bea'; atMs from live start
+ *   renderHz        client frame rate (inputs are submitted from the render loop, as today)
+ *   fire            whether bots fire (off by default so matches run the whole window)
+ *   leaveDetectMs   how long the server takes to notice a reset socket
+ */
+export function runScenario(options = {}) {
+  const {
+    seed = 1,
+    matchSeed = 7,
+    durationMs = 15000,
+    profile = PROFILES.rtt0,
+    disconnects = [],
+    renderHz = 60,
+    fire = false,
+    leaveDetectMs = 0,
+    envelopeBytes = 64,
+    starveMs = 150,
+  } = options;
+  const accounts = ['ada', 'bea'];
+  const scheduler = createScheduler();
+  const rng = createRng(seed);
+  const metrics = createMetrics({ accounts, starveMs });
+  const upProfile = profile.up || profile;
+  const downProfile = profile.down || profile;
+
+  // Nakama side: capture registerFreeMatch's handler and run its loop at 30 Hz.
+  let handler = null;
+  registerFreeMatch({ registerMatch(_name, h) { handler = h; } });
+  const { state } = handler.init({ seed: matchSeed, clock: () => scheduler.now });
+  const director = state.director;
+  metrics.watchDirector(director);
+
+  const inbox = [];
+  const peers = accounts.map((accountId, index) => {
+    const peer = {
+      index,
+      accountId,
+      session: 0,
+      presence: null,
+      connected: false,
+      fns: [],
+      rejoinFns: [],
+      closeFns: [],
+      client: null,
+      frame: 0,
+      strafe: Math.floor(rng.range(0, 1000)),
+    };
+    const upRng = rng.fork();
+    const downRng = rng.fork();
+    peer.up = createTcpLink({
+      scheduler,
+      rng: upRng,
+      profile: upProfile,
+      horizonMs: durationMs + 60000,
+      deliver: (msg) => inbox.push(msg),
+    });
+    peer.down = createTcpLink({
+      scheduler,
+      rng: downRng,
+      profile: downProfile,
+      horizonMs: durationMs + 60000,
+      deliver: (msg) => {
+        if (msg.opCode === OP.SNAPSHOT) metrics.snapshotArrived(index, scheduler.now);
+        const text = bytesText(msg.data);
+        const packet = { opCode: msg.opCode, data: msg.data, json: () => JSON.parse(text) };
+        for (const fn of peer.fns) fn(packet);
+      },
+    });
+    return peer;
+  });
+
+  function presenceOf(peer) {
+    return { userId: peer.accountId, sessionId: `${peer.accountId}-s${peer.session}` };
+  }
+
+  function join(peer) {
+    peer.session += 1;
+    peer.presence = presenceOf(peer);
+    const verdict = handler.joinAttempt(state, peer.presence);
+    if (!verdict.accept) {
+      metrics.joinRefused(peer.index, verdict.reason);
+      return false;
+    }
+    handler.join(state, [peer.presence]);
+    peer.connected = true;
+    return true;
+  }
+
+  const dispatcher = {
+    broadcast(opCode, body) {
+      const data = encodePayload(body);
+      for (const peer of peers) {
+        if (!peer.connected) continue;
+        peer.down.send(wireBytes(data.length, envelopeBytes), { opCode, data });
+      }
+    },
+  };
+
+  scheduler.every(STEP_MS, () => {
+    const messages = inbox.splice(0);
+    handler.loop(state, messages, dispatcher);
+    metrics.loopRan(scheduler.now);
+  });
+
+  // The SDK's match handle: send() is silently dropped while the socket is down.
+  for (const peer of peers) {
+    const match = {
+      get self() { return peer.presence; },
+      send(opCode, data) {
+        if (!peer.connected) {
+          metrics.sendWhileDown(peer.index);
+          return;
+        }
+        const payload = encodePayload(data);
+        if (opCode === OP.INPUT) {
+          try {
+            metrics.inputSent(peer.index, decodeInput(payload).frame, scheduler.now);
+          } catch {
+            metrics.inputSent(peer.index, null, scheduler.now);
+          }
+        }
+        peer.up.send(wireBytes(payload.length, envelopeBytes), {
+          sender: { ...peer.presence },
+          opCode,
+          data: payload,
+          receiveTimeMs: 0,
+        });
+      },
+      onMessage(fn) { peer.fns.push(fn); return () => {}; },
+      onClose(fn) { peer.closeFns.push(fn); return () => {}; },
+      onRejoin(fn) { peer.rejoinFns.push(fn); return () => {}; },
+    };
+    join(peer);
+    peer.client = createPvpClient({ accountId: peer.accountId, match });
+  }
+
+  // Client render loops at renderHz with seeded phase offsets.
+  const frameMs = 1000 / renderHz;
+  for (const peer of peers) {
+    scheduler.every(frameMs, () => {
+      const client = peer.client;
+      peer.frame += 1;
+      if (client.seat >= 0 && client.phase === 'lobby' && !peer.readied && peer.connected) {
+        peer.readied = true;
+        client.ready();
+      }
+      if (client.phase === 'live' && !client.result) {
+        const sample = client.sample();
+        const viewKey = sample && sample.players
+          ? `${sample.tick}|${sample.players.map((p) => `${p.x},${p.z},${p.yaw}`).join('|')}`
+          : null;
+        metrics.renderFrame(peer.index, scheduler.now, viewKey);
+        if (sample && sample.players && sample.players[0] && sample.players[1] && client.seat >= 0) {
+          client.submit(botWish(sample, client.seat, peer.frame, { fire, strafe: peer.strafe }));
+        }
+      }
+      return true;
+    }, rng.range(0, frameMs));
+  }
+
+  // Disconnects are scheduled relative to live start.
+  let liveAt = null;
+  const pendingDrops = [...disconnects];
+  function armDrops() {
+    for (const drop of pendingDrops) {
+      const peer = peers[drop.peer];
+      scheduler.at(liveAt + drop.atMs, () => {
+        const old = peer.presence;
+        peer.connected = false;
+        peer.up.reset();
+        peer.down.reset();
+        metrics.disconnected(peer.index, scheduler.now, old.sessionId);
+        scheduler.after(leaveDetectMs, () => handler.leave(state, [old]));
+        scheduler.after(drop.downMs, () => {
+          if (director.phase === 'done') return;
+          if (!join(peer)) return;
+          metrics.rejoined(peer.index, scheduler.now, peer.presence.sessionId);
+          for (const fn of peer.rejoinFns) fn();
+        });
+      });
+    }
+  }
+
+  const deadline = 120000 + durationMs;
+  let endAt = deadline;
+  scheduler.runUntil(deadline, () => {
+    if (liveAt == null && director.phase === 'live') {
+      liveAt = scheduler.now;
+      endAt = liveAt + durationMs;
+      metrics.live(liveAt);
+      armDrops();
+    }
+    if (director.phase === 'done' && peers.every((peer) => !peer.connected || peer.client.result)) return true;
+    return liveAt != null && scheduler.now >= endAt;
+  });
+
+  return metrics.report({
+    director,
+    links: peers.map((peer) => ({ up: peer.up.stats, down: peer.down.stats })),
+    endedAt: scheduler.now,
+    options: { seed, matchSeed, durationMs, profile, disconnects, renderHz, fire },
+  });
+}
