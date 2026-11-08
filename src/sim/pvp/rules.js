@@ -3,7 +3,7 @@ import { TUNING } from '../../data/tuning.js';
 import { GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, QUALITIES_BY_ID } from '../../data/guns.js';
 import { fnv1a, stableStringify } from '../hash.js';
 
-export const PVP_PROTOCOL_VERSION = 1;
+export const PVP_PROTOCOL_VERSION = 2;
 export const PVP_SIM_VERSION = 1;
 export const MATCH_NAME = 'sproto_shooter_free';
 export const GAME_ID = 'sproto-shooter';
@@ -22,17 +22,35 @@ export const SPAWN_RADIUS = 16;
 export const STAGE_ID = 'arena';
 export const GUN_IDS = Object.freeze(['mg', 'shotgun', 'sniper']);
 
+/**
+ * Director v2 (protocol 2) input rules.
+ * - Frames `cursor .. cursor + futureFrames` are queued. A frame below the cursor is late: it is
+ *   accepted and discarded (it consumes its seq, refreshes the stall timer and the held aim).
+ * - Sequence numbers only have to increase; gaps are allowed.
+ * - Rate caps count frames, not packets: a token bucket of `maxFramesPerSecond` (refilled at that
+ *   rate, so a burst after a TCP stall passes), and at most `maxFramesPerCursor` queued (not late)
+ *   frames per server clock tick.
+ * - A tick with no queued frame repeats the held wish for `holdTicks` ticks, then goes neutral.
+ * - One advance() steps at most `catchUpTicks` ticks.
+ */
 export const INPUT_LIMITS = Object.freeze({
-  maxInputsPerSecond: 60,
-  maxInputsPerTick: 4,
-  futureFrames: 4,
-  pastFrames: 15,
+  maxFramesPerSecond: 45,
+  maxFramesPerCursor: 6,
+  futureFrames: 8,
+  holdTicks: 3,
+  catchUpTicks: 4,
+  maxPingsPerSecond: 10,
   frameBytes: 16,
   maxFrame: 1000000,
   maxIdLength: 80,
+  maxNameLength: 32,
+  maxLeadInTicks: 90,
 });
 
-export const MATCHMAKER_QUERY = '+properties.game:sproto-shooter +properties.mode:free +properties.protocol:1';
+/** Ticks between the last READY and tick 0, so the first round trip of ticks can carry input. */
+export const LEAD_IN_TICKS = 9;
+/** Snapshots carry the state hash once per second (and on the final snapshot). */
+export const HASH_EVERY_TICKS = TICK_HZ;
 
 function round3(n) {
   return Math.round(n * 1000) / 1000;
@@ -108,6 +126,13 @@ export function contentFingerprint() {
 }
 
 export const CONTENT_FINGERPRINT = contentFingerprint();
+
+/** Nakama matchmaker query: mismatched protocols or content never pair. */
+export function matchmakerQuery(fingerprint = CONTENT_FINGERPRINT) {
+  return `+properties.game:${GAME_ID} +properties.mode:free +properties.protocol:${PVP_PROTOCOL_VERSION} +properties.content:${fingerprint}`;
+}
+
+export const MATCHMAKER_QUERY = matchmakerQuery();
 
 export const ECONOMY = Object.freeze({
   mintsTickets: false,

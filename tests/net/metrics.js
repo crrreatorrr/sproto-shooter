@@ -39,6 +39,7 @@ function blankPeer() {
     rejects: {},
     rejectsByOp: {},
     lateRejects: 0,
+    lateDiscards: 0,
     snapshotArrivals: [],
     renderFrames: 0,
     heldFrames: 0,
@@ -94,7 +95,9 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
           }
         } else if (out && out.ok && op === OP.INPUT) {
           seat.inputsAccepted += 1;
-          if (frame != null) seat.acceptedFrames.add(frame);
+          // Protocol 2: a late frame is accepted and discarded. It never reaches the sim.
+          if (out.late) seat.lateDiscards += 1;
+          else if (frame != null) seat.acceptedFrames.add(frame);
           if (rejoined) seat.acceptedAfterRejoin += 1;
         }
         return out;
@@ -163,9 +166,15 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
           const arrivals = seat.snapshotArrivals.filter((at) => liveAt == null || at >= liveAt);
           const gaps = arrivals.slice(1).map((t, i) => t - arrivals[i]);
           const rejectTotal = Object.values(seat.rejects).reduce((a, b) => a + b, 0);
+          const seatNo = director.seatOf(accounts[index]);
+          const used = seatNo >= 0 && director.seatStats ? director.seatStats(seatNo) : null;
           return {
             accountId: accounts[index],
-            seat: director.seatOf(accounts[index]),
+            seat: seatNo,
+            // What the director itself applied: real input, held repeats, neutral ticks.
+            directorApplied: used ? used.applied : null,
+            directorHeld: used ? used.held : null,
+            directorNeutral: used ? used.neutral : null,
             inputsSent: seat.inputsSent,
             inputsDroppedWhileDown: seat.inputsDroppedWhileDown,
             inputsAccepted: seat.inputsAccepted,
@@ -177,7 +186,9 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
             rejectsByOp: { ...seat.rejectsByOp },
             rejectTotal,
             lateRejects: seat.lateRejects,
-            lateFraction: seat.inputsSent ? round(seat.lateRejects / seat.inputsSent) : 0,
+            lateDiscards: seat.lateDiscards,
+            // Late = arrived below the cursor: rejected (protocol 1) or accepted-and-discarded (2).
+            lateFraction: seat.inputsSent ? round((seat.lateRejects + seat.lateDiscards) / seat.inputsSent) : 0,
             rejectFraction: seat.inputsSent ? round(rejectTotal / seat.inputsSent) : 0,
             snapshotInterArrivalMs: summary(gaps),
             renderFrames: seat.renderFrames,

@@ -12,8 +12,29 @@ import { createMatch, hashState, replay, scriptedMatch, step } from '../src/sim/
 import {
   CONTENT_FINGERPRINT, LOADOUT, LOADOUT_HASH, MATCH_TICKS, RESERVE, SPAWN_RADIUS,
 } from '../src/sim/pvp/rules.js';
+import * as pvp from '../src/sim/pvp/export.js';
+import directorGoldenFixture from './fixtures/director-golden.json';
+import './fixtures/director-golden.js';
 
 const GOLDEN_HASH = 'ce272de1';
+// SHOOTER-S2a: protocol 2 is a deliberate fingerprint bump (protocol 1 was f5949631).
+const FINGERPRINT = '0e584d36';
+const DRIVER = path.resolve('tests', 'fixtures', 'director-golden.js');
+const { comment: _comment, ...DIRECTOR_GOLDEN } = directorGoldenFixture;
+
+function directorCore(out) {
+  return {
+    phase: out.phase,
+    tick: out.tick,
+    stateHash: out.stateHash,
+    outcome: out.outcome,
+    winner: out.winner,
+    reason: out.reason,
+    late: out.late,
+    rejects: out.rejects,
+    replay: out.replay,
+  };
+}
 
 function round3(n) {
   return Math.round(n * 1000) / 1000;
@@ -40,7 +61,7 @@ function expectedGun(typeId) {
 describe('fixed loadout and spawns', () => {
   it('gives both seats the same common guns, ammo, and no perks', () => {
     expect(contentFingerprint(1)).toBe('3c657fb5');
-    expect(CONTENT_FINGERPRINT).toBe('f5949631');
+    expect(CONTENT_FINGERPRINT).toBe(FINGERPRINT);
     expect(LOADOUT.map((gun) => gun.type)).toEqual(['mg', 'shotgun', 'sniper']);
     for (const gun of LOADOUT) {
       expect(gun.quality).toBe('common');
@@ -118,9 +139,13 @@ describe('browser, node, and goja', () => {
     const pin = await buildPvpBundle(dir);
     bundlePath = path.join(dir, 'shooter-pvp-sim.js');
     const bytes = fs.readFileSync(bundlePath);
-    expect(pin.protocol).toBe(1);
+    expect(pin.protocol).toBe(2);
     expect(pin.sim).toBe(1);
-    expect(pin.contentFingerprint).toBe('f5949631');
+    expect(pin.contentFingerprint).toBe(FINGERPRINT);
+    expect(pin.directorState).toBe(2);
+    expect(pin.replayVersion).toBe(2);
+    expect(pin.matchmakerQuery).toContain(`+properties.protocol:2 +properties.content:${FINGERPRINT}`);
+    expect(pin.limits).toMatchObject({ futureFrames: 8, maxFramesPerSecond: 45, maxFramesPerCursor: 6, holdTicks: 3, catchUpTicks: 4 });
     expect(pin.campaignProtocol).toBe(1);
     expect(pin.campaignContentFingerprint).toBe('3c657fb5');
     expect(pin.mintsTickets).toBe(false);
@@ -133,16 +158,23 @@ describe('browser, node, and goja', () => {
     expect(text.includes('earnTickets(')).toBe(false);
   }, 60000);
 
-  function runNode(json) {
+  // mode 'replay': stdin is a replayJSON body. mode 'director': stdin is the golden's options;
+  // the driver script runs after the bundle and prints directorGolden(SprotoShooterPvp, opts).
+  function runNode(json, mode = 'replay') {
     const script = `
       import fs from 'node:fs';
       import vm from 'node:vm';
       const src = fs.readFileSync(process.argv[1], 'utf8');
       const input = fs.readFileSync(0, 'utf8');
       vm.runInThisContext(src);
-      process.stdout.write(globalThis.SprotoShooterPvp.replayJSON(input));
+      if (process.argv[2] === 'director') {
+        vm.runInThisContext(fs.readFileSync(process.argv[3], 'utf8'));
+        process.stdout.write(JSON.stringify(globalThis.directorGolden(globalThis.SprotoShooterPvp, JSON.parse(input))));
+      } else {
+        process.stdout.write(globalThis.SprotoShooterPvp.replayJSON(input));
+      }
     `;
-    const res = spawnSync(process.execPath, ['--input-type=module', '-e', script, bundlePath], {
+    const res = spawnSync(process.execPath, ['--input-type=module', '-e', script, bundlePath, mode, DRIVER], {
       input: json,
       encoding: 'utf8',
     });
@@ -150,7 +182,20 @@ describe('browser, node, and goja', () => {
     return JSON.parse(res.stdout);
   }
 
-  function runGoja(json) {
+  let gojaDir = null;
+  function runGoja(json, mode = 'replay') {
+    if (!gojaDir) gojaDir = buildGoja();
+    const res = spawnSync('go', ['run', '.', bundlePath, mode, DRIVER], {
+      cwd: gojaDir,
+      input: json,
+      encoding: 'utf8',
+      timeout: 180000,
+    });
+    if (res.status !== 0) throw new Error(res.stderr || res.stdout || 'goja failed');
+    return JSON.parse(res.stdout);
+  }
+
+  function buildGoja() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pvp-goja-'));
     fs.writeFileSync(path.join(dir, 'go.mod'), `module pvpgoja
 
@@ -176,6 +221,16 @@ func main() {
   if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
   vm := goja.New()
   if _, err = vm.RunString(string(src)); err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+  if len(os.Args) > 3 && os.Args[2] == "director" {
+    driver, err := os.ReadFile(os.Args[3])
+    if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+    if _, err = vm.RunString(string(driver)); err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+    if err = vm.Set("__opts", string(input)); err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+    out, err := vm.RunString("JSON.stringify(directorGolden(SprotoShooterPvp, JSON.parse(__opts)))")
+    if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+    fmt.Print(out.String())
+    return
+  }
   fn, ok := goja.AssertFunction(vm.Get("SprotoShooterPvp").ToObject(vm).Get("replayJSON"))
   if !ok { fmt.Fprintln(os.Stderr, "replayJSON missing"); os.Exit(1) }
   out, err := fn(goja.Undefined(), vm.ToValue(string(input)))
@@ -185,17 +240,10 @@ func main() {
 `);
     const tidy = spawnSync('go', ['mod', 'tidy'], { cwd: dir, encoding: 'utf8', timeout: 180000 });
     if (tidy.status !== 0) throw new Error(tidy.stderr || tidy.stdout || 'go mod tidy failed');
-    const res = spawnSync('go', ['run', '.', bundlePath], {
-      cwd: dir,
-      input: json,
-      encoding: 'utf8',
-      timeout: 180000,
-    });
-    if (res.status !== 0) throw new Error(res.stderr || res.stdout || 'goja failed');
-    return JSON.parse(res.stdout);
+    return dir;
   }
 
-  async function runBrowser(json) {
+  async function runBrowser(json, mode = 'replay') {
     let browser;
     try {
       browser = await chromium.launch({ headless: true });
@@ -206,6 +254,11 @@ func main() {
     const page = await browser.newPage();
     try {
       await page.addScriptTag({ path: bundlePath });
+      if (mode === 'director') {
+        await page.addScriptTag({ path: DRIVER });
+        const out = await page.evaluate((opts) => JSON.stringify(globalThis.directorGolden(globalThis.SprotoShooterPvp, JSON.parse(opts))), json);
+        return JSON.parse(out);
+      }
       const out = await page.evaluate((body) => globalThis.SprotoShooterPvp.replayJSON(body), json);
       return JSON.parse(out);
     } finally {
@@ -226,9 +279,25 @@ func main() {
       expect(receipt.winner).toBeNull();
       expect(receipt.stateHash).toBe(GOLDEN_HASH);
       expect(receipt.tick).toBe(61);
-      expect(receipt.content).toBe('f5949631');
-      expect(receipt.protocol).toBe(1);
+      expect(receipt.content).toBe(FINGERPRINT);
+      expect(receipt.protocol).toBe(2);
       expect(receipt.players[0].hp).toBe(receipt.players[1].hp);
     }
   }, 180000);
+
+  it('runs the director golden session (lead-in, late frames, rejoin, stall) in node, goja, and chromium', async () => {
+    const source = globalThis.directorGolden(pvp, {});
+    expect(directorCore(source)).toEqual(DIRECTOR_GOLDEN);
+    for (const opts of [{}, { thaw: true }]) {
+      const json = JSON.stringify(opts);
+      const nodeOut = runNode(json, 'director');
+      const gojaOut = runGoja(json, 'director');
+      const browserOut = await runBrowser(json, 'director');
+      for (const out of [nodeOut, gojaOut, browserOut]) {
+        expect(directorCore(out)).toEqual(DIRECTOR_GOLDEN);
+        expect(out.counts).toEqual(source.counts);
+        expect(out.seats).toEqual(source.seats);
+      }
+    }
+  }, 300000);
 });

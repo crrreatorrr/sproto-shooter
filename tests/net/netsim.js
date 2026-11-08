@@ -330,11 +330,13 @@ export function runScenario(options = {}) {
     return true;
   }
 
+  // Nakama's broadcastMessage(op, data, presences): presences limits it to those sessions.
   const dispatcher = {
-    broadcast(opCode, body) {
+    broadcast(opCode, body, to) {
       const data = encodePayload(body);
       for (const peer of peers) {
         if (!peer.connected) continue;
+        if (to && !to.some((p) => p.sessionId === peer.presence.sessionId)) continue;
         peer.down.send(wireBytes(data.length, envelopeBytes), { opCode, data });
       }
     },
@@ -378,6 +380,9 @@ export function runScenario(options = {}) {
     peer.client = createPvpClient({ accountId: peer.accountId, match, clock: () => scheduler.now });
   }
 
+  // Tick 0 on the server clock, once the director goes live (after its lead-in).
+  let liveAt = null;
+
   // Client render loops at renderHz with seeded phase offsets.
   const frameMs = 1000 / renderHz;
   for (const peer of peers) {
@@ -393,7 +398,10 @@ export function runScenario(options = {}) {
         const viewKey = sample && sample.players
           ? `${sample.tick}|${sample.players.map((p) => `${p.x},${p.z},${p.yaw}`).join('|')}`
           : null;
-        metrics.renderFrame(peer.index, scheduler.now, viewKey, sample && sample.mode);
+        // Render metrics start at tick 0; during the lead-in the spawn view is held on purpose.
+        if (liveAt != null && scheduler.now >= liveAt) {
+          metrics.renderFrame(peer.index, scheduler.now, viewKey, sample && sample.mode);
+        }
         if (sample && sample.players && sample.players[0] && sample.players[1] && client.seat >= 0) {
           client.update(scheduler.now, (frame) => botWish(sample, client.seat, frame, { fire, strafe: peer.strafe }));
         }
@@ -403,8 +411,7 @@ export function runScenario(options = {}) {
     }, rng.range(0, frameMs));
   }
 
-  // Disconnects are scheduled relative to live start.
-  let liveAt = null;
+  // Disconnects are scheduled relative to live start: tick 0, after the director's lead-in.
   const pendingDrops = [...disconnects];
   function armDrops() {
     for (const drop of pendingDrops) {
@@ -430,7 +437,7 @@ export function runScenario(options = {}) {
   let endAt = deadline;
   scheduler.runUntil(deadline, () => {
     if (liveAt == null && director.phase === 'live') {
-      liveAt = scheduler.now;
+      liveAt = Number.isFinite(director.liveStart) ? director.liveStart : scheduler.now;
       endAt = liveAt + durationMs;
       metrics.live(liveAt);
       armDrops();
