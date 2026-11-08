@@ -1,7 +1,7 @@
 // DOM UI: HUD, crosshair, damage numbers, banners, loot card, skills, crafting, shop, boss bar, screens.
 // UI never writes game state; it queues actions via input.queueAction().
 import { SKILLS, SKILL_IDS, PERKS, PERKS_BY_ID, SPELLS, SPELL_IDS, xpToNext } from '../data/skills.js';
-import { QUALITIES_BY_ID, ELEMENTS_BY_ID, GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, PARTS_BY_ID, PARTS_BY_SLOT, SLOTS, WACKY_BY_ID, ELEMENTS } from '../data/guns.js';
+import { gunRange, hasInfiniteReserve, QUALITIES_BY_ID, ELEMENTS_BY_ID, GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, PARTS_BY_ID, PARTS_BY_SLOT, SLOTS, WACKY_BY_ID, ELEMENTS, LEGENDARY_SLOT, slotUsable } from '../data/guns.js';
 import { RESOURCES } from '../data/drops.js';
 import { GUN_RECIPES, ITEM_RECIPES, ARCANE_COST, REROLL_COST, SALVAGE_LEVEL, REROLL_LEVEL } from '../data/recipes.js';
 import { SHOP } from '../data/shop.js';
@@ -15,10 +15,10 @@ const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) 
 const fmt = (n, d = 0) => (Math.round(n * 10 ** d) / 10 ** d).toLocaleString();
 const RES_BY_ID = Object.fromEntries(RESOURCES.map((r) => [r.id, r]));
 const SPELL_ICON = { gooBolt: '●', chainZap: 'ϟ', swarm: '✲', manaShield: '◈', meteor: '☄' };
-const TYPE_ICON = { mg: '▬', shotgun: '▮', sniper: '━', bazooka: '◉' };
+const TYPE_ICON = { mg: '▬', shotgun: '▮', sniper: '━', bazooka: '◉', raygun: '⚡', bigbullets: '●', duckgun: '🦆' };
 
 export function createUI(root, { input, bus, project, game }) {
-  const st = { menu: null, tabHeld: false, craftTab: 'guns', craftType: 'mg', choice: { element: null, part: null, arcane: false }, lastKey: {}, rerollSlot: 0 };
+  const st = { menu: null, tabHeld: false, statsOpen: false, craftTab: 'guns', craftType: 'mg', choice: { element: null, part: null, arcane: false }, lastKey: {}, rerollSlot: 0 };
 
   root.innerHTML = `
   <div id="hud">
@@ -49,10 +49,21 @@ export function createUI(root, { input, bus, project, game }) {
     <div id="feed"></div>
     <div id="downed"><div class="big">DOWNED!</div><div>Get a kill for a <b>Second Wind</b></div><div id="downed-t"></div></div>
     <div id="vignette"></div>
-    <div id="scope"></div>
   </div>
   <div id="dmgnums"></div>
   <div id="panel" hidden></div>`;
+
+  const loadEl = h('div');
+  loadEl.id = 'load-state';
+  loadEl.hidden = true;
+  loadEl.style.cssText = 'position:fixed;left:16px;bottom:16px;z-index:30;background:rgba(8,6,16,.88);color:#ffe9a8;padding:8px 12px;border-radius:8px;font:700 14px/1.35 "Baloo 2",sans-serif;pointer-events:auto;max-width:340px';
+  root.appendChild(loadEl);
+  loadEl.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-retry]');
+    if (!b || !game.renderer || !game.renderer.retryFailed) return;
+    b.disabled = true;
+    game.renderer.retryFailed();
+  });
 
   const els = {
     wave: $('#wave-info', root), tickets: $('#tickets', root), resources: $('#resources', root), bossbars: $('#bossbars', root),
@@ -60,7 +71,7 @@ export function createUI(root, { input, bus, project, game }) {
     shield: $('.bar.shield', root), health: $('.bar.health', root), mana: $('.bar.mana', root), skills: $('#skills-mini', root),
     spells: $('#spells', root), gunName: $('#gun-name', root), mag: $('#mag', root), reserve: $('#reserve', root), slots: $('#slots', root), medkits: $('#medkits', root),
     prompt: $('#prompt', root), loot: $('#lootcard', root), banners: $('#banners', root), toasts: $('#toasts', root), feed: $('#feed', root),
-    downed: $('#downed', root), downedT: $('#downed-t', root), vignette: $('#vignette', root), scope: $('#scope', root),
+    downed: $('#downed', root), downedT: $('#downed-t', root), vignette: $('#vignette', root),
     dmg: $('#dmgnums', root), panel: $('#panel', root), screen: document.getElementById('screen'),
   };
 
@@ -140,21 +151,21 @@ export function createUI(root, { input, bus, project, game }) {
   bus.on('perkUnlocked', (ev) => { const pk = PERKS_BY_ID[ev.perkId]; setTimeout(() => banner(`<small>UNLOCKED</small>${pk.name}<em>${pk.desc}</em>`, 'perk', 2800), 600); });
   bus.on('wavePre', (ev) => banner(`<small>GET READY</small>WAVE ${ev.waveIndex + 1}<em>${WAVES[ev.waveIndex].name.split(': ')[1]}</em>`, 'wave', 2600));
   bus.on('waveStart', () => banner('FIGHT!', 'fight', 900));
-  bus.on('waveCleared', (ev) => banner(`<small>WAVE ${ev.waveIndex + 1}</small>CLEARED! <em>+${ev.tickets} 🎟</em>`, 'cleared'));
+  bus.on('waveCleared', (ev) => banner(`<small>WAVE ${ev.waveIndex + 1}</small>CLEARED! <em>+${ev.tickets} Run Cash</em>`, 'cleared'));
   bus.on('intermissionStart', () => { banner('<small>INTERMISSION</small>SHOP [B] · CRAFT AT WEAPON BOXES<em>ENTER when ready</em>', 'inter', 3200); });
   bus.on('bossIntro', (ev) => banner(`<small>⚠ BOSS INCOMING ⚠</small>${ev.types.map((t) => BOSSES[t].name).join(' + ')}`, 'boss', 3000));
   bus.on('bossPhase', (ev) => banner(`${BOSSES[ev.bossType].name}<em>${ev.phaseIdx === 2 ? 'FINAL AUDIT!' : 'IS ANGRY NOW'}</em>`, 'boss', 1800));
   bus.on('bossDefeated', (ev) => banner(`<small>BOSS DEFEATED</small>${BOSSES[ev.bossType].name}`, 'cleared', 2600));
   bus.on('playerRevived', () => banner('SECOND WIND!', 'fight', 1200));
   bus.on('unkillableTriggered', () => banner('UNKILLABLE SPROTO!', 'perk', 1500));
-  bus.on('actionFailed', (ev) => toast(ev.reason, 'bad'));
+  bus.on('actionFailed', (ev) => toast(String(ev.reason || '').replace(/tickets/gi, 'Run Cash'), 'bad'));
   bus.on('noMana', () => toast('Not enough mana', 'bad'));
   bus.on('spellLocked', (ev) => { const pk = PERKS.find((x) => x.id === ev.spellId); toast(`Locked: Magic Lv ${pk ? pk.level : '?'}`, 'bad'); });
   bus.on('gunPickedUp', (ev) => { const g = game.findGun(ev.gunId); if (g) feed(`Picked up ${g.name}`, QUALITIES_BY_ID[g.quality].color); });
   bus.on('craftComplete', (ev) => toast(ev.category === 'gun' ? 'Gun crafted! Pick it up at the box' : 'Crafted!', 'good'));
-  bus.on('purchase', (ev) => toast(`Bought (−${ev.price} 🎟)`, 'good'));
-  bus.on('sold', (ev) => toast(`Sold for ${ev.value} 🎟`, 'good'));
-  bus.on('vend', (ev) => toast({ gun: '🎰 A gun drops out!', resources: `🎰 ${ev.detail}`, jackpot: '🎰 JACKPOT! +60 🎟', chicken: '🎰 ...a rubber chicken. Squeak.' }[ev.outcome], 'good'));
+  bus.on('purchase', (ev) => toast(`Bought (−${ev.price} Run Cash)`, 'good'));
+  bus.on('sold', (ev) => toast(`Sold for ${ev.value} Run Cash`, 'good'));
+  bus.on('vend', (ev) => toast({ gun: '🎰 A gun drops out!', resources: `🎰 ${String(ev.detail || '').replace(/tickets/gi, 'Run Cash')}`, jackpot: '🎰 JACKPOT! +60 Run Cash', chicken: '🎰 ...a rubber chicken. Squeak.' }[ev.outcome], 'good'));
   bus.on('salvage', (ev) => toast('Salvaged: ' + Object.entries(ev.yield).map(([k, v]) => `+${v} ${RES_BY_ID[k].name}`).join(', '), 'good'));
   bus.on('reroll', () => toast('Stat rerolled!', 'good'));
   bus.on('pickup', (ev) => {
@@ -166,6 +177,7 @@ export function createUI(root, { input, bus, project, game }) {
     els.vignette.className = ev.toHealth > 0 ? 'hurt' : 'shield';
   });
   bus.on('victory', () => game.showScreen('victory'));
+  bus.on('bossFightOver', (ev) => setTimeout(() => game.showScreen(ev.won ? 'bossWon' : 'bossLost'), ev.won ? 1800 : 1200));
   bus.on('defeat', () => game.showScreen('defeat'));
 
   // ---------- menus ----------
@@ -189,6 +201,7 @@ export function createUI(root, { input, bus, project, game }) {
     if (e.repeat) return;
     if (e.code === 'Tab') { st.tabHeld = true; return; }
     if (!els.screen.hidden) return;
+    if (e.code === 'Digit5' && !st.menu) { st.statsOpen = !st.statsOpen; return; }
     if (e.code === 'KeyG' && !st.menu) {
       const s = game.state, p = s.players[s.localPlayerId];
       if (!p.nearGunPickupId && nearBox(s, p)) openMenu('craft');
@@ -269,7 +282,7 @@ export function createUI(root, { input, bus, project, game }) {
   }
 
   function resBar(p) {
-    return `<div class="resbar"><span class="tk">🎟 ${p.tickets}</span>${RESOURCES.map((r) => `<span style="--c:${r.color}" title="${r.name}">${r.icon} ${p.resources[r.id]}</span>`).join('')}</div>`;
+    return `<div class="resbar"><span class="tk" title="Run Cash, not hub Tickets">Run Cash ${p.tickets}</span>${RESOURCES.map((r) => `<span style="--c:${r.color}" title="${r.name}">${r.icon} ${p.resources[r.id]}</span>`).join('')}</div>`;
   }
 
   function craftHtml(s, p) {
@@ -321,22 +334,22 @@ export function createUI(root, { input, bus, project, game }) {
   }
 
   function shopHtml(s, p) {
-    const offers = s.shop.offers.map((o) => `<div class="offer ${o.sold ? 'sold' : ''}">${gunCardHtml(o.gun, p.guns[p.activeSlot], { footer: o.sold ? '<div class="soldtag">SOLD</div>' : `<button class="btn" data-act="buy" data-v="${o.id}" ${p.tickets >= o.price ? '' : 'disabled'}>Buy 🎟 ${o.price}</button>` })}</div>`).join('');
+    const offers = s.shop.offers.map((o) => `<div class="offer ${o.sold ? 'sold' : ''}">${gunCardHtml(o.gun, p.guns[p.activeSlot], { footer: o.sold ? '<div class="soldtag">SOLD</div>' : `<button class="btn" data-act="buy" data-v="${o.id}" ${p.tickets >= o.price ? '' : 'disabled'}>Buy ${o.price} Run Cash</button>` })}</div>`).join('');
     const up = s.shop.upgrades;
     const ups = SHOP.upgrades.map((u) => {
       const rank = u.id === 'slot4' ? (up.slot4 || p.unlockedSlots >= 4 ? 1 : 0) : up[u.id];
       const max = rank >= u.prices.length;
-      return `<div class="mini"><b>${u.name}</b><span>${max ? 'MAX' : `Rank ${rank}/${u.prices.length}`}</span><button class="btn sm" data-act="upgrade" data-v="${u.id}" ${max || p.tickets < u.prices[rank] ? 'disabled' : ''}>${max ? '—' : '🎟 ' + u.prices[rank]}</button></div>`;
+      return `<div class="mini"><b>${u.name}</b><span>${max ? 'MAX' : `Rank ${rank}/${u.prices.length}`}</span><button class="btn sm" data-act="upgrade" data-v="${u.id}" ${max || p.tickets < u.prices[rank] ? 'disabled' : ''}>${max ? '—' : u.prices[rank] + ' Run Cash'}</button></div>`;
     }).join('');
-    const sups = SHOP.supplies.map((u) => `<div class="mini"><b>${u.name}</b><span></span><button class="btn sm" data-act="supply" data-v="${u.id}" ${p.tickets < u.price ? 'disabled' : ''}>🎟 ${u.price}</button></div>`).join('');
-    const sells = p.guns.map((g, i) => g ? `<div class="mini" style="--q:${QUALITIES_BY_ID[g.quality].color}"><b>${i + 1}</b> ${g.name}<span></span><button class="btn sm" data-act="sell" data-v="${i}">Sell 🎟 ${sellValue(g)}</button></div>` : '').join('');
+    const sups = SHOP.supplies.map((u) => `<div class="mini"><b>${u.name}</b><span></span><button class="btn sm" data-act="supply" data-v="${u.id}" ${p.tickets < u.price ? 'disabled' : ''}>${u.price} Run Cash</button></div>`).join('');
+    const sells = p.guns.map((g, i) => g ? `<div class="mini" style="--q:${QUALITIES_BY_ID[g.quality].color}"><b>${i + 1}</b> ${g.name}<span></span><button class="btn sm" data-act="sell" data-v="${i}">Sell ${sellValue(g)} Run Cash</button></div>` : '').join('');
     const rerollPrice = SHOP.rerollBase + SHOP.rerollStep * s.shop.rerolls;
     const inter = s.wave && s.wave.phase === 'intermission';
-    return `<h2>🎟 Ticket Shop ${inter ? `<small>Next wave in ${Math.ceil(s.wave.intermissionT)}s</small>` : ''}</h2>${resBar(p)}
+    return `<h2>Run Cash Shop ${inter ? `<small>Next wave in ${Math.ceil(s.wave.intermissionT)}s</small>` : ''}</h2><p class="hint">Run Cash is this run's shop money. It is not hub Tickets and cannot be exchanged.</p>${resBar(p)}
       <div class="offers">${offers}</div>
       <div class="cols">
-        <div><h3>Vending Machine</h3><div class="mini vend"><b>🎰 Mystery pull</b><span>gun, resources, jackpot… or a chicken</span><button class="btn sm" data-act="vend" ${p.tickets < SHOP.vendPrice ? 'disabled' : ''}>🎟 ${SHOP.vendPrice}</button></div>
-          <div class="mini"><b>Reroll offers</b><span></span><button class="btn sm" data-act="rerollShop" ${p.tickets < rerollPrice ? 'disabled' : ''}>🎟 ${rerollPrice}</button></div>
+        <div><h3>Vending Machine</h3><div class="mini vend"><b>🎰 Mystery pull</b><span>gun, resources, jackpot… or a chicken</span><button class="btn sm" data-act="vend" ${p.tickets < SHOP.vendPrice ? 'disabled' : ''}>${SHOP.vendPrice} Run Cash</button></div>
+          <div class="mini"><b>Reroll offers</b><span></span><button class="btn sm" data-act="rerollShop" ${p.tickets < rerollPrice ? 'disabled' : ''}>${rerollPrice} Run Cash</button></div>
           <h3>Supplies</h3>${sups}</div>
         <div><h3>Upgrades</h3>${ups}</div>
         <div><h3>Sell guns</h3>${sells}</div>
@@ -345,7 +358,7 @@ export function createUI(root, { input, bus, project, game }) {
   }
 
   function inventoryHtml(s, p) {
-    return `<h2>🎒 Your Guns</h2>${resBar(p)}<div class="offers">${p.guns.map((g, i) => i < p.unlockedSlots ? `<div class="offer"><div class="slotno">Slot ${i + 1}${i === p.activeSlot ? ' · equipped' : ''}</div>${gunCardHtml(g, null, { footer: g ? `<button class="btn sm" data-act="drop" data-v="${i}">Drop</button>` : '' })}</div>` : `<div class="offer"><div class="gcard empty">🔒 Slot ${i + 1}<br><small>Buy in the shop</small></div></div>`).join('')}</div>`;
+    return `<h2>🎒 Your Guns</h2>${resBar(p)}<div class="offers">${p.guns.map((g, i) => slotUsable(p, i) ? `<div class="offer"><div class="slotno">${i === LEGENDARY_SLOT ? '★ Legendary slot [L]' : `Slot ${i + 1}`}${i === p.activeSlot ? ' · equipped' : ''}</div>${gunCardHtml(g, null, { footer: g ? `<button class="btn sm" data-act="drop" data-v="${i}">Drop</button>` : '' })}</div>` : `<div class="offer"><div class="gcard empty">🔒 Slot ${i + 1}<br><small>Buy in the shop</small></div></div>`).join('')}</div>`;
   }
 
   // ---------- skills overlay (Tab) ----------
@@ -361,9 +374,47 @@ export function createUI(root, { input, bus, project, game }) {
     }).join('')}</div><div class="hint">Hold TAB · Skills level up just by doing things. No points to spend.</div>`;
   }
 
+  // ---------- stats & powers overlay (5) ----------
+  const ICON = Object.fromEntries(SKILL_IDS.map((id) => [id, SKILLS[id].icon]));
+  function statsHtml(s, p) {
+    const g = p.guns[p.activeSlot];
+    const row = (k, v) => `<div class="srow"><span>${k}</span><b>${v}</b></div>`;
+    const dr = Math.round(3 * (p.skills.health.level - 1));
+    const ammo = Object.keys(p.ammoCap).map((t) => {
+      const inf = s.tuning.infiniteAmmo || s.tuning.godMode || p.guns.some((x) => x && x.ammoType === t && hasInfiniteReserve(x));
+      return row(`Ammo · ${t}`, inf ? '∞' : `${p.ammo[t]} / ${p.ammoCap[t]}`);
+    }).join('');
+    const gunRows = g ? row('Gun', `<span style="color:${QUALITIES_BY_ID[g.quality].color}">${g.name}</span>`) + row('Damage', g.stats.pellets > 1 ? `${Math.round(g.stats.damage)} × ${g.stats.pellets}` : Math.round(g.stats.damage))
+      + row('Fire rate', `${g.stats.fireRate.toFixed(1)} /s`) + row('Magazine', `${g.ammoInMag} / ${g.stats.magSize}`) + row('Reload', `${g.stats.reloadTime.toFixed(1)} s`)
+      + row('Range', g.type === 'bazooka' ? 'rocket' : g.type === 'bigbullets' ? 'heavy round' : g.type === 'duckgun' ? 'lobbed, explodes' : (() => { const r = gunRange(g); return r.max >= 150 ? 'whole arena' : `full to ${Math.round(r.full)} m · max ${Math.round(r.max)} m`; })())
+      + row('Crit', `${Math.round(g.stats.critChance * 100)}% · ×${g.stats.critMult.toFixed(1)}`) : '';
+    const stats = `<div class="skc" style="--c:#ffd166"><div class="skh">📊 Stats${s.tuning.godMode ? ' <span class="god">GOD MODE</span>' : ''}</div>
+      ${row('Health', `${Math.ceil(p.hp)} / ${p.maxHp}`)}${row('Shield', `${Math.ceil(p.shield)} / ${p.maxShield}`)}${row('Mana', `${Math.floor(p.mana)} / ${p.maxMana}`)}
+      ${row('Damage taken', dr ? `−${dr}%` : 'normal')}${row('Medkits', p.medkits)}${row('Run Cash', p.tickets)}
+      ${SKILL_IDS.map((id) => row(`${ICON[id]} ${SKILLS[id].name}`, `Lv ${p.skills[id].level}`)).join('')}${gunRows}${ammo}</div>`;
+    const magic = p.skills.magic.level;
+    const spells = SPELL_IDS.map((id) => {
+      const sp = SPELLS[id], pk = PERKS_BY_ID[id];
+      const cost = id === 'meteor' ? p.maxMana : sp.mana;
+      const cd = p.spells.cd[id];
+      const status = !p.perks[id] ? `<em class="lock">🔒 LOCKED · needs Magic Lv ${pk.level} (you're Lv ${magic})</em>`
+        : id === 'manaShield' && p.spells.manaShieldOn ? '<em class="ok">ON</em>'
+        : cd > 0 ? `<em class="wait">Cooldown ${cd.toFixed(1)} s</em>`
+        : p.mana < cost - 0.5 ? '<em class="wait">Not enough mana</em>' : '<em class="ok">READY</em>';
+      const viaGod = p.perks[id] && magic < pk.level ? ' <em class="god">via god mode</em>' : '';
+      return `<div class="power ${p.perks[id] ? '' : 'locked'}"><kbd>${sp.key}</kbd><div><b>${SPELL_ICON[id]} ${sp.name}</b> ${status}${viaGod}
+        <small>${pk.desc} · ${id === 'meteor' ? 'all mana' : sp.mana + ' mana'}${id === 'manaShield' ? ' + drain' : ''} · ${sp.cd}s cooldown</small></div></div>`;
+    }).join('');
+    const perks = PERKS.filter((k) => !SPELLS[k.id]).map((k) => `<div class="power ${p.perks[k.id] ? '' : 'locked'}"><kbd>${ICON[k.skill]}</kbd><div><b>${k.name}</b> ${p.perks[k.id] ? '<em class="ok">ACTIVE</em>' : `<em class="lock">🔒 LOCKED · needs ${SKILLS[k.skill].name} Lv ${k.level} (you're Lv ${p.skills[k.skill].level})</em>`}<small>${k.desc}</small></div></div>`).join('');
+    return `<div class="stats-screen">${stats}
+      <div class="skc" style="--c:#9b6bff"><div class="skh">🔮 Spells <span>Magic Lv ${magic}</span></div>${spells}<div class="src">Level Magic by casting spells, spell kills and beating Magic bosses.</div></div>
+      <div class="skc" style="--c:#4fd1c5"><div class="skh">✨ Perks</div>${perks}</div>
+    </div><div class="hint">Press 5 to close · the game keeps running</div>`;
+  }
+
   // ---------- per-frame update ----------
   let lastT = performance.now();
-  let tabEl = null;
+  let tabEl = null, statsEl = null;
   function update(s) {
     const now = performance.now();
     const dt = Math.min(0.1, (now - lastT) / 1000);
@@ -398,20 +449,28 @@ export function createUI(root, { input, bus, project, game }) {
     if (g) {
       const q = QUALITIES_BY_ID[g.quality];
       html(els.gunName, 'gn', `<span style="color:${q.color}">${g.name}</span>${g.element !== 'none' ? ` <i style="color:${ELEMENTS_BY_ID[g.element].color}">●</i>` : ''}`);
-      text(els.mag, 'mag', p.reloadT > 0 ? 'RELOAD' : String(g.ammoInMag));
-      text(els.reserve, 'res', s.tuning.infiniteAmmo ? '/ ∞' : `/ ${p.ammo[g.ammoType]}`);
+      text(els.mag, 'mag', p.reloadT > 0 ? `RELOAD ${p.reloadT.toFixed(1)}s` : String(g.ammoInMag));
+      text(els.reserve, 'res', s.tuning.infiniteAmmo || s.tuning.godMode || hasInfiniteReserve(g) ? '/ ∞' : `/ ${p.ammo[g.ammoType]}`);
       set(els.mag, 'magLow', g.ammoInMag <= Math.max(1, g.stats.magSize * 0.2), (e, v) => e.classList.toggle('low', v));
     }
     const slotsKey = p.guns.map((x) => (x ? x.id + x.quality : '-')).join(',') + p.activeSlot + p.unlockedSlots;
-    html(els.slots, 'slots', p.guns.map((x, i) => `<div class="slot ${i === p.activeSlot ? 'on' : ''} ${i >= p.unlockedSlots ? 'lockd' : ''}" style="--q:${x ? QUALITIES_BY_ID[x.quality].color : '#555'}"><b>${i + 1}</b>${x ? TYPE_ICON[x.type] + ' ' + GUN_TYPES_BY_ID[x.type].short : i >= p.unlockedSlots ? '🔒' : '—'}</div>`).join(''));
+    html(els.slots, 'slots', p.guns.map((x, i) => {
+      const leg = i === LEGENDARY_SLOT, locked = !slotUsable(p, i);
+      return `<div class="slot ${i === p.activeSlot ? 'on' : ''} ${locked ? 'lockd' : ''} ${leg ? 'legslot' : ''}" style="--q:${x ? QUALITIES_BY_ID[x.quality].color : leg ? '#ff9f1a' : '#555'}"><b>${leg ? 'L' : i + 1}</b>${x ? TYPE_ICON[x.type] + ' ' + GUN_TYPES_BY_ID[x.type].short : locked ? '🔒' : leg ? '★' : '—'}</div>`;
+    }).join(''));
     void slotsKey;
     text(els.medkits, 'mk', p.medkits ? `✚ ×${p.medkits} [H]` : '');
 
     // top bar
-    text(els.tickets, 'tk', `🎟 ${p.tickets}`);
+    text(els.tickets, 'tk', `Run Cash ${p.tickets}`);
     html(els.resources, 'rs', RESOURCES.map((r) => `<span style="--c:${r.color}" title="${r.name}">${r.icon}${p.resources[r.id]}</span>`).join(''));
     let wave = '';
-    if (s.mode === 'sandbox') wave = `<b>SANDBOX</b> · Tier ${s.tier} <small>[\`] debug · [B] shop</small>`;
+    if (s.mode === 'campaign' && s.level) {
+      const lv = s.level;
+      const fuel = lv.fuel > 0 || (s.players[s.localPlayerId].jetpack) ? ` · fuel ${Math.ceil(lv.fuel)}` : '';
+      wave = `<b>${lv.name}</b> · ${lv.objective || ''}${fuel}`;
+    } else if (s.mode === 'boss' && s.bossFight) wave = `<b>BOSS FIGHT</b> · ${BOSSES[s.bossFight.type].name} · Tier ${s.tier}`;
+    else if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> · Tier ${s.tier} <small>[\`] debug · [B] shop</small>`;
     else if (s.wave) {
       const w = s.wave;
       const left = s.enemies.filter((e) => !e.dead && e.type !== 'dummy').length + w.spawnQueue.length;
@@ -419,9 +478,24 @@ export function createUI(root, { input, bus, project, game }) {
       const phaseTxt = { pre: 'Get ready…', combat: `Enemies left: ${left + remainingGroups}`, bossIntro: 'BOSS INCOMING', boss: 'BOSS FIGHT', cleared: 'Cleared!', intermission: `Intermission ${Math.ceil(w.intermissionT)}s · [B] Shop · [Enter] Ready`, victory: 'VICTORY', defeat: 'DEFEAT' }[w.phase];
       wave = `<b>WAVE ${w.index + 1}/3</b> · Tier ${s.tier} · ${phaseTxt}`;
     }
-    const pend = game.renderer && game.renderer.pendingDownloads ? game.renderer.pendingDownloads() : 0;
-    if (pend > 0) wave += ` <small class="loading">⏳ loading ${pend}</small>`;
+    if (s.tuning.godMode) wave += ' · <b class="god">GOD MODE</b>';
+    const report = game.renderer && game.renderer.loadReport ? game.renderer.loadReport() : null;
+    const pend = report ? report.pending : (game.renderer && game.renderer.pendingDownloads ? game.renderer.pendingDownloads() : 0);
+    const failed = report ? report.failed.length : 0;
+    if (failed > 0) wave += ` <small class="loading">could not load ${failed}</small>`;
+    else if (pend > 0) wave += ` <small class="loading">⏳ loading ${pend}</small>`;
     html(els.wave, 'wave', wave);
+    if (report && (failed > 0 || pend > 0)) {
+      const mb = (report.bytesDone / 1048576).toFixed(1);
+      const text = failed > 0
+        ? `${failed} file${failed === 1 ? '' : 's'} failed (${mb} MB in). Placeholders are on screen. <button type="button" data-retry="1">Retry</button>`
+        : `Loading ${pend} · ${mb} MB`;
+      if (loadEl.dataset.k !== text) { loadEl.dataset.k = text; loadEl.innerHTML = text; }
+      loadEl.hidden = false;
+    } else if (!loadEl.hidden) {
+      loadEl.hidden = true;
+      loadEl.dataset.k = '';
+    }
 
     // boss bars
     const bossList = s.enemies.filter((e) => e.boss && !e.dead);
@@ -438,9 +512,8 @@ export function createUI(root, { input, bus, project, game }) {
       const px = Math.round(6 + sp * 7 + p.recoil.heat * 6);
       set(els.cross, 'xh', px, (e, v) => e.style.setProperty('--gap', v + 'px'));
     }
-    const scoped = p.zooming && g && g.type === 'sniper';
-    set(els.scope, 'scope', scoped, (e, v) => e.classList.toggle('on', v));
-    set(els.cross, 'xhv', scoped || p.dead, (e, v) => e.classList.toggle('hidden', v));
+    // no scope overlay: the zoomed view fills the screen with the gun and the white crosshair still showing
+    set(els.cross, 'xhv', p.dead, (e, v) => e.classList.toggle('hidden', v));
 
     // downed
     set(els.downed, 'down', p.downed, (e, v) => e.classList.toggle('on', v));
@@ -451,7 +524,11 @@ export function createUI(root, { input, bus, project, game }) {
     const nearGun = p.nearGunPickupId ? s.pickups.find((k) => k.id === p.nearGunPickupId) : null;
     const box = nearBox(s, p);
     if (p.dead) prompt = s.mode === 'sandbox' ? `Respawning in ${Math.max(0, p.respawnT).toFixed(1)}s…` : '';
-    else if (nearGun) prompt = `<b>[G]</b> Pick up${p.guns.filter(Boolean).length >= p.unlockedSlots ? ' (swaps with equipped)' : ''}`;
+    else if (nearGun) {
+      const leg = nearGun.gun && nearGun.gun.quality === 'legendary';
+      const full = p.guns.slice(0, p.unlockedSlots).every(Boolean);
+      prompt = `<b>[G]</b> Pick up${leg ? (p.guns[LEGENDARY_SLOT] && full ? ' (swaps your legendary)' : ' → legendary slot [L]') : full ? ' (swaps with equipped)' : ''}`;
+    }
     else if (box) prompt = `<b>[G]</b> Open Weapon Box${box.craft ? ' (crafting…)' : ''}`;
     else if (s.wave && s.wave.phase === 'intermission') prompt = '<b>[B]</b> Shop · <b>[Enter]</b> Ready';
     html(els.prompt, 'prompt', prompt);
@@ -465,10 +542,21 @@ export function createUI(root, { input, bus, project, game }) {
       if (tabEl.dataset.k !== key) { tabEl.dataset.k = key; tabEl.innerHTML = skillsHtml(p); }
     } else if (tabEl) { tabEl.remove(); tabEl = null; }
 
+    // stats & powers overlay (toggle with 5); redrawn a few times a second for cooldowns
+    if (st.statsOpen && !st.tabHeld && !st.menu && els.screen.hidden) {
+      if (!statsEl) { statsEl = h('div', 'tab-overlay stats-overlay'); root.appendChild(statsEl); statsEl.dataset.t = 0; }
+      if (now - statsEl.dataset.t > 200) { statsEl.dataset.t = now; statsEl.innerHTML = statsHtml(s, p); }
+    } else if (statsEl) { statsEl.remove(); statsEl = null; }
+
     // live refresh of open panel (cooldowns, intermission timer, crafting progress)
     if (st.menu && (now - (st.lastPanel || 0) > 400)) { st.lastPanel = now; const y = els.panel.querySelector('.pwrap')?.scrollTop; renderPanel(); const w = els.panel.querySelector('.pwrap'); if (w && y) w.scrollTop = y; }
     if (st.menu === 'craft' && !nearBox(s, p)) closeMenu();
   }
 
-  return { update, closeMenu, openMenu, banner, toast, get menuOpen() { return !!st.menu; }, els };
+  function setPvp(on) {
+    const hud = $('#hud', root);
+    if (hud) hud.style.visibility = on ? 'hidden' : '';
+  }
+
+  return { update, closeMenu, openMenu, banner, toast, setPvp, get menuOpen() { return !!st.menu; }, els };
 }

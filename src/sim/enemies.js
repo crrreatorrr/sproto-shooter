@@ -1,4 +1,4 @@
-// Enemy AI: FSM + steering + behaviors (midget runner, obama shooter, bigObama heavy, dummy). PLAN §4.8
+// Enemy AI: FSM + steering + behaviors (midget runner, obama shooter, gunner two-weapon robot, bigObama heavy, dummy). PLAN §4.8
 import { ENEMIES, ENEMY_BULLET_RADIUS } from '../data/enemies.js';
 import { ARENA_R, TUNING } from '../data/tuning.js';
 import { float, range } from '../core/rng.js';
@@ -35,7 +35,7 @@ function steer(state, e, target, w, invertSeek = false) {
   }
   const r = Math.hypot(e.pos.x, e.pos.z);
   let wx = 0, wz = 0;
-  if (r > ARENA_R - 3) { const k = (r - (ARENA_R - 3)) / 3; wx = (-e.pos.x / r) * k; wz = (-e.pos.z / r) * k; }
+  if (state.mode !== 'campaign' && r > ARENA_R - 3) { const k = (r - (ARENA_R - 3)) / 3; wx = (-e.pos.x / r) * k; wz = (-e.pos.z / r) * k; }
   const stx = -sz * e.ai.strafeDir, stz = sx * e.ai.strafeDir;
   let dx = w.seek * sx + w.sep * px + w.wall * wx + w.strafe * stx;
   let dz = w.seek * sz + w.sep * pz + w.wall * wz + w.strafe * stz;
@@ -58,40 +58,55 @@ function faceToward(e, target, maxRate, dt) {
   e.yaw = angleWrap(e.yaw + Math.max(-step, Math.min(step, d)));
 }
 
-/** Enemy gun: wind up, then a burst of slow, inaccurate bitcoins aimed at the player's chest (no leading). */
-function enemyGun(state, e, t, gun, dt, canFire) {
+/**
+ * Enemy gun: wind up, then a burst of slow, inaccurate shots aimed at the player's chest (no leading).
+ * gun.kind = projectile kind (default bitcoin 'bullet'); gun.from = muzzle as fractions of the enemy's height
+ * ({ up, fwd, side }, side + = its left); `slot` keeps a second weapon's timers apart (ai[slot + 'gunCd']...).
+ * gun.trackDone: ai[slot + 'doneT'] counts up from the last burst's final shot (the renderer finishes the firing clip
+ * with it; off for older enemies so their state, and the locked baseline hashes, stay identical).
+ */
+function enemyGun(state, e, t, gun, dt, canFire, slot = '') {
   const ai = e.ai;
-  if (ai.gunCd == null) ai.gunCd = range(state.rng, 0.8, gun.cooldownMax);
-  if (ai.burstLeft > 0) {
-    ai.burstT -= dt;
-    if (ai.burstT <= 0) {
-      ai.burstLeft--;
-      ai.burstT = gun.burstGap;
+  const K = (n) => slot + n;
+  if (ai[K('gunCd')] == null) ai[K('gunCd')] = range(state.rng, 0.8, gun.cooldownMax);
+  if (gun.trackDone && ai[K('doneT')] != null) ai[K('doneT')] += dt;
+  if (ai[K('burstLeft')] > 0) {
+    ai[K('burstT')] -= dt;
+    if (ai[K('burstT')] <= 0) {
+      ai[K('burstLeft')]--;
+      ai[K('burstT')] = gun.burstGap;
+      if (gun.trackDone && ai[K('burstLeft')] === 0) ai[K('doneT')] = 0;
       const sc = e.scale;
-      const from = { x: e.pos.x - Math.sin(e.yaw) * 0.6 * sc, y: e.pos.y + e.height * 0.7 * sc, z: e.pos.z - Math.cos(e.yaw) * 0.6 * sc };
+      let from;
+      if (gun.from) {
+        const h = e.height * sc, fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw), rx = Math.cos(e.yaw), rz = -Math.sin(e.yaw);
+        const f = gun.from.fwd * h, side = -(gun.from.side || 0) * h; // + side = the model's left = -right
+        from = { x: e.pos.x + fx * f + rx * side, y: e.pos.y + gun.from.up * h, z: e.pos.z + fz * f + rz * side };
+      } else from = { x: e.pos.x - Math.sin(e.yaw) * 0.6 * sc, y: e.pos.y + e.height * 0.7 * sc, z: e.pos.z - Math.cos(e.yaw) * 0.6 * sc };
       const dx = t.pos.x - from.x, dy = t.pos.y + 1.1 - from.y, dz = t.pos.z - from.z;
       const dl = Math.hypot(dx, dy, dz) || 1;
       const d = cone(state, { x: dx / dl, y: dy / dl, z: dz / dl }, gun.spread);
+      const kind = gun.kind || (gun.small ? 'pellet' : 'bullet');
       createProjectile(state, {
-        kind: gun.small ? 'pellet' : 'bullet', faction: 'enemy', ownerId: e.id, sourceKind: 'enemy', pos: from,
-        vel: { x: d.x * gun.speed, y: d.y * gun.speed, z: d.z * gun.speed }, radius: gun.small ? ENEMY_BULLET_RADIUS * 0.6 : ENEMY_BULLET_RADIUS,
+        kind, faction: 'enemy', ownerId: e.id, sourceKind: 'enemy', pos: from,
+        vel: { x: d.x * gun.speed, y: d.y * gun.speed, z: d.z * gun.speed }, radius: gun.radius || (gun.small ? ENEMY_BULLET_RADIUS * 0.6 : ENEMY_BULLET_RADIUS),
         damage: gun.damage * e.dmgMult, ttl: 3,
       });
-      emit(state, 'enemyShot', { id: e.id, enemyType: e.type, pos: from });
+      emit(state, 'enemyShot', { id: e.id, enemyType: e.type, pos: from, kind });
     }
     return true;
   }
-  if (ai.aimT > 0) {
-    ai.aimT -= dt;
-    if (ai.aimT <= 0) { ai.burstLeft = gun.burst; ai.burstT = 0; }
+  if (ai[K('aimT')] > 0) {
+    ai[K('aimT')] -= dt;
+    if (ai[K('aimT')] <= 0) { ai[K('burstLeft')] = gun.burst; ai[K('burstT')] = 0; }
     return true;
   }
-  ai.gunCd -= dt;
+  ai[K('gunCd')] -= dt;
   const d = Math.hypot(t.pos.x - e.pos.x, t.pos.z - e.pos.z);
-  if (canFire && ai.gunCd <= 0 && d < gun.range && !t.downed) {
-    ai.gunCd = range(state.rng, gun.cooldownMin, gun.cooldownMax);
-    ai.aimT = gun.windup;
-    emit(state, 'enemyAttack', { id: e.id, enemyType: e.type });
+  if (canFire && ai[K('gunCd')] <= 0 && d < gun.range && !t.downed) {
+    ai[K('gunCd')] = range(state.rng, gun.cooldownMin, gun.cooldownMax);
+    ai[K('aimT')] = gun.windup;
+    emit(state, 'enemyAttack', { id: e.id, enemyType: e.type, special: !!slot });
     return true;
   }
   return false;
@@ -146,6 +161,25 @@ const BEHAVIORS = {
       const shooting = enemyGun(state, e, t, def.gun, dt, true);
       e.ai.shooting = shooting;
       approachVel(e, steer(state, e, t, w, inv), shooting ? speed * 0.35 : speed, def.accel, dt);
+    },
+  },
+  // Two weapons: regular arm-gun bursts, and a charged special (def.special) on its own cooldown. Only one fires
+  // at a time; the special gets first call when both are ready. ai.special tells the renderer which is firing.
+  gunner: {
+    update(state, e, t, def, speed, dt) {
+      const d = Math.hypot(t.pos.x - e.pos.x, t.pos.z - e.pos.z);
+      faceToward(e, t, deg(300), dt);
+      const w = { ...def.weights };
+      let inv = false;
+      if (d < def.keepMin) inv = true;
+      else if (d < def.keepMax) w.seek = 0.1;
+      const ai = e.ai;
+      const regularBusy = ai.aimT > 0 || ai.burstLeft > 0;
+      const special = enemyGun(state, e, t, def.special, dt, !regularBusy, 'sp');
+      const regular = special ? false : enemyGun(state, e, t, def.gun, dt, true);
+      ai.special = special;
+      ai.shooting = special || regular;
+      approachVel(e, steer(state, e, t, w, inv), special ? 0 : regular ? speed * 0.35 : speed, def.accel, dt);
     },
   },
   flyingMidget: {
@@ -229,7 +263,8 @@ export function enemyAI(state, dt) {
     } else {
       if (e.state === 'idle' && e.type !== 'dummy') setState(e, 'chase');
       const slow = e.status.goo ? 1 - e.status.goo.slow : 1;
-      BEHAVIORS[e.type].update(state, e, target, def, def.speed * e.speedMult * slow, dt);
+      const beh = BEHAVIORS[e.type] || BEHAVIORS[def.behavior];
+      beh.update(state, e, target, def, def.speed * e.speedMult * slow, dt);
     }
     // integrate (flyers hold altitude themselves; staggered flyers sag a bit)
     if (def.flying) { if (e.state === 'stagger' || e.state === 'spawning') e.vel.y += ((e.state === 'spawning' ? 2 : -3) - e.vel.y) * Math.min(1, 5 * dt); }
@@ -268,7 +303,10 @@ export function resolveOverlaps(state) {
         b.pos.x += nx * push * kb; b.pos.z += nz * push * kb;
       }
     }
-    if (a.type !== 'hexAuditor') { clampToArena(a, ra); pushOutOfBoxes(state, a, ra); }
+    if (a.type !== 'hexAuditor') {
+      if (state.mode !== 'campaign') clampToArena(a, ra);
+      pushOutOfBoxes(state, a, ra);
+    }
   }
   // push players out of enemies
   for (const p of Object.values(state.players)) {
@@ -282,7 +320,7 @@ export function resolveOverlaps(state) {
       const min = def.radius * e.scale + TUNING.playerRadius;
       if (d < min && d > 1e-4) { p.pos.x = e.pos.x + (dx / d) * min; p.pos.z = e.pos.z + (dz / d) * min; }
     }
-    clampToArena(p, TUNING.playerRadius);
+    if (state.mode !== 'campaign') clampToArena(p, TUNING.playerRadius);
   }
 }
 

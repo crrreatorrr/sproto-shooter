@@ -1,0 +1,2908 @@
+{
+  "schema": "sproto-shooter.asset-manifest.v1",
+  "baselineCommit": "8a5676ed24700dafd15a759c1e2fa71b470180b9",
+  "runtimeRoot": "public/assets",
+  "decodedNote": "decodedBytes is an RGBA8 upload estimate plus meshopt-decoded buffer views. It is not a GPU timing. KTX2 is not used; resized JPEG/PNG is the measured transfer and decode win, without a transcoder.",
+  "duplicates": [],
+  "duplicateRigs": [
+    {
+      "clips": [
+        "cast",
+        "cast_big",
+        "defeat",
+        "hit",
+        "idle",
+        "jump",
+        "roll",
+        "run",
+        "run_back",
+        "strafe_l",
+        "strafe_r",
+        "stun",
+        "victory"
+      ],
+      "joints": 24,
+      "nodes": 26,
+      "paths": [
+        "models/characters/midget_stage1.glb",
+        "models/characters/midget_stage2.glb",
+        "models/characters/obama_stage1.glb",
+        "models/characters/obama_stage2.glb",
+        "models/characters/obama_stage3.glb",
+        "models/characters/sahil_stage1.glb",
+        "models/characters/sahil_stage2.glb",
+        "models/characters/sahil_stage3.glb",
+        "models/characters/tinubu_stage1.glb"
+      ]
+    },
+    {
+      "clips": [
+        "cast",
+        "cast_big",
+        "defeat",
+        "hit",
+        "idle",
+        "jump",
+        "roll",
+        "run",
+        "run_back",
+        "strafe_l",
+        "strafe_r",
+        "stun",
+        "victory"
+      ],
+      "joints": 26,
+      "nodes": 28,
+      "paths": [
+        "models/characters/tinubu_stage2.glb",
+        "models/characters/tinubu_stage3.glb"
+      ]
+    }
+  ],
+  "counts": {
+    "runtimeFiles": 58,
+    "runtimeBytes": 22065058,
+    "decodedBytes": 229711358,
+    "referenced": 58,
+    "dynamic": 39,
+    "missing": 0,
+    "unused": 0,
+    "duplicateImageGroups": 0,
+    "duplicateRigGroups": 2
+  },
+  "missing": [],
+  "unused": [],
+  "dynamicPatterns": [
+    {
+      "id": "stageAssets",
+      "from": "src/data/stages.js",
+      "template": "textures/stages/${folder}/{floor,sky,stone}.jpg and models/stages/${folder}/{pillar,prop}.glb",
+      "note": "folder is STAGE_TEXTURE[id] or the stage id, for every STAGE_IDS entry",
+      "paths": [
+        "models/stages/city/pillar.glb",
+        "models/stages/city/prop.glb",
+        "models/stages/glacier/pillar.glb",
+        "models/stages/glacier/prop.glb",
+        "models/stages/void/pillar.glb",
+        "models/stages/void/prop.glb",
+        "models/stages/volcano/pillar.glb",
+        "models/stages/volcano/prop.glb",
+        "textures/stages/city/floor.jpg",
+        "textures/stages/city/sky.jpg",
+        "textures/stages/city/stone.jpg",
+        "textures/stages/glacier/floor.jpg",
+        "textures/stages/glacier/sky.jpg",
+        "textures/stages/glacier/stone.jpg",
+        "textures/stages/void/floor.jpg",
+        "textures/stages/void/sky.jpg",
+        "textures/stages/void/stone.jpg",
+        "textures/stages/volcano/floor.jpg",
+        "textures/stages/volcano/sky.jpg",
+        "textures/stages/volcano/stone.jpg"
+      ]
+    },
+    {
+      "id": "CHARACTER_MODELS",
+      "from": "src/data/stages.js",
+      "template": "per-model path list, including midget_stage${n}.glb style names",
+      "paths": [
+        "models/characters/car_monster.glb",
+        "models/characters/dragon.glb",
+        "models/characters/midget_stage1.glb",
+        "models/characters/midget_stage2.glb",
+        "models/characters/midget_stage3.glb",
+        "models/characters/mole_monster.glb",
+        "models/characters/monster.glb",
+        "models/characters/obama_stage1.glb",
+        "models/characters/obama_stage2.glb",
+        "models/characters/obama_stage3.glb",
+        "models/characters/robot_laser.glb",
+        "models/characters/robot_shooter.glb",
+        "models/characters/sahil_stage1.glb",
+        "models/characters/sahil_stage2.glb",
+        "models/characters/sahil_stage3.glb",
+        "models/characters/sproto_monster.glb",
+        "models/characters/tinubu_stage1.glb",
+        "models/characters/tinubu_stage2.glb",
+        "models/characters/tinubu_stage3.glb"
+      ]
+    }
+  ],
+  "references": [
+    {
+      "path": "models/characters/car_monster.glb",
+      "kind": "static+dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/dragon.glb",
+      "kind": "static+dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/midget_stage1.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/midget_stage2.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/midget_stage3.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/mole_monster.glb",
+      "kind": "static+dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/monster.glb",
+      "kind": "static+dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/obama_stage1.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/obama_stage2.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/obama_stage3.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/robot_laser.glb",
+      "kind": "static+dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/robot_shooter.glb",
+      "kind": "static+dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/sahil_stage1.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/sahil_stage2.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/sahil_stage3.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/sproto_monster.glb",
+      "kind": "static+dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/sproto_player.glb",
+      "kind": "static",
+      "from": [
+        "src/render/firstPerson.js"
+      ]
+    },
+    {
+      "path": "models/characters/tinubu_stage1.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/tinubu_stage2.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/characters/tinubu_stage3.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/guns/toy_bazooka.glb",
+      "kind": "static",
+      "from": [
+        "src/render/assets.js"
+      ]
+    },
+    {
+      "path": "models/guns/toy_bigbullets.glb",
+      "kind": "static",
+      "from": [
+        "src/render/assets.js"
+      ]
+    },
+    {
+      "path": "models/guns/toy_duckgun.glb",
+      "kind": "static",
+      "from": [
+        "src/render/assets.js"
+      ]
+    },
+    {
+      "path": "models/guns/toy_mg.glb",
+      "kind": "static",
+      "from": [
+        "src/render/assets.js"
+      ]
+    },
+    {
+      "path": "models/guns/toy_raygun.glb",
+      "kind": "static",
+      "from": [
+        "src/render/assets.js"
+      ]
+    },
+    {
+      "path": "models/guns/toy_shotgun.glb",
+      "kind": "static",
+      "from": [
+        "src/render/assets.js"
+      ]
+    },
+    {
+      "path": "models/guns/toy_sniper.glb",
+      "kind": "static",
+      "from": [
+        "src/render/assets.js"
+      ]
+    },
+    {
+      "path": "models/projectiles/drill_head.glb",
+      "kind": "static",
+      "from": [
+        "src/render/renderer.js"
+      ]
+    },
+    {
+      "path": "models/projectiles/missile.glb",
+      "kind": "static",
+      "from": [
+        "src/render/renderer.js"
+      ]
+    },
+    {
+      "path": "models/projectiles/monster_bullet.glb",
+      "kind": "static",
+      "from": [
+        "src/render/renderer.js"
+      ]
+    },
+    {
+      "path": "models/projectiles/rubber_bullet.glb",
+      "kind": "static",
+      "from": [
+        "src/render/renderer.js"
+      ]
+    },
+    {
+      "path": "models/projectiles/tyre.glb",
+      "kind": "static",
+      "from": [
+        "src/render/renderer.js"
+      ]
+    },
+    {
+      "path": "models/stages/city/pillar.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/stages/city/prop.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/stages/glacier/pillar.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/stages/glacier/prop.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/stages/void/pillar.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/stages/void/prop.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/stages/volcano/pillar.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "models/stages/volcano/prop.glb",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "textures/stages/city/floor.jpg",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "textures/stages/city/sky.jpg",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "textures/stages/city/stone.jpg",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "textures/stages/glacier/floor.jpg",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "textures/stages/glacier/sky.jpg",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "textures/stages/glacier/stone.jpg",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "textures/stages/void/floor.jpg",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "textures/stages/void/sky.jpg",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "textures/stages/void/stone.jpg",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "textures/stages/volcano/floor.jpg",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "textures/stages/volcano/sky.jpg",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "textures/stages/volcano/stone.jpg",
+      "kind": "dynamic",
+      "from": [
+        "src/data/stages.js"
+      ]
+    },
+    {
+      "path": "ui/bosses/sahil_stage2.png",
+      "kind": "static",
+      "from": [
+        "src/data/duelBosses.js",
+        "src/data/enemies.js"
+      ]
+    },
+    {
+      "path": "ui/bosses/sahil_stage3.png",
+      "kind": "static",
+      "from": [
+        "src/data/duelBosses.js",
+        "src/data/enemies.js"
+      ]
+    },
+    {
+      "path": "ui/bosses/sahil.png",
+      "kind": "static",
+      "from": [
+        "src/data/duelBosses.js",
+        "src/data/enemies.js"
+      ]
+    },
+    {
+      "path": "ui/bosses/tinubu_stage2.png",
+      "kind": "static",
+      "from": [
+        "src/data/duelBosses.js",
+        "src/data/enemies.js"
+      ]
+    },
+    {
+      "path": "ui/bosses/tinubu_stage3.png",
+      "kind": "static",
+      "from": [
+        "src/data/duelBosses.js",
+        "src/data/enemies.js"
+      ]
+    },
+    {
+      "path": "ui/bosses/tinubu.png",
+      "kind": "static",
+      "from": [
+        "src/data/duelBosses.js",
+        "src/data/enemies.js"
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "path": "models/characters/car_monster.glb",
+      "bytes": 1211100,
+      "sha256": "81b9e96b9fec4f1a63002505daadb57f54f2845c822f9cf9d017dd28ccdaa92f",
+      "referenced": true,
+      "referenceKind": "static+dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 20127,
+      "meshoptDecodedBytes": 1127954,
+      "imageDecodedBytes": 3145728,
+      "decodedBytes": 4273682,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Car_part_monster_normal",
+          "mime": "image/webp",
+          "encodedBytes": 94590,
+          "sha256": "ee55bd53d8bde6c3c94f04001aaa0131646e78dfde7723934e0a417333c803f7",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "Car_part_monster_basecolor",
+          "mime": "image/webp",
+          "encodedBytes": 78612,
+          "sha256": "c655a3f1722b86cae79260cdda3bb9b7608045cb5d78f6d9586d0d207dbbb55d",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "Car_part_monster_rm",
+          "mime": "image/webp",
+          "encodedBytes": 56464,
+          "sha256": "019cd38dd7f125f3718938bc5a4827aa1ee4084a0b3495ae5fbcb56d134751f8",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "charge",
+          "charge_start",
+          "idle",
+          "roar",
+          "slam",
+          "smash",
+          "stunned",
+          "throw_loop",
+          "throw_start",
+          "walk"
+        ],
+        "skins": 1,
+        "joints": 53,
+        "nodes": 69,
+        "materials": [
+          "tripo_node_1ad2582a-a433-4d17-b4b7-dccea9c0afbf_material"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/dragon.glb",
+      "bytes": 1434160,
+      "sha256": "b20f3387df6c8cc1d00ca6e06d58bb5b90d85fc2634ac78a6ec0e8606a24873d",
+      "referenced": true,
+      "referenceKind": "static+dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 19644,
+      "meshoptDecodedBytes": 1077760,
+      "imageDecodedBytes": 12582912,
+      "decodedBytes": 13660672,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "mechanical_dragon_3d_model_normal.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 278288,
+          "sha256": "1ace8a8249d81ab74ef11283d368c63f74b2f68b9ac0decbfd337935b8800fcc",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "mechanical_dragon_3d_model_basecolor.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 350380,
+          "sha256": "b302fa5f3943f3ff57a77000efc40414b72a4525455db14e26277f7baa37a94d",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "mechanical_dragon_3d_model_rm.png",
+          "mime": "image/webp",
+          "encodedBytes": 79464,
+          "sha256": "4a7eeb670f19497f197fa460fa195da589e018048534457c5e365ed3bef2a426",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        }
+      ],
+      "rig": {
+        "clips": [
+          "fireball",
+          "fly"
+        ],
+        "skins": 1,
+        "joints": 71,
+        "nodes": 73,
+        "materials": [
+          "tripo_node_cabab47d-474f-42db-98ef-e97daae35c29_material.001"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/midget_stage1.glb",
+      "bytes": 275060,
+      "sha256": "d56523a040d6f8f97435d87de154214b4629bb3f1e6317172498042386201fc2",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7578,
+      "meshoptDecodedBytes": 300064,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1348640,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_351d9fe4-7424-48f1-b69a-ec7949e90987",
+          "mime": "image/webp",
+          "encodedBytes": 25474,
+          "sha256": "59fc140028b39d4ff2e290e522adc488f980df0a66e4ade01deb131818bee42c",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "cast_big",
+          "defeat",
+          "hit",
+          "idle",
+          "jump",
+          "roll",
+          "run",
+          "run_back",
+          "strafe_l",
+          "strafe_r",
+          "stun",
+          "victory"
+        ],
+        "skins": 1,
+        "joints": 24,
+        "nodes": 26,
+        "materials": [
+          "tripo_material_351d9fe4-7424-48f1-b69a-ec7949e90987"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/midget_stage2.glb",
+      "bytes": 292056,
+      "sha256": "1acb867e55fd4c9ac15331046aabdf0a35cc2d7039bcb3d2187c935cc44ff6a3",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7776,
+      "meshoptDecodedBytes": 312976,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1361552,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_39601823-ea09-4de9-a36e-2ad31fbab7e0",
+          "mime": "image/webp",
+          "encodedBytes": 30388,
+          "sha256": "bf65edde36615e1b422c45c6364be6e7b19fc976cbc93c5f6aa4afd0a05488a6",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "cast_big",
+          "defeat",
+          "hit",
+          "idle",
+          "jump",
+          "roll",
+          "run",
+          "run_back",
+          "strafe_l",
+          "strafe_r",
+          "stun",
+          "victory"
+        ],
+        "skins": 1,
+        "joints": 24,
+        "nodes": 26,
+        "materials": [
+          "tripo_material_39601823-ea09-4de9-a36e-2ad31fbab7e0"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/midget_stage3.glb",
+      "bytes": 261988,
+      "sha256": "2451bc311d8211aa91c788f536a08898884cb0181aeefa59067f91e13c3e9f67",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7618,
+      "meshoptDecodedBytes": 271756,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1320332,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_67ae31f3-5878-4ce5-b210-b88e64e22f61",
+          "mime": "image/webp",
+          "encodedBytes": 50208,
+          "sha256": "2c4061fe0a93260642ade4e25b1acf63f0011dae23646c49c3b1ee2ad579d2ba",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "cast_big",
+          "defeat",
+          "hit",
+          "idle",
+          "roll",
+          "run",
+          "stun",
+          "victory"
+        ],
+        "skins": 1,
+        "joints": 24,
+        "nodes": 26,
+        "materials": [
+          "tripo_material_67ae31f3-5878-4ce5-b210-b88e64e22f61"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/mole_monster.glb",
+      "bytes": 1098572,
+      "sha256": "00159dc3612615c0c883eea335cb1c478ae68c35a82faaae3b3fa59cefb03ea5",
+      "referenced": true,
+      "referenceKind": "static+dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 18855,
+      "meshoptDecodedBytes": 971586,
+      "imageDecodedBytes": 3145728,
+      "decodedBytes": 4117314,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Mole_monster_normal",
+          "mime": "image/webp",
+          "encodedBytes": 82212,
+          "sha256": "3cc4117c2be79253a53c1dea86e16e17e09740231274486488ce96c54f92eac3",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "Mole_monster_basecolor",
+          "mime": "image/webp",
+          "encodedBytes": 72562,
+          "sha256": "ab471e54d9e58bf0bde56994a429b9a3ebbd427d74cb946ee37fe12af53d3048",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "Mole_monster_rm",
+          "mime": "image/webp",
+          "encodedBytes": 55650,
+          "sha256": "8ef0a4b82dd042613868d9b8a5ff4d07ee7913058147a325dae04901f3b2fc00",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "charge",
+          "charge_start",
+          "idle",
+          "roar",
+          "shoot_loop",
+          "shoot_start",
+          "slam",
+          "smash",
+          "stunned",
+          "walk"
+        ],
+        "skins": 1,
+        "joints": 52,
+        "nodes": 69,
+        "materials": [
+          "tripo_node_e319e1ae-2816-442d-9ab3-ce986a1a9a28_material"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/monster.glb",
+      "bytes": 650148,
+      "sha256": "5383e55caf425436fc1460deec58e8a84e09f1aaf9277ef548514ccae4c5f092",
+      "referenced": true,
+      "referenceKind": "static+dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 18194,
+      "meshoptDecodedBytes": 743480,
+      "imageDecodedBytes": 3145728,
+      "decodedBytes": 3889208,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Sproto_Rig_normal.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 53464,
+          "sha256": "6ca475de36309a681de4e9b39233fa0a5fb3a230433b0f506259c083fb60686d",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "Sproto_Rig_basecolor.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 84690,
+          "sha256": "6e0e95638c198e23521679dc1c19faacecf898a4b57896a0b2eec6b822489ac5",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "Sproto_Rig_rm.png",
+          "mime": "image/webp",
+          "encodedBytes": 18622,
+          "sha256": "ec45bac7c628323ac2b5a021a9e7b2daf461e2f12514926654c0e265f94f2297",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "smash",
+          "walk"
+        ],
+        "skins": 1,
+        "joints": 53,
+        "nodes": 69,
+        "materials": [
+          "tripo_node_f02c3d27-c11c-456e-8268-bc343f3e6cd7_material.001"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/obama_stage1.glb",
+      "bytes": 258692,
+      "sha256": "6818a33e46c7fbeca815dea44151f894dad0650e7df208866f1cbf5fc304b7db",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7814,
+      "meshoptDecodedBytes": 289568,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1338144,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_c4acc7d8-32d7-43cd-a7e2-278772e3c970",
+          "mime": "image/webp",
+          "encodedBytes": 13200,
+          "sha256": "b4c586963ba55726e29d13f003a054ed63685eb15fefd59214855c33db5a4fc3",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "cast_big",
+          "defeat",
+          "hit",
+          "idle",
+          "jump",
+          "roll",
+          "run",
+          "run_back",
+          "strafe_l",
+          "strafe_r",
+          "stun",
+          "victory"
+        ],
+        "skins": 1,
+        "joints": 24,
+        "nodes": 26,
+        "materials": [
+          "tripo_material_c4acc7d8-32d7-43cd-a7e2-278772e3c970"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/obama_stage2.glb",
+      "bytes": 273560,
+      "sha256": "3478521aee1436c5b3ecbb8bec83e5880ceb86dd04a16240d95162a79bfe711e",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7789,
+      "meshoptDecodedBytes": 296230,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1344806,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_52c59aa9-997f-4127-9777-9f0592fafc24",
+          "mime": "image/webp",
+          "encodedBytes": 21870,
+          "sha256": "1ec759c7811487423682243234d31477acff91d7b5f60380284c1c04c9894bf0",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "cast_big",
+          "defeat",
+          "hit",
+          "idle",
+          "jump",
+          "roll",
+          "run",
+          "run_back",
+          "strafe_l",
+          "strafe_r",
+          "stun",
+          "victory"
+        ],
+        "skins": 1,
+        "joints": 24,
+        "nodes": 26,
+        "materials": [
+          "tripo_material_52c59aa9-997f-4127-9777-9f0592fafc24"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/obama_stage3.glb",
+      "bytes": 288384,
+      "sha256": "5db28de226e2ead05b98cc376516a5640570522501c7d3bf517b39e3ae3428c4",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7370,
+      "meshoptDecodedBytes": 301164,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1349740,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_751e6754-d6f2-4d91-9887-17cafe1f8d6f",
+          "mime": "image/webp",
+          "encodedBytes": 32914,
+          "sha256": "096ab5beb966f417c99ad4b38049d01a451c1622cd4becdd6194a8783ed24d7e",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "cast_big",
+          "defeat",
+          "hit",
+          "idle",
+          "jump",
+          "roll",
+          "run",
+          "run_back",
+          "strafe_l",
+          "strafe_r",
+          "stun",
+          "victory"
+        ],
+        "skins": 1,
+        "joints": 24,
+        "nodes": 26,
+        "materials": [
+          "tripo_material_751e6754-d6f2-4d91-9887-17cafe1f8d6f"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/robot_laser.glb",
+      "bytes": 839408,
+      "sha256": "c6c899108a7c0aa5a73ed7e99ca32bdab7381713eac9c0b56931fa21b0522043",
+      "referenced": true,
+      "referenceKind": "static+dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 20178,
+      "meshoptDecodedBytes": 920976,
+      "imageDecodedBytes": 3145728,
+      "decodedBytes": 4066704,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "robot_laser_normal",
+          "mime": "image/webp",
+          "encodedBytes": 74874,
+          "sha256": "db561d6c84c8ecc910ac10f73fe4f62491b80653d7090b6697abc5b4111f89d6",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "robot_laser_basecolor",
+          "mime": "image/webp",
+          "encodedBytes": 86780,
+          "sha256": "f755c739b06c95b47c2b856dafecd273945a6fc15d55dbf3bd17937c3dc130ee",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "robot_laser_rm",
+          "mime": "image/webp",
+          "encodedBytes": 45280,
+          "sha256": "b4a5a46529a0f0b31eb9c1892a2a5cb36c8c18561ce545f475bca39d50b116e0",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "idle",
+          "run",
+          "stun"
+        ],
+        "skins": 1,
+        "joints": 53,
+        "nodes": 69,
+        "materials": [
+          "tripo_node_f79ac3eb-a97f-4cef-bbc7-168b112eb2e7_material"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/robot_shooter.glb",
+      "bytes": 804128,
+      "sha256": "064da30659ae2a80ac9e8d6951c200f9f45ee9477f7d8c9281e472a63af470ff",
+      "referenced": true,
+      "referenceKind": "static+dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 19103,
+      "meshoptDecodedBytes": 883666,
+      "imageDecodedBytes": 3145728,
+      "decodedBytes": 4029394,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "robot_shooter_normal",
+          "mime": "image/webp",
+          "encodedBytes": 74338,
+          "sha256": "8bff93b0564b49fb382a6804ed5e315df069e57f5a90fb47ea56716b3ea1bdf6",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "robot_shooter_basecolor",
+          "mime": "image/webp",
+          "encodedBytes": 57608,
+          "sha256": "68cdd127d002043c6bfe5fd065665430f73fc8955ab07a98b8911a80c7d92fa3",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "robot_shooter_rm",
+          "mime": "image/webp",
+          "encodedBytes": 44784,
+          "sha256": "2b7ecbc8483ba5a0f01872c72353ef4bee8dacbcbb2a114c2c6533c9c9df5fe2",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "cast_big",
+          "idle",
+          "run",
+          "stun"
+        ],
+        "skins": 1,
+        "joints": 50,
+        "nodes": 69,
+        "materials": [
+          "tripo_node_642053ae-a503-4992-9e8b-76dc8f216ec4_material"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/sahil_stage1.glb",
+      "bytes": 276764,
+      "sha256": "5c3e226594ccb463fd77d5fe7a8327ce95f86dc8b8d3af7444e40a771a179d37",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7414,
+      "meshoptDecodedBytes": 275344,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1323920,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_f0c060f9-afe4-4c7c-9e45-6db6d2102de9",
+          "mime": "image/webp",
+          "encodedBytes": 36978,
+          "sha256": "c09b6e66a5b8a1fda0e66283682257927bcffeab6c96ee92cfb73f0113b3b02a",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "cast_big",
+          "defeat",
+          "hit",
+          "idle",
+          "jump",
+          "roll",
+          "run",
+          "run_back",
+          "strafe_l",
+          "strafe_r",
+          "stun",
+          "victory"
+        ],
+        "skins": 1,
+        "joints": 24,
+        "nodes": 26,
+        "materials": [
+          "tripo_material_f0c060f9-afe4-4c7c-9e45-6db6d2102de9"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/sahil_stage2.glb",
+      "bytes": 306900,
+      "sha256": "476096a1f3457f29e1c2b21c42737765a320eb9c670c976ec136e0abdcc863e0",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7606,
+      "meshoptDecodedBytes": 302788,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1351364,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_d72ec6d0-190c-4f1b-9e0c-5d447be12eb4",
+          "mime": "image/webp",
+          "encodedBytes": 43652,
+          "sha256": "3718372cf1a29cc218ddc9352456ebc0dabccf4d56a86c76df8577b7cf8b19e3",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "cast_big",
+          "defeat",
+          "hit",
+          "idle",
+          "jump",
+          "roll",
+          "run",
+          "run_back",
+          "strafe_l",
+          "strafe_r",
+          "stun",
+          "victory"
+        ],
+        "skins": 1,
+        "joints": 24,
+        "nodes": 26,
+        "materials": [
+          "tripo_material_d72ec6d0-190c-4f1b-9e0c-5d447be12eb4"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/sahil_stage3.glb",
+      "bytes": 298100,
+      "sha256": "8400f2498e8987ce29ca0bbfa6b62739d4d36596ee21873875746840d3e18f2e",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7462,
+      "meshoptDecodedBytes": 284560,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1333136,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_0443f179-0e49-46ad-84cf-7ac9368c8a39",
+          "mime": "image/webp",
+          "encodedBytes": 49652,
+          "sha256": "297d419cd038014379877bb09f92b3377e41a3d1cc5e73098847919c83fa3355",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "cast_big",
+          "defeat",
+          "hit",
+          "idle",
+          "jump",
+          "roll",
+          "run",
+          "run_back",
+          "strafe_l",
+          "strafe_r",
+          "stun",
+          "victory"
+        ],
+        "skins": 1,
+        "joints": 24,
+        "nodes": 26,
+        "materials": [
+          "tripo_material_0443f179-0e49-46ad-84cf-7ac9368c8a39"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/sproto_monster.glb",
+      "bytes": 983748,
+      "sha256": "6383dea8bc0f8fa9f4d2a75cfcdc9e7207d74bffc11a8f4e6b64cca41a4bfefe",
+      "referenced": true,
+      "referenceKind": "static+dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 19482,
+      "meshoptDecodedBytes": 1029364,
+      "imageDecodedBytes": 3145728,
+      "decodedBytes": 4175092,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "sproto_monster_normal",
+          "mime": "image/webp",
+          "encodedBytes": 86742,
+          "sha256": "df6ffe0dd9b58c63dac8ee1169eeacad4d7a23f4468d7287bb1053f3e627a68d",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "sproto_monster_basecolor",
+          "mime": "image/webp",
+          "encodedBytes": 98506,
+          "sha256": "054b090990f9f97a01db529b1e27cc34a987f4391d656cef8fcf02bc2d8c8a5c",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "sproto_monster_rm",
+          "mime": "image/webp",
+          "encodedBytes": 70164,
+          "sha256": "5c3bbe083322e67be47275142772b8b9f7760fa6927d3822fa50f8379f4e1b74",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "kick",
+          "punch",
+          "walk"
+        ],
+        "skins": 1,
+        "joints": 61,
+        "nodes": 90,
+        "materials": [
+          "tripo_node_014288cb-d29a-4819-961a-ca65ef56daef_material"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/sproto_player.glb",
+      "bytes": 873508,
+      "sha256": "87007b5d36f626076d41b4007d05d2a00297a673b398640bcbdf5f4df0a3baec",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/firstPerson.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 18908,
+      "meshoptDecodedBytes": 753296,
+      "imageDecodedBytes": 12582912,
+      "decodedBytes": 13336208,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "military_character_3d_model_basecolor.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 232714,
+          "sha256": "af5576a8c8cb97ad2775626bd79823cfdb8ad082302ec997e55e90f255db4db9",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "military_character_3d_model_rm.png",
+          "mime": "image/webp",
+          "encodedBytes": 66790,
+          "sha256": "e5382926c3ebfb248dddd5dc42fa761cdb144e397f76ecea861ee1125a4ebdcb",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "military_character_3d_model_normal.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 213306,
+          "sha256": "807dd3b16daa04c58462e09951504f2981bfca757bc1b7ae92f66edc00504955",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 1,
+        "joints": 50,
+        "nodes": 51,
+        "materials": [
+          "tripo_node_e532a57d-feab-48fd-b944-a37ec471991e_material"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/tinubu_stage1.glb",
+      "bytes": 273368,
+      "sha256": "2546bc2d092b32f6cc500055e92c397449bf52258697c0e334f383436f9d1fbe",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7686,
+      "meshoptDecodedBytes": 275192,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1323768,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_ad54e14e-31dd-40fb-8c9c-b3ba6cb7d038",
+          "mime": "image/webp",
+          "encodedBytes": 26974,
+          "sha256": "863b5e4967e138e5495eb3d71da71325ae440a3971c7a759e2e26bfc465cb7bd",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "cast_big",
+          "defeat",
+          "hit",
+          "idle",
+          "jump",
+          "roll",
+          "run",
+          "run_back",
+          "strafe_l",
+          "strafe_r",
+          "stun",
+          "victory"
+        ],
+        "skins": 1,
+        "joints": 24,
+        "nodes": 26,
+        "materials": [
+          "tripo_material_ad54e14e-31dd-40fb-8c9c-b3ba6cb7d038"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/tinubu_stage2.glb",
+      "bytes": 289728,
+      "sha256": "b22959919c70115f4a01855e305cea7e30541a7ec2ecda8c2fe1be20428d6378",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7401,
+      "meshoptDecodedBytes": 294030,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1342606,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_184de0cb-c8d9-449e-a4f4-4bbee07e02bd",
+          "mime": "image/webp",
+          "encodedBytes": 34296,
+          "sha256": "bebbbc242fcc2cff1def746eec5d3636866d864fa58b51fcae1f0d78fd9dc346",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "cast_big",
+          "defeat",
+          "hit",
+          "idle",
+          "jump",
+          "roll",
+          "run",
+          "run_back",
+          "strafe_l",
+          "strafe_r",
+          "stun",
+          "victory"
+        ],
+        "skins": 1,
+        "joints": 26,
+        "nodes": 28,
+        "materials": [
+          "tripo_material_184de0cb-c8d9-449e-a4f4-4bbee07e02bd"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/tinubu_stage3.glb",
+      "bytes": 299264,
+      "sha256": "457837b873781d8231d8c444cbaea7bd277671e003105d9f79d47a588101b7e1",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7459,
+      "meshoptDecodedBytes": 286698,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1335274,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_5cc39d5f-d86a-47c5-b96b-b0ee4c140ce5",
+          "mime": "image/webp",
+          "encodedBytes": 49096,
+          "sha256": "7924c4a4d0402195d7ba1511257372e574aff42931e8a32850176f0391440471",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "cast",
+          "cast_big",
+          "defeat",
+          "hit",
+          "idle",
+          "jump",
+          "roll",
+          "run",
+          "run_back",
+          "strafe_l",
+          "strafe_r",
+          "stun",
+          "victory"
+        ],
+        "skins": 1,
+        "joints": 26,
+        "nodes": 28,
+        "materials": [
+          "tripo_material_5cc39d5f-d86a-47c5-b96b-b0ee4c140ce5"
+        ]
+      }
+    },
+    {
+      "path": "models/guns/toy_bazooka.glb",
+      "bytes": 611672,
+      "sha256": "3dde06de76e8f15837ad3b3d6b59154304c7e1be86fbff6f19faf8169700b7e8",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/assets.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 77552,
+      "meshoptDecodedBytes": 1245392,
+      "imageDecodedBytes": 12582912,
+      "decodedBytes": 13828304,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "bazooka_basecolor.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 76948,
+          "sha256": "65cf473871ccba7825d6ee3c6730412468492b9905dfcaf2735f8f53a956da0e",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "bazooka_rm.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 13422,
+          "sha256": "feb1e548382487947440962ed7e81b41df9a0273169f02498d224449d25b34b0",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "bazooka_normal.png",
+          "mime": "image/webp",
+          "encodedBytes": 15926,
+          "sha256": "e67ad8788226535c7f6026957c2737481acf2ef1920d7b186d08d50c8bb00d6c",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_c8cc7638-e83e-413c-bb06-50c627c13717"
+        ]
+      }
+    },
+    {
+      "path": "models/guns/toy_bigbullets.glb",
+      "bytes": 729576,
+      "sha256": "0802921d5e3299e2c58d2ea4326bd653255aed7c2fef5a81218a84c5235b6a11",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/assets.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 79382,
+      "meshoptDecodedBytes": 1338948,
+      "imageDecodedBytes": 12582912,
+      "decodedBytes": 13921860,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "toy_ray_gun_3d_model_basecolor.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 114882,
+          "sha256": "42bbec8802f9c42602bb25949aa610738b13f24acb705db2109134da8fe17313",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "toy_ray_gun_3d_model_rm.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 13904,
+          "sha256": "908589c5cdce28405f3fb7128358a0e03b5455e05efceba7da3f743956f7ff4a",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "toy_ray_gun_3d_model_normal.png",
+          "mime": "image/webp",
+          "encodedBytes": 36824,
+          "sha256": "b2537065a6c10248009150dac9e19d66f0246ca39d8104dfd96f167dfd3a8aab",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_06319088-d5d6-477d-bf26-1d9dc120d83a"
+        ]
+      }
+    },
+    {
+      "path": "models/guns/toy_duckgun.glb",
+      "bytes": 707056,
+      "sha256": "ed9e195bb3b793d1379c746c4d3cb406eead0386ab936183d2d56f98dab9310f",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/assets.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 77724,
+      "meshoptDecodedBytes": 1272776,
+      "imageDecodedBytes": 12582912,
+      "decodedBytes": 13855688,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "duck_gun_basecolor.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 112254,
+          "sha256": "0d105eedf32dfe36326236db7161c89d3768e4e8d3b533f185eedcb611104df4",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "duck_gun_rm.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 26908,
+          "sha256": "ef9a9a82c99a42e04833b6555e9bf243478f1e12059c5af8108c6cc8b7bdc6dc",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "duck_gun_normal.png",
+          "mime": "image/webp",
+          "encodedBytes": 38972,
+          "sha256": "971c08c322924b0bf06fd06a5af10bca3de7b83a28ea616589f2489b22d2e5f7",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_1f548b64-ff21-4fa6-9d97-e4aa6210a520"
+        ]
+      }
+    },
+    {
+      "path": "models/guns/toy_mg.glb",
+      "bytes": 834340,
+      "sha256": "9c82cd20502188f704064b4c4938651151367422c94fb46f13e97e404248ecbf",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/assets.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 78142,
+      "meshoptDecodedBytes": 1325076,
+      "imageDecodedBytes": 12582912,
+      "decodedBytes": 13907988,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "toy_gun_3d_model_basecolor.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 164754,
+          "sha256": "fb611d736ecb28607bafe5a4f6b42c54a1f01b4efafc955de0d2b1a790aa7866",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "toy_gun_3d_model_rm.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 61800,
+          "sha256": "32660a29a72c828a50d0ad4bdc91a30e8fac30fd17cad5efcf19256e181ce230",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "toy_gun_3d_model_normal.png",
+          "mime": "image/webp",
+          "encodedBytes": 58394,
+          "sha256": "7c39cb26e6e9e59e4851d026fa6bd31292bd7cdb0d2507f5a2e8a1b01a6f688f",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_2838bc58-1b1f-4276-9b07-99b2840614a4"
+        ]
+      }
+    },
+    {
+      "path": "models/guns/toy_raygun.glb",
+      "bytes": 867096,
+      "sha256": "00e02c84d5886cfd499eb293e2bde0961bbec8443f29ebcc9752e9711c5b3189",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/assets.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 77230,
+      "meshoptDecodedBytes": 1312532,
+      "imageDecodedBytes": 12582912,
+      "decodedBytes": 13895444,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Ray_Gun_basecolor.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 168832,
+          "sha256": "aabd6e0fda6c5f73aca1182a65fad0a227dcbe145e0445f9a265afb4ffd2515e",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "Ray_Gun_rm.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 65444,
+          "sha256": "360a0a9414a18f94ecb9ce860c9a714c49395e50dcb26c3459c6dd9f995febde",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "Ray_Gun_normal.png",
+          "mime": "image/webp",
+          "encodedBytes": 74848,
+          "sha256": "34354852d3c5d0fdc013a8684a326b47b9aec0bf70be0225ee18ac96155fa2a5",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_829f149f-4c87-43c9-8d59-81afe9c2f5b3"
+        ]
+      }
+    },
+    {
+      "path": "models/guns/toy_shotgun.glb",
+      "bytes": 572712,
+      "sha256": "d5393c1f40f4659dc572902236abae843f610ec9df8560817d654cf0917a5fa5",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/assets.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 78878,
+      "meshoptDecodedBytes": 1223812,
+      "imageDecodedBytes": 12582912,
+      "decodedBytes": 13806724,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "shotgun_basecolor.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 70688,
+          "sha256": "cbcf2b32dcc98dea3103d5a0bc6f79fb5e14370e6a163b2b69d016b2668b3293",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "shotgun_rm.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 22124,
+          "sha256": "2de0e8b11377e3d0f2948e613337ad63764de2f2ccd56642d2a0e9f07b28fc03",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "shotgun_normal.png",
+          "mime": "image/webp",
+          "encodedBytes": 24768,
+          "sha256": "77bdaf114075fa6c86dfa44a63dd485a21f4148f3e7fa6a0d83dd36757001696",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_d7345c1e-a962-4e7b-beff-efec1089502a"
+        ]
+      }
+    },
+    {
+      "path": "models/guns/toy_sniper.glb",
+      "bytes": 705536,
+      "sha256": "ce87a1f9e9b566c0ae8f7bb30af3d5cf7cc1092cb054fed7250fb4a6c48a11d8",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/assets.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 79751,
+      "meshoptDecodedBytes": 1272570,
+      "imageDecodedBytes": 12582912,
+      "decodedBytes": 13855482,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "sniper_basecolor.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 105358,
+          "sha256": "8960ec8820f09e9e42bdc56bdc26a20af39a33dade39e76c0ccad5de08ab5f37",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "sniper_rm.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 27260,
+          "sha256": "443120c447dabc97700c8444d519cce785b7b0640b75a003777e8d055794dcc6",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        },
+        {
+          "name": "sniper_normal.png",
+          "mime": "image/webp",
+          "encodedBytes": 53392,
+          "sha256": "1b63834a35d652589af28fb9794657c2eb30dc3a4835059427cf0f741571889e",
+          "width": 1024,
+          "height": 1024,
+          "decodedBytes": 4194304
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_d5c03414-1c4c-4b55-b958-1b580dbef7b0"
+        ]
+      }
+    },
+    {
+      "path": "models/projectiles/drill_head.glb",
+      "bytes": 243412,
+      "sha256": "29e5c0b1a9c1dd3b82d0ab6e4aa5f9f2426a50817cee3ff66c5677a37348fb62",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/renderer.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 733,
+      "meshoptDecodedBytes": 21470,
+      "imageDecodedBytes": 3145728,
+      "decodedBytes": 3167198,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Mole_monster_normal",
+          "mime": "image/webp",
+          "encodedBytes": 90706,
+          "sha256": "0edb0375a219fc7931cc2a4193a637be06e81083e5c1946496257398cd37d701",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "Mole_monster_basecolor",
+          "mime": "image/webp",
+          "encodedBytes": 75390,
+          "sha256": "4cedefef2fc862aca20d89d41fdbdef32945571c5d3f06a7033575e2e69fe97c",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "Mole_monster_rm",
+          "mime": "image/webp",
+          "encodedBytes": 61706,
+          "sha256": "35505bf29d0b00473243ea6461a8fc77fbbb33b914191eb9055a4bae3910abb7",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_node_e319e1ae-2816-442d-9ab3-ce986a1a9a28_material"
+        ]
+      }
+    },
+    {
+      "path": "models/projectiles/missile.glb",
+      "bytes": 93652,
+      "sha256": "5b3ef8b7128c1baf34c5e89f8af07ed88a7fda6d20ff4c0a76981cd80a56a5ce",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/renderer.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 5878,
+      "meshoptDecodedBytes": 120484,
+      "imageDecodedBytes": 786432,
+      "decodedBytes": 906916,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "orange_sci-fi_drone_3d_model_basecolor.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 17740,
+          "sha256": "336b58d6cad138ddf3c76f5a717cc2a325a17ed611f5097732689912ae221fa1",
+          "width": 256,
+          "height": 256,
+          "decodedBytes": 262144
+        },
+        {
+          "name": "orange_sci-fi_drone_3d_model_rm.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 7532,
+          "sha256": "e163c47c781e335d100382ec70b8e9001f3e96b393264e59a2de0765e712f7ba",
+          "width": 256,
+          "height": 256,
+          "decodedBytes": 262144
+        },
+        {
+          "name": "orange_sci-fi_drone_3d_model_normal.png",
+          "mime": "image/webp",
+          "encodedBytes": 2998,
+          "sha256": "1e97f2a78ca79d1dbc22cf25475afebc941c6d2adf3ffb5e0cda2299e94bbf02",
+          "width": 256,
+          "height": 256,
+          "decodedBytes": 262144
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_811eb8d9-97ea-4281-bac2-eb2e405cc1cb"
+        ]
+      }
+    },
+    {
+      "path": "models/projectiles/monster_bullet.glb",
+      "bytes": 13164,
+      "sha256": "face42cf4fd34b806dcd2987ff3b5636796d8f0fecce8b89b75fb01fdd5069b0",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/renderer.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 400,
+      "meshoptDecodedBytes": 19200,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 19200,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_mat_44081d99-b89f-4d28-b8dd-f74ad29b2fc4"
+        ]
+      }
+    },
+    {
+      "path": "models/projectiles/rubber_bullet.glb",
+      "bytes": 151008,
+      "sha256": "0a89ba3108b4ad8ff31cda3ceb7dcf7d6df5c8550e0d7ac3be1dcb2751d77f50",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/renderer.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 15740,
+      "meshoptDecodedBytes": 272696,
+      "imageDecodedBytes": 3145728,
+      "decodedBytes": 3418424,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "rubber_bullet_basecolor.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 18134,
+          "sha256": "f469782eefafcd283d9850ccec1baa65e6fb72b167aea0cc01ae51823f4032b2",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "rubber_bullet_rm.jpg",
+          "mime": "image/webp",
+          "encodedBytes": 3718,
+          "sha256": "d15d584287da29c5ba306455118104300b0c7e82566c298c7c3c99f89ca17777",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "rubber_bullet_normal.png",
+          "mime": "image/webp",
+          "encodedBytes": 3706,
+          "sha256": "d1e90537ef5fc3042d84f5c9f70f697021ad090a9b686c841218c1fecf80390a",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_df1ae656-00f2-48b2-a415-df9086bef06a"
+        ]
+      }
+    },
+    {
+      "path": "models/projectiles/tyre.glb",
+      "bytes": 9952,
+      "sha256": "16cc094707a1c5919573f8f35fbe8a5d2af01e79b4bfc689b6266493ab080480",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/renderer.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 1558,
+      "meshoptDecodedBytes": 18852,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 18852,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "TyreRubber"
+        ]
+      }
+    },
+    {
+      "path": "models/stages/city/pillar.glb",
+      "bytes": 75184,
+      "sha256": "4995b3b95ae3c13bbd114cddd36929c835218561d7aa352c76a0e0d637d58ce5",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 3985,
+      "meshoptDecodedBytes": 87430,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1136006,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_edd28540-57c6-473d-9042-53175923fc1e",
+          "mime": "image/webp",
+          "encodedBytes": 26524,
+          "sha256": "4653e2f29718065e98984719cb7e3706a4b346a25d06b14c5666be68cf20f066",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_edd28540-57c6-473d-9042-53175923fc1e"
+        ]
+      }
+    },
+    {
+      "path": "models/stages/city/prop.glb",
+      "bytes": 118908,
+      "sha256": "bc50a0004e6f7c5da65845c3336cf62cbd9a27e6ed6a1e33d30810776c638c47",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7281,
+      "meshoptDecodedBytes": 161766,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1210342,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_7622b687-0498-4070-b4a2-8b813ea55e6b",
+          "mime": "image/webp",
+          "encodedBytes": 32932,
+          "sha256": "2c1c341fa0d9906a4374c77d03d434d437ffa8594cf621676a7c81361960a3cb",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_7622b687-0498-4070-b4a2-8b813ea55e6b"
+        ]
+      }
+    },
+    {
+      "path": "models/stages/glacier/pillar.glb",
+      "bytes": 86080,
+      "sha256": "424af1eace6670b40bd5c53768df1124811cb5ce71e7817cc6dfb098afb171b8",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 4168,
+      "meshoptDecodedBytes": 86128,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1134704,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_94c53fd7-fc81-490b-82a4-30c25d69bb97",
+          "mime": "image/webp",
+          "encodedBytes": 38580,
+          "sha256": "56f648718eac2053877db96ddb018792265384fae40f7a8411fc3f34e837904f",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_94c53fd7-fc81-490b-82a4-30c25d69bb97"
+        ]
+      }
+    },
+    {
+      "path": "models/stages/glacier/prop.glb",
+      "bytes": 91964,
+      "sha256": "ea3724c3f9853668ef6144a90a0430c3798e28793c0df0a28ee2fcf331bc6f18",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7070,
+      "meshoptDecodedBytes": 118884,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1167460,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_2cd55a6c-7c85-4009-a371-59039fd2f852",
+          "mime": "image/webp",
+          "encodedBytes": 32194,
+          "sha256": "50a1bb3a7c606b717104edff57f05e2991edd03c54a3a0274f9e8f16727270e8",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_2cd55a6c-7c85-4009-a371-59039fd2f852"
+        ]
+      }
+    },
+    {
+      "path": "models/stages/void/pillar.glb",
+      "bytes": 59144,
+      "sha256": "b647356fe8cd35044430d4f4c5a7a610f891bd4c7bbb904606bfb5b6c29e4aea",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 4122,
+      "meshoptDecodedBytes": 70300,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1118876,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_c6a8ec63-08c3-4a7d-81f5-c1540b6c16c6",
+          "mime": "image/webp",
+          "encodedBytes": 22228,
+          "sha256": "81f743548cd6a8b32e834e731f2ecc730a981ce178b511fb740d544e35c61440",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_c6a8ec63-08c3-4a7d-81f5-c1540b6c16c6"
+        ]
+      }
+    },
+    {
+      "path": "models/stages/void/prop.glb",
+      "bytes": 100668,
+      "sha256": "6917da0a33874fc7028cdd08c2cddfe413a9533d543152d3536997c0382d9d27",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7067,
+      "meshoptDecodedBytes": 147042,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1195618,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_5fd90d75-7cc3-46b4-9822-6656339c4856",
+          "mime": "image/webp",
+          "encodedBytes": 24210,
+          "sha256": "82d44befcd5109d47da837395952b57f014b8599c576f147ecbc0b47d5ea6d40",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_5fd90d75-7cc3-46b4-9822-6656339c4856"
+        ]
+      }
+    },
+    {
+      "path": "models/stages/volcano/pillar.glb",
+      "bytes": 67900,
+      "sha256": "e508b2ffd550b080c569427a6e85334826ee0238ab97ecbfa14643a841da3080",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 4200,
+      "meshoptDecodedBytes": 70208,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1118784,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_ce34f864-107f-4ac8-a116-f082ca128677",
+          "mime": "image/webp",
+          "encodedBytes": 31628,
+          "sha256": "84e74b5d9e82f8e3929f1952ab1ad183bed12b2e2003ed80c00186cca1016958",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_ce34f864-107f-4ac8-a116-f082ca128677"
+        ]
+      }
+    },
+    {
+      "path": "models/stages/volcano/prop.glb",
+      "bytes": 88536,
+      "sha256": "06edd288e69390afe69ff39fd504cdb8fa585fc37cd340465058aa1f2694e0aa",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 7186,
+      "meshoptDecodedBytes": 122860,
+      "imageDecodedBytes": 1048576,
+      "decodedBytes": 1171436,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "Color_feeb385e-7e58-4680-978a-b5dcd851f94a",
+          "mime": "image/webp",
+          "encodedBytes": 27808,
+          "sha256": "c10502252e6af10ff1e02c9ecb9da1c37d8924797d81c133faa06ca8ae11b987",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "tripo_material_feeb385e-7e58-4680-978a-b5dcd851f94a"
+        ]
+      }
+    },
+    {
+      "path": "textures/stages/city/floor.jpg",
+      "bytes": 185061,
+      "sha256": "995a38ecfe13449d22a668a40387e39c80ac92755651b014cdff1f996480692c",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "decodedBytes": 4194304,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/stages/city/sky.jpg",
+      "bytes": 48295,
+      "sha256": "fc9b6d5f5da96b8f476c96c6b6beb0046e66d4089b342b305859123a1323b927",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "image",
+      "width": 1024,
+      "height": 512,
+      "decodedBytes": 2097152,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/stages/city/stone.jpg",
+      "bytes": 601054,
+      "sha256": "213e5358656e7cb80bad822f8603f817936e1684cc53b14dc4f04c32fcb7ad9a",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "decodedBytes": 4194304,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/stages/glacier/floor.jpg",
+      "bytes": 530635,
+      "sha256": "ee320e6d5a4f8a4537e1d8bf41a865c81be64b27b8afe85fb7320242ffafbc66",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "decodedBytes": 4194304,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/stages/glacier/sky.jpg",
+      "bytes": 88890,
+      "sha256": "09a5c51ad03ff3b5d3fe9ce189302b6c477ff27f4591825ead99f803a3b3a164",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "image",
+      "width": 1024,
+      "height": 512,
+      "decodedBytes": 2097152,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/stages/glacier/stone.jpg",
+      "bytes": 462182,
+      "sha256": "ede829efbced681c0d4970ea964c75ecb36995bbed553384ea2da080091e6552",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "decodedBytes": 4194304,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/stages/void/floor.jpg",
+      "bytes": 468861,
+      "sha256": "9668aa984f155bdc20445346ed7551fcbc974e46e37b9a67e5a09aa7b4f9456d",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "decodedBytes": 4194304,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/stages/void/sky.jpg",
+      "bytes": 91821,
+      "sha256": "504b2b17a01f4839d9465b536342f29cfacaced3ca1570c4a95d90ee48c47e20",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "image",
+      "width": 1024,
+      "height": 512,
+      "decodedBytes": 2097152,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/stages/void/stone.jpg",
+      "bytes": 252438,
+      "sha256": "5a87c1fcd81a35c83dd40b166f02417a0c1ebdb9048d4bf58d664893cfd2a944",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "decodedBytes": 4194304,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/stages/volcano/floor.jpg",
+      "bytes": 577258,
+      "sha256": "81eb302d927bd216dd911e8cadbc33786c55b1dfd7ddcb37e39fa8632e688530",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "decodedBytes": 4194304,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/stages/volcano/sky.jpg",
+      "bytes": 67374,
+      "sha256": "d11c710d26d3a42561748e8838c83361049834e270b2987914bbc5445823cab6",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "image",
+      "width": 1024,
+      "height": 512,
+      "decodedBytes": 2097152,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/stages/volcano/stone.jpg",
+      "bytes": 384749,
+      "sha256": "0237ee13b006684ac1c263618dd370e50a7a93a0de57b82b1c8a39d9c585594f",
+      "referenced": true,
+      "referenceKind": "dynamic",
+      "referencedFrom": [
+        "src/data/stages.js"
+      ],
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "decodedBytes": 4194304,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "ui/bosses/sahil_stage2.png",
+      "bytes": 129100,
+      "sha256": "b91f901ac78175dcd4d5394a90ded73959074fd6173a30b45ede2b5c30dd58c6",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/data/duelBosses.js",
+        "src/data/enemies.js"
+      ],
+      "kind": "image",
+      "width": 512,
+      "height": 512,
+      "decodedBytes": 1048576,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "ui/bosses/sahil_stage3.png",
+      "bytes": 157822,
+      "sha256": "c5e9ca06d079e369581167d8d5e30c7995750a3cecbad34acbd705d5648319d6",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/data/duelBosses.js",
+        "src/data/enemies.js"
+      ],
+      "kind": "image",
+      "width": 512,
+      "height": 512,
+      "decodedBytes": 1048576,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "ui/bosses/sahil.png",
+      "bytes": 106425,
+      "sha256": "696a105bc4abe3a8dc56ddf4576d6f5c1b498bfd51f1a3041a10ee4fe4cd30fa",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/data/duelBosses.js",
+        "src/data/enemies.js"
+      ],
+      "kind": "image",
+      "width": 512,
+      "height": 512,
+      "decodedBytes": 1048576,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "ui/bosses/tinubu_stage2.png",
+      "bytes": 128041,
+      "sha256": "50184c491ba2f921bf704af06d70e38bebc4d5e2a5e6e051498fff6961bcdce2",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/data/duelBosses.js",
+        "src/data/enemies.js"
+      ],
+      "kind": "image",
+      "width": 512,
+      "height": 512,
+      "decodedBytes": 1048576,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "ui/bosses/tinubu_stage3.png",
+      "bytes": 158010,
+      "sha256": "df5a29219ecbf661cfac3681aa6970c520f20c54928523327e0f66a1c006df56",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/data/duelBosses.js",
+        "src/data/enemies.js"
+      ],
+      "kind": "image",
+      "width": 512,
+      "height": 512,
+      "decodedBytes": 1048576,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "ui/bosses/tinubu.png",
+      "bytes": 110846,
+      "sha256": "37ec03b730f80c8947c436265589119733d15b8bc661a6642f88b508df45ed85",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/data/duelBosses.js",
+        "src/data/enemies.js"
+      ],
+      "kind": "image",
+      "width": 512,
+      "height": 512,
+      "decodedBytes": 1048576,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    }
+  ],
+  "authoring": {
+    "blenderFiles": [
+      {
+        "path": "art/blender/boss_animations.blend",
+        "bytes": 20159671
+      },
+      {
+        "path": "art/blender/new_enemies.blend",
+        "bytes": 43503325
+      }
+    ],
+    "shippedInPublic": false,
+    "note": "Authoring Blender files stay under art/. They are not runtime assets and must not appear in dist."
+  }
+}

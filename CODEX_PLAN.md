@@ -6,6 +6,7 @@ This file is the entry point. The detail lives in two companion plans:
 
 - **A: gameplay, game feel, VFX, audio:** [`docs/codex/A-gameplay-feel-vfx-audio.md`](docs/codex/A-gameplay-feel-vfx-audio.md)
 - **B: rendering, architecture, assets, performance, QA:** [`docs/codex/B-rendering-architecture-assets.md`](docs/codex/B-rendering-architecture-assets.md)
+- **C: campaign levels, jetpack, world weapons, Sproto Duel bosses:** [`docs/codex/C-campaign-levels.md`](docs/codex/C-campaign-levels.md), [`docs/codex/C-level-designs.md`](docs/codex/C-level-designs.md), [`docs/codex/C-bosses-sproto-duel.md`](docs/codex/C-bosses-sproto-duel.md), [`docs/codex/C-milestones-cursor.md`](docs/codex/C-milestones-cursor.md)
 
 Milestone IDs below refer to those files (A-M3 = plan A, milestone M3). Read both files' section 0 ("what I found") before starting.
 
@@ -16,6 +17,18 @@ Milestone IDs below refer to those files (A-M3 = plan A, milestone M3). Read bot
 3. **Level-scoped loading stays.** Never load all assets at boot. Extend `levelAssets()` (`src/data/stages.js`) and the priority queue (`src/render/assets.js`) instead.
 4. **Every milestone ships on its own branch** (`codex/<milestone>-<slug>`) as a pull request to `crrreatorrr/sproto-shooter`. Each PR passes `npm test` and `npm run build`, adds tests, and includes before/after screenshots from the Playwright harness once B-M4 exists.
 5. Assets come from Sproto Duel (`crrreatorrr/sproto-duel`, `public/assets/`) where possible. New art follows that repo's `docs/higgsfield-workflow-guide.md`.
+
+## Campaign plan (part C)
+
+The 10-level campaign is specified in the part C docs and implemented as `mode=campaign`.
+Wave Mode and Sandbox stay on the arena path. Milestones and the level checklist are in [`docs/codex/C-milestones-cursor.md`](docs/codex/C-milestones-cursor.md).
+Cursor rules: `.cursor/rules/campaign-levels.mdc`.
+
+It is a Halo-style campaign with big sectioned levels, a jetpack, basic world weapons, new monsters, and the Sproto Duel bosses (same attacks), written for Cursor agents.
+
+**Where it slots into the combined order above:** C-M0…C-M5 go right after #5 (B-M4 QA harness). A-M7 (#16) must use C-M3's navigation; A-M11 (#20) reuses C-M11's hazard volumes; plan A's decals use C-M1's surface normals; B-M8/B-M9 land before C-M9b (bitbug flocks). After C-M5, the campaign tracks run in parallel with the remaining A/B milestones (see C-milestones §1).
+
+Ground rules 1-5 above apply unchanged. The campaign adds: Wave Mode stays bit-identical (baseline hashes), levels are pure data, and section loading never affects the sim.
 
 ## Combined milestone order
 
@@ -55,23 +68,3 @@ Dependencies decide the order: infrastructure first, then the post stack and VFX
 - Every target in plan A §1 and plan B §1 is met and recorded in the final PR.
 - First load stays level-scoped; first-load size and time-to-interactive meet plan B §1.
 - All tests pass, CI is green, and screenshot goldens are updated intentionally.
-
-
-## Campaign plan (part C)
-
-A 10-level, Halo-style campaign with big sectioned levels, a jetpack, basic world weapons, new
-monsters and the Sproto Duel bosses (same attacks). It's written for Cursor agents.
-
-- **C: engine and systems:** [`docs/codex/C-campaign-levels.md`](docs/codex/C-campaign-levels.md)
-- **C: the 10 levels:** [`docs/codex/C-level-designs.md`](docs/codex/C-level-designs.md)
-- **C: Sproto Duel bosses:** [`docs/codex/C-bosses-sproto-duel.md`](docs/codex/C-bosses-sproto-duel.md)
-- **C: milestones, Definition of Done, Cursor prompts:** [`docs/codex/C-milestones-cursor.md`](docs/codex/C-milestones-cursor.md)
-- Cursor rules: `.cursor/rules/campaign-levels.mdc`
-
-**Where it slots into the combined order above:** C-M0…C-M5 go right after #5 (B-M4 QA harness).
-A-M7 (#16) must use C-M3's navigation; A-M11 (#20) reuses C-M11's hazard volumes; plan A's decals
-use C-M1's surface normals; B-M8/B-M9 land before C-M9b (bitbug flocks). After C-M5, the campaign
-tracks run in parallel with the remaining A/B milestones (see C-milestones §1).
-
-Ground rules 1-5 above apply unchanged. The campaign adds: Wave Mode stays bit-identical
-(baseline hashes), levels are pure data, and section loading never affects the sim.

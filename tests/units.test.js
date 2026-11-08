@@ -12,6 +12,7 @@ import { xpToNext } from '../src/data/skills.js';
 import { WAVES } from '../src/data/waves.js';
 import { GUN_RECIPES, RECIPES_BY_ID } from '../src/data/recipes.js';
 import { createGameState, createEnemy, createBoss } from '../src/sim/state.js';
+import { BOSSES, ENEMIES } from '../src/data/enemies.js';
 import { run, cmd } from './helpers.js';
 
 describe('architecture', () => {
@@ -177,11 +178,11 @@ describe('level-scoped loading', () => {
     const l1 = levelAssets(0, 1);
     expect(l1.stage).toBe('city');
     expect(l1.characters).toEqual([{ model: 'midget', stage: 1 }, { model: 'obama', stage: 1 }]);
-    expect(l1.bosses).toEqual([]);
+    expect(l1.bosses.map((b) => b.model)).toEqual(['dragon', 'dragon', 'dragon']); // Jade Dragon, one model for all phases
     const l2 = levelAssets(1, 1);
     expect(l2.stage).toBe('volcano');
     expect(l2.characters).toContainEqual({ model: 'midget', stage: 3 }); // flying midgets
-    expect(l2.bosses.map((b) => b.model)).toEqual(['tinubu', 'tinubu', 'tinubu']);
+    expect(l2.bosses.map((b) => b.model)).toEqual(['monster', 'monster', 'monster']);
     expect(levelAssets(2, 1).bosses.map((b) => b.model)).toContain('sahil');
   });
 });
@@ -263,7 +264,7 @@ describe('crafting', () => {
 });
 
 describe('waves config', () => {
-  it('3 waves with growing counts, mostly midget swarms, bosses on waves 2 and 3', () => {
+  it('3 waves with growing counts, mostly midget swarms, a boss on every wave', () => {
     const counts = WAVES.map((w) => w.groups.reduce((n, g) => n + g.spawns.reduce((m, s) => m + s.count, 0), 0));
     expect(counts[1]).toBeGreaterThan(counts[0]); expect(counts[2]).toBeGreaterThan(counts[1]);
     for (const w of WAVES) {
@@ -271,8 +272,8 @@ describe('waves config', () => {
       const mid = all.filter((s) => s.type === 'midget').reduce((n, s) => n + s.count, 0);
       expect(mid / all.reduce((n, s) => n + s.count, 0)).toBeGreaterThan(0.5);
     }
-    expect(WAVES[0].boss).toBeNull();
-    expect(WAVES[1].boss.types).toEqual(['megaSproto']);
+    expect(WAVES[0].boss.types).toEqual(['dragon']);
+    expect(WAVES[1].boss.types).toEqual(['monster']);
     expect(WAVES[2].boss.types).toEqual(['megaSproto', 'hexAuditor']);
   });
 });
@@ -286,5 +287,477 @@ describe('determinism', () => {
       return JSON.stringify(s);
     };
     expect(play()).toBe(play());
+  });
+});
+
+describe('test range', () => {
+  it('gives every gun type with infinite ammo, and leaving resets the loadout', () => {
+    const s = createGameState({ seed: 7 });
+    const p = s.players[s.localPlayerId];
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'test', tier: 1 }] }));
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka', null]); // + empty legendary slot
+    expect(new Set(p.guns.filter(Boolean).map((g) => g.id)).size).toBe(4);
+    expect(s.tuning.infiniteAmmo).toBe(true);
+    expect(s.enemies.filter((e) => e.type === 'dummy').length).toBe(5);
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', null, null, null, null]);
+    expect(s.tuning.infiniteAmmo).toBe(false);
+  });
+});
+
+describe('god mode', () => {
+  it('hits still land but health never drops below 99, and P-style toggling revives', () => {
+    const s = createGameState({ seed: 3 });
+    const p = s.players[s.localPlayerId];
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    expect(s.tuning.godMode).toBe(true);
+    const dealt = damagePlayer(s, p, { base: 500, sourceKind: 'enemy' });
+    expect(dealt).toBeGreaterThan(0); // shield and the 1 HP above the floor still take the hit
+    expect(p.hp).toBe(99);
+    expect(p.downed).toBe(false);
+    expect(p.tickets).toBe(99999);
+    for (const v of Object.values(p.resources)) expect(v).toBe(9999);
+    p.tickets = 0; run(s, 1, () => cmd());
+    expect(p.tickets).toBe(99999); // kept topped up while god mode is on
+    for (const id of ['gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor']) expect(p.perks[id]).toBe(true);
+    damagePlayer(s, p, { base: 500, sourceKind: 'enemy' });
+    expect(p.hp).toBe(99);
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    expect(p.perks.gooBolt).toBe(true); // Magic Lv 1 spell stays
+    expect(p.perks.meteor).toBe(false); // god-mode-only spell locks again
+    damagePlayer(s, p, { base: 500, sourceKind: 'enemy' });
+    expect(p.downed).toBe(true);
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    expect(p.downed).toBe(false);
+    expect(p.hp).toBeGreaterThanOrEqual(99);
+  });
+  it('keeps mana full so spells can be cast back to back (cooldowns still apply)', () => {
+    const s = createGameState({ seed: 6 });
+    const p = s.players[s.localPlayerId];
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    run(s, 1, () => cmd({ pressed: { swarm: true } }));
+    expect(s.allies.length).toBeGreaterThan(0);
+    expect(p.mana).toBe(p.maxMana);
+    run(s, 1, () => cmd({ pressed: { meteor: true } }));
+    expect(p.spells.cd.meteor).toBeGreaterThan(0);
+    expect(p.mana).toBe(p.maxMana);
+  });
+  it('gives every gun endless spare ammo, still with reloads', () => {
+    const s = createGameState({ seed: 8 });
+    const p = s.players[s.localPlayerId];
+    const sn = generateGun({ seed: 3, level: 1, forced: { type: 'sniper', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    sn.id = 999; p.guns[1] = sn; p.activeSlot = 1; p.ammo.sniper = 0; sn.ammoInMag = 0;
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    p.ammo.sniper = 0; // god mode tops ammo up; empty it again to prove the reserve isn't used
+    run(s, 1, () => cmd({ pressed: { reload: true } }));
+    expect(p.reloadT).toBeGreaterThan(0);
+    run(s, 4 * 60, () => cmd());
+    expect(sn.ammoInMag).toBe(sn.stats.magSize);
+    expect(p.ammo.sniper).toBe(p.ammoCap.sniper); // god mode keeps the reserve topped up; the reload didn't use it
+  });
+  it('gives one of every gun type, keeping guns you carry and dropping extras', () => {
+    const s = createGameState({ seed: 10 });
+    const p = s.players[s.localPlayerId];
+    const mine = generateGun({ seed: 4, level: 1, forced: { type: 'shotgun', quality: 'epic', manufacturer: 'blastco', element: 'fire' } });
+    const extra = generateGun({ seed: 5, level: 1, forced: { type: 'shotgun', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    mine.id = 501; extra.id = 502; p.guns[1] = mine; p.guns[2] = extra; p.unlockedSlots = 3; p.activeSlot = 1;
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka', null]);
+    expect(p.guns[1]).toBe(mine); // your epic shotgun is kept
+    expect(p.activeSlot).toBe(1); // still holding it
+    expect(p.unlockedSlots).toBe(4);
+    expect(s.pickups.some((k) => k.kind === 'gun' && k.gun.id === 502)).toBe(true); // the spare is dropped, not deleted
+  });
+  it('is on in the Test Range and off again after leaving it', () => {
+    const s = createGameState({ seed: 4 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'test', tier: 1 }] }));
+    expect(s.tuning.godMode).toBe(true);
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
+    expect(s.tuning.godMode).toBe(false);
+  });
+});
+
+describe('machine gun ammo', () => {
+  it('never runs out of spare ammo but still empties its magazine and takes time to reload', () => {
+    const s = createGameState({ seed: 9 });
+    const p = s.players[s.localPlayerId];
+    const g = p.guns[0];
+    expect(g.type).toBe('mg');
+    p.ammo.bullets = 0;
+    g.ammoInMag = 1;
+    const fire = () => cmd({ held: { fire: true } });
+    run(s, 10, fire); // fires the last round, then starts a reload instead of reporting empty
+    expect(g.ammoInMag).toBe(0);
+    expect(p.reloadT).toBeGreaterThan(2); // 2.5 s reload
+    const ev = run(s, Math.ceil(2.6 * 60), () => cmd());
+    expect(ev.some((e) => e.type === 'ammoEmpty')).toBe(false);
+    expect(g.ammoInMag).toBe(g.stats.magSize);
+    expect(p.ammo.bullets).toBe(0); // reserve untouched
+  });
+  it('enemies drop ammo for the guns you carry', async () => {
+    const { rollDrops } = await import('../src/sim/drops.js');
+    const { createRng } = await import('../src/core/rng.js');
+    const rng = createRng(1);
+    const ammo = [];
+    for (let i = 0; i < 200; i++) ammo.push(...rollDrops(rng, 'obama', { tier: 1, playerGunTypes: ['bullets', 'sniper'] }).filter((d) => d.kind === 'ammo'));
+    expect(ammo.length).toBeGreaterThan(100); // 70% for an obama
+    expect(new Set(ammo.map((d) => d.ammoType))).toEqual(new Set(['bullets', 'sniper']));
+  });
+});
+
+describe('sniper zoom levels', () => {
+  it('the sniper has a second zoom three times stronger; other guns have one level', async () => {
+    const { zoomFovFor, zoomLevelsOf } = await import('../src/data/guns.js');
+    const sn = generateGun({ seed: 1, level: 1, forced: { type: 'sniper', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    const mg = generateGun({ seed: 2, level: 1, forced: { type: 'mg', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    expect(zoomLevelsOf(sn)).toBe(2);
+    expect(zoomLevelsOf(mg)).toBe(1);
+    expect(zoomFovFor(sn, 2)).toBeCloseTo(zoomFovFor(sn, 1) / 3);
+    expect(zoomFovFor(mg, 2)).toBe(zoomFovFor(mg, 1));
+  });
+});
+
+describe('boss melee, missiles and sandbox', () => {
+  const setup = (mode) => {
+    const s = createGameState({ seed: 21 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode, tier: 1 }] }));
+    const p = s.players[s.localPlayerId];
+    const b = createBoss(s, 'monster', { pos: { x: 0, z: 0 } });
+    b.boss.action = { id: 'chase', t: 0, data: {} };
+    return { s, p, b };
+  };
+  it('a boss swings for heavy damage when you get close', () => {
+    const { s, p } = setup('waves');
+    s.wave.phase = 'boss'; s.enemies = s.enemies.filter((e) => e.boss);
+    p.pos = { x: 0, y: 0, z: 4 }; p.prevPos = { ...p.pos }; p.shield = 0;
+    const ev = run(s, 60, () => cmd());
+    expect(ev.some((e) => e.type === 'bossCast' && e.kind === 'melee')).toBe(true);
+    expect(p.hp).toBeLessThan(p.maxHp - 30);
+  });
+  it('missiles home in and explode for splash damage', () => {
+    const { s, p, b } = setup('waves');
+    s.wave.phase = 'boss'; s.enemies = s.enemies.filter((e) => e.boss);
+    p.pos = { x: 0, y: 0, z: 25 }; p.prevPos = { ...p.pos }; p.shield = 0;
+    b.boss.action = { id: 'missiles', t: 0, data: {} };
+    const ev = run(s, 5 * 60, () => cmd());
+    expect(ev.some((e) => e.type === 'bossCast' && e.kind === 'missiles')).toBe(true);
+    expect(ev.some((e) => e.type === 'explosion' && e.enemy)).toBe(true);
+    expect(p.hp).toBeLessThan(p.maxHp);
+  });
+  it('in the sandbox boss hits land but deal no damage', () => {
+    const { s, p } = setup('sandbox');
+    p.pos = { x: 0, y: 0, z: 4 }; p.prevPos = { ...p.pos };
+    const hp = p.hp, sh = p.shield;
+    const ev = run(s, 5 * 60, () => cmd());
+    expect(ev.some((e) => e.type === 'playerDamaged' && e.noDamage)).toBe(true);
+    expect(p.hp).toBe(hp);
+    expect(p.shield).toBe(sh);
+  });
+});
+
+describe('boss fight mode', () => {
+  it('spawns the chosen boss with real damage and ends on a win or a loss', () => {
+    const s = createGameState({ seed: 31 });
+    const p = s.players[s.localPlayerId];
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'boss', tier: 1, boss: 'megaSproto' }] }));
+    expect(s.mode).toBe('boss');
+    expect(s.enemies.filter((e) => e.boss).map((e) => e.type)).toEqual(['megaSproto']);
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka', null]);
+    damagePlayer(s, p, { base: 20, sourceKind: 'boss' }); // not the sandbox: boss hits hurt
+    expect(p.shield).toBeLessThan(p.maxShield);
+    const won = run(s, 2, () => cmd({ actions: [{ type: 'debug', op: 'killAll' }] }));
+    expect(won.find((e) => e.type === 'bossFightOver')).toMatchObject({ won: true, boss: 'megaSproto' });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'boss', tier: 1, boss: 'monster' }] }));
+    p.hp = 1; p.shield = 0;
+    damagePlayer(s, p, { base: 500, sourceKind: 'boss' });
+    p.downedT = 0;
+    const lost = run(s, 3, () => cmd());
+    expect(lost.find((e) => e.type === 'bossFightOver')).toMatchObject({ won: false, boss: 'monster' });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
+    expect(p.guns.map((g) => g && g.type)).toEqual(['mg', null, null, null, null]); // leaving gives the starting loadout back
+  });
+});
+
+describe('jade dragon flight and sproto beast combos', () => {
+  it('the dragon takes off, circles at altitude dropping fireballs, then lands', () => {
+    const s = createGameState({ seed: 41 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'boss', tier: 1, boss: 'dragon' }] }));
+    const b = s.enemies.find((e) => e.boss);
+    b.boss.action = { id: 'fly', t: 0, data: {} };
+    let maxY = 0; const kinds = new Set();
+    for (let i = 0; i < 6 * 60; i++) { run(s, 1, () => cmd()); maxY = Math.max(maxY, b.pos.y); s.projectiles.forEach((p) => kinds.add(p.kind)); if (b.boss.action.id !== 'fly') break; }
+    expect(maxY).toBeGreaterThan(5);
+    expect(kinds.has('fireball')).toBe(true);
+    run(s, 4 * 60, () => cmd());
+    expect(b.pos.y).toBe(0); // landed
+  });
+  it('the sproto beast mixes punches and kicks; kicks hit harder', () => {
+    const s = createGameState({ seed: 42 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'boss', tier: 1, boss: 'sprotoBeast' }] }));
+    const p = s.players[s.localPlayerId];
+    s.tuning.godMode = true; // keep the player standing for several swings
+    const variants = [];
+    for (let i = 0; i < 20 * 60 && variants.length < 4; i++) {
+      p.pos = { x: 0, y: 0, z: -14 }; p.prevPos = { ...p.pos };
+      const b = s.enemies.find((e) => e.boss); b.pos.x = 0; b.pos.z = -18;
+      for (const ev of run(s, 1, () => cmd())) if (ev.type === 'bossCast' && ev.kind === 'melee') variants.push(ev.variant);
+    }
+    expect(variants).toContain('punch');
+    expect(variants).toContain('kick');
+  });
+});
+
+describe('weapon range', () => {
+  it('shotgun pellets cannot hit past their range and lose damage with distance', async () => {
+    const { gunRange, rangeFalloff } = await import('../src/data/guns.js');
+    const { fireHitscan } = await import('../src/sim/player.js');
+    const sg = generateGun({ seed: 1, level: 1, forced: { type: 'shotgun', quality: 'common', manufacturer: 'reliable', element: 'none' } });
+    sg.parts.barrel = 'stock';
+    const r = gunRange(sg);
+    expect(r.max).toBe(16);
+    expect(rangeFalloff(r, 5)).toBe(1);
+    expect(rangeFalloff(r, 12)).toBeLessThan(1);
+    expect(rangeFalloff(r, 20)).toBe(0);
+    const shootAt = (dist) => {
+      const s = createGameState({ seed: 2 });
+      const p = s.players[s.localPlayerId];
+      const e = createEnemy(s, 'dummy', { pos: { x: 0, z: p.pos.z - dist } });
+      e.state = 'idle';
+      const hp = e.hp;
+      fireHitscan(s, p, sg, { ...sg.stats, pellets: 1, critChance: 0 }, { x: 0, y: 1.1, z: p.pos.z }, { x: 0, y: 0, z: -1 });
+      return hp - e.hp;
+    };
+    const near = shootAt(4), mid = shootAt(12), far = shootAt(22);
+    expect(near).toBeGreaterThan(0);
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(near);
+    expect(far).toBe(0);
+  });
+});
+
+describe('boss movement feel', () => {
+  it('the flying dragon weaves: altitude and distance change, and it swoops low', () => {
+    const s = createGameState({ seed: 43 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'boss', tier: 1, boss: 'dragon' }] }));
+    const p = s.players[s.localPlayerId], b = s.enemies.find((e) => e.boss);
+    run(s, 120, () => cmd());
+    b.boss.action = { id: 'fly', t: 0, data: {} };
+    const alts = [], dists = [];
+    for (let i = 0; i < 8 * 60 && b.boss.action.id === 'fly'; i++) {
+      run(s, 1, () => cmd());
+      if (b.boss.action.t > 1.5 && b.boss.action.t < 8) { alts.push(b.pos.y); dists.push(Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z)); }
+    }
+    expect(Math.max(...alts) - Math.min(...alts)).toBeGreaterThan(4); // rolls up and down, incl. the swoop
+    expect(Math.min(...alts)).toBeLessThan(4); // the swoop comes down low
+    expect(Math.max(...dists) - Math.min(...dists)).toBeGreaterThan(5); // swings in and out
+  });
+  it('physical bosses turn at a limited rate instead of snapping', () => {
+    const s = createGameState({ seed: 44 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'boss', tier: 1, boss: 'monster' }] }));
+    const p = s.players[s.localPlayerId], b = s.enemies.find((e) => e.boss);
+    run(s, 150, () => cmd());
+    b.boss.action = { id: 'chase', t: 0, data: {} };
+    b.yaw = 0; p.pos = { x: 0, y: 0, z: b.pos.z + 20 }; p.prevPos = { ...p.pos }; // player straight behind it
+    let maxStep = 0, prev = b.yaw;
+    for (let i = 0; i < 30; i++) { run(s, 1, () => cmd()); const st = Math.abs(Math.atan2(Math.sin(b.yaw - prev), Math.cos(b.yaw - prev))); maxStep = Math.max(maxStep, st); prev = b.yaw; }
+    expect(maxStep).toBeLessThan(0.1); // ≤ ~6° per tick, never a 180° snap
+  });
+});
+
+describe('animation math (anim.js)', () => {
+  it('the critically damped spring is frame-rate independent', async () => {
+    const { springTo, spring } = await import('../src/render/anim.js');
+    const run = (fps) => { const s = spring(); for (let i = 0; i < fps * 0.5; i++) springTo(s, 1, 0.1, 1 / fps); return s.x; };
+    expect(Math.abs(run(30) - run(144))).toBeLessThan(1e-6);
+    expect(run(60)).toBeGreaterThan(0.9); // mostly there after 5 half-lives
+  });
+  it('a boss strike holds its windup, then reaches full extension exactly on the damage frame', async () => {
+    const { attackEnvelope, STRIKE } = await import('../src/render/anim.js');
+    const w = 0.75, rec = 0.9;
+    expect(attackEnvelope(w * 0.7, w, rec)).toMatchObject({ wind: 1, hit: 0 }); // held, cocked
+    expect(attackEnvelope(w - STRIKE / 2, w, rec).hit).toBeLessThan(0.2); // accelerating: slow start
+    expect(attackEnvelope(w, w, rec).hit).toBe(1); // contact on the damage frame
+    expect(attackEnvelope(w + 0.1, w, rec).rec).toBe(0); // impact hold
+    expect(attackEnvelope(w + rec, w, rec).rec).toBe(1); // recovered
+  });
+  it('the leg cycle keeps the foot planted for the duty factor and sweeps it back while planted', async () => {
+    const { legCycle } = await import('../src/render/anim.js');
+    let planted = 0;
+    for (let i = 0; i < 1000; i++) if (legCycle(i / 1000, 0.77).lift === 0) planted++;
+    expect(planted / 1000).toBeCloseTo(0.77, 2);
+    expect(legCycle(0, 0.77).swing).toBeGreaterThan(legCycle(0.5, 0.77).swing); // stance moves the leg back
+  });
+});
+
+describe('boss animation clips (bossClips.js)', () => {
+  const durations = { walk: 1.2, smash: 1.8, punch: 44 / 30, kick: 1.6, fly: 2.4, fireball: 1.5 };
+  it('melee clips land their contact frame exactly on the sim swing', async () => {
+    const { meleeClipTime } = await import('../src/render/bossClips.js');
+    expect(meleeClipTime(0, 0.75, 0.9, 0.8, 1.8)).toBe(0);
+    expect(meleeClipTime(0.75, 0.75, 0.9, 0.8, 1.8)).toBeCloseTo(0.8, 9); // damage frame === impact frame
+    expect(meleeClipTime(0.75 + 0.9, 0.75, 0.9, 0.8, 1.8)).toBeCloseTo(1.8, 9); // recovery ends with the clip
+    let prev = -1;
+    for (let t = 0; t <= 2; t += 0.01) { const c = meleeClipTime(t, 0.75, 0.9, 0.8, 1.8); expect(c).toBeGreaterThanOrEqual(prev); prev = c; }
+  });
+  it('picks walk, smash, punch and kick for the humanoid bosses', async () => {
+    const { bossClipWant, BOSS_CLIPS } = await import('../src/render/bossClips.js');
+    const { BOSSES } = await import('../src/data/enemies.js');
+    const mon = BOSSES.monster, beast = BOSSES.sprotoBeast;
+    const walk = bossClipWant({ type: 'monster', action: 'chase', actionT: 1, speed: 4.8, fitHeight: 7, def: mon, durations });
+    expect(walk.clip).toBe('walk');
+    expect(walk.rate).toBeCloseTo(4.8 / (BOSS_CLIPS.monster.walk.speedPerHeight * 7), 6); // stride matches ground speed
+    expect(bossClipWant({ type: 'monster', action: 'chase', actionT: 1, speed: 0, def: mon, durations })).toBeNull(); // standing: procedural idle
+    expect(bossClipWant({ type: 'monster', action: 'stunned', actionT: 1, speed: 3, def: mon, durations })).toBeNull();
+    const smash = bossClipWant({ type: 'monster', action: 'melee', actionT: mon.melee.windup, def: mon, durations });
+    expect(smash).toMatchObject({ clip: 'smash' });
+    expect(smash.time).toBeCloseTo(BOSS_CLIPS.monster.melee.smash.impact, 9);
+    for (const v of ['punch', 'kick']) {
+      const w = bossClipWant({ type: 'sprotoBeast', action: 'melee', variant: v, actionT: beast.melee.windup, def: beast, durations });
+      expect(w.clip).toBe(v);
+      expect(w.time).toBeCloseTo(BOSS_CLIPS.sprotoBeast.melee[v].impact, 9);
+    }
+  });
+  it('the dragon flies with its clip and opens its mouth exactly when each fireball spawns', async () => {
+    const { bossClipWant, BOSS_CLIPS } = await import('../src/render/bossClips.js');
+    const { BOSSES } = await import('../src/data/enemies.js');
+    const d = BOSSES.dragon, f = d.fly, rel = BOSS_CLIPS.dragon.fireball.release;
+    expect(bossClipWant({ type: 'dragon', action: 'stalk', actionT: 1, altitude: 0, def: d, durations })).toBeNull(); // ground: procedural
+    // mirror the sim's schedule: data.shot starts at shotEvery/2 and advances by shotEvery when a fireball spawns
+    const at = (cruiseT, shot) => bossClipWant({ type: 'dragon', action: 'fly', actionT: f.rise + cruiseT, altitude: 7, def: d, data: { shot }, durations, phaseIdx: 0 });
+    const first = f.shotEvery * 0.5;
+    expect(at(first - rel - 0.2, first).clip).toBe('fly'); // cruising before the first windup
+    expect(at(first - 0.2, first)).toMatchObject({ clip: 'fireball' });
+    expect(at(first - 0.2, first).time).toBeCloseTo(rel - 0.2, 9); // winding up toward the spawn
+    expect(at(first, first + f.shotEvery).time).toBeCloseTo(rel, 9); // the frame the sim spawns it
+    const second = first + f.shotEvery;
+    expect(at(second, second + f.shotEvery).time).toBeCloseTo(rel, 9); // and every later shot
+    expect(at(f.duration + 0.5, 99).clip).toBe('fly'); // landing glide: no more spits
+  });
+});
+
+describe('clip layer (clipLayer.js)', () => {
+  it('blends an authored clip over the procedural pose, holds it on still frames, and fades back out', async () => {
+    const THREE = await import('three');
+    const { createClipLayer } = await import('../src/render/clipLayer.js');
+    const root = new THREE.Group(), bone = new THREE.Bone(); bone.name = 'Arm'; root.add(bone);
+    const up = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+    const clip = new THREE.AnimationClip('raise', 1, [new THREE.QuaternionKeyframeTrack('Arm.quaternion', [0, 1], [...up.toArray(), ...up.toArray()])]);
+    const layer = createClipLayer({ root, clips: [clip] });
+    const frame = (want) => { bone.quaternion.identity(); return layer.apply(1 / 60, want); }; // procedural pose = identity each frame
+    let w = 0;
+    for (let i = 0; i < 90; i++) w = frame({ clip: 'raise', time: 0.5, blend: 0.06 }); // the clip holds the same pose every frame
+    expect(w).toBeGreaterThan(0.99);
+    expect(bone.quaternion.angleTo(up)).toBeLessThan(0.02); // still applied although the clip value never changed
+    for (let i = 0; i < 120; i++) w = frame(null);
+    expect(w).toBeLessThan(0.01);
+    expect(bone.quaternion.angleTo(new THREE.Quaternion())).toBeLessThan(0.02);
+  });
+});
+
+describe('new enemies: Car Part Monster, Mole Monster, Laser Bot, Shooter Bot', () => {
+  const arena = (seed = 41) => {
+    const s = createGameState({ seed });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
+    s.wave.phase = 'boss'; s.enemies = [];
+    const p = s.players[s.localPlayerId]; p.shield = 0;
+    return { s, p };
+  };
+  const side = (e, pos) => (pos.x - e.pos.x) * Math.cos(e.yaw) + (pos.z - e.pos.z) * -Math.sin(e.yaw); // + = the enemy's right
+  /** run, collecting every new projectile with its spawn position, side of its owner, and the tick it appeared */
+  const track = (s, ticks, each) => {
+    const seen = new Set(), spawned = [], events = [];
+    for (let i = 0; i < ticks; i++) {
+      events.push(...run(s, 1, () => cmd()));
+      for (const pr of s.projectiles) if (!seen.has(pr.id)) {
+        seen.add(pr.id);
+        const owner = s.enemies.find((o) => o.id === pr.ownerId);
+        // where it left the owner: step back the one tick of flight it has already had
+        const at = { x: pr.pos.x - pr.vel.x / 60, y: pr.pos.y - pr.vel.y / 60, z: pr.pos.z - pr.vel.z / 60 };
+        spawned.push({ kind: pr.kind, pos: at, gravity: pr.gravity, bounces: pr.bounces, tick: s.tick, side: owner ? side(owner, at) : 0 });
+        if (each) each(pr);
+      }
+    }
+    return { spawned, events };
+  };
+
+  it('Car Part Monster lobs tyres from alternating hands (left first) that bounce once and explode', () => {
+    const { s, p } = arena();
+    p.pos = { x: 0, y: 0, z: 22 }; p.prevPos = { ...p.pos };
+    const b = createBoss(s, 'carMonster', { pos: { x: 0, z: 0 } });
+    b.boss.action = { id: 'missiles', t: 0, data: {} };
+    const { spawned, events } = track(s, 5 * 60);
+    const tyres = spawned.filter((x) => x.kind === 'tyre');
+    expect(tyres.length).toBe(BOSSES.carMonster.missiles.count);
+    expect(tyres.every((t) => t.gravity > 0 && t.bounces === 1)).toBe(true);
+    expect(tyres[0].side).toBeLessThan(0); // left hand first (matches the throw clip)
+    expect(tyres[1].side).toBeGreaterThan(0);
+    expect(events.some((e) => e.type === 'bounce' && e.kind === 'tyre')).toBe(true);
+    expect(events.some((e) => e.type === 'explosion' && e.enemy)).toBe(true);
+    expect(p.hp).toBeLessThan(p.maxHp);
+  });
+  it('Mole Monster fires fans of drill heads from its right-hand drill', () => {
+    const { s, p } = arena();
+    p.pos = { x: 0, y: 0, z: 22 }; p.prevPos = { ...p.pos };
+    const b = createBoss(s, 'moleMonster', { pos: { x: 0, z: 0 } });
+    b.boss.action = { id: 'volley', t: 0, data: {} };
+    const { spawned } = track(s, 4 * 60);
+    const drills = spawned.filter((x) => x.kind === 'drill');
+    const v = BOSSES.moleMonster.volley;
+    expect(drills.length).toBe(v.count * v.waves);
+    for (const d of drills) {
+      expect(d.side).toBeGreaterThan(0); // the drill is the right hand
+      expect(Math.abs(d.pos.y - v.from.up * BOSSES.moleMonster.height)).toBeLessThan(0.2);
+    }
+  });
+  it('Laser Bot shoots lasers from its head, and its firing clip is on the release frame when each one leaves', async () => {
+    const { enemyClipWant, ENEMY_CLIPS } = await import('../src/render/bossClips.js');
+    const { s, p } = arena(43);
+    p.pos = { x: 0, y: 0, z: 0 }; p.prevPos = { ...p.pos };
+    const e = createEnemy(s, 'robotLaser', { pos: { x: 0, z: 14 } }); e.state = 'chase';
+    const def = ENEMIES.robotLaser, rel = ENEMY_CLIPS.robotLaser.cast.release;
+    const times = [];
+    const { spawned } = track(s, 8 * 60, (pr) => {
+      if (pr.kind !== 'laser') return;
+      const w = enemyClipWant({ type: 'robotLaser', state: e.state, ai: e.ai, def, speed: 0, durations: { cast: 33 / 30 } });
+      times.push(w.clip === 'cast' ? w.time : -1);
+    });
+    const lasers = spawned.filter((x) => x.kind === 'laser');
+    expect(lasers.length).toBeGreaterThanOrEqual(2);
+    for (const l of lasers) expect(Math.abs(l.pos.y - def.gun.from.up * def.height)).toBeLessThan(0.2);
+    // first shot of each burst on the release frame, the second one burstGap later
+    times.forEach((t, i) => expect(t).toBeCloseTo(rel + (i % def.gun.burst) * def.gun.burstGap, 1));
+  });
+  it('Shooter Bot fires arm-gun bullets and, separately, a charged big laser from its head', () => {
+    const { s, p } = arena(44);
+    p.pos = { x: 0, y: 0, z: 0 }; p.prevPos = { ...p.pos };
+    const e = createEnemy(s, 'robotShooter', { pos: { x: 0, z: 16 } }); e.state = 'chase';
+    let both = 0;
+    const { spawned } = track(s, 16 * 60, () => { if ((e.ai.aimT > 0 || e.ai.burstLeft > 0) && (e.ai.spaimT > 0 || e.ai.spburstLeft > 0)) both++; });
+    const def = ENEMIES.robotShooter;
+    const bullets = spawned.filter((x) => x.kind === 'bullet'), big = spawned.filter((x) => x.kind === 'bigLaser');
+    expect(bullets.length).toBeGreaterThan(2);
+    expect(big.length).toBeGreaterThanOrEqual(1);
+    for (const b of bullets) expect(Math.abs(b.pos.y - def.gun.from.up * def.height)).toBeLessThan(0.2);
+    for (const b of big) expect(Math.abs(b.pos.y - def.special.from.up * def.height)).toBeLessThan(0.2);
+    expect(both).toBe(0); // never both weapons at once
+  });
+  it('barrage clips put a throw / drill recoil on every projectile spawn', async () => {
+    const { bossClipWant } = await import('../src/render/bossClips.js');
+    const durations = { throw_start: 0.6, throw_loop: 0.6, shoot_start: 0.5, shoot_loop: 0.4, idle: 2 };
+    const car = BOSSES.carMonster, m = car.missiles;
+    for (let i = 0; i < m.count; i++) {
+      const w = bossClipWant({ type: 'carMonster', action: 'missiles', actionT: 0.6 + i * m.gap + 1e-6, def: car, durations });
+      expect(w.clip).toBe('throw_loop');
+      expect(w.time).toBeCloseTo(i % 2 ? 0.3 : 0, 2); // left release at 0, right release half a loop later
+    }
+    const mole = BOSSES.moleMonster, v = mole.volley;
+    for (let i = 0; i < v.waves; i++) {
+      const w = bossClipWant({ type: 'moleMonster', action: 'volley', actionT: 0.5 + i * v.gap + 1e-6, def: mole, durations });
+      expect(w.clip).toBe('shoot_loop');
+      expect(w.time).toBeCloseTo(0, 2);
+    }
+    // clip-only bosses always have a clip (they rest in a T-pose)
+    for (const a of ['intro', 'chase', 'stunned', 'slam', 'charge', 'summon', 'transition', 'melee'])
+      expect(bossClipWant({ type: 'moleMonster', action: a, actionT: 0.3, speed: 0, def: mole, durations })).not.toBeNull();
   });
 });

@@ -18,7 +18,8 @@ export function projectiles(state, dt) {
       if (tgt) {
         const dx = tgt.pos.x - p.pos.x, dy = tgt.pos.y + 1.1 - p.pos.y, dz = tgt.pos.z - p.pos.z;
         const dl = Math.hypot(dx, dy, dz) || 1;
-        const sp = Math.hypot(p.vel.x, p.vel.y, p.vel.z) || 1;
+        let sp = Math.hypot(p.vel.x, p.vel.y, p.vel.z) || 1;
+        if (p.homingSpeed) sp += (p.homingSpeed - sp) * Math.min(1, dt * 2); // missiles accelerate to cruise speed
         const k = Math.min(1, p.homing * dt);
         p.vel.x += ((dx / dl) * sp - p.vel.x) * k;
         p.vel.y += ((dy / dl) * sp - p.vel.y) * k;
@@ -34,7 +35,7 @@ export function projectiles(state, dt) {
       if (hit) {
         damageEnemy(state, hit.e, {
           sourceId: p.ownerId, sourceKind: p.sourceKind, base: p.damage, element: p.element, elementChance: p.elementChance,
-          zone: hit.zone, critMult: p.critMult, critChance: p.critChance, canCrit: p.kind === 'duckBullet' || p.kind === 'megaBullet',
+          zone: hit.zone, critMult: p.critMult, critChance: p.critChance, canCrit: p.kind === 'duckBullet' || p.kind === 'megaBullet' || p.kind === 'bigBullet' || p.kind === 'rubberBullet',
           point: hit.point, gunId: p.gunId, arcane: p.arcane, wacky: p.wacky, pellet: !!p.pellet,
         });
         p.hitIds[hit.e.id] = true;
@@ -48,7 +49,7 @@ export function projectiles(state, dt) {
       for (const pl of Object.values(state.players)) {
         if (pl.dead) continue;
         if (sphereHitsPlayer(end, p.radius, pl)) {
-          if (p.splash) { enemyAoE(state, end, p.splash.radius, p.splash.damage, p.sourceKind); emit(state, 'splat', { pos: end, element: p.element }); }
+          if (p.splash) { enemyAoE(state, end, p.splash.radius, p.splash.damage, p.sourceKind); emitEnemyBlast(state, p, end); }
           else damagePlayer(state, pl, { base: p.damage, sourceKind: p.sourceKind, fromPos: p.pos });
           p.dead = true; consumed = true; break;
         }
@@ -57,11 +58,18 @@ export function projectiles(state, dt) {
     if (consumed) continue;
     p.pos = end;
     if (p.pos.y <= 0) {
-      if (p.bounces > 0) { p.bounces--; p.pos.y = 0.01; p.vel.y = Math.abs(p.vel.y) * 0.7; emit(state, 'duckBounce', { pos: { ...p.pos } }); }
+      if (p.bounces > 0) {
+        p.bounces--; p.pos.y = 0.01; p.vel.y = Math.abs(p.vel.y) * 0.7;
+        // duck rounds quack; anything else (the Car Part Monster's tyres) just thuds
+        const duck = p.kind === 'duckBullet' || p.kind === 'rubberBullet';
+        emit(state, duck ? 'duckBounce' : 'bounce', { pos: { ...p.pos }, kind: p.kind });
+        // rubber rounds lose most of their speed on the bounce and pop shortly after, close to where they landed
+        if (p.kind === 'rubberBullet') { p.vel.x *= 0.4; p.vel.z *= 0.4; p.vel.y *= 0.7; p.ttl = Math.min(p.ttl, 0.35); }
+      }
       else { detonate(state, p); continue; }
     }
     const r = Math.hypot(p.pos.x, p.pos.z);
-    if (r > ARENA_R + (p.faction === 'enemy' ? 2 : 0)) {
+    if (state.mode !== 'campaign' && r > ARENA_R + (p.faction === 'enemy' ? 2 : 0)) {
       if (p.bounces > 0) { p.bounces--; const nx = p.pos.x / r, nz = p.pos.z / r; const vr = p.vel.x * nx + p.vel.z * nz; p.vel.x -= 2 * vr * nx; p.vel.z -= 2 * vr * nz; }
       else { detonate(state, p); continue; }
     }
@@ -78,8 +86,14 @@ function detonate(state, p) {
       { elementChance: p.sourceKind === 'spell' ? 1 : p.elementChance, arcane: p.arcane, wacky: p.wacky });
   } else {
     enemyAoE(state, p.pos, p.splash.radius, p.splash.damage, p.sourceKind, p.pos.y + 1.8);
-    emit(state, 'splat', { pos: { ...p.pos }, element: p.element });
+    emitEnemyBlast(state, p, p.pos);
   }
+}
+
+/** Enemy splash effect: missiles and tyres explode, everything else (goo spit) splats. */
+function emitEnemyBlast(state, p, pos) {
+  if (p.kind === 'missile' || p.kind === 'tyre') emit(state, 'explosion', { pos: { x: pos.x, y: Math.max(0.3, pos.y), z: pos.z }, radius: p.splash.radius, element: 'none', enemy: true });
+  else emit(state, 'splat', { pos: { ...pos }, element: p.element });
 }
 
 // ---------------- Hazards ----------------

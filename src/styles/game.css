@@ -21,6 +21,11 @@
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--night); color: var(--ink); font-family: var(--body); }
 #app, #view { position: fixed; inset: 0; }
 #view canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+#stats-overlay {
+  position: fixed; top: 8px; left: 8px; z-index: 40; width: 260px; height: 120px;
+  pointer-events: none; border-radius: 6px;
+}
+#stats-overlay[hidden] { display: none; }
 #ui { position: fixed; inset: 0; pointer-events: none; }
 button { font-family: var(--body); }
 kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var(--night); border-radius: 5px; padding: 1px 6px; box-shadow: 0 2px 0 #9b8bc4; }
@@ -57,10 +62,6 @@ kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var
 #hitmarker.kill { animation: hmk .35s ease-out; } #hitmarker.kill::before, #hitmarker.kill::after { background: var(--bad); }
 @keyframes hm { from { opacity: 1; transform: scale(1.3); } to { opacity: 0; transform: scale(1); } }
 @keyframes hmk { from { opacity: 1; transform: scale(1.8) rotate(20deg); } to { opacity: 0; transform: scale(1); } }
-#scope { position: absolute; inset: 0; display: none; background: radial-gradient(circle at center, transparent 0 34vh, #000 34.3vh); }
-#scope.on { display: block; }
-#scope::before, #scope::after { content: ''; position: absolute; background: rgba(0,0,0,.85); }
-#scope::before { left: 50%; top: 16vh; bottom: 16vh; width: 2px; } #scope::after { top: 50%; left: calc(50% - 34vh); right: calc(50% - 34vh); height: 2px; }
 
 #vitals { position: absolute; left: 16px; bottom: 16px; width: min(330px, 42vw); display: flex; flex-direction: column; gap: 5px; }
 .bar { position: relative; height: 20px; background: rgba(0,0,0,.55); border-radius: 10px; overflow: hidden; border: 2px solid rgba(255,255,255,.85); transform: skewX(-10deg); }
@@ -93,6 +94,8 @@ kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var
 #slots { display: flex; gap: 5px; }
 .slot { min-width: 54px; padding: 2px 6px; border-radius: 8px; background: rgba(0,0,0,.5); border: 2px solid var(--q); font-size: 12px; font-weight: 800; text-align: center; opacity: .6; }
 .slot b { font-family: var(--display); font-size: 10px; margin-right: 3px; } .slot.on { opacity: 1; transform: translateY(-4px); box-shadow: 0 0 10px var(--q); } .slot.lockd { border-style: dashed; }
+/* legendary slot (key L): gold, a little apart from slots 1-4 */
+.slot.legslot { margin-left: 8px; background: linear-gradient(180deg, rgba(255,159,26,.28), rgba(0,0,0,.55)); }
 #medkits { font-size: 13px; color: var(--good); font-weight: 800; }
 
 #prompt { position: absolute; left: 50%; top: 60%; transform: translateX(-50%); font-size: 18px; font-weight: 700; text-shadow: 0 2px 0 #000; white-space: nowrap; }
@@ -180,6 +183,14 @@ kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var
 .src { font-size: 12px; color: var(--ink-dim); margin-bottom: 6px; }
 .perk { font-size: 13px; padding: 4px 0; border-top: 1px solid var(--line); opacity: .45; } .perk.on { opacity: 1; } .perk b { color: var(--c); margin-right: 4px; }
 .perk small { display: block; color: var(--ink-dim); font-size: 11px; }
+.stats-overlay { overflow: auto; justify-content: flex-start; }
+.stats-screen { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; width: min(1100px, 100%); align-items: start; margin: auto 0; }
+.srow { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 3px 0; border-top: 1px solid var(--line); } .srow span { color: var(--ink-dim); }
+.power { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; padding: 6px 0; border-top: 1px solid var(--line); }
+.power kbd { min-width: 24px; text-align: center; font-size: 12px; }
+.power small { display: block; color: var(--ink-dim); font-size: 11px; } .power.locked { opacity: .6; }
+.power em { font-style: normal; font-size: 11px; font-weight: 800; margin-left: 4px; } .power em.ok { color: var(--mint, #4cd964); } .power em.wait { color: #ffd166; } .power em.lock { color: #ff6b8a; }
+.skh .god, .god { color: #ffd700; }
 
 /* ---------- screens ---------- */
 #screen { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: radial-gradient(circle at 50% 30%, rgba(42,27,74,.55), rgba(10,5,25,.92)); overflow: auto; padding: 16px; }
@@ -188,7 +199,17 @@ kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var
 .title h1 { font-family: var(--display); font-size: clamp(54px, 11vw, 128px); line-height: .85; margin: 0; color: var(--sun); text-shadow: 0 8px 0 #b0306f, 0 0 60px rgba(255,94,196,.5); transform: rotate(-3deg); }
 .title h1 span { color: var(--pink); text-shadow: 0 8px 0 #5a1a7a; font-size: .7em; }
 .title .tag { font-size: 18px; color: var(--ink-dim); max-width: 520px; }
+.hub-chip { font-weight: 800; color: var(--sun); background: rgba(26, 16, 48, .85); border: 2px solid var(--sun); border-radius: 999px; padding: 6px 14px; }
+.hub-chip b { font-variant-numeric: tabular-nums; }
+.hub-chip.offline { color: var(--ink-dim); border-color: var(--ink-dim); }
+.hub-chip.guest { color: #9ad7ff; border-color: #9ad7ff; }
+.hub-chip.connected { color: var(--sun); border-color: var(--sun); }
+.hub-chip.error { color: var(--bad); border-color: var(--bad); }
 .menu { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center; }
+.boss-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; width: min(900px, 100%); margin: 0 auto 16px; }
+.btn.boss-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 14px 16px; border: 2px solid var(--c); }
+.btn.boss-card b { font-family: var(--display); font-size: 20px; color: var(--c); }
+.btn.boss-card small { font-size: 12px; opacity: .85; } .btn.boss-card span { font-size: 13px; font-weight: 400; }
 .tier select { font-family: var(--display); font-size: 16px; background: var(--night); color: var(--sun); border: 2px solid var(--sun); border-radius: 8px; padding: 4px 8px; }
 .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 6px 18px; text-align: left; font-size: 13px; margin-top: 8px; width: 100%; }
 .controls div { display: flex; gap: 8px; align-items: center; } .controls span { color: var(--ink-dim); }

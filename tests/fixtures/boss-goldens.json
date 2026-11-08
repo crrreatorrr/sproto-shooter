@@ -1,0 +1,57 @@
+{
+  "contentFingerprint": "3c657fb5",
+  "runs": {
+    "sahil-success": {
+      "boss": "sahil",
+      "mode": "success",
+      "seed": 7,
+      "tick": 1289,
+      "frames": 1289,
+      "bytes": 20624,
+      "stateHash": "9de9c265",
+      "outcome": "clear",
+      "reason": "boss_clear",
+      "eligible": true,
+      "canonicalCount": 1
+    },
+    "sahil-fail": {
+      "boss": "sahil",
+      "mode": "fail",
+      "seed": 7,
+      "tick": 1247,
+      "frames": 1247,
+      "bytes": 19952,
+      "stateHash": "c6ac839f",
+      "outcome": "fail",
+      "reason": "player_down",
+      "eligible": false,
+      "canonicalCount": 0
+    },
+    "sahil-assisted": {
+      "boss": "sahil",
+      "mode": "assisted",
+      "seed": 9,
+      "tick": 1124,
+      "frames": 1124,
+      "bytes": 17984,
+      "stateHash": "c2be0569",
+      "outcome": "assisted",
+      "reason": "assisted",
+      "eligible": false,
+      "canonicalCount": 1
+    },
+    "obama-success": {
+      "boss": "obama",
+      "mode": "success",
+      "seed": 11,
+      "tick": 2491,
+      "frames": 2491,
+      "bytes": 39856,
+      "stateHash": "ae7a4a5c",
+      "outcome": "clear",
+      "reason": "boss_clear",
+      "eligible": true,
+      "canonicalCount": 1
+    }
+  }
+}

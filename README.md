@@ -2,7 +2,9 @@
 
 A wacky first-person loot shooter built with Three.js, inspired by Borderlands. You fight waves of Sproto Duel characters (midget swarms and bitcoin-shooting Obamas) across Sproto Duel's stages, grab procedurally generated guns, craft better ones at Weapon Boxes, and level four skills just by playing.
 
-This is the **mechanics sandbox** stage. Characters, stages and boss portraits are reused from [sproto-duel](https://github.com/crrreatorrr/sproto-duel) (`public/assets/`); guns are still low-poly placeholders. There's no login, hub, saving or multiplayer yet; the code is structured so those can be added later (see `PLAN.md` §9).
+This is the **mechanics sandbox** stage. Characters, stages and boss portraits are reused from [sproto-duel](https://github.com/crrreatorrr/sproto-duel) (`public/assets/`). All four guns (machine gun, shotgun, sniper, bazooka) use toy gun models (`public/assets/models/guns/`). Campaign progress is saved in the browser. There is no multiplayer yet (see `PLAN.md` §9).
+
+A visit from the metaverse hub arrives as `/#t=<ticket>`. The client redeems it with `@metaverse/hub-sdk` (game id `sproto-shooter`), shows the hub ticket balance on the title screen, and Return to Hub leaves through `/#from=sproto-shooter`. Opened on its own, the game still runs and the chip stays `--`. Run tickets (the loot currency) are a different number from hub tickets. The plaza gate for this id is a separate change in metaverse-hub (SDK 0.6.2, migration `0038_sproto_shooter`, the fifth ring, The Range). Until that lands, the hub cannot mint a ticket for this game.
 
 ## Run it
 
@@ -13,15 +15,23 @@ npm test           # 30 unit/sim tests (Vitest)
 npm run build      # static build in dist/
 ```
 
-URL params: `?mode=waves|sandbox&tier=1-10&seed=123&debug=1`
+URL params: `?mode=waves|sandbox|test&tier=1-10&seed=123&debug=1&stats=1`
+
+Hub (same shape as the other games):
+
+| Variable | Meaning |
+|---|---|
+| `VITE_NAKAMA_URL` | Nakama origin. Dev default `http://127.0.0.1:7350`. `npm run dev` also proxies `/v2` and `/ws` there. |
+| `VITE_NAKAMA_SERVER_KEY` | Nakama client server key. Dev and a page opened on loopback use Nakama's stock key. A public build sends no key unless this is set, so a ticket redeem is refused and the game stays standalone. This is not the Nakama HTTP key. |
+| `VITE_HUB_URL` | Hub page for Return to Hub. Dev default `/hub/`. |
 
 ## What's in
 
 | Area | Details |
 |---|---|
 | Arena & stages | 90 m circle, 16 spawn points, 2 Weapon Boxes. Sproto Duel stages wrap it: wave 1 Los Angeles, wave 2 Ashen Caldera, wave 3 The Void, sandbox Aurora Glacier (sky, floor, stone, pillar and prop models) |
-| Modes | **Wave Mode**: 3 waves (20 / 33 / 50 enemies, mostly midget swarms), Mega Tinubu ends wave 2, Mega Tinubu + Hex Sahil together end wave 3, 15 s shop break between waves, victory leads to the next tier (1–10). **Sandbox**: spawn anything from the debug panel |
-| Guns | 4 types with drop rarity: Machine Gun (common ~60%), Shotgun (rare ~17%), Sniper (rare ~17%), Bazooka (very rare ~6%). Separate quality roll Common→Legendary, 4 manufacturers, 12 parts, 3 elements (Fire burn, Shock chain, Goo slow). Legendaries get a wacky perk: rubber-duck bullets, yeet reload, every-10th mega bullet, mini Sproto buddies, confetti kills, big-head mode |
+| Modes | **Wave Mode**: 3 waves (20 / 33 / 50 enemies, mostly midget swarms), the Jade Dragon ends wave 1, the Blue Monster wave 2, Mega Tinubu + Hex Sahil together end wave 3, 15 s shop break between waves, victory leads to the next tier (1–10). **Sandbox**: spawn anything from the debug panel. **Boss Fight** (`?mode=boss&boss=monster`; also `dragon`, `sprotoBeast`, `megaSproto`, `hexAuditor`): pick any boss from the title screen and fight it alone with real damage and one of every gun. **Test Range** (`?mode=test`): the sandbox with every gun type in slots 1–4, infinite ammo, god mode and target dummies; starting Wave Mode afterwards resets you to the starting gun |
+| Guns | 4 types with drop rarity: Machine Gun (common ~60%), Shotgun (rare ~17%), Sniper (rare ~17%), Bazooka (very rare ~6%). Separate quality roll Common→Legendary, 4 manufacturers, 12 parts, 3 elements (Fire burn, Shock chain, Goo slow). Legendaries get a wacky perk: rubber-duck bullets, yeet reload, every-10th mega bullet, mini Sproto buddies, confetti kills, big-head mode Range: shotgun pellets do full damage to 7 m and can't hit past 16 m, the machine gun falls off past 30 m (max 75 m), the sniper reaches the whole arena; long barrels +20%, short −15% |
 | Enemies | **Midget**: fast melee runner that never shoots and comes in big swarms. **Bitcoin Obama**: keeps distance, strafes and fires 3-round bitcoin bursts (about 1 shot/s, 4.5° spread, 30 m/s, so you can dodge; your MG does 10 shots/s). **Flying Midget** (Midget stage 3 + propeller beanie, from wave 2): fast and erratic, circles you 3–6 m up and peppers you with tiny 2-damage pellets; 30 HP but hard to hit. **Big Bitcoin Obama**: heavy with a front shield, ground pound and a sloppy 6-round hose; hit the back battery. Models use Sproto Duel's stage 1/2/3 versions: elites and tier 4+ step up a stage. Elites wear a crown, have ×2.5 HP and drop double. Headshots = **BONK** |
 | Bosses | Each phase swaps to the next Sproto Duel stage model. **Mega Tinubu** (Physical, 3 phases): bitcoin volleys, charge (stuns itself on the wall, exposing a belly weak spot), jump-over shockwaves, summons midget swarms. **Hex Sahil** (Magic, 3 phases): floating caster with bullet-hell orbs, homing tax bolts, teleports, an orbiting weak spot and a mana-draining aura |
 | Skills | No skill points. Each skill levels from its own XP and perks unlock automatically. **Health**: kills, taking damage, healing pickups, Physical bosses. **Gunslinger**: gun kills, crits/weak spots, Physical bosses. **Magic**: casting spells, spell kills, Magic bosses. **Crafting**: crafting guns (T1 counts) and ammo |
@@ -45,14 +55,18 @@ Assets load per level, not all at once (`render/assets.js` priority queue + `lev
 | Key | Action |
 |---|---|
 | WASD / Mouse | Move / aim (click the game to lock the mouse) |
-| LMB / RMB | Fire / zoom (sniper scope) |
+| LMB / RMB (hold) | Fire / aim |
+| F | Aim on / off (Shift cancels it). Sniper: zoom 1 → zoom 2 (3× stronger) → off |
+| Wheel while zoomed | Sniper: switch between zoom 1 and zoom 2 (instead of switching guns) |
+| 5 | Stats & powers panel (spells and perks show what unlocks them) |
+| P | God mode: you still get hit but health never drops below 99; also gives one of every gun (keeping yours, dropping extras), unlocks every spell, gives infinite mana and endless spare ammo for every gun (you still reload), and keeps you topped up at 99,999 tickets, 9,999 of each resource, full ammo and medkits |
 | Shift · Space · C · Alt or V | Sprint · jump/double jump · slide · dash |
 | R · 1–4 / wheel | Reload · switch gun |
 | G | Pick up gun / open Weapon Box |
 | H | Use medkit |
-| Q E Z X F | Spells |
+| Q E Z X T | Spells (Meteor Bonk is T) |
 | Tab (hold) · B · I | Skills · shop (between waves) · your guns |
-| Enter · ` · M · Esc | Ready for next wave · debug panel · mute · pause |
+| Enter · ` · F3 · M · Esc | Ready for next wave · debug panel · frame-time stats · mute · pause |
 
 ## Code layout
 

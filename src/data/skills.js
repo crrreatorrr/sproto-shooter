@@ -25,7 +25,7 @@ export const PERKS = [
   { id: 'chainZap', skill: 'magic', level: 3, name: 'Chain Zap [E]', desc: 'Lightning that jumps between enemies.' },
   { id: 'swarm', skill: 'magic', level: 6, name: 'Sproto Swarm [Z]', desc: 'Summon 5 mini Sprotos for 8s.' },
   { id: 'manaShield', skill: 'magic', level: 8, name: 'Mana Shield [X]', desc: 'Toggle: mana absorbs 60% of damage.' },
-  { id: 'meteor', skill: 'magic', level: 10, name: 'Meteor Bonk [F]', desc: 'Ultimate. Full mana. Giant meteor.' },
+  { id: 'meteor', skill: 'magic', level: 10, name: 'Meteor Bonk [T]', desc: 'Ultimate. Full mana. Giant meteor.' },
   { id: 'craftT1', skill: 'crafting', level: 1, name: 'T1 Recipes', desc: 'Craft Common guns, ammo and medkits.' },
   { id: 'craftT2', skill: 'crafting', level: 3, name: 'T2 Recipes', desc: 'Craft Uncommon guns.' },
   { id: 'craftT3', skill: 'crafting', level: 5, name: 'T3 Recipes', desc: 'Craft Rare guns and choose the element.' },
@@ -40,7 +40,7 @@ export const SPELLS = {
   chainZap: { id: 'chainZap', name: 'Chain Zap', key: 'E', mana: 30, cd: 4, damage: 40, range: 25, chains: 4, chainRange: 6, falloff: 0.8 },
   swarm: { id: 'swarm', name: 'Sproto Swarm', key: 'Z', mana: 50, cd: 15, count: 5 },
   manaShield: { id: 'manaShield', name: 'Mana Shield', key: 'X', mana: 10, drain: 4, cd: 1, absorb: 0.6, dmgPerMana: 1.5 },
-  meteor: { id: 'meteor', name: 'Meteor Bonk', key: 'F', mana: 'all', cd: 30, damage: 300, radius: 6, delay: 1, knockback: 14 },
+  meteor: { id: 'meteor', name: 'Meteor Bonk', key: 'T', mana: 'all', cd: 30, damage: 300, radius: 6, delay: 1, knockback: 14 },
 };
 export const SPELL_IDS = ['gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor'];
 
