@@ -322,35 +322,35 @@
       "path": "models/projectiles/drill_head.glb",
       "kind": "static",
       "from": [
-        "src/render/renderer.js"
+        "src/render/instancing/ProjectileBatches.js"
       ]
     },
     {
       "path": "models/projectiles/missile.glb",
       "kind": "static",
       "from": [
-        "src/render/renderer.js"
+        "src/render/instancing/ProjectileBatches.js"
       ]
     },
     {
       "path": "models/projectiles/monster_bullet.glb",
       "kind": "static",
       "from": [
-        "src/render/renderer.js"
+        "src/render/instancing/ProjectileBatches.js"
       ]
     },
     {
       "path": "models/projectiles/rubber_bullet.glb",
       "kind": "static",
       "from": [
-        "src/render/renderer.js"
+        "src/render/instancing/ProjectileBatches.js"
       ]
     },
     {
       "path": "models/projectiles/tyre.glb",
       "kind": "static",
       "from": [
-        "src/render/renderer.js"
+        "src/render/instancing/ProjectileBatches.js"
       ]
     },
     {
@@ -2080,7 +2080,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/renderer.js"
+        "src/render/instancing/ProjectileBatches.js"
       ],
       "kind": "glb",
       "width": null,
@@ -2137,7 +2137,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/renderer.js"
+        "src/render/instancing/ProjectileBatches.js"
       ],
       "kind": "glb",
       "width": null,
@@ -2194,7 +2194,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/renderer.js"
+        "src/render/instancing/ProjectileBatches.js"
       ],
       "kind": "glb",
       "width": null,
@@ -2223,7 +2223,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/renderer.js"
+        "src/render/instancing/ProjectileBatches.js"
       ],
       "kind": "glb",
       "width": null,
@@ -2280,7 +2280,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/renderer.js"
+        "src/render/instancing/ProjectileBatches.js"
       ],
       "kind": "glb",
       "width": null,

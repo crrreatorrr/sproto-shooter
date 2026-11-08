@@ -16,6 +16,7 @@ import { SKILL_IDS } from '../data/skills.js';
 import { MAX_TIER } from '../data/waves.js';
 import { createPerfCounters } from '../render/debug/perfCounters.js';
 import { createStatsOverlay } from '../render/debug/StatsOverlay.js';
+import { createFeel, wireHitstop } from './feel.js';
 
 const MAX_FRAME = 0.25, MAX_TICKS = 5;
 
@@ -30,8 +31,8 @@ export class Game {
     this.state = createGameState({ seed });
     this.paused = true;
     this.timeScale = 1;
-    this.hitstopMs = 0;
     this.settings = { hitstop: true, shake: 1, sensitivity: 1, ...loadProfile().settings };
+    this.feel = createFeel();
     // Optional observer for a server-issued run log. Null leaves gameplay unchanged.
     this.onSimCommand = null;
 
@@ -48,10 +49,12 @@ export class Game {
       if (!decision?.profile?.settings) return;
       Object.assign(this.settings, decision.profile.settings);
       this.input.sensitivity = 0.0022 * this.settings.sensitivity;
+      this.audio.setVolumes(this.settings.volumes);
     }).catch(() => {});
     this.gui = null;
     this.debugOpen = false;
-    this.wireFeel();
+    wireHitstop(this);
+    this.audio.setVolumes(this.settings.volumes);
     this.wireInput();
     if (debug) this.openDebugPanel();
 
@@ -108,15 +111,6 @@ export class Game {
   }
   shopOpen() { const s = this.state; return s.mode === 'sandbox' || (s.wave && (s.wave.phase === 'intermission' || s.wave.phase === 'victory')); }
   skipIntermission() { this._skip = true; }
-
-  wireFeel() {
-    const stop = (ms) => { if (this.settings.hitstop) this.hitstopMs = Math.max(this.hitstopMs, Math.min(ms, 200)); };
-    this.bus.on('damage', (ev) => { if (ev.isWeak && ev.sourceKind === 'gun' && ev.amount > 40) stop(45); if (ev.killed && ev.isWeak) stop(60); });
-    this.bus.on('bossDefeated', () => stop(200));
-    this.bus.on('bossPhase', () => stop(120));
-    this.bus.on('bossMeleeHit', () => stop(110)); // brief freeze when a boss melee connects (weight)
-    this.bus.on('meteorImpact', () => stop(90));
-  }
 
   wireInput() {
     const inp = this.input;
@@ -293,6 +287,11 @@ export class Game {
       <label>Mouse sensitivity <input id="sens" type="range" min="0.3" max="3" step="0.05" value="${this.settings.sensitivity}"></label>
       <label><input id="hs" type="checkbox" ${this.settings.hitstop ? 'checked' : ''}> Hitstop on big hits</label>
       <label>Screen shake <input id="shk" type="range" min="0" max="1.5" step="0.1" value="${this.settings.shake}"></label>
+      <label>FX quality <select id="fxq">${['low', 'medium', 'high'].map((q) => `<option value="${q}" ${this.settings.fxQuality === q ? 'selected' : ''}>${q}</option>`).join('')}</select></label>
+      <label>Screen effects <input id="sfxs" type="range" min="0" max="1" step="0.05" value="${this.settings.screenFx}"></label>
+      <label>Master <input id="vol-master" type="range" min="0" max="1" step="0.05" value="${this.settings.volumes.master}"></label>
+      <label>Music <input id="vol-music" type="range" min="0" max="1" step="0.05" value="${this.settings.volumes.music}"></label>
+      <label>SFX <input id="vol-sfx" type="range" min="0" max="1" step="0.05" value="${this.settings.volumes.sfx}"></label>
       ${controlsHtml()}</div>`;
     this.screen.hidden = false;
     this.screen.onclick = (e) => {
@@ -306,6 +305,12 @@ export class Game {
       if (e.target.id === 'sens') { this.settings.sensitivity = +e.target.value; this.input.sensitivity = 0.0022 * this.settings.sensitivity; }
       if (e.target.id === 'hs') this.settings.hitstop = e.target.checked;
       if (e.target.id === 'shk') this.settings.shake = +e.target.value;
+      if (e.target.id === 'fxq') this.settings.fxQuality = e.target.value;
+      if (e.target.id === 'sfxs') this.settings.screenFx = +e.target.value;
+      if (e.target.id === 'vol-master') this.settings.volumes.master = +e.target.value;
+      if (e.target.id === 'vol-music') this.settings.volumes.music = +e.target.value;
+      if (e.target.id === 'vol-sfx') this.settings.volumes.sfx = +e.target.value;
+      if (String(e.target.id).startsWith('vol-')) this.audio.setVolumes(this.settings.volumes);
       this.persistSettings();
     };
   }
@@ -323,7 +328,7 @@ export class Game {
   buildDebug(GUI, open) {
     const gui = new GUI({ title: 'Sproto Debug [`]', width: 300 });
     this.gui = gui;
-    const d = { enemy: 'grunt', count: 1, elite: false, tier: 1, boss: 'monster', gunType: 'random', quality: 'random', element: 'random', wacky: 'random',
+    const d = { enemy: 'midget', count: 1, elite: false, tier: 1, boss: 'monster', gunType: 'random', quality: 'random', element: 'random', wacky: 'random',
       tickets: 200, skill: 'magic', god: false, infAmmo: false, freeze: false, unlock: false, hitboxes: false, dummyInf: false, hpMult: 1, dmgMult: 1, timeScale: 1 };
     const q = (op, args) => this.queue({ type: 'debug', op, args });
     const sp = gui.addFolder('Spawn');
@@ -385,17 +390,17 @@ export class Game {
     const frameMs = now - this.last;
     let ft = Math.min(frameMs / 1000, MAX_FRAME);
     this.last = now;
-    if (this.hitstopMs > 0) { this.hitstopMs -= ft * 1000; ft = 0; }
+    const stepped = this.feel.scaleFrame(ft, this.settings.hitstop);
     if (this.pvpActive) {
       const cmd = this.input.buildCommand(this.state.tick);
-      if (this.pvp) this.pvp.frame(ft, cmd);
+      if (this.pvp) this.pvp.frame(stepped, cmd);
       requestAnimationFrame((t) => this.frame(t));
       return;
     }
     // Shop/crafting menus and the debug panel do NOT pause. The pause and end screens do. The title runs a demo behind it.
     const scr = this.screen.hidden ? null : this.screen.querySelector('.title') ? 'title' : 'other';
     const titleUp = scr === 'title';
-    if (scr === null || titleUp) this.acc += ft * this.timeScale;
+    if (scr === null || titleUp) this.acc += stepped * this.timeScale;
     const sim0 = performance.now();
     let n = 0;
     while (this.acc >= DT && n < MAX_TICKS) {

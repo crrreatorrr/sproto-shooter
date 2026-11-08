@@ -1,0 +1,387 @@
+import * as THREE from 'three';
+import { TUNING } from '../../data/tuning.js';
+import { BOSSES, ENEMIES as ENEMY_DEFS } from '../../data/enemies.js';
+import { zoomFovFor } from '../../data/guns.js';
+import { stageFor } from '../../data/stages.js';
+import { worldHitboxes } from '../../sim/collision.js';
+import { bossClipWant, enemyClipWant } from '../bossClips.js';
+import { createClock } from '../core/clock.js';
+import { assetsVersion } from '../assets.js';
+
+export function mountPresent(env) {
+  const { AMMO_COL, CONF_N, G, GUN_MODEL_LEN, PK, PK_COL, RES_COL, TRACER_N, VM_LAYER, VM_POSE, addTracer, applyStage, arenaBits, beginGpu, booms, boxView, boxViews, buildAlly, buildBoss, buildEnemy, buildGunMesh, buildGunModel, buildGunPickup, buildHazard, camera, cl, confetti, cp, cr, cv, disposeTree, dummy, endGpu, ensureProjectileModel, feel, flashLight, fp, inst, lerp, levelView, muzzleFlash, pollGpu, releaseUnseen, reloadHands, reloadOffsets, renderer, requestNeeds, scene, setVmLayer, syncView, tracerGeo, tracerPos, tracers, updateBeams, viewKey, vm, vmRoot, warmColliders } = env;
+  let vmGun = null, vmGunKey = null;
+  let needsT = 0;
+  const clock = createClock();
+  let showHitboxes = false;
+  const hbGroup = new THREE.Group(); scene.add(hbGroup);
+  const hbMats = { body: new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true }), weak: new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true }), shield: new THREE.MeshBasicMaterial({ color: 0x00aaff, wireframe: true }) };
+  const _hb = [];
+  function liveFx() {
+    let n = booms.length;
+    for (let i = 0; i < CONF_N; i++) if (cl[i] > 0) n++;
+    for (let i = 0; i < tracers.length; i++) if (tracers[i].life > 0) n++;
+    return n;
+  }
+
+  function render(state, alpha, look, opts = {}) {
+    renderer.info.reset();
+    pollGpu();
+    beginGpu();
+    const frame = clock.tick();
+    const now = frame.now;
+    const fdt = frame.dt;
+    const p = state.players[state.localPlayerId];
+    const t = state.time;
+
+    // camera
+    const px = lerp(p.prevPos.x, p.pos.x, alpha), py = lerp(p.prevPos.y, p.pos.y, alpha), pz = lerp(p.prevPos.z, p.pos.z, alpha);
+    const eyeT = p.dead ? 0.3 : p.downed ? TUNING.downedEye : p.move.mode === 'slide' ? TUNING.slideEye : TUNING.eyeHeight;
+    feel.eye = feel.eye == null ? eyeT : lerp(feel.eye, eyeT, Math.min(1, fdt * 14));
+    const speed = Math.hypot(p.vel.x, p.vel.z);
+    if (p.onGround && speed > 1) vm.bob += fdt * speed * 1.4;
+    const bobY = p.onGround ? Math.sin(vm.bob * 2) * 0.03 * Math.min(1, speed / 6) : 0;
+    feel.landDip = Math.max(0, feel.landDip - fdt * 1.2);
+    camera.position.set(px, py + feel.eye + bobY - feel.landDip * 0.4, pz);
+    feel.trauma = Math.max(0, feel.trauma - fdt * 1.6);
+    const sh = feel.trauma * feel.trauma * (opts.shake ?? 1);
+    const n1 = Math.sin(now * 0.047) + Math.sin(now * 0.031), n2 = Math.sin(now * 0.043 + 1) + Math.sin(now * 0.029 + 2);
+    camera.rotation.y = look.yaw + p.recoil.yaw + n1 * 0.02 * sh;
+    camera.rotation.x = look.pitch + p.recoil.pitch + n2 * 0.02 * sh;
+    camera.rotation.z = (Math.sin(now * 0.037) * 0.03 * sh) + (p.move.mode === 'slide' ? 0.06 : 0) + (p.downed ? 0.25 : 0);
+    const gun = p.guns[p.activeSlot];
+    let targetFov = TUNING.fovBase + (p.move.mode === 'sprint' ? TUNING.fovSprint : 0);
+    if (p.zooming && gun) targetFov = zoomFovFor(gun, opts.zoomLevel || 1);
+    feel.fovPunch = Math.max(0, feel.fovPunch - fdt * 30);
+    feel.fov = lerp(feel.fov, targetFov, Math.min(1, fdt * 14));
+    camera.fov = feel.fov + feel.fovPunch;
+    camera.updateProjectionMatrix();
+
+    // viewmodel
+    const vmKey = gun ? gun.id + ':' + assetsVersion() : null;
+    if (gun && vmKey !== vmGunKey) {
+      vmGunKey = vmKey;
+      const vmLen = (VM_POSE[gun.type] && VM_POSE[gun.type].len) || GUN_MODEL_LEN[gun.type]; // viewmodel size can differ from pickups
+      const modeled = GUN_MODEL_LEN[gun.type] && buildGunModel(gun, vmLen);
+      // assets changed but this gun still has no model: keep the current mesh
+      if (modeled || !vmGun || vmGun.userData.gunId !== gun.id) {
+        if (vmGun) { disposeTree(vmGun); vmRoot.remove(vmGun); }
+        vmGun = modeled || buildGunMesh(gun, true);
+        vmGun.userData.gunId = gun.id;
+        vmGun.userData.type = gun.type;
+        vmGun.userData.pose = modeled ? VM_POSE[gun.type] || VM_POSE.model : VM_POSE.box;
+        vmGun.scale.setScalar(vmGun.userData.pose.scale);
+        setVmLayer(vmGun);
+        vmRoot.add(vmGun);
+      }
+    }
+    vm.kick = Math.max(0, vm.kick - fdt * 8);
+    vm.swap = Math.max(0, vm.swap - fdt * 4);
+    vm.reload = p.reloadT > 0 ? 1 : Math.max(0, vm.reload - fdt * 6);
+    const dyaw = look.yaw - vm.lastYaw, dpitch = look.pitch - vm.lastPitch;
+    vm.lastYaw = look.yaw; vm.lastPitch = look.pitch;
+    vm.swayX = lerp(vm.swayX, Math.max(-0.05, Math.min(0.05, dyaw * 0.6)), Math.min(1, fdt * 10));
+    vm.swayY = lerp(vm.swayY, Math.max(-0.05, Math.min(0.05, dpitch * 0.6)), Math.min(1, fdt * 10));
+    const ads = p.zooming ? 1 : 0;
+    vm.ads = lerp(vm.ads || 0, ads, Math.min(1, fdt * 14));
+    vmRoot.visible = !p.dead;
+    if (vmGun) {
+      const pose = vmGun.userData.pose, ia = 1 - vm.ads;
+      const r = reloadOffsets(vmGun.userData.type, p.reloadT, vm.reloadTime);
+      const steady = 1 - 0.75 * vm.ads; // less sway and bob while aiming
+      const ad = pose.ads;
+      vmGun.position.set(
+        lerp(pose.rest[0], ad[0], vm.ads) + vm.swayX * steady + r.x,
+        lerp(pose.rest[1], ad[1], vm.ads) - vm.swayY * steady + r.y - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006 * steady,
+        lerp(pose.rest[2], ad[2], vm.ads) + vm.kick * 0.05 + r.z);
+      vmGun.rotation.set(vm.kick * 0.25 + r.rx, pose.yaw * ia + vm.swayX * steady + r.ry, pose.roll * ia + r.rz);
+      vmGun.updateMatrix();
+      muzzleFlash.position.copy(vmGun.userData.muzzle).applyMatrix4(vmGun.matrix);
+    }
+    if (vmGun && gun) fp.setGun(vmGun, gun.type);
+    warmColliders(p.guns);
+    const hands = vmGun && gun ? reloadHands(vmGun, vmGun.userData.type, p.reloadT, vm.reloadTime) : null;
+    fp.update(vmRoot.visible, { dt: fdt, ads: vm.ads, ...hands });
+    if (fp.ready && !fp.root.userData.vmLayer) { setVmLayer(fp.root); fp.root.userData.vmLayer = true; }
+    env.flashT -= fdt;
+    if (env.flashT <= 0) muzzleFlash.visible = false;
+    flashLight.intensity = Math.max(0, flashLight.intensity - fdt * 120);
+
+    // weapon boxes
+    for (const b of state.weaponBoxes) {
+      let v = boxViews.get(b.id);
+      if (!v) { v = boxView(b); boxViews.set(b.id, v); }
+      v.userData.glow.material.opacity = b.glow ? 0.45 + Math.sin(now * 0.005) * 0.25 : 0.15;
+      v.userData.lid.position.y = 1.1 + (b.craft ? Math.abs(Math.sin(now * 0.03)) * 0.3 : 0);
+    }
+
+    // enemies
+    needsT -= fdt;
+    applyStage(stageFor(state, env.stageOverride));
+    if (needsT <= 0) { needsT = 0.25; requestNeeds(state); }
+    const campaign = state.mode === 'campaign' && state.level;
+    for (const mesh of arenaBits) mesh.visible = !campaign;
+    levelView.group.visible = !!campaign;
+    if (campaign) {
+      levelView.sync(state);
+      if (scene.fog) {
+        const dark = state.level.modifiers && state.level.modifiers.lightsOut;
+        scene.fog.near = dark ? 4 : 30;
+        scene.fog.far = dark ? 36 : 420;
+      }
+    } else if (scene.fog && scene.fog.far > 300) {
+      scene.fog.near = 60;
+      scene.fog.far = 200;
+    }
+    for (const e of state.enemies) {
+      // Model-swap only when the needed stage model is loaded (avoid flicker between fallback and model).
+      const v = syncView(e.id, () => (e.boss ? buildBoss(e) : buildEnemy(e)), viewKey(e));
+      const o = v.obj, u = o.userData;
+      const ex = lerp(e.prevPos.x, e.pos.x, alpha), ey = lerp(e.prevPos.y, e.pos.y, alpha), ez = lerp(e.prevPos.z, e.pos.z, alpha);
+      o.position.set(ex, ey, ez);
+      // bosses turn smoothly on screen (an angular ease toward the sim's facing)
+      if (e.boss) {
+        if (u.visYaw === undefined) u.visYaw = e.yaw;
+        const dy = Math.atan2(Math.sin(e.yaw - u.visYaw), Math.cos(e.yaw - u.visYaw));
+        u.visYaw += dy * Math.min(1, fdt * 7);
+        o.rotation.y = u.visYaw + Math.PI;
+      } else o.rotation.y = e.yaw + Math.PI;
+      // flash / status tint
+      const tint = e.hitFlash > 0 ? [0.9, 0.9, 0.9] : e.status.burn ? [0.45, 0.12, 0] : e.status.goo ? [0.08, 0.3, 0] : [0, 0, 0];
+      if (u.char) u.char.setTint(...tint);
+      else if (u.bodyMat) { u.bodyMat.emissive.setRGB(...tint); }
+      // scale: pop in while spawning, wobble when staggered
+      let sc = e.boss ? 1 : e.scale;
+      if (e.state === 'spawning') sc *= Math.min(1, 0.2 + e.stateT / 0.8);
+      if (e.dead) sc = 0.01;
+      o.scale.setScalar(sc);
+      o.rotation.z = e.state === 'stagger' ? Math.sin(now * 0.04) * 0.12 : 0;
+      if (u.weak && !e.boss) {
+        const bh = e.bigHeadT > 0 ? 1.8 : 1;
+        if (!u.weakBase) u.weakBase = u.weak.scale.clone();
+        u.weak.scale.copy(u.weakBase).multiplyScalar(bh * (1 + Math.sin(now * 0.008) * 0.08));
+      }
+      for (const ey2 of u.eyes) { const pu = ey2.userData.pupil; pu.position.x = Math.sin(now * 0.013 + e.id) * 0.04; pu.position.y = Math.cos(now * 0.017 + e.id) * 0.04; }
+      if (u.crown) u.crown.rotation.y += fdt * 2;
+      if (u.prop) u.prop.rotation.y += fdt * 40;
+      if (u.shadow) { u.shadow.position.y = 0.02 - ey / Math.max(0.05, sc); u.shadow.visible = !ENEMY_DEFS[e.type]?.flying || ey < 10; }
+      const spd = Math.hypot(e.vel.x, e.vel.z);
+      if (u.char) {
+        const ch = u.char;
+        if (u.clipsOnly) { /* clip layer drives every state (below) */ }
+        else if (!e.boss) {
+          if (e.state === 'stagger') ch.play('stun');
+          else if (e.state === 'attack') ch.play(e.type === 'bigObama' ? 'castBig' : 'cast', { speed: e.type === 'midget' ? 1.8 : 1.2 });
+          else if (e.ai.shooting) ch.play('cast', { speed: 1.4 });
+          else if (ENEMY_DEFS[e.type].flying) ch.play(ch.has('jump') ? 'jump' : 'idle', { speed: 0.8 });
+          else if (spd > 0.6) { ch.play('run'); ch.setSpeed(Math.min(2.2, Math.max(0.6, spd / 4.5))); }
+          else ch.play('idle');
+        } else {
+          const act = e.boss.action.id;
+          const map = e.type === 'dragon' ? {} : BOSSES[e.type].ai === 'mega'
+            ? { intro: 'victory', transition: 'hit', chase: 'run', charge: e.boss.action.t < 0.8 ? 'castBig' : 'run', stunned: 'stun', slam: 'jump', volley: 'castBig', summon: 'victory', melee: 'castBig', missiles: 'cast' }
+            : { intro: 'victory', transition: 'hit', drift: 'idle', ring: 'cast', fan: 'cast', spiral: 'cast', taxBolts: 'castBig', spiralRing: 'castBig', teleport: 'castBig' };
+          const clip = map[act] || 'idle';
+          // longer blends between clips; the run plays at the pace the boss actually moves
+          const runPace = Math.min(1.8, Math.max(0.6, spd / Math.max(1, BOSSES[e.type].speed || 4.5)));
+          ch.play(clip, { fade: 0.3, speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : clip === 'run' ? runPace : 1 });
+        }
+        if (!u.clipsOnly) ch.update(fdt);
+        // authored clip for this frame (bossClips.js), decided first so the procedural rig can hold still under it
+        let want = null;
+        if (u.clips && e.boss) {
+          const a = e.boss.action;
+          want = bossClipWant({ type: e.type, action: a.id, actionT: a.t, variant: a.data.variant, data: a.data, speed: spd,
+            fitHeight: u.fitH, altitude: ey, def: BOSSES[e.type], phaseIdx: e.boss.phaseIdx, durations: u.clips.durations });
+        } else if (u.clips) {
+          const def = ENEMY_DEFS[e.type];
+          want = enemyClipWant({ type: e.type, state: e.state, ai: e.ai, def, speed: spd, fitHeight: def.height * (e.scale || 1), durations: u.clips.durations });
+        }
+        if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, speed: spd, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0,
+          variant: e.boss ? e.boss.action.data.variant : null, altitude: ey, yaw: e.yaw, clipDriven: !!want });
+        if (u.clips) {
+          const w = u.clips.apply(fdt, want);
+          if (w > 0 && u.rig) { if (u.rig.post) u.rig.post(w); ch.root.position.y *= 1 - w; } // the clip carries its own hip bob
+        }
+      }
+      if (e.boss) {
+        if (e.type === 'dragon') {
+          const airborne = ey > 0.4;
+          o.position.y = ey + (airborne ? Math.sin(now * 0.004) * 0.15 : e.ai.moving ? Math.abs(Math.sin(now * 0.008)) * 0.12 : Math.sin(now * 0.002) * 0.05);
+          if (u.groundShadow) { // shadow stays on the floor, shrinking and fading with altitude
+            u.groundShadow.position.y = 0.02 - (o.position.y) / Math.max(0.05, o.scale.y);
+            u.groundShadow.scale.setScalar(3.4 * Math.max(0.5, 1 - ey * 0.05));
+          }
+        } else if (BOSSES[e.type].ai === 'mega') {
+          u.belly.visible = e.boss.action.id === 'stunned';
+          o.rotation.z = e.boss.action.id === 'stunned' ? Math.sin(now * 0.02) * 0.06 : 0;
+        } else {
+          const a = e.boss.weakAngle;
+          u.weak.position.set(ex + Math.cos(a) * 1.9, ey + 0.2, ez + Math.sin(a) * 1.9);
+          u.weak.scale.setScalar(0.45 * (1 + Math.sin(now * 0.01) * 0.12) * (e.bigHeadT > 0 ? 1.8 : 1));
+          const ar = e.ai.auraR || 9;
+          u.aura.position.set(ex, 0.05, ez); u.aura.scale.setScalar(ar);
+          u.auraFill.position.set(ex, 0.04, ez); u.auraFill.scale.setScalar(ar);
+          u.aura.material.opacity = 0.3 + Math.sin(now * 0.006) * 0.15;
+          const fade = e.boss.fade ?? 1;
+          o.visible = fade > 0.05;
+          o.scale.setScalar(Math.max(0.05, fade));
+          u.weak.visible = u.aura.visible = u.auraFill.visible = !e.dead && fade > 0.05;
+        }
+      }
+    }
+    // allies
+    for (const a of state.allies) {
+      const v = syncView(a.id, () => ({ obj: buildAlly() }));
+      v.obj.position.set(lerp(a.prevPos.x, a.pos.x, alpha), a.pos.y, lerp(a.prevPos.z, a.pos.z, alpha));
+      v.obj.rotation.y = a.yaw + Math.PI;
+    }
+    // gun pickups
+    for (const k of state.pickups) {
+      if (k.kind !== 'gun') continue;
+      const v = syncView(k.id, () => ({ obj: buildGunPickup(k.gun) }));
+      const old = v.obj.userData.mesh;
+      if (GUN_MODEL_LEN[k.gun.type] && !old.userData.model) {
+        const m = buildGunModel(k.gun, GUN_MODEL_LEN[k.gun.type] * 1.6);
+        if (m) { m.rotation.copy(old.rotation); v.obj.remove(old); v.obj.add(m); v.obj.userData.mesh = m; }
+      }
+      v.obj.position.set(lerp(k.prevPos.x, k.pos.x, alpha), lerp(k.prevPos.y, k.pos.y, alpha) + Math.sin(now * 0.003 + k.id) * 0.1, lerp(k.prevPos.z, k.pos.z, alpha));
+      v.obj.userData.mesh.rotation.y += fdt * 1.5;
+      v.obj.scale.setScalar(p.nearGunPickupId === k.id ? 1.15 : 1);
+    }
+    // hazards
+    for (const h of state.hazards) {
+      const v = syncView(h.id, () => ({ obj: buildHazard(h) }));
+      const o = v.obj;
+      if (h.kind === 'shockwave') { o.scale.set(h.radius, h.height * 2, h.radius); o.position.y = h.height / 2; o.material.opacity = 0.75 * (1 - h.radius / h.maxRadius) + 0.15; }
+      else if (h.kind === 'telegraphLine') o.material.opacity = 0.2 + 0.3 * Math.abs(Math.sin(now * 0.02));
+      else if (h.kind === 'meteorMarker') { const k = h.t / h.data.delay; o.userData.rock.position.y = 30 * (1 - k); o.userData.rock.rotation.x += fdt * 5; o.userData.ring.material.opacity = 0.4 + 0.5 * Math.abs(Math.sin(now * 0.03)); }
+      else if (h.kind === 'spawnPortal') { o.scale.setScalar(h.radius * (0.5 + h.t / h.ttl)); o.rotation.z += fdt * 6; o.material.opacity = 1 - h.t / h.ttl; }
+      else { o.scale.setScalar(h.radius * (0.4 + 0.6 * (h.t / h.ttl))); o.material.opacity = 0.7 * (1 - h.t / h.ttl); }
+    }
+    releaseUnseen();
+
+    // instanced projectiles
+    for (const k in inst) inst[k].n = 0;
+    for (const pr of state.projectiles) {
+      const I = inst[pr.kind]; if (!I || I.n >= I.d.cap) continue;
+      dummy.position.set(lerp(pr.prevPos.x, pr.pos.x, alpha), lerp(pr.prevPos.y, pr.pos.y, alpha), lerp(pr.prevPos.z, pr.pos.z, alpha));
+      const s = I.d.scale * (pr.kind === 'orb' || pr.kind === 'taxBolt' || pr.kind === 'fireball' ? 1 + Math.sin(now * 0.02 + pr.id) * 0.15 : 1) * (pr.kind === 'flame' ? 0.6 + (1.4 - pr.ttl) * 1.6 : 1);
+      if (pr.kind === 'rocket') { dummy.scale.set(s, s, s * 3); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
+      else if (pr.kind === 'bigBullet') {
+        dummy.scale.set(s, s, s * 2.4); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z);
+        addTracer(pr.prevPos, dummy.position, 0xffd27a, 0.09); // hot streak behind the round
+      }
+      else if (pr.kind === 'bullet' || pr.kind === 'pellet') { dummy.scale.set(s, s, s * 2.2); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
+      else if (pr.kind === 'laser' || pr.kind === 'bigLaser') { dummy.scale.set(s, s, s * (pr.kind === 'laser' ? 7 : 5)); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
+      else if (pr.kind === 'yeetGun') { dummy.scale.set(0.15, 0.2, 0.8); dummy.rotation.set(now * 0.02, now * 0.015, 0); }
+      else if (I.d.model) { // modeled boss projectiles fly nose-first; the mesh stays a sphere until it loads
+        ensureProjectileModel(I);
+        dummy.scale.setScalar(I.modeled ? 1 : s);
+        dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z);
+        if (pr.kind === 'missile') dummy.rotateZ(now * 0.01 + pr.id); // spin
+        else if (pr.kind === 'drill') dummy.rotateZ(now * 0.04 + pr.id); // the drill bit keeps spinning
+        else if (pr.kind === 'tyre') { dummy.rotateY(now * 0.009 + pr.id); dummy.rotateX(now * 0.015 + pr.id); } // tumbles: face and tread both show
+        else if (pr.kind === 'rubberBullet') dummy.rotateZ(now * 0.02 + pr.id); // rubber rounds spin as they fly
+      }
+      else { dummy.scale.setScalar(s); dummy.rotation.set(0, 0, 0); }
+      dummy.updateMatrix();
+      I.im.setMatrixAt(I.n++, dummy.matrix);
+    }
+    for (const k in inst) { inst[k].im.count = inst[k].n; inst[k].im.instanceMatrix.needsUpdate = true; }
+
+    // instanced pickups
+    for (const k in PK) PK[k].n = 0;
+    for (const pk of state.pickups) {
+      if (pk.kind === 'gun') continue;
+      const I = PK[pk.kind]; if (!I || I.n >= 256) continue;
+      dummy.position.set(lerp(pk.prevPos.x, pk.pos.x, alpha), lerp(pk.prevPos.y, pk.pos.y, alpha) + Math.sin(now * 0.004 + pk.id) * 0.08, lerp(pk.prevPos.z, pk.pos.z, alpha));
+      const s = pk.kind === 'bigHealth' ? 0.4 : pk.kind === 'resource' ? (pk.resId === 'bossCore' || pk.resId === 'manaCrystal' ? 0.35 : 0.2) : pk.kind === 'tickets' ? 0.18 : 0.22;
+      dummy.rotation.set(pk.kind === 'tickets' ? Math.PI / 2 : 0, now * 0.003 + pk.id, 0);
+      dummy.scale.set(s, pk.kind === 'tickets' ? 0.05 / 0.18 * s : s, s);
+      if (pk.ttl < 5) dummy.scale.multiplyScalar(Math.sin(now * 0.03) > 0 ? 1 : 0.5);
+      dummy.updateMatrix();
+      I.im.setMatrixAt(I.n, dummy.matrix);
+      const col = pk.kind === 'resource' ? RES_COL[pk.resId] : pk.kind === 'ammo' ? AMMO_COL[pk.ammoType] : PK_COL[pk.kind];
+      I.im.setColorAt(I.n, col);
+      I.n++;
+    }
+    for (const k in PK) { const I = PK[k]; I.im.count = I.n; I.im.instanceMatrix.needsUpdate = true; if (I.im.instanceColor) I.im.instanceColor.needsUpdate = true; }
+
+    updateBeams(fdt);
+    // tracers
+    for (let i = 0; i < TRACER_N; i++) {
+      const tr = tracers[i];
+      if (tr.life > 0) { tr.life -= fdt; if (tr.life <= 0) tracerPos.fill(0, i * 6, i * 6 + 6); }
+    }
+    tracerGeo.attributes.position.needsUpdate = true;
+    tracerGeo.attributes.color.needsUpdate = true;
+
+    // confetti
+    for (let i = 0; i < CONF_N; i++) {
+      if (cl[i] <= 0) { dummy.scale.setScalar(0); dummy.position.set(0, -100, 0); dummy.updateMatrix(); confetti.setMatrixAt(i, dummy.matrix); continue; }
+      cl[i] -= fdt;
+      cv[i * 3 + 1] -= 9 * fdt;
+      cv[i * 3] *= 1 - fdt * 1.5; cv[i * 3 + 2] *= 1 - fdt * 1.5;
+      if (cv[i * 3 + 1] < -2.5) cv[i * 3 + 1] = -2.5;
+      cp[i * 3] += cv[i * 3] * fdt; cp[i * 3 + 1] += cv[i * 3 + 1] * fdt; cp[i * 3 + 2] += cv[i * 3 + 2] * fdt;
+      if (cp[i * 3 + 1] < 0.02) { cp[i * 3 + 1] = 0.02; cv[i * 3] = cv[i * 3 + 2] = 0; }
+      cr[i] += fdt * 8;
+      dummy.position.set(cp[i * 3], cp[i * 3 + 1], cp[i * 3 + 2]);
+      dummy.rotation.set(cr[i], cr[i] * 0.7, 0);
+      dummy.scale.setScalar(Math.min(1, cl[i] * 2));
+      dummy.updateMatrix();
+      confetti.setMatrixAt(i, dummy.matrix);
+    }
+    confetti.instanceMatrix.needsUpdate = true;
+
+    // booms
+    for (let i = booms.length - 1; i >= 0; i--) {
+      const b = booms[i];
+      b.life -= fdt;
+      const k = 1 - b.life / b.max;
+      b.m.scale.setScalar(b.radius * (0.3 + 0.7 * Math.sqrt(k)));
+      b.m.material.opacity = 0.8 * (1 - k);
+      if (b.life <= 0) { scene.remove(b.m); b.m.material.dispose(); booms.splice(i, 1); }
+    }
+
+    // debug hitboxes
+    hbGroup.clear();
+    if (showHitboxes) {
+      for (const e of state.enemies) {
+        if (e.dead) continue;
+        worldHitboxes(e, _hb);
+        for (const hb of _hb) {
+          const m = new THREE.Mesh(hb.type === 'sphere' ? G.sphereLo : G.cyl, hbMats[hb.zone]);
+          if (hb.type === 'sphere') { m.position.set(hb.x, hb.y, hb.z); m.scale.setScalar(hb.r); }
+          else { m.position.set(hb.x, (hb.y0 + hb.y1) / 2, hb.z); m.scale.set(hb.r, hb.y1 - hb.y0, hb.r); }
+          hbGroup.add(m);
+        }
+      }
+    }
+
+    // dev hook: window.__debugCam renders the scene from an outside camera (used to tune the first-person rig)
+    const debugCam = typeof window !== 'undefined' && window.__debugCam;
+    if (debugCam) { debugCam.layers.enableAll(); renderer.render(scene, debugCam); endGpu(); return; }
+    renderer.render(scene, camera);
+    // viewmodel pass: same camera, depth cleared, no sky redraw
+    const bg = scene.background;
+    scene.background = null;
+    renderer.autoClear = false;
+    renderer.clearDepth();
+    // the gun is drawn at the base field of view, so zooming magnifies the world but not the gun
+    const worldFov = camera.fov;
+    camera.fov = TUNING.fovBase; camera.updateProjectionMatrix();
+    camera.layers.set(VM_LAYER);
+    renderer.render(scene, camera);
+    camera.layers.set(0);
+    camera.fov = worldFov; camera.updateProjectionMatrix();
+    renderer.autoClear = true;
+    scene.background = bg;
+    endGpu();
+  }
+  Object.assign(env, { clock, hbGroup, hbMats, _hb, liveFx, render });
+  env.render = render;
+  env.liveFx = liveFx;
+  env.setShowHitboxes = (v) => { showHitboxes = v; };
+}

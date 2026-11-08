@@ -3,14 +3,19 @@ export function createAudio(bus) {
   let ctx = null, master = null, comp = null;
   const recent = new Map();
   let muted = false;
+  const volumes = { master: 1, music: 1, sfx: 1 };
+  function applyGain() {
+    if (master) master.gain.value = 0.35 * volumes.master * volumes.sfx;
+  }
 
   function ensure() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return true; }
     try {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const AC = window.AudioContext || /** @type {typeof AudioContext} */ (/** @type {any} */ (window).webkitAudioContext);
+      ctx = new AC();
       comp = ctx.createDynamicsCompressor();
       master = ctx.createGain();
-      master.gain.value = 0.35;
+      applyGain();
       master.connect(comp); comp.connect(ctx.destination);
       return true;
     } catch { return false; }
@@ -156,5 +161,11 @@ export function createAudio(bus) {
     ensure,
     toggleMute() { muted = !muted; return muted; },
     get muted() { return muted; },
+    setVolumes(v) {
+      if (v.master != null) volumes.master = v.master;
+      if (v.music != null) volumes.music = v.music;
+      if (v.sfx != null) volumes.sfx = v.sfx;
+      applyGain();
+    },
   };
 }
