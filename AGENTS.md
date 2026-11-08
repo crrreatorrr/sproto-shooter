@@ -45,8 +45,11 @@ npm run profile:check
 
 `npm test` runs the goja goldens with `go run`, so it needs Go. `tests/fixtures/goja/go.mod`
 asks for Go 1.26; an older Go downloads 1.26 by itself unless `GOTOOLCHAIN=local` is set.
-`npm test` and `npm run profile:check` also need Playwright's Chromium (`npx playwright install
-chromium`, which CI runs).
+`npm test` and `npm run profile:check` also need Playwright's Chromium. The browser tests in `npm test`
+run `npx playwright install chromium` themselves when Chromium won't launch, so in practice they
+need either network access to Playwright's download host or a preinstalled Chromium that matches
+the Playwright version. `profile:check` does not install it; CI runs `npx playwright install
+--with-deps chromium` after `npm test` and before `profile:check`.
 
 ## Art generation
 

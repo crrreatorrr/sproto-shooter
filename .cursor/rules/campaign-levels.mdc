@@ -1,6 +1,8 @@
 ---
 description: Sproto Shooter campaign (levels, level engine, Sproto Duel bosses). Use when working on campaign levels, collision/nav, mechanisms, jetpack, enemies, bosses or sections.
-globs: src/data/levels/**,src/sim/level/**,src/sim/campaign/**,src/data/duelBosses.js,src/render/level/**,tests/levels/**
+# Planned, not yet created: src/sim/mechanisms, src/sim/movement, src/sim/ai, src/sim/duelBoss,
+# src/sim/rewardSpells.js, src/render/cinematic (see docs/codex/C-*.md). Kept so the rule fires once they exist.
+globs: src/data/levels/**,src/sim/level/**,src/sim/campaign/**,src/sim/mechanisms/**,src/sim/movement/**,src/sim/ai/**,src/sim/duelBoss/**,src/sim/rewardSpells.js,src/data/duelBosses.js,src/render/level/**,src/render/cinematic/**,tests/levels/**
 alwaysApply: false
 ---
 
