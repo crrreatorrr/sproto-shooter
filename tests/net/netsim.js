@@ -242,7 +242,8 @@ export function botWish(sample, seat, frame, { fire = false, strafe = 0 } = {}) 
  *   durationMs      how long to run after both seats are live
  *   profile         link profile for both directions, or { up, down }
  *   disconnects     [{ peer, atMs, downMs }], peer 0 = 'ada', 1 = 'bea'; atMs from live start
- *   renderHz        client frame rate (inputs are submitted from the render loop, as today)
+ *   renderHz        client frame rate. Each render frame calls client.update(), whose own 30 Hz
+ *                   input clock decides how many inputs (0..4) that frame sends.
  *   fire            whether bots fire (off by default so matches run the whole window)
  *   leaveDetectMs   how long the server takes to notice a reset socket
  */
@@ -374,7 +375,7 @@ export function runScenario(options = {}) {
       onRejoin(fn) { peer.rejoinFns.push(fn); return () => {}; },
     };
     join(peer);
-    peer.client = createPvpClient({ accountId: peer.accountId, match });
+    peer.client = createPvpClient({ accountId: peer.accountId, match, clock: () => scheduler.now });
   }
 
   // Client render loops at renderHz with seeded phase offsets.
@@ -388,14 +389,15 @@ export function runScenario(options = {}) {
         client.ready();
       }
       if (client.phase === 'live' && !client.result) {
-        const sample = client.sample();
+        const sample = client.sample(scheduler.now);
         const viewKey = sample && sample.players
           ? `${sample.tick}|${sample.players.map((p) => `${p.x},${p.z},${p.yaw}`).join('|')}`
           : null;
-        metrics.renderFrame(peer.index, scheduler.now, viewKey);
+        metrics.renderFrame(peer.index, scheduler.now, viewKey, sample && sample.mode);
         if (sample && sample.players && sample.players[0] && sample.players[1] && client.seat >= 0) {
-          client.submit(botWish(sample, client.seat, peer.frame, { fire, strafe: peer.strafe }));
+          client.update(scheduler.now, (frame) => botWish(sample, client.seat, frame, { fire, strafe: peer.strafe }));
         }
+        metrics.clientNet(peer.index, client.net);
       }
       return true;
     }, rng.range(0, frameMs));

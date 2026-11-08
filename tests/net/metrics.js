@@ -35,6 +35,7 @@ function blankPeer() {
     inputsDroppedWhileDown: 0,
     inputsAccepted: 0,
     acceptedFrames: new Set(),
+    firstInputCursor: null,
     rejects: {},
     rejectsByOp: {},
     lateRejects: 0,
@@ -43,6 +44,9 @@ function blankPeer() {
     heldFrames: 0,
     lateFrames: 0,
     starvedFrames: 0,
+    extrapolatedFrames: 0,
+    clientHeldFrames: 0,
+    net: null,
     lastViewKey: null,
     disconnects: [],
     rejoins: [],
@@ -79,6 +83,7 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
         let frame = null;
         if (op === OP.INPUT && data instanceof Uint8Array) {
           try { frame = decodeInput(data).frame; } catch { frame = null; }
+          if (seat.firstInputCursor == null && cursor != null) seat.firstInputCursor = cursor;
         }
         if (out && out.ok === false) {
           bump(seat.rejects, out.reason);
@@ -105,9 +110,12 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
      * player positions). A frame is starved when the view did not move on since the last frame
      * (held), or when the newest snapshot is older than `starveMs` (it would have to extrapolate).
      */
-    renderFrame(index, at, viewKey) {
+    renderFrame(index, at, viewKey, mode = null) {
       const seat = stats[index];
       seat.renderFrames += 1;
+      // What the client itself reports (S1 clock interpolation): past the newest snapshot.
+      if (mode === 'extrap') seat.extrapolatedFrames += 1;
+      if (mode === 'hold') seat.clientHeldFrames += 1;
       const last = seat.snapshotArrivals[seat.snapshotArrivals.length - 1];
       const since = last == null ? at - (liveAt ?? at) : at - last;
       const held = viewKey != null && viewKey === seat.lastViewKey;
@@ -116,6 +124,8 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
       if (since > starveMs) seat.lateFrames += 1;
       if (held || since > starveMs) seat.starvedFrames += 1;
     },
+    /** The client's own timing state (lead, RTT, clock), last value wins. */
+    clientNet(index, net) { stats[index].net = net ? { ...net } : null; },
     disconnected(index, at, sessionId) { stats[index].disconnects.push({ at, sessionId }); },
     rejoined(index, at, sessionId) { stats[index].rejoins.push({ at, sessionId }); },
     joinRefused(index, reason) { stats[index].joinRefusals.push(reason); },
@@ -146,6 +156,10 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
         links,
         peers: stats.map((seat, index) => {
           const applied = [...seat.acceptedFrames].filter((frame) => frame < ticks).length;
+          // Ticks before this peer's first input reached the server can never carry its input:
+          // the match goes live before any client hears about it. Steady state starts there.
+          const reach = seat.firstInputCursor == null ? ticks : seat.firstInputCursor;
+          const steady = [...seat.acceptedFrames].filter((frame) => frame >= reach && frame < ticks).length;
           const arrivals = seat.snapshotArrivals.filter((at) => liveAt == null || at >= liveAt);
           const gaps = arrivals.slice(1).map((t, i) => t - arrivals[i]);
           const rejectTotal = Object.values(seat.rejects).reduce((a, b) => a + b, 0);
@@ -157,6 +171,8 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
             inputsAccepted: seat.inputsAccepted,
             appliedTicks: applied,
             appliedFraction: ticks ? round(applied / ticks) : 0,
+            firstInputCursor: seat.firstInputCursor,
+            steadyAppliedFraction: ticks > reach ? round(steady / (ticks - reach)) : 0,
             rejects: { ...seat.rejects },
             rejectsByOp: { ...seat.rejectsByOp },
             rejectTotal,
@@ -169,6 +185,13 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
             snapshotLateFrames: seat.lateFrames,
             starvedFrames: seat.starvedFrames,
             starvedFraction: seat.renderFrames ? round(seat.starvedFrames / seat.renderFrames) : 0,
+            extrapolatedFrames: seat.extrapolatedFrames,
+            clientHeldFrames: seat.clientHeldFrames,
+            // Client-reported starvation: frames drawn past the newest snapshot (extrapolated or held).
+            clientStarvedFraction: seat.renderFrames
+              ? round((seat.extrapolatedFrames + seat.clientHeldFrames) / seat.renderFrames)
+              : 0,
+            net: seat.net,
             disconnects: seat.disconnects.length,
             rejoins: seat.rejoins.length,
             joinRefusals: [...seat.joinRefusals],

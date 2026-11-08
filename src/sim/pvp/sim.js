@@ -93,7 +93,13 @@ export function normalizeWish(player, raw) {
   };
 }
 
-function integrate(p, wish, dt) {
+/**
+ * Movement for one player and one tick: look, gun swap, dash, ground/air control, jump,
+ * gravity and the arena wall. Pure: it only reads `wish` and mutates `p`. The caller
+ * normalizes the wish (normalizeWish) and skips dead players. Client prediction (S3) runs the
+ * same function on its local copy.
+ */
+export function movePlayer(p, wish, dt) {
   p.yaw = q4(wish.yaw);
   p.pitch = q4(Math.max(-1.5, Math.min(1.5, wish.pitch)));
   if (wish.slot >= 0 && wish.slot !== p.slot) {
@@ -212,27 +218,45 @@ function takeReserve(p, gun, n) {
   else if (gun.ammoType === 'sniper') p.sniper -= n;
 }
 
-function planShots(p, other, wish, dt) {
-  const hits = [];
+/**
+ * Weapon timers, reload and ammo for one player and one tick. Returns true when the gun fires
+ * this tick (one magazine round spent, cooldown armed); traceShots then rolls the pellets.
+ * Pure: it only reads `wish` and mutates `p`. It never touches `p.rng`.
+ */
+export function weaponTick(p, wish, dt) {
   p.fireCd = Math.max(0, p.fireCd - dt);
   p.swapT = Math.max(0, p.swapT - dt);
   if (p.reloadT > 0) {
     p.reloadT = Math.max(0, p.reloadT - dt);
     if (p.reloadT === 0) finishReload(p);
-    return hits;
+    return false;
   }
   const gun = LOADOUT[p.slot];
   if (wish.reload && p.mag[p.slot] < gun.stats.magSize && canReload(p, gun)) {
     p.reloadT = gun.stats.reloadTime;
-    return hits;
+    return false;
   }
-  if (!wish.fire || p.swapT > 0 || p.fireCd > 0) return hits;
+  if (!wish.fire || p.swapT > 0 || p.fireCd > 0) return false;
   if (p.mag[p.slot] <= 0) {
     if (canReload(p, gun)) p.reloadT = gun.stats.reloadTime;
-    return hits;
+    return false;
   }
   p.mag[p.slot] -= 1;
   p.fireCd = 1 / gun.stats.fireRate;
+  // Auto-reload on the last round. The unsplit step armed this after the pellet rolls; traceShots
+  // never reads reloadT, mag or reserve, so the state is bit-identical (tests/pvp-sim-split).
+  if (p.mag[p.slot] <= 0 && canReload(p, gun)) p.reloadT = gun.stats.reloadTime;
+  return true;
+}
+
+/**
+ * Hitscan for one shot that weaponTick allowed: spread, ray against the target's capsule,
+ * range falloff and crits. Returns the damage of each pellet that hits, in milli-HP. It only
+ * advances `p.rng` and never writes `target`.
+ */
+export function traceShots(p, target, wish) {
+  const hits = [];
+  const gun = LOADOUT[p.slot];
   const pellets = gun.stats.pellets || 1;
   const spread = deg(wish.zoom ? gun.stats.adsSpread : gun.stats.spread);
   const eye = { x: p.x, y: p.y + TUNING.eyeHeight, z: p.z };
@@ -240,7 +264,7 @@ function planShots(p, other, wish, dt) {
     const jy = (float(p.rng) - 0.5) * spread;
     const jp = (float(p.rng) - 0.5) * spread;
     const dir = dirFromYawPitch(p.yaw + jy, p.pitch + jp);
-    const dist = rayCapsule(eye, dir, other.x, other.z, other.y, other.y + TUNING.playerHeight, TUNING.playerRadius);
+    const dist = rayCapsule(eye, dir, target.x, target.z, target.y, target.y + TUNING.playerHeight, TUNING.playerRadius);
     if (dist < 0) continue;
     const fall = rangeFalloff(gun.range, dist);
     if (fall <= 0) continue;
@@ -248,8 +272,11 @@ function planShots(p, other, wish, dt) {
     if (chance(p.rng, gun.stats.critChance)) raw *= gun.stats.critMult;
     hits.push(Math.max(0, Math.round(raw * 1000)));
   }
-  if (p.mag[p.slot] <= 0 && canReload(p, gun)) p.reloadT = gun.stats.reloadTime;
   return hits;
+}
+
+function shotsOf(p, other, wish, dt) {
+  return weaponTick(p, wish, dt) ? traceShots(p, other, wish) : [];
 }
 
 function canReload(p, gun) {
@@ -316,12 +343,12 @@ export function step(state, wishes) {
     normalizeWish(state.players[0], wishes && wishes[0]),
     normalizeWish(state.players[1], wishes && wishes[1]),
   ];
-  for (let i = 0; i < 2; i++) if (state.players[i].alive) integrate(state.players[i], wish[i], DT);
+  for (let i = 0; i < 2; i++) if (state.players[i].alive) movePlayer(state.players[i], wish[i], DT);
   separate(state.players);
   for (const p of state.players) snap(p);
   const hits = [
-    state.players[0].alive ? planShots(state.players[0], state.players[1], wish[0], DT) : [],
-    state.players[1].alive ? planShots(state.players[1], state.players[0], wish[1], DT) : [],
+    state.players[0].alive ? shotsOf(state.players[0], state.players[1], wish[0], DT) : [],
+    state.players[1].alive ? shotsOf(state.players[1], state.players[0], wish[1], DT) : [],
   ];
   applyHits(state.players[1], hits[0]);
   applyHits(state.players[0], hits[1]);

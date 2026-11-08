@@ -123,9 +123,10 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
     views.push(view);
     const director = createDirector({ seed: 11, matchId: 'practice' });
     let now = 0;
-    const table = createLoopbackTable(director, () => now);
-    const human = createPvpClient({ accountId: 'practice', match: table.open('practice', 'local') });
-    const bot = createPvpClient({ accountId: 'practice-bot', match: table.open('practice-bot', 'bot') });
+    const clock = () => now;
+    const table = createLoopbackTable(director, clock);
+    const human = createPvpClient({ accountId: 'practice', match: table.open('practice', 'local'), clock });
+    const bot = createPvpClient({ accountId: 'practice-bot', match: table.open('practice-bot', 'bot'), clock });
     human.ready();
     bot.ready();
     const panel = root.querySelector('[data-seat-panel]');
@@ -133,18 +134,27 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
     root.querySelector('[data-pvp-go="back"]').onclick = leave;
     if (input && input.setLockElement) input.setLockElement(canvas);
     canvas.addEventListener('mousedown', () => { if (input) input.lock(); });
+    let faced = false;
     mode = {
       wantsLock: true,
       frame(_dt, cmd) {
         now += 1000 / 30;
         table.advance(now);
-        const sample = human.sample();
+        const sample = human.sample(now);
         if (human.phase === 'live' && sample && sample.players) {
-          human.submitCommand(cmd || { yaw: sample.players[0].yaw, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {} });
+          const seat = Math.max(0, human.seat);
+          // Start the local look facing the opponent, where the server spawned this seat.
+          if (!faced && input && input.setLook && sample.players[seat]) {
+            faced = true;
+            input.setLook(sample.players[seat].yaw, 0);
+            if (cmd) { cmd.yaw = sample.players[seat].yaw; cmd.pitch = 0; }
+          }
+          human.updateCommand(now, cmd || { yaw: sample.players[seat].yaw, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {} });
           const players = sample.players;
-          if (players[0] && players[1]) bot.submit(practiceWish(sample.tick, players[1], players[0]));
+          if (players[0] && players[1]) bot.update(now, () => practiceWish(Math.floor(sample.tick), players[1], players[0]));
         }
-        view.render(human.sample(), Math.max(0, human.seat));
+        const look = cmd ? { yaw: cmd.yaw, pitch: cmd.pitch } : human.look;
+        view.render(human.sample(now), Math.max(0, human.seat), human.phase === 'live' ? look : null);
         paint(panel, human.viewState(now), 'Practice — not recorded');
       },
     };
@@ -162,7 +172,7 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
     await Promise.all(realtime.map((rt) => rt.connect()));
     const joined = [];
     for (const rt of realtime) joined.push(await rt.joinMatch({ matchId }));
-    const clients = joined.map((match, i) => createPvpClient({ accountId: accounts[i], match }));
+    const clients = joined.map((match, i) => createPvpClient({ accountId: accounts[i], match, clock: () => clock.now }));
     const localViews = panels.map((panel) => {
       const view = createArenaView(panel.querySelector('canvas'));
       views.push(view);
@@ -184,9 +194,9 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
           const state = client.viewState(clock.now);
           const sample = state.sample;
           if (client.phase === 'live' && sample && sample.players && sample.players[0] && sample.players[1]) {
-            client.submit(practiceWish(Math.max(0, sample.tick), sample.players[index], sample.players[1 - index]));
+            client.update(clock.now, () => practiceWish(Math.max(0, Math.floor(sample.tick)), sample.players[index], sample.players[1 - index]));
           }
-          localViews[index].render(sample, index);
+          localViews[index].render(sample, index, client.phase === 'live' ? client.look : null);
           paint(panels[index], state, accounts[index]);
           panels[index].dataset.pvpTick = String(sample ? sample.tick : 0);
         });
