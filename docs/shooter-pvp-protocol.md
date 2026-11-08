@@ -185,7 +185,7 @@ A client `RESULT` (op 8), or a hello/ready body containing `winner`, `result`, `
 
 Button bits, low to high: `fire`, `zoom`, `sprint`, `jump`, `dash`, `reload`, `slide`. Bit 7 must be 0. `slide` is accepted and does not move the arena body in sim 1. `jump` and `dash` are edges. `fire` and `zoom` are held.
 
-The reference client sends one input each time the snapshot cursor advances (about 10 Hz) and heartbeats by that same path. Caps, checked before the sequence advances:
+The reference client runs a fixed 30 Hz input clock and sends exactly one input per input tick, stamped `frame` = estimated server tick + lead. The estimate is the least-delayed recent snapshot's `tick` plus elapsed time at 30 Hz. The lead starts at 2 (or the HELLO/READY round trip in ticks plus one), rises by `cursor - frame + 1` on a late `frame` reject, drops back into the window on a frame past `cursor + 4`, and is capped at 12. After a reject it resends from `lastSeq + 1` and ignores the `sequence` rejects of inputs that were already in flight. Inputs also serve as the heartbeat. Caps, checked before the sequence advances:
 
 | Check | Limit | Reason |
 |---|---|---|
@@ -230,7 +230,7 @@ Broadcast after the go-live tick, every 3 sim ticks (10 Hz), on resync, and when
 
 `hash` is FNV-1a over the sim state with floats quantized to micro-units, the same `verifyStateHash` the campaign bundle uses. It is not a receipt the client can submit for Tickets.
 
-Clients interpolate position and yaw between snapshots with a 3-tick delay. Health and the result come from the newest snapshot and from `RESULT`. Interpolation is not restart state.
+Clients render the other seat at estimated server time minus 100 ms, interpolating position and yaw between the two snapshots around it, extrapolating by velocity for at most 100 ms when starved, then holding. The camera uses the client's own yaw and pitch, not the snapshot copy. Health and the result come from the newest snapshot and from `RESULT`; once a result exists the client's phase stays `done`. Interpolation is not restart state.
 
 ## What H3-S must do
 
