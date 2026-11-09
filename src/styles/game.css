@@ -234,3 +234,9 @@ label.nav-focus { padding: 2px 6px; }
 @media (prefers-reduced-motion: reduce) {
   .banner, .toast { animation: none; } #hitmarker.on, #hitmarker.weak, #hitmarker.kill { animation-duration: .01s; }
 }
+
+/* crash panel (src/ui/crashPanel.js): above #screen */
+.crash-panel { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(10, 5, 25, 0.78); }
+.crash-card { max-width: 420px; text-align: center; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px 26px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.crash-card h2 { font-family: var(--display); color: var(--sun); margin: 0; font-size: 28px; }
+.crash-card p { color: var(--ink-dim); margin: 0 0 6px; font-size: 16px; }
