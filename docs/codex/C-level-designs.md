@@ -1,5 +1,9 @@
 # Sproto Shooter: Campaign Level Designs (part C): the 10 levels
 
+> **Superseded for level content.** `docs/campaign/PLAN.md` and the ten documents in
+> `docs/campaign/levels/` replace the level designs below (written 2026-11-09, not built yet).
+> The Golden Bonk table in §1.4 is still used.
+
 Engine and system specs are in `C-campaign-levels.md` (referenced as **C §x**). Bosses are in
 `C-bosses-sproto-duel.md` (**B §x**). This file is what each level contains and why.
 
