@@ -6,7 +6,7 @@ import { matchmakerProps } from '../src/net/protocol.js';
 import {
   LOSE_NET, POT, RULE_TEXT, STAKE, WIN_NET,
   commitReceipt, createWagerFlow, labelIsWager, memoryReceiptStore, offerFromServer,
-  receiptFromMetrics, renderWagerScreen, wagerMatchmakerRequest, wagerSlotHtml,
+  receiptFromMetrics, reconnectNotice, renderWagerScreen, wagerGuestProbe, wagerMatchmakerRequest, wagerSlotHtml,
 } from '../src/hub/wagers.js';
 
 const PLAYER = 'player-a';
@@ -92,6 +92,28 @@ describe('wager offer', () => {
     expect(checking.enabled).toBe(false);
     expect(checking.reason).toMatch(/Checking/);
 
+    const device = offerFromServer({
+      version: version(),
+      session: session({ guest: false, status: 'connected' }),
+      balance: 0,
+      refusal: 'wager_guest',
+    });
+    expect(device.enabled).toBe(false);
+    expect(device.guest).toBe(true);
+    expect(device.reason).toMatch(/Sign in to wager/);
+    expect(device.reason).not.toMatch(/You have 0/);
+    expect(wagerSlotHtml({ offer: device })).toMatch(/Sign in to wager/);
+    expect(wagerSlotHtml({ offer: device })).not.toMatch(/you have 0/i);
+
+    const namedEmpty = offerFromServer({
+      version: version(),
+      session: session(),
+      balance: 0,
+      refusal: 'version_mismatch',
+    });
+    expect(namedEmpty.guest).toBe(false);
+    expect(namedEmpty.reason).toMatch(/You have 0/);
+
     const ready = offerFromServer({ version: version(), session: session(), balance: 10 });
     expect(ready.enabled).toBe(true);
     expect(ready.stake).toBe(STAKE);
@@ -100,6 +122,30 @@ describe('wager offer', () => {
     expect(html).toMatch(/Play for 10 Tickets/);
     expect(html).toMatch(/you have 10/);
     expect(html).not.toMatch(/disabled/);
+  });
+
+  it('asks the server before showing an empty wallet to a named device account', async () => {
+    const probed = [];
+    const added = [];
+    const flow = createWagerFlow({
+      session: () => session({ guest: false, status: 'connected' }),
+      balance: async () => 0,
+      rpc: async (id) => (id === 'shooter.version' ? version() : {}),
+      addMatchmaker: async () => { added.push(1); return { ticket: 'real' }; },
+      readServerRefusal: async () => {
+        probed.push(wagerGuestProbe());
+        return 'Error: wager_guest at noteAdd';
+      },
+    });
+    await flow.refresh();
+    expect(probed).toHaveLength(1);
+    expect(probed[0].stringProperties).toMatchObject({ mode: 'wager', stake: '10', content: 'probe' });
+    expect(probed[0].stringProperties.content).not.toBe(version().content);
+    expect(flow.view.offer.reason).toMatch(/Sign in to wager/);
+    expect(wagerSlotHtml(flow.view)).not.toMatch(/you have 0/i);
+    await flow.confirmStake();
+    expect(flow.view.phase).toBe('offer');
+    expect(added).toHaveLength(0);
   });
 
   it('does not build a pair cap or a daily winnings cap', async () => {
@@ -305,6 +351,65 @@ describe('wager receipt', () => {
 
     const other = createWagerFlow({ store, session: () => session({ playerId: 'player-b' }) });
     expect(other.recallReceipt()).toBeNull();
+  });
+
+  it('reads shooter.resume and shooter.metrics after reconnect and shows a settled forfeit', async () => {
+    const calls = [];
+    const flow = createWagerFlow({
+      session: () => session(),
+      balance: async () => 30,
+      rpc: async (id, body) => {
+        calls.push({ id, body });
+        if (id === 'shooter.resume') {
+          const err = new Error('match_missing');
+          err.code = 'match_missing';
+          throw err;
+        }
+        if (id === 'shooter.metrics') {
+          return closed({ matchId: 'match-9', outcome: 'forfeit', endReason: 'stall', winner: 0 });
+        }
+        return {};
+      },
+    });
+    flow.view.playerId = PLAYER;
+    flow.view.matchId = 'match-9';
+    flow.view.phase = 'live';
+    flow.view.seat = 0;
+    flow.view.notice = 'Match is live. Tickets now 10.';
+    expect(await flow.syncAfterReconnect(0)).toBe(true);
+    expect(calls.map((c) => c.id)).toEqual(['shooter.resume', 'shooter.metrics']);
+    expect(calls[1].body).toMatchObject({ matchId: 'match-9' });
+    expect(flow.view.phase).toBe('receipt');
+    expect(flow.view.receipt).toMatchObject({ status: 'settled', net: WIN_NET, balance: 30, stake: STAKE });
+    expect(renderWagerScreen(flow.view)).toContain('data-wager-phase="receipt"');
+    expect(renderWagerScreen(flow.view)).not.toContain('Match is live');
+    expect(reconnectNotice(10_000)).toMatch(/Reconnecting/);
+    expect(reconnectNotice(10_000)).not.toMatch(/Match is live/);
+  });
+
+  it('does not treat resume stake 0 as the end of a match that is still live', async () => {
+    const flow = createWagerFlow({
+      session: () => session(),
+      balance: async () => 10,
+      rpc: async (id) => {
+        if (id === 'shooter.resume') return { matchId: 'match-9', stake: 0, stakes: false };
+        if (id === 'shooter.metrics') {
+          return {
+            matchId: 'match-9', phase: 'live', wagerClosed: false, outcome: '',
+            stakes: true, stake: 10, replay: { status: 'pending' },
+          };
+        }
+        return {};
+      },
+    });
+    flow.view.playerId = PLAYER;
+    flow.view.matchId = 'match-9';
+    flow.view.phase = 'live';
+    flow.view.notice = 'Match is live. Tickets now 10.';
+    expect(await flow.syncAfterReconnect(1)).toBe(false);
+    expect(flow.view.phase).toBe('live');
+    expect(flow.view.receipt).toBeNull();
+    expect(flow.view.notice).toMatch(/Match is live\. Tickets now 10/);
   });
 
   it('refuses a forged receipt and every client settle, winner, or refund call', () => {

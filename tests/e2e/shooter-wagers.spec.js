@@ -46,6 +46,8 @@ try {
     assert(await guestButton.count() === 1, 'guest stake button was hidden while the flag was on');
     assert(await guestButton.isDisabled(), 'guest could stake');
     report.guestButton = await guestButton.innerText();
+    assert(/sign in to wager/i.test(report.guestButton), `guest reason: ${report.guestButton}`);
+    assert(!/you have 0/i.test(report.guestButton), `guest showed the empty wallet: ${report.guestButton}`);
     const guestQueue = await guest.page.evaluate(async () => {
       const hook = await import('/tests/fixtures/e2e-browser-hook.js');
       const wagers = await import('/src/hub/wagers.js');
@@ -130,9 +132,11 @@ try {
       return state.sample ? state.sample.tick : 0;
     });
     await beaPage.page.context().setOffline(true);
-    await beaPage.page.waitForTimeout(1200);
-    report.shots.push(await shot(beaPage.page, 's7-wager-reconnect.png'));
+    await beaPage.page.waitForFunction(() => /reconnecting/i.test(document.querySelector('[data-wager-overlay]')?.textContent || ''), { timeout: 10000 });
     report.offlineOverlay = await beaPage.page.locator('[data-wager-overlay]').innerText().catch(() => '');
+    assert(/reconnecting/i.test(report.offlineOverlay), `overlay stayed live: ${report.offlineOverlay}`);
+    assert(!/match is live/i.test(report.offlineOverlay), `overlay stayed live: ${report.offlineOverlay}`);
+    report.shots.push(await shot(beaPage.page, 's7-wager-reconnect.png'));
     await beaPage.page.context().setOffline(false);
     await beaPage.page.waitForFunction((before) => {
       const client = window.__sproto.game._wagerClient;

@@ -11,7 +11,8 @@ import { CAMPAIGN, getLevelData } from '../data/levels/index.js';
 import { unlockLevel, loadProfile, rememberModifier, saveProfile, syncNonEconomicProfile, cloudBody } from '../save/profile.js';
 import { decideHubReturn, hubChipHtml, WAGER_RPC } from '../hub/link.js';
 import {
-  bindWagerScreen, browserReceiptStore, createWagerFlow, labelIsWager, renderWagerScreen, RULE_TEXT, wagerSlotHtml,
+  bindWagerScreen, browserReceiptStore, createWagerFlow, labelIsWager, reconnectNotice, renderWagerScreen,
+  RULE_TEXT, STALL_MS, wagerGuestProbe, wagerSlotHtml,
 } from '../hub/wagers.js';
 import { createWaveRelicReporter, relicName } from '../hub/waveRelic.js';
 import { restoreCheckpoint } from '../sim/campaign/campaign.js';
@@ -649,6 +650,7 @@ export class Game {
       listenMatched: (fn) => { this._onWagerMatched = fn; },
       onMatched: (info) => this.joinWager(info),
       leaveMatch: () => (this._leaveWagerMatch ? this._leaveWagerMatch() : Promise.resolve()),
+      readServerRefusal: () => this.readWagerGuest(),
     });
     return this.wagerFlow;
   }
@@ -670,8 +672,105 @@ export class Game {
     }
     await rt.connect();
     rt.onMatchmakerMatched((info) => { if (this._onWagerMatched) void this._onWagerMatched(info); });
+    rt.onState((state) => this.onWagerSocket(state));
     this._wagerRt = rt;
     return rt;
+  }
+
+  /**
+   * Ask the hub whether this account may wager. The probe ticket is not the real
+   * queue: the server rejects it before it writes a queue row. wager_guest is the
+   * device-account answer, even when Nakama gave that account a username.
+   */
+  async readWagerGuest() {
+    try {
+      const rt = await this.wagerRealtime();
+      const added = await rt.addMatchmaker(wagerGuestProbe());
+      if (added && added.ticket) {
+        try { await rt.removeMatchmaker(added.ticket); } catch { /* the probe must not stay queued */ }
+      }
+      return '';
+    } catch (err) {
+      return String((err && (err.code || err.message)) || '');
+    }
+  }
+
+  bindWagerNet() {
+    this.unbindWagerNet();
+    this._wagerOffline = () => {
+      if (!this._wagerPlaying) return;
+      this._wagerResynced = false;
+      if (!this._wagerSocketDown) this._wagerReconnectAt = performance.now();
+      this._wagerSocketDown = true;
+      this.paintWagerOverlay(reconnectNotice(STALL_MS));
+    };
+    this._wagerOnline = () => {
+      if (!this._wagerPlaying || !this._wagerSocketDown) return;
+      const rt = this._wagerRt;
+      if (rt && rt.state !== 'open') return;
+      this._wagerSocketDown = false;
+      this._wagerResynced = true;
+      void this.resyncWagerAfterReconnect();
+    };
+    window.addEventListener('offline', this._wagerOffline);
+    window.addEventListener('online', this._wagerOnline);
+  }
+
+  unbindWagerNet() {
+    if (this._wagerOffline) window.removeEventListener('offline', this._wagerOffline);
+    if (this._wagerOnline) window.removeEventListener('online', this._wagerOnline);
+    this._wagerOffline = null;
+    this._wagerOnline = null;
+  }
+
+  onWagerSocket(state) {
+    if (!this._wagerPlaying) return;
+    if (state === 'reconnecting') {
+      this._wagerResynced = false;
+      if (!this._wagerSocketDown) this._wagerReconnectAt = performance.now();
+      this._wagerSocketDown = true;
+      const left = Math.max(0, STALL_MS - (performance.now() - this._wagerReconnectAt));
+      this.paintWagerOverlay(reconnectNotice(left));
+      return;
+    }
+    if (state === 'open' && this._wagerSocketDown) {
+      this._wagerSocketDown = false;
+      this._wagerResynced = true;
+      void this.resyncWagerAfterReconnect();
+    }
+  }
+
+  async resyncWagerAfterReconnect() {
+    const flow = this.wagerFlow;
+    if (!flow || !this._wagerPlaying || this._wagerResultNoted) return;
+    const client = this._wagerClient;
+    const seat = client && (client.seat === 0 || client.seat === 1) ? client.seat : undefined;
+    let closed = false;
+    try {
+      closed = await flow.syncAfterReconnect(seat);
+    } catch {
+      closed = false;
+    }
+    if (!this._wagerPlaying || this._wagerResultNoted) return;
+    if (!closed) {
+      this.paintWagerOverlay(flow.view.notice);
+      return;
+    }
+    this._wagerResultNoted = true;
+    this.paintWagerOverlay(flow.view.notice);
+    const matchId = flow.view.matchId;
+    for (let i = 0; i < 8 && flow.view.receipt && flow.view.receipt.status === 'pending' && matchId; i += 1) {
+      try {
+        const metrics = await this.wagerRpc(WAGER_RPC.metrics, { matchId });
+        await flow.ingestMetrics(metrics, seat);
+      } catch { /* stay pending until the server closes it */ }
+      if (!flow.view.receipt || flow.view.receipt.status !== 'pending') break;
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+    if (!this._wagerPlaying) return;
+    this._wagerPlaying = false;
+    this.stopWagerPlay();
+    this.paintWagerScreen();
   }
 
   async wagerRpc(id, body) {
@@ -814,6 +913,7 @@ export class Game {
     if (this.input.setLockElement) this.input.setLockElement(canvas);
     canvas.addEventListener('mousedown', () => this.input.lock());
     this.paintWagerOverlay(RULE_TEXT);
+    this.bindWagerNet();
     this.pvp = {
       wantsLock: true,
       frame: (_dt, cmd) => {
@@ -821,9 +921,11 @@ export class Game {
         client.updateCommand(now, cmd);
         const state = client.viewState(now);
         arena.render(state.sample, Math.max(0, client.seat), client.phase === 'live' ? client.look : null, { shots: client.shots, now });
-        if (state.link === 'reconnecting' && !state.result) {
-          const left = Math.max(0, Math.ceil((state.graceLeftMs || 0) / 1000));
-          this.paintWagerOverlay(`Reconnecting. After both players are Ready, 10 seconds without input forfeits. ${left}s left. This client cannot refund.`);
+        if (this._wagerSocketDown && !state.result) {
+          const left = Math.max(0, STALL_MS - (performance.now() - (this._wagerReconnectAt || performance.now())));
+          this.paintWagerOverlay(reconnectNotice(left));
+        } else if (state.link === 'reconnecting' && !state.result && !this._wagerResynced) {
+          this.paintWagerOverlay(reconnectNotice(state.graceLeftMs));
         }
       },
     };
@@ -835,7 +937,10 @@ export class Game {
     if (client.seat === 0 || client.seat === 1) flow.noteSeat(client.seat);
     if (client.phase === 'live' && !this._wagerLiveNoted) {
       this._wagerLiveNoted = true;
-      void flow.noteLive().then(() => this.paintWagerOverlay(flow.view.notice));
+      void flow.noteLive().then(() => {
+        if (this._wagerSocketDown || !this._wagerPlaying) return;
+        this.paintWagerOverlay(flow.view.notice);
+      });
     }
     if (client.result && !this._wagerResultNoted) {
       this._wagerResultNoted = true;
@@ -869,6 +974,7 @@ export class Game {
 
   stopWagerPlay() {
     this._wagerPlaying = false;
+    this.unbindWagerNet();
     if (this._wagerArena) {
       this._wagerArena.dispose();
       this._wagerArena = null;
