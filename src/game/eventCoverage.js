@@ -86,6 +86,7 @@ export const EVENT_COVERAGE = {
   unkillableTriggered: ['audio', 'vfx', 'ui'],
   vend: ['audio', 'ui'],
   victory: ['audio', 'ui'],
+  voidRescue: ['audio', 'ui'],
   waveCleared: ['audio', 'ui'],
   wavePre: ['audio', 'ui'],
   waveStart: ['audio', 'ui'],
