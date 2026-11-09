@@ -111,11 +111,11 @@ A level document must add up. Every beat gets an estimated time, and the beats s
 **Shape of a level**
 
 - 4 to 6 **sections** (L09 has 3: its hub is one section with four districts). Only the current section is loaded (C §3.19). A section lasts 3 to 6 minutes.
-- 10 to 13 **beats**: 7 to 9 combat encounters, 2 or 3 traversal or mechanism beats, 1 or 2
+- 10 to 14 **beats**: 7 to 10 combat encounters, 2 or 3 traversal or mechanism beats, 1 or 2
   breathers at a depot, 1 finale.
 - Route length 1.0 to 1.6 km. The player walks at 6.5 m/s and sprints at 9.5 m/s; budget **5.5 m/s** average.
 - 3 or 4 **lockdown arenas** (§5.6): semi-large rooms whose doors close until every wave is dead.
-- 8 to 10 checkpoints, never more than 2.5 minutes apart **outside sealed fights**, each with an
+- 8 to 14 checkpoints (lockdown saves count), never more than 2.5 minutes apart **outside sealed fights**, each with an
   ammo box; 2 depots (§7.7). A lockdown restarts from its first wave (§5.6). A boss fight saves at
   its part boundaries in the campaign, and not at all in a hub-verified boss run.
 - Hidden: 1 Golden Bonk (the old modifier table in C-level-designs §1.4 stays), 1 **Mana Battery**,
@@ -162,6 +162,10 @@ A level's total must land within **±2 minutes of its par**. A fast replay shoul
 | L04 to L06 | 12 | 4 | 1 per section | 2 kinds |
 | L07, L08 | 14 | 5 | 2 per section, pairs allowed | 2 kinds, overlapping |
 | L09, L10 | 16 | any | elite squads | any |
+
+The roles limit has two stated exceptions: the last two enemies of a lockdown wave do not count
+against it when the next wave arrives, and a Sproto Duel boss's own arena shifts do not count
+against the hazard limit (Sahil's third stage has three).
 
 Flocks (bitbugs) are counted as one unit per 6 against `maxAlive`. Tier still scales enemy HP and
 damage by 1.15 per tier, and world guns scale with tier, so time-to-kill stays near constant and the
@@ -248,6 +252,23 @@ src/data/levels/
 (laser telegraph, relocates), `miningRig` (turret, overheats), `daycare` (spawner nest), `bitbug`
 (flock), `jetObama` (jet flyer, thruster weak spot), `balloonMidget` (floating mine), `miniTinubu`
 (charger, stunned by walls). Level documents use them **as C §3.12 specifies them**, not as they are today.
+
+**Where each enemy is introduced.** A level never uses an enemy from a later level.
+
+| Level | Introduced |
+|---|---|
+| L01 | `midget`, `obama`, `flyingMidget`, `robotLaser`, `robotShooter`, `bigObama` |
+| L02 | `boomMidget`, `riotMidget`, `hexAcolyte` |
+| L03 | `floretSprout`, `sewerMidget`, `daycare`, `gooGlob`, `hexWisp`, `barkBrute`, `manaLeech` |
+| L04 | `bitbug`, `jetObama`, `balloonMidget`, `flakPod` |
+| L05 | `glowieAgent`, `auditSniper`, `miningRig`, `spotterDrone`, `frostHound` |
+| L06 | `auditVan`, `rocketObama`, `vapeGunship` |
+| L07 | `miniTinubu`, `bombTosser`, `magmaSlug` |
+| L08 | `nullifier`, `shieldDrone`, `cabinetMimic` |
+| L09 | `ruinSentinel`, `moonCultist` |
+| L10 | `tinubuImp` |
+
+No level document asked for an enemy beyond this list.
 
 ### 5.3 New placeholder enemies (primitive looks)
 
@@ -340,8 +361,10 @@ spell kills and Magic bosses. The old plan adds five boss reward spells (B §6).
 
 **Magic has no skill levels.** The Magic skill, its XP and its level gates are removed. A spell is
 an **unlockable**: you get it at a spell shrine in a campaign level or from a boss, and you keep it
-for good. The spellbook is saved in the profile and is available in every mode; a new profile has
-Goo Bolt only. What the level bonus used to do is replaced like this:
+for good. The spellbook is saved in the profile and is available in every mode. In the campaign a
+new profile has no spell until the L01 shrine gives Goo Bolt. Outside the campaign (Wave Mode, Boss
+Fight, a hub-verified boss run) Goo Bolt is always available, so a player who never opens the
+campaign still has one spell. What the level bonus used to do is replaced like this:
 
 | Was | Now |
 |---|---|
@@ -365,10 +388,10 @@ Goo Bolt only. What the level bonus used to do is replaced like this:
 
 | Spell | Shrine | Mana | Cooldown | What it does | Rule-1 note |
 |---|---|---|---|---|---|
-| **Yeet** | L03 | 20 | 3 s | A 7 m cone shove: enemies fly 8 m, slow projectiles turn round, barrels and seed pods launch | Force only |
-| **Decoy** ("Cardboard Sproto") | L05 | 30 | 12 s | A standee that draws fire for 6 s, then pops into confetti (20 damage, 3 m). Snipers and Spotter Drones lock onto it | Perception only |
+| **Yeet** | L03 | 20 | 3 s | A 7 m cone shove: enemies fly 8 m, slow projectiles turn round and now belong to the player (a returned orb or rocket hurts its owner), barrels and seed pods launch | Force only |
+| **Decoy** ("Cardboard Sproto") | L05 | 30 | 12 s | A standee that draws fire for 6 s, then pops into confetti (20 damage, 3 m). Snipers, Spotter Drones, searchlights, Mining Rigs and a tracking Drone Strike lock onto it. Frost Hounds follow scent and ignore it | Perception only |
 | **Yoink** | L07 | 15 | 2 s | Grab a barrel, charge pack, bomb or a small enemy at up to 18 m and hold it; cast again to throw it | Force only |
-| **Blink** ("Tax Evasion") | L08 | 25 | 4 s | Teleport 9 m along your aim. Passes laser grids, glass rails and gaps. 0.3 s invulnerable | Movement only |
+| **Blink** ("Tax Evasion") | L08 | 25 | 4 s | Teleport 9 m along your aim. Passes laser grids, gaps and `glass` up to 0.5 m thick. Fails against a locked lockdown door and inside a null field. 0.3 s invulnerable | Movement only |
 | **Time Bubble** ("Audit Extension") | L09 | 45 | 20 s | A sphere of 6 m radius for 5 s: enemies inside move, wind up and count their timers at 30%, and enemy projectiles fly at 30%. Player bullets are unaffected | Never gun stats |
 
 **Boss reward spells** stay as B §6: Magic Carpet (L02), Pump It (L04), Vape Cloud (L06), Lock-On (L08),
@@ -453,7 +476,7 @@ plan only changes where guns come from and the odds.
 | Lockdown reward | A chest when the doors open: one gun, never below the level's base tier, of a type the player does not carry if possible |
 | Mini-boss | Two guns, one of them guaranteed one tier above the level's base |
 | Boss | Two guns one tier above base, plus a **boss gun** (Ray Gun, Big Bullets), as today |
-| Secret cache | One per level: a guaranteed gun at the level's best tier |
+| Secret cache | One per level: a guaranteed gun one tier above the level's base (Legendary only in L09 and L10) |
 
 **Tier odds by level** (enemy drops; percent)
 
@@ -521,6 +544,10 @@ moves the content fingerprint (§12).
 
 - **Smart drops.** An enemy's ammo drop is for a gun you carry, weighted toward the type you are
   lowest on. You never get ammo for a gun you do not have.
+- **Drops you can reach.** A drop from an enemy that dies out of reach (a sniper across a chasm, a
+  flyer over the void or lava, a kill at 100 m) is delivered: it flies to the nearest named
+  delivery point on the player's side. A drop's 30 s timer starts only when the player comes within
+  15 m of it. A guaranteed gun never expires.
 - **Placement.** An ammo box for a gun type is within 30 m of every rack of that type and within
   20 m before every encounter that needs it. Every lockdown has at least two ammo boxes inside
   and an ammo crate as part of its reward. Every checkpoint has an ammo box next to it.
@@ -600,8 +627,21 @@ attacks, the adds that arrive during the part, the arena change, and what ends t
 
 **Constraint from the hub.** A verified boss run starts in the boss section with the starter machine
 gun and level-1 skills (`docs/shooter-server-contract.md`). So every boss part must be beatable with
-that loadout, and anything a part needs (a rack, a conduit, a rocket crate) must be **inside the boss
-section**. Boss HP is in the content fingerprint; changing it is a re-pin (§12).
+that loadout, and anything a part needs (a rack, a conduit, a rocket crate, a jetpack pedestal, a
+depot crate) must be **inside the boss section**. Boss HP is in the content fingerprint; changing
+it is a re-pin (§12).
+
+**Three boss numbers the level documents could not settle.** They belong to the boss track (E12)
+and are decided there, once, for all five bosses.
+
+| Question | Why it came up | Proposed answer |
+|---|---|---|
+| The verified run's gun | The starter machine gun is tier 1. Glowie is tier 8 and Tinubu tier 10, so a canonical run would take many times longer than the campaign fight | The canonical start gives the starter machine gun generated **at the boss level's tier** (still Common, Ol' Reliable, no element). This changes the server contract and goes in the same re-pin |
+| Stage length | B §1 converts Duel HP so one stage lasts 90 to 150 s. Three stages plus the added parts do not fit 5.5 minutes, and the Duo has six bars | Lower the conversion (`DUEL_HP_K`) so a Duel stage lasts 45 to 75 s. Each level document states the HP it assumed per part |
+| Damage conversion | Converted the same way, some Duel attacks do about 1 damage per hit (Sahil) | Give the conversion a floor per attack class, set in the boss PR |
+
+**Saving inside a boss fight.** The campaign saves at each part boundary that swaps the boss's model
+stage. A hub-verified run does not save.
 
 ---
 
@@ -628,6 +668,48 @@ Level documents cite these ids in their "engine needs" section.
 | **E15** | Pins and the hub contract (§12) | — | AGENTS.md |
 | **E16** | Remove crafting game-wide: Crafting skill, recipes, Weapon Boxes, resources, their UI and HUD; remove the Magic skill and its XP; spellbook unlockables in the profile (§6.2, §7.1) | all present | this plan |
 | **E17** | Loot and ammo: tier odds by level, guaranteed drops (elite, lockdown chest, mini-boss, boss, secret cache), gun-type unlocks, ammo for every gun, ammo boxes and crates, smart drops, the supply drone (§7.3, §7.4) | drops by enemy, endless MG | this plan |
+
+### 10.1 What the level documents added to this list
+
+Each need below came out of a level's design. It extends the engine item named; none needs a new id.
+
+| Extends | Need | Asked by |
+|---|---|---|
+| E1 | Void rescue variants: a fixed rescue point, and a no-penalty rescue for the tutorial | L01, L04 |
+| E1 | Terrain `pads` and `stamps`: flatten a disc or box to a height, add or cut a box or ellipse | L09 |
+| E1, E3 | Breakaway and sinking solids driven by a script, with nav rebuilt for the new floor | L04, L10 |
+| E2 | Long sight profiles: enemies 80 to 140 m away exist and can be seen when the section loads | L05 |
+| E2 | Stealth: unaware, suspicious and alerted states; a guaranteed crit on an unaware target; bodies noticed | L05, L08 |
+| E2 | `dark` zones that shorten enemy sight, not only the picture | L09 |
+| E3 | Flyers hold altitude over a void and stay inside a lockdown's lid | L04, L10 |
+| E3 | `ghost` movement: passes solids, stays inside the encounter's bounds | L03 |
+| E3 | Roaming patrols on a route outside any encounter, abstract when far, with orders on events | L09 |
+| E4 | Objectives `ride` (a fight on a moving lift) and a flee with an HP exit and a time exit | L08, L09 |
+| E4 | `ifPosition(n)`: squads that depend on the order the player chose | L09 |
+| E4 | Per-level `startAmmo`, a per-encounter `noAmmoDrop` flag, tutorial input prompts | L01 |
+| E4 | `flight` transitions between sections | L04 |
+| E4 | Lockdown variants: opened by a switch, no exit door, two entry doors, a dome or lid as the door, a spawn door that becomes the exit, a boss-scripted lockdown | L01, L02, L09 |
+| E6 | Hazards: a `slow` zone (quicksand), zones that also hurt enemies, zone sets a script switches on, a hazard that advances along x | L02, L03, L10 |
+| E6 | Geyser with its own damage and landing point, and a damage-only geyser | L02, L10 |
+| E6 | `weather`: a blizzard on a timer that shortens sight for everyone | L05 |
+| E6 | `alarm`: a box or cable to cut, a countdown, a written reinforcement squad | L05, L08 |
+| E6 | Laser grids: partial height, always on | L08 |
+| E6 | Portals with `enabledWhen` and one-way exits | L09 |
+| E6 | Tiles that crumble only under heavy enemies | L09 |
+| E6 | Movers started by a wave; doors and chests linked to a target's death; a door that needs the jetpack; targets carried on movers | L01, L02, L04, L08 |
+| E6 | `nullZone` in full: which spells fail, what happens to a spell already cast, how the field is shown | L08 |
+| E6 | Capture zones: contested pause, buddies as holders, `onHold(p%)` | L09 |
+| E6 | Drone Strike as a level hazard; a `debris` emitter | L05, L10 |
+| E7, E8 | Damage multipliers by source (bullet, explosive, spell), armour state machines, hitboxes with `onlyWhen` states | L01, L03 |
+| E8 | The Mimic drawn as an ammo crate, with a hum the player can hear | L08 |
+| E10 | The spell clarifications now in §6.2 (Yeet ownership, Decoy targets, Blink through glass, Time Bubble as time dilation); buddy "park" and "command" | L03, L05, L08, L09 |
+| E12 | Per-boss `hpScale`; replacing one action; an arena centre and radius | L02, L03, L09 |
+| E12 | Boss states: shielded by linked targets, immune and immobile, absent, perched on a destroyable support, bonded twins with enrage, a held transform | L02, L04, L08, L09, L10 |
+| E12 | A scripted fire-ring radius; arena tiles that drop | L04, L10 |
+| E12 | A mini-boss that is not in the hub's canonical table | L01 |
+| E14 | Pacing estimate rules: stated-time blocks, adds not summed, rows for every enemy | L03, L09, L10 |
+| E15 | The flee encounters the server contract names (L03, L09) get new ids too | L03 |
+| E17 | Drop delivery for kills out of reach; drops that do not fall into the void | L04, L05, L08, L10 |
 
 ---
 
