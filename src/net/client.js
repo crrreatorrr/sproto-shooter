@@ -635,7 +635,18 @@ export function createPvpClient({
     const combatVerified = typeof body.combatSeed === 'string' && combatCommit != null
       ? sha256Hex(body.combatSeed) === combatCommit
       : null;
-    result = { ...body, combatVerified };
+    // Keep the match outcome. Drop every economy field. A forged RESULT cannot mint, stake, or refund.
+    result = {
+      outcome: body.outcome,
+      winner: body.winner ?? null,
+      reason: body.reason,
+      tick: body.tick,
+      stateHash: body.stateHash ?? null,
+      combatSeed: typeof body.combatSeed === 'string' ? body.combatSeed : undefined,
+      combatVerified,
+      ticketsMinted: 0,
+      stakes: false,
+    };
     phase = 'done';
     changed();
   }

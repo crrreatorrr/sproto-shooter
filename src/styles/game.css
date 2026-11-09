@@ -216,6 +216,19 @@ label.nav-focus { padding: 2px 6px; }
 .hub-chip.guest { color: #9ad7ff; border-color: #9ad7ff; }
 .hub-chip.connected { color: var(--sun); border-color: var(--sun); }
 .hub-chip.error { color: var(--bad); border-color: var(--bad); }
+.wager-panel { max-width: 720px; }
+.wager-panel .rule { font-size: 15px; color: var(--ink); max-width: 560px; }
+.wager-money, .wager-net, .wager-balance { font-variant-numeric: tabular-nums; font-weight: 800; }
+.wager-net.plus { color: var(--mint, #3dd6c6); }
+.wager-net.minus { color: var(--bad); }
+.wager-net.pending, .wager-net.zero { color: var(--sun); }
+.wager-live, .wager-overlay {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 40; max-width: min(640px, 92vw);
+  background: rgba(18, 8, 32, .92); border: 3px solid #ffd166; color: #fff7ec;
+  border-radius: 12px; padding: 12px 14px; font-weight: 800; text-align: center;
+}
+.wager-live { top: 16px; }
+.wager-overlay { bottom: 72px; }
 .menu { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center; }
 .boss-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; width: min(900px, 100%); margin: 0 auto 16px; }
 .btn.boss-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 14px 16px; border: 2px solid var(--c); }

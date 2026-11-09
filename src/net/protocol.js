@@ -21,6 +21,7 @@ export const OP = Object.freeze({
 export const PROTOCOL = PVP_PROTOCOL_VERSION;
 export const SIM_VERSION = PVP_SIM_VERSION;
 export const CONTENT = CONTENT_FINGERPRINT;
+export { GAME_ID };
 export const FREE_MATCH_NAME = MATCH_NAME;
 
 const ID_RE = /^[A-Za-z0-9_.:@|-]{1,80}$/;
