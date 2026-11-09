@@ -11,13 +11,13 @@
 
 export const BOSS_CLIPS = {
   monster: {
-    // walk: 1.2 s cycle, 0.26 m stride over a 0.6 duty factor on a 0.978 m tall model
-    walk: { clip: 'walk', speedPerHeight: 0.3692 },
+    // walk: 1.0 s straight-legged IK cycle; planted foot 0.633 m/s on a 0.977 m tall model
+    walk: { clip: 'walk', speedPerHeight: 0.648 },
     melee: { smash: { clip: 'smash', impact: 24 / 30 } },
   },
   sprotoBeast: {
-    // walk: 32 frames, 0.24 m stride over a 0.58 duty factor on a 0.98 m tall model
-    walk: { clip: 'walk', speedPerHeight: 0.3958 },
+    // walk: 32 frames, straight-legged IK cycle; planted foot 0.367 m/s on a 0.98 m tall (rest) model
+    walk: { clip: 'walk', speedPerHeight: 0.3747 },
     melee: { punch: { clip: 'punch', impact: 22 / 30 }, kick: { clip: 'kick', impact: 21 / 30 } },
   },
   dragon: {
@@ -28,7 +28,7 @@ export const BOSS_CLIPS = {
   // speedPerHeight = the clip's ground speed per metre of model height (stride / stance time / model height).
   carMonster: {
     clipsOnly: true,
-    walk: { clip: 'walk', speedPerHeight: 0.3307 },
+    walk: { clip: 'walk', speedPerHeight: 0.555 },
     charge: { clip: 'charge', start: 'charge_start', telegraph: 0.8, speedPerHeight: 1.247 },
     melee: { smash: { clip: 'smash', impact: 24 / 30 } },
     // tyres: throw_start ends on the first release (left hand); throw_loop = one left + one right throw
@@ -37,7 +37,7 @@ export const BOSS_CLIPS = {
   },
   moleMonster: {
     clipsOnly: true,
-    walk: { clip: 'walk', speedPerHeight: 0.238 },
+    walk: { clip: 'walk', speedPerHeight: 0.259 },
     charge: { clip: 'charge', start: 'charge_start', telegraph: 0.8, speedPerHeight: 0.81 },
     melee: { smash: { clip: 'smash', impact: 24 / 30 } },
     // drill heads: shoot_start = 0.5 s aim ending on the first shot; shoot_loop = one recoil per wave
@@ -49,8 +49,8 @@ export const BOSS_CLIPS = {
 /** Clip-driven common enemies (render/clipLayer.js): firing clips are timed from the sim's gun timers. */
 export const ENEMY_CLIPS = {
   // run: ground speed per metre of model height; release = the clip time of the first shot
-  robotLaser: { run: 0.434, cast: { clip: 'cast', release: 15 / 30 } },
-  robotShooter: { run: 0.84, cast: { clip: 'cast', release: 14 / 30 }, special: { clip: 'cast_big', release: 30 / 30 } },
+  robotLaser: { run: 2.137, cast: { clip: 'cast', release: 15 / 30 } },
+  robotShooter: { run: 1.564, cast: { clip: 'cast', release: 14 / 30 }, special: { clip: 'cast_big', release: 30 / 30 } },
 };
 
 /** Time in a gun's firing clip: the wind-up maps onto [0, release], then shots follow at the gun's own gap. */
