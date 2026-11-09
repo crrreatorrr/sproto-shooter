@@ -667,7 +667,14 @@ export function runScenario(options = {}) {
       onRejoin(fn) { peer.rejoinFns.push(fn); return () => {}; },
     };
     join(peer);
-    peer.client = createPvpClient({ accountId: peer.accountId, match, clock: () => peer.clock.now(scheduler.now) });
+    peer.client = createPvpClient({
+      accountId: peer.accountId,
+      match,
+      clock: () => peer.clock.now(scheduler.now),
+      // S3: every reconciliation's correction (metres) feeds the correction p99 gate, tagged
+      // when the server had the two bodies touching (contact is not predicted).
+      onCorrection: (metres, info) => metrics.correction(peer.index, metres, !!(info && info.contact)),
+    });
   }
 
   // Tick 0 on the server clock, once the director goes live (after its lead-in).
@@ -687,12 +694,17 @@ export function runScenario(options = {}) {
       if (client.phase === 'live' && !client.result) {
         const local = peer.clock.now(scheduler.now);
         const sample = client.sample(local);
-        const viewKey = sample && sample.players
-          ? `${sample.tick}|${sample.players.map((p) => `${p.x},${p.z},${p.yaw}`).join('|')}`
-          : null;
-        // Render metrics start at tick 0; during the lead-in the spawn view is held on purpose.
+        // What the remote player looks like on this frame. S3 predicts the local player, so it moves
+        // every frame regardless: only the remote seat says whether the view starved.
+        const remote = sample && sample.players && client.seat >= 0 ? sample.players[1 - client.seat] : null;
+        const viewKey = remote ? `${sample.tick}|${remote.x},${remote.z},${remote.yaw}` : null;
+        // Render metrics start when the client's render clock reaches tick 0. Before that the
+        // tick-0 spawn snapshot is the exact state (the sim has not stepped), held on purpose,
+        // for the lead-in plus the interpolation delay plus the downlink; counted separately.
         if (liveAt != null && scheduler.now >= liveAt) {
-          metrics.renderFrame(peer.index, scheduler.now, viewKey, sample && sample.mode);
+          if (!peer.renderStarted && sample && sample.tick > 0) peer.renderStarted = true;
+          if (peer.renderStarted) metrics.renderFrame(peer.index, scheduler.now, viewKey, sample && sample.mode);
+          else metrics.preStartFrame(peer.index);
         }
         if (sample && sample.players && sample.players[0] && sample.players[1] && client.seat >= 0) {
           const other = sample.players[1 - client.seat];

@@ -1,5 +1,11 @@
 // Free 1v1 lobby, offline practice, and the local two-client mock.
+// SHOOTER-S3: the local player is predicted; its muzzle flash, tracer, recoil, sound and ammo
+// answer at once. Hitmarkers and damage numbers come only from the server's `hits`. The
+// crosshair ray converges the sent aim (aim.js). ?netgraph=1 (or a dev build) shows the net graph.
 import { createArenaView } from './view.js';
+import { convergeAim } from './aim.js';
+import { createNetGraph, netGraphEnabled } from './netgraph.js';
+import { createAudio } from '../../audio/sfx.js';
 import { createDirector } from '../../sim/pvp/director.js';
 import { practiceWish } from '../../sim/pvp/practice.js';
 import { CONTENT_FINGERPRINT, LOADOUT, PVP_PROTOCOL_VERSION } from '../../sim/pvp/rules.js';
@@ -25,6 +31,39 @@ function outcomeText(result) {
   return 'Match over. No Tickets move.';
 }
 
+function graphOn() {
+  const dev = !!(import.meta.env && import.meta.env.DEV);
+  return netGraphEnabled(dev, typeof location !== 'undefined' ? location.search : '');
+}
+
+/** A tiny bus for the shared synthesized SFX: predicted shots and confirmed hits only. */
+function createPvpSfx() {
+  const fns = [];
+  const audio = createAudio({ on(_type, fn) { fns.push(fn); } });
+  return {
+    ensure() { audio.ensure(); },
+    emit(ev) { for (const fn of fns) fn(ev); },
+  };
+}
+
+/** Play this client's new predicted shots and server-confirmed hits. */
+function playSounds(sfx, client, seen) {
+  for (const shot of client.drainShots()) {
+    const gun = LOADOUT[shot.slot] || LOADOUT[0];
+    sfx.emit({ type: 'shot', gunType: gun.type, manufacturer: gun.manufacturer });
+  }
+  const confirmed = client.net.hitsConfirmed;
+  if (confirmed > seen.hits) sfx.emit({ type: 'damage', zone: 'body' });
+  seen.hits = confirmed;
+}
+
+function ammoLabel(me) {
+  if (!me || !Array.isArray(me.mag)) return '';
+  const gun = LOADOUT[me.slot] || LOADOUT[0];
+  const reserve = gun.infiniteReserve ? '∞' : gun.ammoType === 'shells' ? me.shells : gun.ammoType === 'sniper' ? me.sniper : '';
+  return `${gun.name} ${me.mag[me.slot]} / ${reserve}${me.reloadT > 0 ? '  reloading' : ''}`;
+}
+
 function paint(panel, state, title) {
   const sample = state.sample;
   const me = sample && state.seat >= 0 ? sample.players[state.seat] : null;
@@ -44,13 +83,18 @@ function paint(panel, state, title) {
   }
   const ready = panel.querySelector('[data-pvp-ready]');
   if (ready) ready.hidden = state.phase !== 'lobby';
-  // Hitmarkers come only from server-confirmed hit events, never from local spread.
+  // Hitmarkers and damage numbers come only from server-confirmed hit events, never from local
+  // spread. Ammo is the prediction's (it answers on the click).
   const marker = panel.querySelector('[data-pvp-hit]');
+  const recent = (state.hits || []).filter((hit) => hit.shooter === state.seat);
   if (marker) {
-    const hits = (state.hits || []).filter((hit) => hit.shooter === state.seat);
-    const last = hits[hits.length - 1];
+    const last = recent[recent.length - 1];
     marker.textContent = last ? `Hit ${hpLabel(last.dmg)}` : '';
   }
+  const numbers = panel.querySelector('[data-pvp-dmg]');
+  if (numbers) numbers.textContent = recent.slice(-4).map((hit) => `-${hpLabel(hit.dmg)}`).join('  ');
+  const ammo = panel.querySelector('[data-pvp-ammo]');
+  if (ammo) ammo.textContent = ammoLabel(me);
 }
 
 function panelHtml(name) {
@@ -63,8 +107,11 @@ function panelHtml(name) {
         <div data-pvp-phase style="color:#4fd1c5;font-weight:800"></div>
         <div data-pvp-hit style="color:#ff6b6b;font-weight:800"></div>
       </div>
+      <div data-pvp-ammo style="color:#fff7ec;font-weight:800;text-align:right"></div>
       <div data-pvp-reconnect hidden style="${BANNER}">Reconnecting</div>
     </div>
+    <div data-pvp-cross style="position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;pointer-events:none;background:linear-gradient(#fff7ec,#fff7ec) center/2px 14px no-repeat,linear-gradient(#fff7ec,#fff7ec) center/14px 2px no-repeat;opacity:.85"></div>
+    <div data-pvp-dmg style="position:absolute;left:50%;top:calc(50% - 34px);transform:translateX(-50%);pointer-events:none;color:#ff6b6b;font-weight:800;font-family:'Baloo 2',sans-serif"></div>
     <button class="btn" data-pvp-ready style="position:absolute;left:12px;bottom:12px">Ready</button>
   </section>`;
 }
@@ -141,7 +188,14 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
     panel.querySelector('[data-pvp-ready]').onclick = () => human.ready();
     root.querySelector('[data-pvp-go="back"]').onclick = leave;
     if (input && input.setLockElement) input.setLockElement(canvas);
-    canvas.addEventListener('mousedown', () => { if (input) input.lock(); });
+    const sfx = createPvpSfx();
+    const heard = { hits: 0 };
+    canvas.addEventListener('mousedown', () => {
+      if (input) input.lock();
+      sfx.ensure();
+    });
+    const graph = graphOn() ? createNetGraph(panel) : null;
+    if (graph) cleaners.push(() => graph.dispose());
     let faced = false;
     mode = {
       wantsLock: true,
@@ -149,6 +203,8 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
         now += 1000 / 30;
         table.advance(now);
         const sample = human.sample(now);
+        // The camera follows the raw local look; the wish carries the converged aim.
+        let look = cmd ? { yaw: cmd.yaw, pitch: cmd.pitch } : human.look;
         if (human.phase === 'live' && sample && sample.players) {
           const seat = Math.max(0, human.seat);
           // Start the local look facing the opponent, where the server spawned this seat.
@@ -156,14 +212,19 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
             faced = true;
             input.setLook(sample.players[seat].yaw, 0);
             if (cmd) { cmd.yaw = sample.players[seat].yaw; cmd.pitch = 0; }
+            look = { yaw: sample.players[seat].yaw, pitch: 0 };
           }
-          human.updateCommand(now, cmd || { yaw: sample.players[seat].yaw, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {} });
+          const raw = cmd || { yaw: look.yaw, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {} };
+          const me = sample.players[seat];
+          const aim = me ? convergeAim(me, { yaw: raw.yaw, pitch: raw.pitch }, sample.players[1 - seat]) : raw;
+          human.updateCommand(now, { ...raw, yaw: aim.yaw, pitch: aim.pitch });
           const players = sample.players;
           if (players[0] && players[1]) bot.update(now, () => practiceWish(Math.floor(sample.tick), players[1], players[0]));
         }
-        const look = cmd ? { yaw: cmd.yaw, pitch: cmd.pitch } : human.look;
-        view.render(human.sample(now), Math.max(0, human.seat), human.phase === 'live' ? look : null);
+        playSounds(sfx, human, heard);
+        view.render(human.sample(now), Math.max(0, human.seat), human.phase === 'live' ? look : null, { shots: human.shots, now });
         paint(panel, human.viewState(now), 'Practice — not recorded');
+        if (graph) graph.update(human.netGraph(now));
       },
     };
   }
@@ -189,6 +250,8 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
     panels.forEach((panel, index) => {
       panel.querySelector('[data-pvp-ready]').onclick = () => clients[index].ready();
     });
+    const graphs = graphOn() ? panels.map((panel) => createNetGraph(panel)) : [];
+    cleaners.push(() => { for (const graph of graphs) graph.dispose(); });
     let rafBusy = false;
     mode = {
       frame(dt) {
@@ -204,8 +267,9 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
           if (client.phase === 'live' && sample && sample.players && sample.players[0] && sample.players[1]) {
             client.update(clock.now, () => practiceWish(Math.max(0, Math.floor(sample.tick)), sample.players[index], sample.players[1 - index]));
           }
-          localViews[index].render(sample, index, client.phase === 'live' ? client.look : null);
+          localViews[index].render(sample, index, client.phase === 'live' ? client.look : null, { shots: client.shots, now: clock.now });
           paint(panels[index], state, accounts[index]);
+          if (graphs[index]) graphs[index].update(client.netGraph(clock.now));
           panels[index].dataset.pvpTick = String(sample ? sample.tick : 0);
         });
       },

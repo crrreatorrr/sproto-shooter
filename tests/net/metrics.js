@@ -42,6 +42,7 @@ function blankPeer() {
     lateDiscards: 0,
     snapshotArrivals: [],
     renderFrames: 0,
+    preStartFrames: 0,
     heldFrames: 0,
     lateFrames: 0,
     starvedFrames: 0,
@@ -64,8 +65,10 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
   const stats = accounts.map(() => blankPeer());
   const loops = [];
   let liveAt = null;
-  // Stubs for S3. Prediction corrections are in metres; rewind checks are per confirmed shot.
+  // S3 prediction corrections, in metres, one per reconciliation; and the ones where the server
+  // had the bodies touching (body contact is server-only, not predicted).
   const corrections = [[], []];
+  const contactFlags = [[], []];
   const rewindChecks = { checks: 0, agree: 0 };
   // S2b detail: what the client claimed, what the director applied, and agreement at the claim.
   const rewindClaims = { claims: [], applied: [], clamped: 0, unclampedChecks: 0, unclampedAgree: 0 };
@@ -119,6 +122,8 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
      * player positions). A frame is starved when the view did not move on since the last frame
      * (held), or when the newest snapshot is older than `starveMs` (it would have to extrapolate).
      */
+    /** A frame after tick 0 whose render clock is still before tick 0 (exact spawn view). */
+    preStartFrame(index) { stats[index].preStartFrames += 1; },
     renderFrame(index, at, viewKey, mode = null) {
       const seat = stats[index];
       seat.renderFrames += 1;
@@ -146,8 +151,11 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
     disconnected(index, at, sessionId) { stats[index].disconnects.push({ at, sessionId }); },
     rejoined(index, at, sessionId) { stats[index].rejoins.push({ at, sessionId }); },
     joinRefused(index, reason) { stats[index].joinRefusals.push(reason); },
-    /** S3 hook: record one prediction correction, in metres. */
-    correction(index, metres) { corrections[index].push(metres); },
+    /** S3 hook: record one prediction correction, in metres, and whether it was body contact. */
+    correction(index, metres, contact = false) {
+      corrections[index].push(metres);
+      contactFlags[index].push(!!contact);
+    },
     /**
      * S2b/S3 hook: did the server's rewound hit test agree with what the shooter saw? How much
      * this measures depends on the check that feeds it: a check that casts both rays from the
@@ -230,6 +238,11 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
             rejectFraction: seat.inputsSent ? round(rejectTotal / seat.inputsSent) : 0,
             snapshotInterArrivalMs: summary(gaps),
             renderFrames: seat.renderFrames,
+            preStartFrames: seat.preStartFrames,
+            // The S0-S2b definition, which counted the pre-start frames as starved (held).
+            starvedFractionWithStart: seat.renderFrames + seat.preStartFrames
+              ? round((seat.starvedFrames + seat.preStartFrames) / (seat.renderFrames + seat.preStartFrames))
+              : 0,
             heldFrames: seat.heldFrames,
             snapshotLateFrames: seat.lateFrames,
             starvedFrames: seat.starvedFrames,
@@ -248,10 +261,22 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
             joinRefusals: [...seat.joinRefusals],
             acceptedAfterRejoin: seat.acceptedAfterRejoin,
             rejectsAfterRejoin: { ...seat.rejectsAfterRejoin },
-            // Stub until S3 adds client prediction: no samples today.
+            // S3: one sample per reconciliation (snapshot), zero when the prediction was exact.
+            corrections: corrections[index].length,
+            correctionP50Cm: corrections[index].length
+              ? round(percentile(corrections[index], 50) * 100, 2)
+              : null,
             correctionP99Cm: corrections[index].length
               ? round(percentile(corrections[index], 99) * 100, 2)
               : null,
+            contactFraction: corrections[index].length
+              ? round(contactFlags[index].filter(Boolean).length / corrections[index].length)
+              : null,
+            // Without the reconciliations where the server had the two bodies touching.
+            correctionP99NoContactCm: (() => {
+              const free = corrections[index].filter((_, i) => !contactFlags[index][i]);
+              return free.length ? round(percentile(free, 99) * 100, 2) : null;
+            })(),
           };
         }),
         // S2b: the harness checks each applied firing input (tests/net/netsim.js rewindCheck).
