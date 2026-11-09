@@ -8,11 +8,11 @@ import { createServer } from 'vite';
 import { createDirector } from '../src/sim/pvp/director.js';
 import { createLoopbackTable, createPvpClient, sampleSnapshots } from '../src/net/client.js';
 import { encodeInput } from '../src/net/inputCodec.js';
-import { CONTENT, OP } from '../src/net/protocol.js';
-import { INPUT_LIMITS } from '../src/sim/pvp/rules.js';
+import { CONTENT, OP, PROTOCOL } from '../src/net/protocol.js';
+import { INPUT_LIMITS, STALL_MS } from '../src/sim/pvp/rules.js';
 
 function hello(id, extra = {}) {
-  return { accountId: id, protocol: 1, sim: 1, content: CONTENT, ...extra };
+  return { accountId: id, protocol: PROTOCOL, sim: 1, content: CONTENT, ...extra };
 }
 
 function wish(seq, frame, extra = {}) {
@@ -56,48 +56,29 @@ describe('input rejection', () => {
     expect(full.hello({ presenceUserId: 'cy', sessionId: 'sc', body: hello('cy'), now: 0 }).reason).toBe('match_full');
   });
 
-  it('rejects NaN, a bad sequence, a bad frame, and too many inputs', () => {
+  it('rejects NaN, a repeated sequence, a frame past the window, and too many frames', () => {
     const director = boot();
     expect(send(director, 'ada', wish(1, 0, { yaw: NaN }), 0).reason).toBe('nan');
     expect(send(director, 'ada', wish(1, 0, { moveX: NaN }), 0).reason).toBe('nan');
     expect(() => encodeInput({ seq: 1, frame: 0, yaw: 0, pitch: Infinity, moveX: 0, moveZ: 0 })).toThrow(/nan/);
     expect(send(director, 'ada', wish(1, 0), 0).ok).toBe(true);
+    // Protocol 2: a sequence must rise, but gaps are fine.
     expect(send(director, 'ada', wish(1, 0), 0).reason).toBe('sequence');
-    expect(send(director, 'ada', wish(3, 0), 0).reason).toBe('sequence');
-    expect(send(director, 'ada', wish(2, 0), 0).ok).toBe(true);
-    expect(send(director, 'ada', wish(3, 80), 0).reason).toBe('frame');
-    expect(send(director, 'ada', wish(3, -1), 0).reason).toBe('frame');
+    expect(send(director, 'ada', wish(3, 1), 0).ok).toBe(true);
+    expect(send(director, 'ada', wish(2, 2), 0).reason).toBe('sequence');
+    expect(send(director, 'ada', wish(4, 80), 0).reason).toBe('frame');
+    expect(send(director, 'ada', wish(4, -1), 0).reason).toBe('frame');
     const ahead = director.sim.tick + INPUT_LIMITS.futureFrames;
-    expect(send(director, 'ada', wish(3, ahead), 0).ok).toBe(true);
-    expect(send(director, 'ada', wish(4, ahead + 1), 0).reason).toBe('frame');
+    expect(send(director, 'ada', wish(4, ahead), 0).ok).toBe(true);
+    expect(send(director, 'ada', wish(5, ahead + 1), 0).reason).toBe('frame');
 
     const rated = boot();
     let seq = 0;
-    for (let n = 0; n < INPUT_LIMITS.maxInputsPerTick; n++) {
+    for (let n = 0; n < INPUT_LIMITS.maxFramesPerCursor; n++) {
       seq += 1;
-      expect(send(rated, 'ada', wish(seq, 0), 0).ok, `tick input ${n}`).toBe(true);
+      expect(send(rated, 'ada', wish(seq, n), 0).ok, `tick input ${n}`).toBe(true);
     }
-    expect(send(rated, 'ada', wish(seq + 1, 0), 0).reason).toBe('rate');
-
-    const paced = boot();
-    let pacedSeq = 0;
-    let now = 0;
-    let accepted = 0;
-    while (accepted < INPUT_LIMITS.maxInputsPerSecond) {
-      const cursor = paced.sim.tick;
-      const room = Math.min(INPUT_LIMITS.maxInputsPerTick, INPUT_LIMITS.maxInputsPerSecond - accepted);
-      for (let n = 0; n < room; n++) {
-        pacedSeq += 1;
-        const got = send(paced, 'ada', wish(pacedSeq, cursor), now);
-        expect(got.ok, `accepted ${accepted}`).toBe(true);
-        accepted += 1;
-      }
-      send(paced, 'bea', wish(Math.floor(accepted / 4) + 1, cursor), now);
-      now += 34;
-      paced.advance(now);
-    }
-    pacedSeq += 1;
-    expect(send(paced, 'ada', wish(pacedSeq, paced.sim.tick), now).reason).toBe('rate');
+    expect(send(rated, 'ada', wish(seq + 1, 7), 0).reason).toBe('rate');
   });
 
   it('cancels an unready lobby, forfeits one stall, and draws when both stall', () => {
@@ -111,9 +92,12 @@ describe('input rejection', () => {
     waiting.ready({ presenceUserId: 'ada', sessionId: 'sa', now: 0 });
     expect(waiting.advance(30000).result.reason).toBe('ready_timeout');
 
+    // The stall clock starts at tick 0, after the lead-in.
     const both = boot(0);
-    expect(both.advance(9999).result).toBeNull();
-    expect(both.advance(10000).result).toMatchObject({ outcome: 'draw', winner: null, reason: 'both_stall', ticketsMinted: 0 });
+    const start = both.liveStart;
+    expect(start).toBeGreaterThan(0);
+    expect(both.advance(start + STALL_MS - 1).result).toBeNull();
+    expect(both.advance(start + STALL_MS).result).toMatchObject({ outcome: 'draw', winner: null, reason: 'both_stall', ticketsMinted: 0 });
 
     const one = boot(0);
     send(one, 'ada', wish(1, 0), 0);
@@ -121,7 +105,7 @@ describe('input rejection', () => {
     one.advance(5000);
     const cursor = one.sim.tick;
     expect(send(one, 'ada', wish(2, cursor), 9000).ok).toBe(true);
-    expect(one.advance(10000).result).toMatchObject({ outcome: 'forfeit', winner: 0, reason: 'stall', ticketsMinted: 0 });
+    expect(one.advance(one.liveStart + STALL_MS).result).toMatchObject({ outcome: 'forfeit', winner: 0, reason: 'stall', ticketsMinted: 0 });
   });
 
   it('ignores a client result and keeps version mismatches out', () => {
@@ -132,7 +116,7 @@ describe('input rejection', () => {
     expect(director.phase).toBe('live');
     const stale = createDirector({ seed: 9, matchId: 'ver' });
     expect(stale.hello({
-      presenceUserId: 'ada', sessionId: 'sa', body: hello('ada', { protocol: 2 }), now: 0,
+      presenceUserId: 'ada', sessionId: 'sa', body: hello('ada', { protocol: 1 }), now: 0,
     }).reason).toBe('version');
     expect(stale.hello({
       presenceUserId: 'ada', sessionId: 'sa', body: hello('ada', { content: 'deadbeef' }), now: 0,

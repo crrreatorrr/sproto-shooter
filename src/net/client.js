@@ -1,22 +1,27 @@
 // Arena client. Snapshots are interpolated on a clock. The server result is the only outcome.
 //
-// Timing (SHOOTER-S1, still protocol 1):
-// - Server clock: every snapshot (and the PHASE that starts the match) gives an offset
-//   `tick * STEP_MS - arrival`. The estimate uses the largest offset of the last few, i.e. the
-//   least-delayed packet, so estimated server tick = that snapshot's tick + elapsed × 30 Hz.
+// Timing (SHOOTER-S1, updated for protocol 2 in SHOOTER-S2a):
+// - Server clock: every snapshot, PHASE and PONG carries `clockTick`, the server clock in ticks
+//   when it was sent (negative during the live-start lead-in). Each gives an offset
+//   `clockTick * STEP_MS - arrival`; the estimate uses the largest of the last few, i.e. the
+//   least-delayed packet.
+// - Round trip: PING/PONG every NET.pingMs (and once more right after the first PONG), median of
+//   the last NET.rttWindow samples; a sample over NET.rttMaxSampleMs is ignored.
 // - Input clock: a fixed 30 Hz accumulator, not the render loop. Each input tick builds one wish
-//   and sends exactly one INPUT stamped frame = estimated server tick + lead.
-// - Round trip: HELLO/READY -> own WELCOME (the only request/response pair in protocol 1). While
-//   live the client repeats READY every NET.pingMs as a probe (director v1 answers it with
-//   WELCOME and changes nothing); the RTT is the median of the last NET.rttWindow samples.
-// - Lead adapts: start at the round trip in ticks plus one (2 without a sample); a `frame`
-//   reject below the cursor raises it by cursor - frame + 1; a frame past the director's
-//   futureFrames window lowers it; whenever the measured RTT falls, the lead is capped at the
-//   round-trip lead + NET.leadJitterTicks, so an RTT spike's raises come back down within about
-//   NET.rttWindow / 2 probes; a long run with no late frame probes one tick lower. Capped at
-//   NET.leadMax.
-// - A hidden tab gets no animation frames: no update(), so no inputs and no probes. The
-//   director forfeits a seat after STALL_MS (10 s) without input.
+//   and sends exactly one INPUT stamped frame = estimated server tick + lead (never below 0, so
+//   nothing is sent until the lead-in has a tick to aim at).
+// - Lead adapts: it starts at the round trip in ticks plus one; the director accepts and
+//   discards late frames and counts them in the snapshot (`you.late`), and a new late count
+//   raises the lead by one at most once per round trip, up to the round-trip lead +
+//   NET.leadJitterTicks; whenever the measured RTT falls, the lead is capped at that same
+//   ceiling (an RTT spike's raises come back down within ~2 s); when the snapshot's `you.buffer`
+//   (frames queued ahead at the server) stays above NET.bufferTarget for NET.bufferTrimMs, the
+//   lead drops by the excess; a `frame` reject past the director's futureFrames window lowers
+//   it; a long clean run probes one tick lower. Capped at NET.leadMax.
+// - A hidden tab gets no animation frames: no update(), so no inputs and no PINGs. The director
+//   forfeits a seat after STALL_MS (10 s) without input.
+// - Sequence numbers only increase. Protocol 2 allows gaps, so a reject never rewinds them.
+// - Rejoin on a new session id sends HELLO (the director rebinds the seat), not RESYNC.
 // - Remote interpolation: render time = estimated server time - delay. Interpolate between the
 //   two snapshots around it, extrapolate up to NET.extrapolateMs when starved, then hold.
 import { createMockRealtimeServer } from '@metaverse/hub-sdk';
@@ -24,7 +29,7 @@ import { decodeInput, encodeInput, wishFromCommand } from './inputCodec.js';
 import {
   CONTENT, FREE_MATCH_NAME, OP, PROTOCOL, SIM_VERSION, matchmakerProps,
 } from './protocol.js';
-import { createDirector } from '../sim/pvp/director.js';
+import { createDirector, restoreDirector } from '../sim/pvp/director.js';
 import { INPUT_LIMITS, STALL_MS, STEP_MS } from '../sim/pvp/rules.js';
 
 /** Client netcode tuning. Nothing here is part of the wire contract. */
@@ -34,17 +39,22 @@ export const NET = Object.freeze({
   leadMax: 12,
   /** Input ticks without a late frame before the lead probes one tick lower. */
   leadProbeTicks: 900,
-  /** Round-trip probe period while live, and how many samples the median uses. */
+  /** Clock samples kept for the estimate (30 Hz snapshots, so 1 s). */
+  clockWindow: 30,
+  /** Most input ticks one update() may send after a slow render frame. */
+  maxTicksPerUpdate: 4,
   pingMs: 500,
   rttWindow: 5,
-  /** A probe unanswered for this long is dropped (its WELCOME was lost with the socket). */
+  /** A round trip longer than this is not a sample (a PONG held up by a long stall). */
   rttMaxSampleMs: 2000,
-  /** When the RTT falls, the lead is capped at the round-trip lead plus this many ticks. */
+  /** A late count rising by at most this much per snapshot is jitter (more is a stall burst). */
+  lateJitterFrames: 2,
+  /** Late frames may raise the lead to the round-trip lead plus this many ticks, no further; and
+   * whenever the RTT falls, the lead is capped there. */
   leadJitterTicks: 2,
-  /** Snapshots kept for the clock estimate (10 Hz at protocol 1, so 1.6 s). */
-  clockWindow: 16,
-  /** Most input ticks one update() may send after a slow render frame (director cap: 4 per tick). */
-  maxTicksPerUpdate: 4,
+  /** Trim the lead when `you.buffer` stays above bufferTarget for bufferTrimMs. */
+  bufferTarget: 2,
+  bufferTrimMs: 1000,
   interpDelayMs: 100,
   extrapolateMs: 100,
   snapshotBuffer: 24,
@@ -71,7 +81,7 @@ function headerOf(latest, tick, mode) {
     outcome: latest.outcome,
     winner: latest.winner,
     reason: latest.reason,
-    graceMs: latest.graceMs,
+    graceMs: latest.graceMs ?? STALL_MS,
   };
 }
 
@@ -144,19 +154,18 @@ function jsonBytes(value) {
   return buf;
 }
 
+/** Local table for practice: routes the director's messages to each `to` presence, or to all. */
 export function createLoopbackTable(director, clock) {
   const matches = [];
-  function emit(op, body) {
+  function emit(op, body, to) {
     for (const match of matches) {
+      if (to && to.sessionId !== match.self.sessionId) continue;
       for (const fn of match.fns) fn({ opCode: op, json: () => body, data: jsonBytes(body) });
     }
   }
   function deliver(out) {
     if (!out) return;
-    for (const msg of out.messages || []) emit(msg.op, msg.body);
-    for (const snap of out.snapshots || []) emit(OP.SNAPSHOT, snap);
-    if (out.phaseMessage) emit(OP.PHASE, out.phaseMessage);
-    if (out.result) emit(OP.RESULT, out.result);
+    for (const msg of out.messages || []) emit(msg.op, msg.body, msg.to);
   }
   return {
     deliver,
@@ -200,26 +209,33 @@ export function createPvpClient({
   let rejectReason = null;
   let slotNow = 0;
   let reconnectAt = 0;
+  let names = [null, null];
   const seenResults = new Set();
 
-  // Server clock: offsets (tick * STEP_MS - arrival) of the newest snapshots.
+  // Server clock: offsets (clockTick * STEP_MS - arrival) of the newest server packets.
   const offsets = [];
   let clockOffset = null;
-  // Round trips of HELLO/READY -> own WELCOME (the only request/response pair in protocol 1).
-  const pings = [];
-  const rttSamples = [];
+  // PING round trips.
+  const rtts = [];
   let rttMs = null;
-  let lastProbeAt = -Infinity;
+  let lastPingAt = -Infinity;
   // Input clock and lead.
   let inputAcc = 0;
   let inputLast = null;
   let lastFrame = -1;
   let lead = NET.leadStart;
   let cleanTicks = 0;
-  let resyncSeq = -1;
-  let echoBudget = 0;
-  const inFlight = new Map();
-  const stats = { inputTicks: 0, leadRaises: 0, leadDrops: 0, leadCaps: 0, staleRejects: 0, maxLead: NET.leadStart };
+  let lateSeen = 0;
+  let leadRaisedAt = -Infinity;
+  let ack = null;
+  // Server buffer (you.buffer) since the last trim: its minimum and when the window started.
+  let bufferMin = Infinity;
+  let bufferSince = null;
+  let pongs = 0;
+  const stats = {
+    inputTicks: 0, leadRaises: 0, leadDrops: 0, leadCaps: 0, leadTrims: 0, lateFrames: 0, pings: 0,
+    maxLead: NET.leadStart,
+  };
   let look = { yaw: 0, pitch: 0 };
   // Edge buttons and slot picks latched between render frames until an input tick carries them.
   const latch = { jump: false, dash: false, reload: false, slide: false };
@@ -232,9 +248,20 @@ export function createPvpClient({
     match.send(op, data);
   }
 
-  function request(op, data) {
-    pings.push(clock());
-    send(op, data);
+  function hello() {
+    send(OP.HELLO, {
+      accountId,
+      protocol: PROTOCOL,
+      sim: SIM_VERSION,
+      content: CONTENT,
+    });
+  }
+
+  function maybePing(now = clock(), force = false) {
+    if (seat < 0 || link !== 'live' || (!force && now - lastPingAt < NET.pingMs)) return;
+    lastPingAt = now;
+    stats.pings += 1;
+    send(OP.PING, { t: now });
   }
 
   /** Phase only moves forward, and never leaves 'done' once a result exists. */
@@ -249,16 +276,16 @@ export function createPvpClient({
   }
 
   function clockSample(tick, at) {
-    if (!Number.isInteger(tick)) return;
+    if (typeof tick !== 'number' || !Number.isFinite(tick)) return;
     offsets.push(tick * STEP_MS - at);
     if (offsets.length > NET.clockWindow) offsets.shift();
     clockOffset = Math.max(...offsets);
   }
 
   /**
-   * At live start, lift the lead to the handshake round trip in ticks plus one tick of jitter
-   * margin when a round trip was measured, so the first inputs are not late. With no sample it
-   * stays at NET.leadStart and the late-reject rule finds it.
+   * At live start, lift the lead to the PING round trip in ticks plus one tick of jitter margin
+   * when a round trip was measured, so the first inputs are not late. With no sample it stays at
+   * NET.leadStart and the late count finds it.
    */
   function leadForRtt() {
     return rttMs == null ? NET.leadStart : Math.min(NET.leadMax, Math.ceil(rttMs / STEP_MS) + 1);
@@ -270,32 +297,20 @@ export function createPvpClient({
     stats.maxLead = Math.max(stats.maxLead, lead);
   }
 
+  function leadCeiling() {
+    return Math.min(NET.leadMax, leadForRtt() + NET.leadJitterTicks);
+  }
+
   /** Lower the lead to `want`. The next frames repeat ones already sent; the director replaces them. */
   function lowerLead(want) {
     if (want >= lead) return false;
-    lastFrame -= lead - want;
+    if (lastFrame >= 0) lastFrame -= lead - want;
     lead = want;
     stats.leadDrops += 1;
+    // What the server buffers changes only after the frames sent from now on arrive.
+    bufferMin = Infinity;
+    bufferSince = null;
     return true;
-  }
-
-  /** One round-trip sample. When the median falls, the lead may not stay above the RTT lead + margin. */
-  function rttSample(rtt) {
-    rttSamples.push(rtt);
-    if (rttSamples.length > NET.rttWindow) rttSamples.shift();
-    const before = rttMs;
-    const sorted = [...rttSamples].sort((a, b) => a - b);
-    rttMs = sorted[Math.floor((sorted.length - 1) / 2)];
-    if (before != null && rttMs < before && lastFrame >= 0) {
-      if (lowerLead(Math.max(NET.leadMin, Math.min(NET.leadMax, leadForRtt() + NET.leadJitterTicks)))) stats.leadCaps += 1;
-    }
-  }
-
-  /** While live, repeat READY as a round-trip probe (director v1 answers with WELCOME). */
-  function maybeProbe(now) {
-    if (seat < 0 || link !== 'live' || now - lastProbeAt < NET.pingMs) return;
-    lastProbeAt = now;
-    request(OP.READY, { accountId });
   }
 
   function estTick(now) {
@@ -308,16 +323,53 @@ export function createPvpClient({
       changed();
       return;
     }
-    const at = clock();
-    // A probe whose WELCOME was lost (socket reset, a refused READY) would pair with a later one.
-    while (pings.length && at - pings[0] > NET.rttMaxSampleMs) pings.shift();
-    if (pings.length) rttSample(at - pings.shift());
     seat = body.seat;
     setPhase(body.phase);
     opponent = body.opponent || opponent;
+    if (Array.isArray(body.names)) names = body.names.map((n) => (typeof n === 'string' ? n : null));
+    // Resume after the last sequence the seat accepted (a reload starts from 0).
+    if (Number.isInteger(body.lastSeq) && body.lastSeq > seq) seq = body.lastSeq;
     link = 'live';
     rejectReason = null;
+    // A lobby rejoin clears the seat's ready flag on the server; say it again.
+    if (readied && body.phase === 'lobby' && body.ready === false) send(OP.READY, { accountId });
+    maybePing();
     changed();
+  }
+
+  function onPong(body) {
+    if (!body || typeof body.t !== 'number') return;
+    const now = clock();
+    const rtt = now - body.t;
+    if (!(rtt >= 0) || rtt > NET.rttMaxSampleMs) return;
+    pongs += 1;
+    rtts.push(rtt);
+    if (rtts.length > NET.rttWindow) rtts.shift();
+    const before = rttMs;
+    const sorted = [...rtts].sort((a, b) => a - b);
+    rttMs = sorted[Math.floor((sorted.length - 1) / 2)];
+    // The RTT fell: a spike's raises may not outlive it.
+    if (before != null && rttMs < before && lastFrame >= 0) {
+      if (lowerLead(Math.max(NET.leadMin, leadCeiling()))) stats.leadCaps += 1;
+    }
+    if (body.phase === 'live' && !result) clockSample(body.clockTick, now);
+    // A second PING right away gives the server its first round trip one RTT sooner.
+    if (pongs === 1) maybePing(now, true);
+  }
+
+  /** you.buffer above NET.bufferTarget for a whole NET.bufferTrimMs: lower the lead by the excess. */
+  function bufferSample(depth, now) {
+    if (!Number.isInteger(depth) || lastFrame < 0) return;
+    if (bufferSince == null) bufferSince = now;
+    bufferMin = Math.min(bufferMin, depth);
+    if (now - bufferSince < NET.bufferTrimMs) return;
+    const excess = bufferMin - NET.bufferTarget;
+    if (excess > 0 && lowerLead(Math.max(NET.leadMin, lead - excess))) {
+      stats.leadTrims += 1;
+      return;
+    }
+    bufferMin = Infinity;
+    bufferSince = now;
   }
 
   function onSnapshot(body) {
@@ -327,7 +379,29 @@ export function createPvpClient({
     if (latest && body.tick === latest.tick) snaps.pop();
     snaps.push(body);
     if (snaps.length > NET.snapshotBuffer) snaps.shift();
-    clockSample(body.tick, clock());
+    const now = clock();
+    clockSample(body.clockTick ?? body.tick, now);
+    const you = body.you;
+    if (you && you.seat === seat) {
+      ack = { frame: you.ackFrame, seq: you.ackSeq, buffer: you.buffer, late: you.late };
+      bufferSample(you.buffer, now);
+      if (Number.isInteger(you.late) && you.late > lateSeen) {
+        const fresh = you.late - lateSeen;
+        stats.lateFrames += fresh;
+        lateSeen = you.late;
+        cleanTicks = 0;
+        // A frame or two late is jitter: raise by one, at most once per round trip (frames sent
+        // before the raise cannot benefit). A larger run is a TCP stall; the director's hold-last
+        // covers it, and a bigger lead would only add input delay.
+        const ceiling = leadCeiling();
+        if (fresh <= NET.lateJitterFrames && now - leadRaisedAt >= (rttMs ?? 0) + STEP_MS && lead < ceiling) {
+          lead += 1;
+          leadRaisedAt = now;
+          stats.leadRaises += 1;
+          stats.maxLead = Math.max(stats.maxLead, lead);
+        }
+      }
+    }
     if (body.outcome && body.phase === 'done' && !result) {
       result = {
         outcome: body.outcome,
@@ -350,47 +424,17 @@ export function createPvpClient({
   }
 
   /**
-   * A reject for this seat. Protocol 1 rejects carry the server's lastSeq and cursor tick, so
-   * the next input reuses lastSeq + 1. In-flight inputs sent before the rewind come back as
-   * `sequence` rejects with the same lastSeq; those are echoes and are ignored, so one late
-   * frame no longer cascades.
+   * A reject for this seat. Protocol 2 never rewinds the sequence (gaps are allowed). A `frame`
+   * reject past the futureFrames window lowers the lead into the window.
    */
   function onReject(body) {
     rejectReason = body.reason;
-    if (!Number.isInteger(body.lastSeq)) {
-      changed();
-      return;
+    if (Number.isInteger(body.lastSeq) && body.lastSeq > seq) seq = body.lastSeq;
+    if (body.reason === 'frame' && Number.isInteger(body.frame) && Number.isInteger(body.tick)
+      && body.frame > body.tick + INPUT_LIMITS.futureFrames) {
+      const over = body.frame - body.tick - Math.floor(INPUT_LIMITS.futureFrames / 2);
+      lowerLead(Math.max(NET.leadMin, lead - over));
     }
-    if (body.reason === 'sequence' && body.lastSeq === resyncSeq && echoBudget > 0) {
-      echoBudget -= 1;
-      stats.staleRejects += 1;
-      return;
-    }
-    const failed = inFlight.get(body.lastSeq + 1);
-    if (body.reason === 'frame' && failed && Number.isInteger(body.tick)) {
-      const cursor = body.tick;
-      if (failed.frame < cursor) {
-        // Late: the packet's lead was short by cursor - frame. Inputs already in flight with the
-        // same lead fail the same way, so the raise is relative to the failed packet's lead.
-        const want = Math.min(NET.leadMax, failed.lead + cursor - failed.frame + 1);
-        if (want > lead) {
-          lead = want;
-          stats.leadRaises += 1;
-          stats.maxLead = Math.max(stats.maxLead, lead);
-        }
-        cleanTicks = 0;
-      } else if (failed.frame > cursor + INPUT_LIMITS.futureFrames) {
-        // Too far ahead for the director's window: aim for the middle of it.
-        const over = failed.frame - cursor - Math.floor(INPUT_LIMITS.futureFrames / 2);
-        lowerLead(Math.max(NET.leadMin, failed.lead - over));
-      }
-    }
-    // Every input after the failed one was already rejected as `sequence` with this same
-    // lastSeq. Those echoes are expected; anything past them is a real gap.
-    echoBudget = Math.max(0, seq - body.lastSeq - 1);
-    seq = body.lastSeq;
-    resyncSeq = body.lastSeq;
-    for (const key of [...inFlight.keys()]) if (key > seq) inFlight.delete(key);
     changed();
   }
 
@@ -402,16 +446,17 @@ export function createPvpClient({
     if (msg.opCode === OP.WELCOME) onWelcome(body);
     else if (msg.opCode === OP.PHASE) {
       if (body) {
-        // The PHASE that starts the match is tick 0 at live start. (The READY reply may have
-        // already said 'live', so this keys on "no input sent yet", not on the phase.)
+        // The PHASE that starts the match carries the server clock (minus the lead-in). The
+        // READY reply may have already said 'live', so this keys on "no input sent yet".
         if (body.phase === 'live' && !result && lastFrame < 0) {
-          clockSample(body.tick, clock());
+          clockSample(body.clockTick ?? body.tick, clock());
           seedLead();
         }
         setPhase(body.phase);
       }
       changed();
     } else if (msg.opCode === OP.SNAPSHOT) onSnapshot(body);
+    else if (msg.opCode === OP.PONG) onPong(body);
     else if (msg.opCode === OP.RESULT) onResult(body);
     else if (msg.opCode === OP.REJECT && body && (body.accountId === accountId || body.accountId == null)) {
       onReject(body);
@@ -420,7 +465,6 @@ export function createPvpClient({
 
   if (match && match.onMessage) match.onMessage(onPacket);
   if (match && match.onClose) match.onClose(() => {
-    pings.length = 0;
     link = 'reconnecting';
     reconnectAt = clock();
     changed();
@@ -432,16 +476,12 @@ export function createPvpClient({
       return;
     }
     link = 'live';
-    send(OP.RESYNC, { accountId });
+    // A reconnect is a new session id: only HELLO rebinds the seat (RESYNC needs the old one).
+    hello();
     changed();
   });
 
-  request(OP.HELLO, {
-    accountId,
-    protocol: PROTOCOL,
-    sim: SIM_VERSION,
-    content: CONTENT,
-  });
+  hello();
 
   function live() {
     return phase === 'live' && !result;
@@ -456,15 +496,16 @@ export function createPvpClient({
     if (!live()) return false;
     const est = estTick(at);
     if (est == null) return false;
-    const frame = Math.min(INPUT_LIMITS.maxFrame, Math.max(Math.floor(est) + lead, lastFrame + 1));
+    const aim = Math.floor(est) + lead;
+    // During the lead-in the aim point is still before tick 0.
+    if (aim < 0) return false;
+    const frame = Math.min(INPUT_LIMITS.maxFrame, Math.max(aim, lastFrame + 1));
     // Encode before committing seq, so a bad wish (NaN aim) cannot desync the sequence.
     const packet = encodeInput({ ...wish, seq: seq + 1, frame, yaw: wish.yaw ?? 0, pitch: wish.pitch ?? 0 });
     seq += 1;
     if (Number.isInteger(wish.slot) && wish.slot >= 0) slotNow = wish.slot;
     look = { yaw: wish.yaw ?? 0, pitch: wish.pitch ?? 0 };
     lastFrame = frame;
-    inFlight.set(seq, { frame, lead });
-    if (inFlight.size > 64) inFlight.delete(inFlight.keys().next().value);
     stats.inputTicks += 1;
     cleanTicks += 1;
     if (cleanTicks >= NET.leadProbeTicks && lead > NET.leadMin) {
@@ -484,7 +525,7 @@ export function createPvpClient({
    * beyond NET.maxTicksPerUpdate instead of bursting it at the director.
    */
   function update(now, build) {
-    if (live()) maybeProbe(now);
+    maybePing(now);
     if (!live() || clockOffset == null) {
       inputLast = null;
       inputAcc = 0;
@@ -504,7 +545,9 @@ export function createPvpClient({
       // Stamp each tick at the moment the accumulator crossed it, so ticks stay exactly one
       // frame apart however the render frames fall.
       const at = now - inputAcc;
-      const wish = build(Math.max(Math.floor(estTick(at)) + lead, lastFrame + 1));
+      const aim = Math.floor(estTick(at)) + lead;
+      if (aim < 0) continue;
+      const wish = build(Math.max(aim, lastFrame + 1));
       if (wish && sendTick(wish, at)) sent += 1;
     }
     return sent;
@@ -546,22 +589,25 @@ export function createPvpClient({
     get rejectReason() { return rejectReason; },
     /** Yaw and pitch of the newest wish this client sent: the camera follows these, not the server echo. */
     get look() { return look; },
-    /** Input lead, server-clock estimate and handshake RTT, for overlays and tests. */
+    /** Input lead, server-clock estimate, PING RTT and the server's ack, for overlays and tests. */
     get net() {
       return {
         lead,
         rttMs,
-        rttSamples: [...rttSamples],
+        rttSamples: [...rtts],
         estTick: estTick(clock()),
         lastFrame,
+        seq,
         interpDelayMs,
+        ack,
         ...stats,
       };
     },
+    get names() { return names; },
     setHoldReconnect(value) { holdReconnect = !!value; },
     ready() {
       readied = true;
-      request(OP.READY, { accountId });
+      send(OP.READY, { accountId });
     },
     update,
     updateCommand,
@@ -592,48 +638,61 @@ function nowMs() {
   return typeof performance !== 'undefined' ? performance.now() : Date.now();
 }
 
+/**
+ * The free match handler the mock realtime server runs (the hub's H3 handler follows the same
+ * shape). With `freeze`, the director lives in match state only as exportState() JSON and is
+ * thawed for each callback, as Nakama's copied match state requires.
+ */
 export function registerFreeMatch(server, options = {}) {
   server.registerMatch(FREE_MATCH_NAME, {
     init(params) {
       const seed = (params && params.seed) || options.seed || 1;
-      const director = createDirector({ seed, matchId: 'pending' });
+      const director = createDirector({ seed, matchId: (params && params.matchId) || 'pending' });
+      const freeze = !!((params && params.freeze) ?? options.freeze);
       return {
         state: {
-          director,
+          director: freeze ? null : director,
+          frozen: freeze ? director.exportState() : null,
           clock: (params && params.clock) || options.clock || (() => Date.now()),
-          resultSent: false,
         },
         label: JSON.stringify({
           kind: FREE_MATCH_NAME,
           game: 'sproto-shooter',
           mode: 'free',
           protocol: PROTOCOL,
+          content: CONTENT,
           stake: 0,
         }),
       };
     },
     joinAttempt(state, presence) {
-      return state.director.joinAttempt(presence.userId);
+      return withDirector(state, (director) => director.joinAttempt(presence.userId));
     },
     join() {},
     leave(state, presences) {
-      for (const presence of presences) state.director.disconnect(presence.userId, presence.sessionId);
+      withDirector(state, (director) => {
+        for (const presence of presences) director.disconnect(presence.userId, presence.sessionId);
+      });
     },
     loop(state, messages, dispatcher) {
       const now = state.clock();
-      for (const message of messages) {
-        const out = state.director.handle(message.sender, message.opCode, message.data, now);
-        for (const msg of (out && out.messages) || []) dispatcher.broadcast(msg.op, msg.body);
-      }
-      const advanced = state.director.advance(now);
-      if (advanced.phaseMessage) dispatcher.broadcast(OP.PHASE, advanced.phaseMessage);
-      for (const snap of advanced.snapshots) dispatcher.broadcast(OP.SNAPSHOT, snap);
-      if (advanced.result && !state.resultSent) {
-        state.resultSent = true;
-        dispatcher.broadcast(OP.RESULT, advanced.result);
-      }
+      const send = (out) => {
+        for (const msg of (out && out.messages) || []) dispatcher.broadcast(msg.op, msg.body, msg.to ? [msg.to] : undefined);
+      };
+      withDirector(state, (director) => {
+        for (const message of messages) send(director.handle(message.sender, message.opCode, message.data, now));
+        send(director.advance(now));
+      });
     },
   });
+}
+
+function withDirector(state, fn) {
+  if (state.director) return fn(state.director);
+  const director = restoreDirector(state.frozen);
+  const out = fn(director);
+  state.frozen = director.exportState();
+  return out;
 }
 
 export function createMockArena(options = {}) {

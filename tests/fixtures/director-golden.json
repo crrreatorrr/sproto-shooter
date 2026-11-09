@@ -1,0 +1,12 @@
+{
+  "comment": "SHOOTER-S2a director golden: tests/fixtures/director-golden.js against the protocol 2 director. Node, goja and Chromium must all report this.",
+  "phase": "done",
+  "tick": 892,
+  "stateHash": "e421cba8",
+  "outcome": "forfeit",
+  "winner": 0,
+  "reason": "stall",
+  "late": 57,
+  "rejects": { "wrong_sender": 1, "frame": 1 },
+  "replay": { "verified": true, "tick": 892, "stateHash": "e421cba8" }
+}

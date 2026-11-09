@@ -1,6 +1,7 @@
 // Wire contract for the free arena. The client never supplies a winner.
 import {
-  CONTENT_FINGERPRINT, INPUT_LIMITS, MATCH_NAME, PVP_PROTOCOL_VERSION, PVP_SIM_VERSION,
+  CONTENT_FINGERPRINT, GAME_ID, INPUT_LIMITS, MATCH_NAME, PVP_PROTOCOL_VERSION, PVP_SIM_VERSION,
+  matchmakerQuery,
 } from '../sim/pvp/rules.js';
 
 export const OP = Object.freeze({
@@ -13,6 +14,8 @@ export const OP = Object.freeze({
   SNAPSHOT: 7,
   RESULT: 8,
   RESYNC: 9,
+  PING: 10,
+  PONG: 11,
 });
 
 export const PROTOCOL = PVP_PROTOCOL_VERSION;
@@ -64,13 +67,17 @@ export function parseJsonBody(data) {
   }
 }
 
+/**
+ * Matchmaker ticket. The query requires the same protocol and content fingerprint, so clients on
+ * different builds never pair.
+ */
 export function matchmakerProps(fingerprint = CONTENT_FINGERPRINT) {
   return {
-    query: '+properties.game:sproto-shooter +properties.mode:free +properties.protocol:1',
+    query: matchmakerQuery(fingerprint),
     minCount: 2,
     maxCount: 2,
     stringProperties: {
-      game: 'sproto-shooter',
+      game: GAME_ID,
       mode: 'free',
       protocol: String(PVP_PROTOCOL_VERSION),
       sim: String(PVP_SIM_VERSION),
