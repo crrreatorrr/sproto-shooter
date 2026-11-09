@@ -163,6 +163,13 @@ kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var
 .btn.sm { padding: 3px 10px; font-size: 13px; } .btn.big { font-size: 20px; padding: 12px 26px; font-family: var(--display); } .btn.big small { display: block; font-family: var(--body); font-size: 12px; }
 .btn.alt { background: var(--mint); box-shadow: 0 3px 0 #1d8077; }
 .btn:focus-visible, .tab:focus-visible, .chip:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+/* keyboard / gamepad menu focus (src/ui/menuNav.js) */
+.nav-focus { outline: 3px solid #fff !important; outline-offset: 3px; box-shadow: 0 0 0 6px rgba(255,94,196,.55) !important; border-radius: 10px; }
+label.nav-focus { padding: 2px 6px; }
+.padtabs { display: flex; gap: 8px; align-items: center; justify-content: center; margin: 0 40px 10px; font-weight: 800; font-size: 13px; color: var(--ink-dim); flex-wrap: wrap; }
+.padtabs span.on { color: var(--sun); text-decoration: underline; text-underline-offset: 4px; }
+.controls-wrap { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.controls-wrap .controls + .controls { opacity: .75; border-top: 1px solid var(--line); padding-top: 8px; }
 .offers { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
 .offer .gcard { width: auto; } .offer .btn { margin-top: 8px; width: 100%; } .offer.sold { opacity: .5; } .soldtag { font-family: var(--display); color: var(--bad); text-align: center; margin-top: 8px; }
 .slotno { font-size: 12px; font-weight: 800; color: var(--ink-dim); margin-bottom: 4px; }
