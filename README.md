@@ -35,7 +35,7 @@ Hub (same shape as the other games):
 | Enemies | **Midget**: fast melee runner that never shoots and comes in big swarms. **Bitcoin Obama**: keeps distance, strafes and fires 3-round bitcoin bursts (about 1 shot/s, 4.5° spread, 30 m/s, so you can dodge; your MG does 10 shots/s). **Flying Midget** (Midget stage 3 + propeller beanie, from wave 2): fast and erratic, circles you 3–6 m up and peppers you with tiny 2-damage pellets; 30 HP but hard to hit. **Big Bitcoin Obama**: heavy with a front shield, ground pound and a sloppy 6-round hose; hit the back battery. Models use Sproto Duel's stage 1/2/3 versions: elites and tier 4+ step up a stage. Elites wear a crown, have ×2.5 HP and drop double. Headshots = **BONK** |
 | Bosses | Each phase swaps to the next Sproto Duel stage model. **Mega Tinubu** (Physical, 3 phases): bitcoin volleys, charge (stuns itself on the wall, exposing a belly weak spot), jump-over shockwaves, summons midget swarms. **Hex Sahil** (Magic, 3 phases): floating caster with bullet-hell orbs, homing tax bolts, teleports, an orbiting weak spot and a mana-draining aura |
 | Skills | No skill points. Each skill levels from its own XP and perks unlock automatically. **Health**: kills, taking damage, healing pickups, Physical bosses. **Gunslinger**: gun kills, crits/weak spots, Physical bosses. **Magic**: casting spells, spell kills, Magic bosses. **Crafting**: crafting guns (T1 counts) and ammo |
-| Spells | Goo Bolt (Q, Lv1), Chain Zap (Y, Lv3), Sproto Swarm (Z, Lv6), Mana Shield (X, Lv8), Meteor Bonk (T, Lv10, full mana) |
+| Spells | Goo Bolt (Lv1), Chain Zap (Lv3), Sproto Swarm (Lv6), Mana Shield (Lv8), Meteor Bonk (Lv10, full mana). Right-click / LT casts the selected spell, Q / LB picks the next unlocked one; Y Z X T and the D-pad are quick casts |
 | Crafting | Resources drop from monsters: Scrap (all), Springs (Midgets), Goo (Bitcoin Obamas), Plating (Big Obamas), Boss Cores, Mana Crystals (Hex Sahil). Weapon Box recipes for 4 types × 5 tiers, cheap ammo, medkits. Higher Crafting levels unlock element choice, part choice, salvage and stat reroll |
 | Economy | Tickets from kills, wave clears and bosses. Between-wave shop: tier-scaled gun offers, gacha vending machine, ammo/shield/slot upgrades, sell guns |
 | Feel | Hitstop on big crits, screen shake, recoil climb, FOV punches, confetti deaths, damage numbers (pellets merged), magnet pickups, synthesized SFX |
@@ -59,21 +59,21 @@ Keyboard, mouse and controller all work at once. The HUD prompts and the control
 | Key | Action |
 |---|---|
 | WASD or arrow keys / Mouse | Move / aim (click the game to lock the mouse) |
-| LMB / RMB (hold) | Fire / aim |
-| F | Aim on / off (Shift cancels it). Sniper: zoom 1 → zoom 2 (3× stronger) → off |
+| LMB / RMB | Fire / cast the selected spell |
+| F or middle-click | Aim toggle: press to aim and stay aiming; with a sniper press again to zoom closer (3× stronger); press again to stop. Shift cancels it |
 | Wheel while zoomed | Sniper: switch between zoom 1 and zoom 2 (instead of switching guns) |
 | Shift · Space · C (or Ctrl) · V (or Alt) | Sprint · jump/double jump · slide · dash |
-| R · 1–4, L / wheel | Reload · switch gun (L = legendary slot) |
-| E (or G) | Pick up gun / open Weapon Box |
+| R | Reload. Hold R: pick up gun / open Weapon Box (when one is in reach; E or G also work) |
+| 1–4, L / wheel | Switch gun (L = legendary slot) |
 | H | Use medkit |
-| Q Y Z X T | Spells: Goo Bolt, Chain Zap, Sproto Swarm, Mana Shield, Meteor Bonk |
+| Q · Y Z X T | Next spell (the HUD highlights it) · quick cast Chain Zap, Sproto Swarm, Mana Shield, Meteor Bonk |
 | Tab (hold) · B · I · 5 | Skills · shop (between waves) · your guns · stats & powers |
 | Enter | Ready for next wave |
 | Esc | Pause (the browser releases the mouse); closes a panel; back in menus |
 | Menus | Arrows or W / S (A / D across a row) move, Enter or Space confirm, Esc back. Left / right change a slider or list |
 | P · ` · F3 · M | God mode: you still get hit but health never drops below 99; also gives one of every gun (keeping yours, dropping extras), unlocks every spell, gives infinite mana and endless spare ammo for every gun (you still reload), and keeps you topped up at 99,999 tickets, 9,999 of each resource, full ammo and medkits · debug panel · frame-time stats · mute |
 
-E is Interact, as in the hub and the other Sproto games, so Chain Zap moved from E to Y. G still picks up and opens boxes. P stays God mode (Esc pauses).
+E is Interact, as in the hub and the other Sproto games, so Chain Zap moved from E to Y. Keyboard and controller share one idea: reload and pick up are the same button (tap / hold), one button casts the selected spell and one picks the next, and aim is a toggle. P stays God mode (Esc pauses).
 
 ### Controller
 
@@ -83,20 +83,20 @@ Any standard-mapping pad (Xbox, PlayStation, Switch Pro and most others) works w
 |---|---|---|
 | Left stick | Move | Move focus |
 | Right stick | Look (with aim assist near enemies) | |
-| RT / LT | Fire / aim (hold) | |
+| RT / LT | Fire / cast the selected spell | |
 | A | Jump / double jump | Confirm |
 | B | Slide | Back / close / resume |
-| X | Reload. Hold: pick up gun / open Weapon Box (only when one is in reach) | |
-| Y | Next gun. While aiming a sniper: zoom 1 / 2 | |
-| LB / RB | Dash / Goo Bolt | Switch panel or Weapon Box tab |
+| X | Reload. Hold X longer: pick up gun / open Weapon Box (when one is in reach; the prompt fills while you hold) | |
+| Y | Next gun | |
+| LB / RB | Next spell / dash | Switch panel or Weapon Box tab |
 | D-pad ↑ → ← ↓ | Chain Zap / Sproto Swarm / Mana Shield / medkit | Move focus |
-| L3 / R3 (stick clicks) | Sprint (toggle) / Meteor Bonk | |
+| L3 / R3 (stick clicks) | Sprint (toggle) / aim toggle: click to aim and stay aiming; with a sniper click again to zoom closer; click again to stop | |
 | View | Shop between waves, otherwise your guns (LB / RB reach Skills and Stats) | Close panel |
 | Menu | Pause | Resume |
 
-Why this layout: both thumbs stay on the sticks for what you do mid-fight (fire, aim, dash, Goo Bolt on the shoulders), like other console shooters. Jump, slide and reload sit on the face buttons. The slower spells and the medkit sit on the D-pad, so the D-pad does not move you in play (the left stick does); it still moves the menu focus. Meteor Bonk needs full mana, so it lives on a stick click. Sprint is an L3 toggle that ends when you stop pushing forward or start aiming.
+Why this layout: both thumbs stay on the sticks for what you do mid-fight. The triggers fire the gun (RT) and cast the selected spell (LT); LB picks the next spell (the HUD highlights it) and RB dashes. Aim is an R3 toggle, so you do not hold a trigger to stay zoomed. Jump, slide and reload / pick up sit on the face buttons. Three spells and the medkit also have quick casts on the D-pad, so the D-pad does not move you in play (the left stick does); it still moves the menu focus. Sprint is an L3 toggle that ends when you stop pushing forward or start aiming, and starting it drops aim.
 
-Look speed has a response curve (fine aim near the centre) and ramps up a little when the stick is held at the edge. Aim assist is controller only: the stick slows down near an enemy, and while aiming (LT) the view drifts gently toward the head. Mouse and keyboard never get it. Its numbers are in `src/input/padConfig.js`; the pause screen has *Controller look speed* and *Controller aim assist* (0 turns it off).
+Look speed has a response curve (fine aim near the centre) and ramps up a little when the stick is held at the edge. Aim assist is controller only: the stick slows down near an enemy, and while aiming (R3) the view drifts gently toward the head. Mouse and keyboard never get it. Its numbers are in `src/input/padConfig.js`; the pause screen has *Controller look speed* and *Controller aim assist* (0 turns it off).
 
 A button held while the page loads (the hub's A press) is ignored until it is released. Unplugging the controller pauses the game. Return to Hub is on the title and pause screens (it asks again during a run). Browsers do not let a controller press capture the mouse or (in most browsers) start audio, so sound may wait for the first click or key press. Free 1v1 practice: Menu moves the focus to Ready / Leave, B goes back to playing.
 

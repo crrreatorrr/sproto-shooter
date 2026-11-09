@@ -6,7 +6,6 @@ import { createPadGameplay } from './padGameplay.js';
 import { aimAssist, assistTargets } from './aimAssist.js';
 import { PAD_MENU } from './padConfig.js';
 import { eyePos } from '../sim/collision.js';
-import { nearBox } from '../sim/economy.js';
 import { gunRange } from '../data/guns.js';
 
 function readPads() {
@@ -44,19 +43,22 @@ export function createPadController(game) {
     const { input, ui } = game;
     const pvp = game.pvpActive;
     const s = game.state, p = s.players[s.localPlayerId];
-    const canInteract = !pvp && !!p && (!!p.nearGunPickupId || !!nearBox(s, p));
     const out = play.step(f, {
-      nowMs, dt, canInteract,
+      nowMs, dt, canInteract: input.canInteract,
+      aiming: input.aiming, zoomStep: input.zoomLevel,
       twoZoom: input.zoomLevels > 1,
       zoomK: input.zoomSensitivity || 1,
       sensitivity: game.settings.padSensitivity ?? 1,
     });
-    input.setPad({ moveX: out.moveX, moveZ: out.moveZ, fire: out.fire, zoom: out.zoom, sprint: out.sprint });
+    input.setPad({ moveX: out.moveX, moveZ: out.moveZ, fire: out.fire, sprint: out.sprint, holdProgress: out.holdProgress });
+    if (out.aimToggle) input.toggleAim();
+    if (out.dropAim) input.dropAim();
     for (const a of out.presses) input.padPress(a);
+    if (out.nextSpell) input.nextSpell();
+    if (out.castSpell) input.castSpell();
     if (out.reload) input.padPress('reload');
-    if (out.interact) ui.padInteract();
+    if (out.interact) input.holdInteract();
     if (out.wheel) input.padWheel(out.wheel);
-    if (out.cycleZoom) input.cycleZoom();
 
     let slow = 1, pullYaw = 0, pullPitch = 0;
     if (!pvp && p && !p.dead) {

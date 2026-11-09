@@ -5,7 +5,7 @@ import { PAD, PAD_BINDINGS } from './padConfig.js';
 import { createTapHold, curveStick, isDown, wasPressed } from './gamepad.js';
 
 /** Latched (one-tick) actions a single press sends, in the order they are checked. */
-export const PAD_PRESS_ACTIONS = ['jump', 'slide', 'dash', 'gooBolt', 'chainZap', 'swarm', 'manaShield', 'medkit', 'meteor'];
+export const PAD_PRESS_ACTIONS = ['jump', 'slide', 'dash', 'chainZap', 'swarm', 'manaShield', 'medkit'];
 
 /**
  * @param {typeof PAD} [cfg]
@@ -27,14 +27,17 @@ export function createPadGameplay(cfg = PAD, binds = PAD_BINDINGS) {
      * @param {number} ctx.nowMs
      * @param {number} ctx.dt  seconds since the last frame
      * @param {boolean} [ctx.canInteract]  a gun or Weapon Box is in reach (X becomes tap / hold)
-     * @param {boolean} [ctx.twoZoom]  the active gun has a two-level scope
+     * @param {boolean} [ctx.aiming]  the aim toggle is on (input.js owns it; R3 flips it through aimToggle)
+     * @param {boolean} [ctx.twoZoom]  the active gun has a two-level scope (a second R3 zooms closer)
+     * @param {number} [ctx.zoomStep]  current zoom level while aiming (1 or 2)
      * @param {number} [ctx.zoomK]  field-of-view factor while zoomed (the mouse gets the same)
      * @param {number} [ctx.sensitivity]  player's controller look setting
      */
     step(f, ctx) {
       const out = {
         moveX: 0, moveZ: 0, fire: false, zoom: false, sprint: false,
-        presses: [], reload: false, interact: false, wheel: 0, cycleZoom: false,
+        presses: [], reload: false, interact: false, holdProgress: 0, wheel: 0,
+        castSpell: false, nextSpell: false, aimToggle: false, dropAim: false,
         pause: false, panel: false,
         lookYaw: 0, lookPitch: 0, // radians per second, before aim-assist slowdown
         steer: 0, // 0..1, how hard the player is steering (for the aim-assist pull)
@@ -47,26 +50,36 @@ export function createPadGameplay(cfg = PAD, binds = PAD_BINDINGS) {
       out.moveX = f.move.x;
       out.moveZ = -f.move.y;
       out.fire = down('fire');
-      out.zoom = down('aim');
 
-      // Sprint: L3 toggles, like most console shooters. Letting go of forward or aiming ends it.
-      if (pressed('sprint')) sprintOn = !sprintOn;
-      if (out.moveZ < cfg.sprintStopBelow || out.zoom) sprintOn = false;
+      // R3: aim toggle (aim -> sniper zoom 2 -> off). Aiming is predicted here so sprint and look react this frame.
+      out.aimToggle = pressed('aim');
+      let aiming = !!ctx.aiming;
+      if (out.aimToggle && !aiming) aiming = true;
+      else if (out.aimToggle && !(ctx.twoZoom && ctx.zoomStep === 1)) aiming = false;
+
+      // Sprint: L3 toggles, like most console shooters. Letting go of forward or aiming ends it; starting it drops aim.
+      if (pressed('sprint')) {
+        sprintOn = !sprintOn;
+        if (sprintOn && aiming) { aiming = false; out.dropAim = true; out.aimToggle = false; }
+      }
+      if (out.moveZ < cfg.sprintStopBelow || aiming) sprintOn = false;
       out.sprint = sprintOn;
+      out.zoom = aiming;
 
       for (const a of PAD_PRESS_ACTIONS) if (pressed(a)) out.presses.push(a);
+      // LT casts the selected spell, LB picks the next one (input.js keeps the pick, shared with Q / right-click).
+      out.castSpell = pressed('castSpell');
+      out.nextSpell = pressed('spellSelect');
 
-      // X: tap reloads; hold picks up / opens when something is in reach (otherwise reload is instant).
+      // X: tap reloads; holding it longer picks up / opens when something is in reach.
       const xb = binds.reload;
       const tap = reloadHold.update(wasPressed(f, xb), isDown(f, xb), ctx.nowMs, !!ctx.canInteract);
       if (tap === 'tap') out.reload = true;
       else if (tap === 'hold') out.interact = true;
+      out.holdProgress = reloadHold.progress(ctx.nowMs, !!ctx.canInteract);
 
-      // Y: next gun; while aiming a two-level scope it flips zoom 1 / 2 instead (the mouse wheel does the same).
-      if (pressed('swap')) {
-        if (out.zoom && ctx.twoZoom) out.cycleZoom = true;
-        else out.wheel = 1;
-      }
+      // Y: next gun.
+      if (pressed('swap')) out.wheel = 1;
       out.pause = pressed('pause');
       out.panel = pressed('panel');
 

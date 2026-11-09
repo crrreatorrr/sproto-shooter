@@ -13,7 +13,8 @@ import { decideHubReturn, hubChipHtml } from '../hub/link.js';
 import { createWaveRelicReporter, relicName } from '../hub/waveRelic.js';
 import { restoreCheckpoint } from '../sim/campaign/campaign.js';
 import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY, zoomLevelsOf, zoomFovFor } from '../data/guns.js';
-import { SKILL_IDS } from '../data/skills.js';
+import { SKILL_IDS, SPELL_IDS } from '../data/skills.js';
+import { nearBox } from '../sim/economy.js';
 import { MAX_TIER } from '../data/waves.js';
 import { createPerfCounters } from '../render/debug/perfCounters.js';
 import { createStatsOverlay } from '../render/debug/StatsOverlay.js';
@@ -508,6 +509,15 @@ export class Game {
     }
   }
 
+  /** What the shared pad / keyboard layout needs from play: reload tap vs hold, the spells to pick from. */
+  syncInputContext() {
+    const s = this.state, p = s && s.players[s.localPlayerId];
+    const input = this.input;
+    input.canInteract = !this.pvpActive && !!p && !p.dead && (!!p.nearGunPickupId || !!nearBox(s, p));
+    input.spellsUnlocked = p ? SPELL_IDS.filter((id) => p.perks[id]) : [];
+    if (p && p.dead) input.dropAim();
+  }
+
   /** One rendered frame. Returns false when the sim is running but no tick fell due (proves nothing). */
   step(now) {
     const frameMs = now - this.last;
@@ -515,7 +525,9 @@ export class Game {
     this.last = now;
     this.nav.setRoot(this.navRoot());
     this.nav.sync();
+    this.syncInputContext();
     this.pad.frame(ft, now);
+    this.input.frame();
     const stepped = this.feel.scaleFrame(ft, this.settings.hitstop);
     if (this.pvpActive) {
       const cmd = this.input.buildCommand(this.state.tick);
@@ -641,18 +653,19 @@ const BOSS_BLURB = {
 function controlsHtml(device = 'kbm', style = 'xbox') {
   const k = (a, b) => `<div><kbd>${a}</kbd><span>${b}</span></div>`;
   const kb = `<div class="controls" data-device="kbm">
-    ${k('WASD / Arrows', 'Move')}${k('Mouse', 'Look · LMB fire · RMB hold to aim')}${k('F', 'Aim on / off (sniper: zoom 1 → zoom 2 → off)')}${k('Wheel while zoomed', 'Sniper zoom 1 / 2')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
-    ${k('C', 'Slide (Ctrl works, but Ctrl+W closes the tab!)')}${k('V / Alt', 'Dash')}${k('R', 'Reload')}${k('1-4 · L / Wheel', 'Switch gun (L = legendary slot)')}
-    ${k('E (or G)', 'Pick up gun · open Weapon Box')}${k('H', 'Use medkit')}${k(['gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor'].map(keyLabel).join(' '), 'Spells (unlock with Magic XP)')}
+    ${k('WASD / Arrows', 'Move')}${k('Mouse', 'Look · LMB fire')}${k('F / middle-click', 'Aim toggle: aim · sniper: zoom closer · off')}${k('Wheel while zoomed', 'Sniper zoom 1 / 2')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
+    ${k('C', 'Slide (Ctrl works, but Ctrl+W closes the tab!)')}${k('V / Alt', 'Dash')}${k('R', 'Reload · hold: pick up gun / open Weapon Box (E works too)')}${k('1-4 · L / Wheel', 'Switch gun (L = legendary slot)')}
+    ${k('RMB', 'Cast the selected spell')}${k(keyLabel('spellSelect'), 'Next spell')}${k(['chainZap', 'swarm', 'manaShield', 'meteor'].map(keyLabel).join(' '), 'Quick cast: Chain Zap · Swarm · Mana Shield · Meteor')}${k('H', 'Use medkit')}
     ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('5', 'Stats & powers')}${k('Enter', 'Ready / skip break')}${k('Esc', 'Pause · back in menus')}
     ${k('Arrows / WS · Enter', 'Menus: move · confirm')}${k('`', 'Debug panel')}${k('F3', 'Frame stats')}${k('M', 'Mute')}${k('P', 'God mode (health stays at 99)')}
   </div>`;
   const g = (a) => padGlyph(PAD_BINDINGS[a] || a, style);
   const pad = `<div class="controls" data-device="pad">
-    ${k('Left stick', 'Move')}${k('Right stick', 'Look (aim assist near enemies)')}${k(g('fire'), 'Fire')}${k(g('aim'), 'Aim (hold)')}
+    ${k('Left stick', 'Move')}${k('Right stick', 'Look (aim assist near enemies)')}${k(g('fire'), 'Fire')}${k(g('aim'), 'Aim toggle: aim · sniper: zoom closer · off')}
+    ${k(g('castSpell'), 'Cast the selected spell')}${k(g('spellSelect'), 'Next spell')}
     ${k(g('jump'), 'Jump / double jump')}${k(g('slide'), 'Slide')}${k(g('dash'), 'Dash')}${k(g('sprint'), 'Sprint (toggle)')}
-    ${k(g('reload'), `Reload · hold: pick up gun / open Weapon Box`)}${k(g('swap'), 'Next gun · aiming a sniper: zoom 1 / 2')}
-    ${k(g('gooBolt'), 'Goo Bolt')}${k(`${g('chainZap')} ${g('swarm')} ${g('manaShield')}`, 'Chain Zap · Sproto Swarm · Mana Shield')}${k(g('meteor'), 'Meteor Bonk')}${k(g('medkit'), 'Use medkit')}
+    ${k(g('reload'), `Reload · hold: pick up gun / open Weapon Box`)}${k(g('swap'), 'Next gun')}
+    ${k(`${g('chainZap')} ${g('swarm')} ${g('manaShield')}`, 'Quick cast: Chain Zap · Sproto Swarm · Mana Shield')}${k(g('medkit'), 'Use medkit')}
     ${k(g('panel'), 'Shop (between waves) or your guns')}${k(g('pause'), 'Pause')}
     ${k(`D-pad / stick · ${padGlyph('a', style)}`, 'Menus: move · confirm')}${k(`${padGlyph('b', style)} · ${padGlyph('lb', style)} ${padGlyph('rb', style)}`, 'Back · switch tabs')}
   </div>`;
