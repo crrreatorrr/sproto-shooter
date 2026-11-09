@@ -52,6 +52,17 @@ jobs:
         env:
           LOAD_PROFILE_OUT: ci-artifacts/load-profile.json
 
+      # Live Nakama is not started here. Set the repository variable
+      # SHOOTER_E2E_NAKAMA=true only on a runner that already has the local stack.
+      - name: nakama e2e (opt-in)
+        if: vars.SHOOTER_E2E_NAKAMA == 'true'
+        run: |
+          node tests/e2e/shooter-hub.spec.js
+          node tests/e2e/shooter-online.spec.js
+          node tests/e2e/shooter-wagers.spec.js
+        env:
+          SHOOTER_E2E_NAKAMA: "1"
+
       - name: upload load profile
         if: always()
         uses: actions/upload-artifact@v4
