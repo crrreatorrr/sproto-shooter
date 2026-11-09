@@ -373,3 +373,740 @@ sweeps it; ends at bunker E's door.
 **Mechanisms in S2:** blizzard (`weather`, whiteouts at t = 10–30, 100–120, 190–210 s after entering S2 and every 90 s after, 4 s warning); 2 `searchlight`; `alarm` 4, 5W, 5E; `crackTiles` × 3 bands; kill zone with rescue under the lake; 2 `target` generators; `door` shield gate, kennel, bunker doors; `powerup` Overshield in hut 4 (238, 0, 150).
 
 **Transition out:** seamless through the gate. S3's origin is S2 (80, 0, 206): the inner face of the wall.
+
+### 6.3 S3: Gatehouse and Courtyard — lockdown 1 [L]
+
+Footprint 100 × 120 m, built. The gatehouse (n 0–22) holds depot 1. The courtyard is the mini-boss
+arena: **70 × 70 m** of floor (x 15–85, n 24–94), walls 12 m high, a gallery ring at y 5 on all
+four sides, a force-field lid at y 12. About 80 solids.
+
+```
+  n  x 0         25        50        75        100
+ 115                      |S4|                         covered passage to Frost Halls
+ 105                      |  |
+  95        ############## N  #############            N  exit door (locked until the fight ends)
+  90        ##G------------+------------G##            G  courtyard generators (Part 2)   + Overshield
+  85        ##|: c     =       =     c :|##            --- | gallery ring at y 5, 4 m wide
+  80        ##| :                     : |##
+  75        ##|  :  O             O  :  |##            O  ice pillars (charge stoppers)
+  70        ##|   :   xxxxxxxxxxx   :   |##            x  floor that cracks in Part 3 (over a 3 m basin)
+  65        ##|    :  xxx@@@@@xxx  :    |##
+  60        #W|  =  ::xxx@DAISxxx::  =  |E#            W E  add doors (SP-W, SP-E)
+  55        ##|      :xxx@@@@@xxx:      |##            @  dais with the Ice Machine
+  50        ##|       xxxxxxxxxxx       |##
+  45        ##|       xxxxxxxxxxx       |##
+  40        ##|     O   :     :   O     |##            =  barriers 1.2 m   c crate stacks 2 m
+  35        ##|s         :   :         s|##            s  stairs to the gallery
+  30        ##|  c     =  : :  =     c  |##            threshold line at n 30
+  25        ##-------------E-------------##            E  Captured Mining Rig emplacement (50, 5, 26)
+  20        ######........|  |.......######            arena door at n 22.5; checkpoint *6 outside it
+  10              .DEPOT..|  |stairs.                  D1 depot west of the gate passage
+   0              ........|^ |.......
+```
+
+Sightlines: emplacement to each generator **73 m**; south gallery to north gallery **66 m**; west
+gallery to east gallery **66 m**; arena door to the dais **36 m**.
+
+| Id | Shape | Size (m) | Position (x, y, n) | Mat | Purpose |
+|---|---|---|---|---|---|
+| S3-floorS, S3-floorN | box | 100 × 1 × 46, 100 × 1 × 48 | (50, -0.5, 23), (50, -0.5, 96) | concrete | Floor south and north of the basin |
+| S3-floorW, S3-floorE | box | 37 × 1 × 26 | (18.5, -0.5, 59), (81.5, -0.5, 59) | concrete | Floor either side of the basin |
+| S3-basin | box | 26 × 1 × 26 | (50, -4.5, 59) | ice | Basin floor at y −4. Cold water y −4 to −1: rescue to the edge, −15% max HP |
+| S3-iceFloor | `crackTiles`, 8 × 8 tiles of 3.25 m | 26 × 26 | x 37–63, n 46–72, top y 0 | ice | Locked solid in Parts 1 and 2, cracks in Part 3 |
+| S3-dais | cylinder | r 5, h 4.6 | (50, -4, 59) | ice | Top at y 0.6. Always solid |
+| S3-iceMachine | cylinder | r 1.5, h 4 | (50, 0.6, 59) | metal | The Auditor starts frozen in a block on top of it |
+| S3-passage | 2 wall boxes 1 × 6 × 22, roof 10 × 0.5 × 22 | — | walls (45.5, 3, 11), (54.5, 3, 11); roof (50, 6.25, 11) | concrete | Gate passage x 46–54 |
+| S3-depot | `room(28–45, 2–20, 0, 6)`, door east at n 11 | — | — | concrete | Depot 1 |
+| S3-stairRoom | `room(55–72, 2–20, 0, 6)`, door west at n 11, door north at y 5 (70, 5, 20); stairs 3 × 5 × 12, low end south | — | stairs (70, 2.5, 10) | concrete | Way up to the south gallery and the emplacement |
+| S3-arenaDoor [L] | door slab, neon trim | 8 × 6 × 0.6 | (50, 3, 22.5) | metal | Entry. Drops 1 s after the player crosses n 30 |
+| S3-threshold [L] | disc line | 8 × 0.3 | (50, 0.02, 30) | neon | 6 m inside |
+| S3-wallW, S3-wallE | box | 2 × 12 × 74 | (14, 6, 59), (86, 6, 59) | concrete | Each has a 3 × 3 add door at n 59: **SP-W**, **SP-E** |
+| S3-wallS ×2, lintel | box | 32 × 12 × 2 ×2; 8 × 6 × 2 | (30, 6, 23), (70, 6, 23); lintel (50, 9, 23) | concrete | South wall, door 8 × 6 |
+| S3-wallN ×2, lintel | box | 34 × 12 × 2 ×2; 4 × 8 × 2 | (31, 6, 95), (69, 6, 95); lintel (50, 8, 95) | concrete | North wall, exit door 4 × 4 |
+| S3-exitDoor [L] | door slab, neon trim | 4 × 4 × 0.6 | (50, 2, 95) | metal | Exit. Opens when the lockdown ends |
+| S3-gallS, S3-gallN | box | 62 × 0.5 × 4 | (50, 4.75, 26), (50, 4.75, 92) | metal | Gallery floors at y 5 |
+| S3-gallW, S3-gallE | box | 4 × 0.5 × 70 | (17, 4.75, 59), (83, 4.75, 59) | metal | Gallery floors at y 5 |
+| S3-rail | 24 boxes 8 × 1.2 × 0.5 with 2 m gaps | — | inner edge of all four galleries at y 5.6 | metal | Crouch cover on the gallery |
+| S3-stairSW, S3-stairSE | stairs, low end north | 3 × 5 × 10 | (20.5, 2.5, 34), (79.5, 2.5, 34) | metal | Courtyard floor to the south gallery |
+| S3-pillar ×4 | cylinder, breaks after 2 charge hits | r 2, h 8 | (32, 0, 41), (68, 0, 41), (32, 0, 77), (68, 0, 77) | ice | A charge into one stuns the Auditor 2 s |
+| S3-barrier ×6 | box | 4 × 1.2 × 1 | (40, 0.6, 32), (60, 0.6, 32), (24, 0.6, 59), (76, 0.6, 59), (40, 0.6, 86), (60, 0.6, 86) | concrete | Crouch cover |
+| S3-crates ×4 | prefab `crateStack` | — | (26, 0, 30), (74, 0, 30), (26, 0, 88), (74, 0, 88) | crate | Full cover |
+| S3-genNW, S3-genNE | `target` generator (500 HP) | prefab `generator` | (17, 5, 91), (83, 5, 91) | metal | Power the Part 2 cold aura |
+| S3-rig | `emplacement` (def `miningRig`), arc 120° | — | (50, 5, 26), yaw 180 (faces north) | metal | Captured Mining Rig |
+| S3-ropeN ×2 | spawn markers **SP-N** | — | (35, 5, 92), (65, 5, 92) | — | Agents rope down to the north gallery |
+| S3-kennelHatch | spawn marker **SP-K**, box 3 × 1.5 × 2 | — | (62, 0.75, 93) | metal | Hounds in Part 3 |
+| S3-passageN | 2 wall boxes 1 × 6 × 20, roof 6 × 0.5 × 20 | — | walls (47.5, 3, 106), (52.5, 3, 106); roof (50, 6.25, 106) | concrete | To S4 |
+
+**Lockdown 1 summary:** room 70 × 70 m, two levels. Entry S3-arenaDoor, exit S3-exitDoor. Spawn
+points **SP-W** (west door), **SP-E** (east door), **SP-N** (north gallery ropes), **SP-K** (kennel hatch by
+the exit). Cover: 6 barriers, 4 crate stacks, 4 pillars, the dais, the gallery rails. Inside the room:
+the emplacement, a sniper box on the north gallery (50, 5, 92), a bullets box by the emplacement
+(46, 5, 26), an Overshield at (50, 5, 90). Checkpoint *6 at (50, 0, 18). Waves: the parts table in §10.
+
+**Mechanisms in S3:** `depot` D1; `lockdown` L1; `emplacement`; 2 `target` generators; cold aura (`hazardZone cold`, Part 2); `crackTiles` and `hazardZone slick` (Part 3); `powerup` Overshield.
+
+**Transition out:** seamless. S4's origin is S3 (10, 0, 116).
+
+### 6.4 S4: Frost Halls — three floors, lockdown 2 [L] on the upper two
+
+Footprint 80 × 70 m, built, floors at y 0, 7 and 14, roof at y 20. F1 is the Intake level (E6). The
+Records Library (E7) is one double-height room: its floor is F2 (y 7) and its gallery ring is F3
+(y 14). Library floor **56 × 44 m** (x 12–68, n 12–56). About 150 solids.
+
+```
+  F1 Intake (y 0)                                   F2 + F3 Records Library (floor y 7, gallery y 14)
+  n  x 0         20        40        60        80   n  x 0         20        40        60        80
+  68   #########################################    68
+  64   #              ...LIFT A..              #    64                    LIFT A top *8
+  60   #          ----...........              #    60
+  56   #         |            ::::::           #    56         #############IN #############
+  52   #         |       |RRR|::::::           #    52         #           - - -           #   threshold n 50
+  48   #         |  :::::|~~~|:KEN::           #    48         # s   I  I I     I I  I     #
+  44   #         |  :W2::|~~~|::::::           #    44         # s   I  I I     I I  I     G   G gallery door (SP-G)
+  40   #         |  :::::|~~~|                 #    40         # s   Iv I I     I I  I     #   v ceiling vents (SP-V1, SP-V2)
+  36   #service  |       |~~~|::::::           #    36         #                           #
+  32   #passage  |       |~~~|::::::           #    32         W   =    =    @    =    =   E   W E floor doors (SP-W, SP-E)
+  28   #         |  :::::|~~~|:E1:::           #    28         #     I  I I     I I vI  s  #   @ index desk  = tables
+  24   #         |  :::::|~~~|::::::           #    24         #     I  I I     I I  I  s  #   I shelves 3 m high
+  20   #         |  :W1::|~~~|                 #    20         #cccc I  I I     I I  I  s  #   c records cage (SP-C)
+  16   #         |  :::::|~~~|                 #    16         #cccc                       #   s stairs to the gallery
+  12   #         |     .........               #    12         #############OUT#############   OUT on the gallery (y 14)
+   8   #         |     .VEST R2.               #     8
+   4   #               .........               #     4                    FREIGHT (y 14)
+   0   ###################|^|###################     0
+```
+
+`~` slick corridor 5 × 44 m, `RRR` the riot line, `KEN` kennel, W1 W2 E1 cold lockers. Sightlines:
+F1 corridor **44 m**. Library: east gallery perch (66, 14, 44) to the entry **27 m**; south gallery
+(40, 14, 14) to the entry **38 m**; floor north-west corner to the south-east gallery **58 m**.
+
+| Id | Shape | Size (m) | Position (x, y, n) | Mat | Purpose |
+|---|---|---|---|---|---|
+| S4-shell | 4 wall boxes; slabs | walls 1 × 21 × 70 ×2, 80 × 21 × 1 ×2; slabs 80 × 1 × 70 | walls (0.5, 10.5, 35), (79.5, 10.5, 35), (40, 10.5, 0.5), (40, 10.5, 69.5); slabs at y −0.5, 6.5, 20.5 | concrete | Shell. The y 6.5 slab has a 4 × 4 lift hole at (40, 62). South door at x 38–42 on F1 |
+| F1-vestibule | `room(32–48, 1–12, 0, 6)`, doors south x 40, north x 40, west n 8 | — | — | concrete | Rack R2 shotgun (34, 0, 6), shells box (46, 0, 6) |
+| F1-corrW | box, door gaps n 21–23.4 and n 43–45.4 | 1 × 6 × 44 | (37, 3, 34) | concrete | Corridor west wall, doors to W1 and W2 |
+| F1-corrE | box, door gaps n 29–31.4 and n 49–51.4 | 1 × 6 × 44 | (43, 3, 34) | concrete | Corridor east wall, doors to E1 and the kennel |
+| F1-slick | `hazardZone slick` | 5 × 40 | x 37.5–42.5, n 14–54 | ice | Slick corridor floor |
+| F1-pallet ×3 | box | 1.5 × 1.2 × 1 | (39, 0.6, 20), (41.5, 0.6, 32), (39, 0.6, 44) | ice | Crouch cover in the corridor |
+| F1-service | box; link passage 2 boxes 7 × 6 × 1 | 1 × 6 × 52 | wall (21.5, 3, 33); link walls (28.5, 3, 5.5), (28.5, 3, 10.5) | concrete | Service passage, lane x 22–25, n 8–58. The flank |
+| F1-lockerW1, W2 | `room(26–36.5, 16–28, 0, 6)`, `room(26–36.5, 38–50, 0, 6)`, doors east and west at mid n | — | — | metal | Cold lockers (`hazardZone cold`). Mana Battery behind pallets in W2 at (31, 0.5, 47) |
+| F1-lockerE1, F1-kennel | `room(43.5–56, 24–36, 0, 6)`, `room(43.5–56, 44–56, 0, 6)`, door west | — | — | metal | E1 is cold. The kennel is E6-c |
+| F1-liftLobby | `room(30–50, 56–68, 0, 6)`, doors south x 40, west n 58 | — | — | concrete | Both routes meet here |
+| S4-liftA | mover | 4 × 0.5 × 4 | (40, 0, 62) to y 7 | metal | Lift A, `onTrigger` |
+| F2-lobby | `room(30–50, 58–68, 7, 6)`, door south x 40 | — | — | concrete | Checkpoint *8, shells box (44, 7, 64) |
+| LIB-shell | `room(12–68, 12–56, 7, 13)`: wall boxes 13 m high | — | — | concrete | Library, ceiling at y 20 |
+| LIB-in [L] | door slab, neon trim | 4 × 6 × 0.6 | (40, 10, 56.5) | metal | Entry. Drops 1 s after the player crosses n 50 |
+| LIB-threshold [L] | disc line | 4 × 0.3 | (40, 7.02, 50) | neon | 6 m inside |
+| LIB-out [L] | door slab, neon trim | 4 × 6 × 0.6 | (40, 17, 11.5) | metal | Exit, on the south gallery |
+| LIB-shelf ×12 | box | 0.8 × 3 × 10 | x 24, 29, 34, 46, 51, 56 at n 25 and n 43, y 8.5 | wood | Stacks. Aisles 4.2 m; centre aisle x 35–45; cross aisle n 30–38 |
+| LIB-table ×4 | box | 3 × 1.2 × 1.5 | (20, 7.6, 34), (30, 7.6, 34), (50, 7.6, 34), (60, 7.6, 34) | wood | Crouch cover in the cross aisle |
+| LIB-desk | cylinder | r 2, h 1.2 | (40, 7, 34) | wood | Index desk. Reward chest and crate appear here |
+| LIB-cage | `room(13–21, 13–21, 7, 3)`, glass walls, door east | — | — | glass | Records cage: **SP-C**. Audit File 3 inside |
+| LIB-gallW, LIB-gallE | box | 4 × 0.5 × 44 | (14, 13.75, 34), (66, 13.75, 34) | metal | Gallery floors at y 14 |
+| LIB-gallS, LIB-gallN | box | 48 × 0.5 × 4 | (40, 13.75, 14), (40, 13.75, 54) | metal | Gallery floors at y 14 |
+| LIB-rail | 16 boxes 8 × 1.2 × 0.5 with 2 m gaps | — | inner edges of the gallery at y 14.6 | metal | Crouch cover |
+| LIB-stairNW | stairs, low end north; landing box 3 × 0.5 × 2 | 3 × 7 × 14 | (17.5, 10.5, 43); landing (17.5, 13.75, 35) | metal | Floor to the west gallery |
+| LIB-stairSE | stairs, low end south; landing box 3 × 0.5 × 2 | 3 × 7 × 14 | (62.5, 10.5, 25); landing (62.5, 13.75, 33) | metal | Floor to the east gallery |
+| LIB-doorW, LIB-doorE | door 3 × 3 | — | (11.5, 8.5, 34), (68.5, 8.5, 34) | metal | **SP-W** archive door, **SP-E** stairwell door |
+| LIB-doorG | door 3 × 3 | — | (68.5, 15.5, 44) | metal | **SP-G** east gallery door |
+| LIB-vent ×2 | spawn markers, ceiling grate boxes 2 × 0.5 × 2 | — | **SP-V1** (26, 19.75, 43), **SP-V2** (54, 19.75, 25) | metal | Ropes drop to the floor |
+| F3-lobby | `room(30–50, 2–11, 14, 6)` on a floor slab 20 × 1 × 9 at (40, 13.5, 6.5) | — | — | concrete | Freight lobby |
+| S4-freight | mover | 6 × 0.5 × 5 | (40, 14, 5) to y 21 | metal | Freight lift, 15 s, hides the S5 load |
+
+**Lockdown 2 summary:** room 56 × 44 m, two levels (floor and gallery ring). Entry LIB-in, exit
+LIB-out. Spawn points **SP-W**, **SP-E**, **SP-G**, **SP-V1**, **SP-V2**, **SP-C** on five different sides.
+Cover: 12 shelves, 4 tables, the desk, the cage, the gallery rails. Inside the room: shells box at the
+desk (38, 7, 36), sniper box on the west gallery (14, 14, 20). Checkpoint *8 in the F2 lobby. Waves: §8, E7.
+
+**Mechanisms in S4:** `rack` R2; `hazardZone slick` and `cold`; `mover` Lift A and freight lift; `lockdown` L2; `manaBloom` in the library reward.
+
+**Transition out:** the freight lift. S5's origin is the lift's top: S5 (40, 0, 5) = S4 (40, 21, 5).
+
+### 6.5 S5: Armory and Vault — lockdown 3 [L]
+
+Footprint 80 × 100 m, built, one floor at y 0, vault ceiling at y 12. Vault floor **44 × 44 m**
+(x 18–62, n 40–84). About 70 solids.
+
+```
+  n  x 0         20        40        60        80
+  96                     (EXIT)                       extraction pad, level end
+  88                      |  |                        gantry
+  84           ########### N  ##########              N  exit door
+  80           #   O               O   #              O  pillars r 1.5
+  76           #     C     =     D     #              A B C D  roof hatches (spawn points)
+  72           #      =         =      #              =  deposit blocks, ring r 14
+  68      ......        v     v        #              v  coolant grates (cold pulses)
+  64      .guard    =     (S)     =    #              (S) safe and drill; hold ring r 9 round it
+  60      ......                       #              guard room door in the west wall (spawn point)
+  56      ......        v     v        #
+  52           #      =         =      #
+  48           #   O A     =     B O   #              threshold line at n 46
+  44           #                       #
+  40           ########### BD ##########              BD blast door (entry)
+  36                      |*10                        antechamber, checkpoint *10
+  28                      |  |
+  24                 .............
+  16                 .ARMORY D2...                    depot 2
+   8                 .............
+   4                     [lift]                       freight lift from S4
+```
+
+Sightlines: blast door to the exit door **44 m**; any hatch to the ring edge **11 to 17 m**; guard door to the safe **22 m**.
+
+| Id | Shape | Size (m) | Position (x, y, n) | Mat | Purpose |
+|---|---|---|---|---|---|
+| S5-floor | box | 80 × 1 × 100 | (40, -0.5, 50) | concrete | Floor |
+| S5-liftBay | `room(36–44, 1–9, 0, 5)`, door north | — | — | concrete | Freight lift top |
+| S5-armory | `room(28–52, 9–25, 0, 5)`, doors south and north at x 40 | — | — | concrete | Depot 2: depot crate (33, 0, 17), health station (33, 0, 21), loadout bench (47, 0, 21), shop terminal (47, 0, 17) |
+| S5-antechamber | `room(36–44, 25–39, 0, 6)`, door south | — | — | concrete | Checkpoint *10 at (40, 0, 34), bullets box (42, 0, 32) |
+| S5-blastDoor [L] | door slab, neon trim | 6 × 6 × 0.6 | (40, 3, 39.5) | metal | Entry. Drops 1 s after the player crosses n 46 |
+| S5-threshold [L] | disc line | 6 × 0.3 | (40, 0.02, 46) | neon | 6 m inside |
+| S5-vaultWalls | 4 boxes 2 m thick, 12 high, with door gaps | 48 × 12 × 2 ×2, 2 × 12 × 44 ×2 | south (40, 6, 39), north (40, 6, 85), west (17, 6, 62), east (63, 6, 62) | metal | Vault shell |
+| S5-roof | 4 boxes round a centre opening, each with a 3 × 3 hatch hole | slab 1 m thick at y 12.5 | hatches **A** (26, 12, 50), **B** (54, 12, 50), **C** (26, 12, 74), **D** (54, 12, 74); iris opening r 6 at (40, 12, 62) | metal | Ceiling. The iris is a force-field lid: strikes and the drone pass, the player does not |
+| S5-exitDoor [L] | door slab, neon trim | 4 × 4 × 0.6 | (40, 2, 84.5) | metal | Exit |
+| S5-guardRoom | `room(6–17, 56–68, 0, 4)`, door east 3 × 3 at (17, 1.5, 62) | — | — | concrete | **Guard door** spawn point |
+| S5-safe | cylinder; drill arm box 1 × 1 × 6 | r 2.5, h 3 | (40, 0, 62); arm (40, 4, 62) | gold, metal | The ledger safe and the drill. Switch on its south face |
+| S5-ring | disc | r 9 | (40, 0.02, 62) | neon | Hold zone |
+| S5-console ×4 | box | 2 × 1.2 × 1 | (46, 0.6, 62), (34, 0.6, 62), (40, 0.6, 56), (40, 0.6, 68) | metal | Crouch cover inside the ring |
+| S5-block ×8 | box, alternating 3 × 2.2 × 1.5 and 3 × 1.2 × 1.5 | — | (54, 62), (49.9, 71.9), (40, 76), (30.1, 71.9), (26, 62), (30.1, 52.1), (40, 48), (49.9, 52.1) | metal | Deposit blocks, ring r 14. Tall ones first in the list order |
+| S5-pillar ×4 | cylinder | r 1.5, h 12 | (24, 0, 46), (56, 0, 46), (24, 0, 78), (56, 0, 78) | concrete | Full cover in the corners |
+| S5-grate ×4 | disc, `hazardZone cold` when pulsing | r 3 | (30, 0.02, 56), (50, 0.02, 56), (30, 0.02, 68), (50, 0.02, 68) | ice | Coolant vents |
+| S5-gantry | box | 4 × 0.5 × 12 | (40, -0.25, 90) | metal | To the pad |
+| S5-pad | disc | r 5 | (40, 0.02, 96) | neon | Level end volume |
+
+**Lockdown 3 summary:** room 44 × 44 m. Entry S5-blastDoor, exit S5-exitDoor. Spawn points: roof
+hatches **A**, **B**, **C**, **D** (four corners), the **iris** (centre roof), the **guard door** (west wall).
+Cover: 8 deposit blocks, 4 consoles, 4 pillars, the safe (17 pieces). Inside the room: bullets box
+(60, 0, 62), shells box (40, 0, 80). Checkpoint *10 outside the blast door. Waves: §10.
+
+**Mechanisms in S5:** `depot` D2; `lockdown` L3 with a `hold` ring; Drone Strike emitter; 4 cold grates; `switch` on the safe.
+
+**Transition out:** stepping on the pad ends the level.
+
+## 7. Prefabs
+
+All in `src/data/levels/prefabs/glacier.js`. Positions inside a prefab are relative to its origin on the ground.
+
+| Prefab | Parts |
+|---|---|
+| `pine` | Trunk cylinder r 0.3 h 2.5 (`wood`, the only collider); cone r 1.6 h 3 at y 2 and cone r 1.1 h 2.4 at y 4 (`hedge`) |
+| `boulderS` | Sphere r 1.0 at y 0.4 (`ice`). Top at 1.4 m: crouch cover |
+| `boulderM` | Sphere r 1.6 at y 0.8 (`ice`). Top at 2.4 m: full cover |
+| `boulderL` | Sphere r 2.6 at y 1.2 and sphere r 1.6 at (2.4, 0.6, 0.8) (`ice`). 6 m wide, full cover |
+| `rockSlab` | Box 4 × 2.2 × 1.2 (`rock`), long side east–west |
+| `snowBerm` | Box 6 × 1.2 × 1.5 (`snow`) |
+| `crateStack` | Two boxes 1.2 × 1.2 × 1.2 side by side and one on top (`crate`). 2.4 m high |
+| `snowcat` | Body box 5 × 1.6 × 2.4 at y 1.2; cabin box 2.2 × 1.4 × 2.2 at (1.2, 2.7, 0); 2 track boxes 5.4 × 0.8 × 0.6 at y 0.4, ±1.3 to the sides (`metal`) |
+| `fishHut` | Box 3 × 2.4 × 3 (`wood`) with a 1.2 m door gap on the south side; roof box 3.4 × 0.5 × 3.4 at y 2.65 |
+| `watchtower` | 4 leg cylinders r 0.3 at the corners of a 3.4 m square (h 8, or 4 on the wall); deck box 4.4 × 0.5 × 4.4; 4 parapet boxes 4.4 × 1.2 × 0.5; 4 post cylinders r 0.25 h 2.3; roof box 4.8 × 0.5 × 4.8; stairs 1 × h × 5 on the north side. 15 parts |
+| `searchlight` | Post cylinder r 0.3 h 2; lamp box 0.8 × 0.8 × 0.8 at y 2.4 (the 30 HP target); render-only beam cone; the `searchlight` mechanism |
+| `alarmPole` | Pole cylinder r 0.25 h 4; siren box 0.6 × 0.6 × 0.6 at y 4 (`neon` red, the 40 HP target); a cable drawn as a red line with a 0.5 m hit radius |
+| `generator` | Cylinder r 1.2 h 2.4 (`metal`); 2 coil boxes 0.6 × 2 × 0.6 at ±1.5; core sphere r 0.5 at y 1.6 (`neon`, weak spot × 2) |
+| `room(x0–x1, n0–n1, y, h)` | Kit helper, not a prefab file: 4 wall boxes 1 m thick and `h` high standing on `y`, each split at its doors (door 2.4 wide × 2.6 high unless stated, lintel box above), and a roof box 0.5 m thick |
+
+## 8. Encounters
+
+Level-wide: `maxAlive` 12, at most 4 threat roles engaged at once, one elite per section. Where a
+squad would be the fifth role or the thirteenth enemy, the director holds it until there is room.
+Placed squads in S1 and S2 exist from section load, because they are seen from 130 m (C §3.8's 70 m
+pre-spawn is too short here).
+
+### E1 The Picket (S1)
+
+Space: a 91 m shot from Overlook Ridge down to a camp round a wrecked snowcat, with a lookout stand
+113 m away on the left. Approaches: stay on the ridge; the west pines (hidden from the lookout); the
+centre boulders. Objective: `clearAll`.
+
+| Squad | Trigger | Method | From | Distance | Enemies | Delay | Teaches or tests |
+|---|---|---|---|---|---|---|---|
+| E1-a | section load | `placed` | Campfire by the snowcat (158, 168). Two face away from the ridge | 91 m | 5 midget | — | Sneak shots: one body shot each, back-turned ones first. The fire barrel kills four at once but is heard by the lookout |
+| E1-b | section load | `placed` | Lookout stand (120, 186). One scans south, one watches the camp; the camp-watcher is the alarm runner | 113 m | 2 obama | — | Target order. Shoot the runner first, or shoot alarm 1's box, or wait until both look away from the camp |
+| E1-c | `onEnter` within 20 m of the fire | `burrow` | Snow mounds (150, 165), (172, 166) | 6–12 m | 2 sewerMidget | 0 s, 0.6 s | A cleared camp still bites. Watch for dust; a reason to carry a second gun |
+| E1-R | alarm 1 rung | `door` | Ice tunnel in the west cliff (12, 215) | 150 m from the ridge | 4 midget, 2 boomMidget | 6 s | The price of noise: a pack crossing 110 m of open snow. Snipe the Boom Midgets inside the pack |
+
+Quiet if played well: nothing leaves the tunnel and the lookout box holds 8 sniper rounds. Loud if
+not: E1-R, and the camp scatters into cover. `maxAlive` 9 (15 with the alarm). Roles: fodder, ranged
+(+ rusher). Nearby: cache C1 and a sniper box 18 m before the ridge. **1.1 min.**
+
+### E2 Frozen Creek (S1)
+
+Space: the creek, 12 m of slick ice between two berms, three crossings (west gap, log bridge, east
+gap). Objective: `reach` the north bank.
+
+| Squad | Trigger | Method | From | Distance | Enemies | Delay | Teaches or tests |
+|---|---|---|---|---|---|---|---|
+| E2-a | section load | `placed`, air patrol | Flies the creek line x 80 ↔ 235 at n 256, 8 m up, 8 m/s, 39 s loop | first seen at 85 m | 1 spotterDrone | — | New enemy, alone. Read the cone (white, yellow, red), cross behind it, or shoot the lamp with one round |
+| E2-b | section load | `placed`, asleep | Lean-to on the north bank (165, 265) | 15 m from the bridge end | 4 midget | — | Sleepers wake to noise inside 12 m, a mortar, or barking. Walk past or kill them close |
+| E2-c | `onEnter` north bank (n ≥ 266) | `door` | Sled kennel (205, 285) | 40–55 m | 2 frostHound | 0 s, 1.5 s | New enemy, alone. They come however quiet you were. Shoot on the crouch; note the slick patch |
+| E2-R | drone holds the player 1.5 s | mortar, then `drop` | 3 shells on the marked spot; pod lands at (150, 275) | 8 m or more | 3 midget, 1 robotLaser; E2-b wakes | shells +1.4 s, pod +4 s | Being seen costs time and ammo, not the run |
+
+Quiet: the drone passes, the sleepers sleep, only the hounds come. Loud: mortar, pod, sleepers.
+`maxAlive` 7 (11). Roles: detection, fodder, tracker. Nearby: bullets box at the camp checkpoint. **0.9 min.**
+
+### E3 The Listening Post and the pass (S1)
+
+Space: five rows of boulders, 20 m apart, facing a fenced radio post 125 to 135 m away with three
+sniper perches, then a 60 m pass with a Mining Rig at its end. Approaches: the rows (centre), the
+west pines to the spire, the east snow wall to the hut. Objective: `clearAll`, then the pass gate opens.
+
+| Squad | Trigger | Method | From | Distance | Enemies | Delay | Teaches or tests |
+|---|---|---|---|---|---|---|---|
+| E3-a | section load | `placed`, perch | P1 mast deck (150, 445, y 14) and P2 spire ledge (70, 420, y 6). Each relocates after 2 shots: P1 → P3 → P1, P2 → P3 → P2 | 125 m, 128 m | 2 auditSniper | — | The duel. A 1.4 s laser, step behind the boulder, shoot back during its next aim. **Decoy use 1** |
+| E3-b | section load | `placed` | Hut door (220, 431), 3 m from alarm 3. He is the runner | 135 m | 1 obama | — | The runner is the first target, or cut the cable on the hut wall |
+| E3-c | `onKills(2)` of E3-a | `hidden` | Steps out of the crow's nest hatch, P4 (150, 445, y 22). Relocates P4 → P1 → P3 | 60–125 m | 1 elite auditSniper, "the Head Auditor" | 2 s | Section elite. 2.5 × HP: a body shot does not kill, a head shot does |
+| E3-d | player inside 90 m with a line to it | `placed` | Rig pad at the pass end (150, 512) | 50 m from the pass mouth | 1 miningRig | — | New enemy, alone. 4 s stream, 2 s overheat with the vent open. **Decoy use 2**, or the bazooka from rack R1, or a Goo Bolt jam |
+| E3-R | alarm 3 rung | `door` | Hut west door (220, 433) | 30–135 m | 3 midget, 2 riotMidget | 6 s | Shields walking at you while snipers pin you |
+
+Quiet: three snipers, one clerk, one rig. Loud: E3-R, and the snipers get your position from the
+squad (no scan needed for 20 s). `maxAlive` 5 (10). Roles: sniper, ranged, turret (+ fodder, shield:
+the director holds the rig until the post is clear). Nearby: sniper box at the shrine 20 m before row
+A; rack R1 and a rockets box at the pass mouth. **1.8 min.**
+
+### E4 The Kill Zone (S2)
+
+Space: 200 m of open snow in front of the wall, three routes (§6.2). Objective: `reach` the gate apron.
+
+| Squad | Trigger | Method | From | Distance | Enemies | Delay | Teaches or tests |
+|---|---|---|---|---|---|---|---|
+| E4-a | section load | `placed` | Bunker roofs (100, 203, y 8) and (160, 203, y 8). Open fire inside 90 m. Rig E overheats 3 s after rig W, so there is never a shared pause | 119 m from Sniper Rocks | 2 miningRig | — | Kill one to open a gap. Vent shots from Last Cover, the bazooka, or climb a bunker and take it from behind |
+| E4-b | section load | `placed`, perch | Tower W (60, 203, y 12), tower E (200, 203, y 12). Relocate along the wall walk to (85, 203) and (175, 203) | 135 m | 2 auditSniper | — | Counter-sniping at the edge of range, between whiteouts |
+| E4-c | section load | `placed`, air patrol | D1 loop (100, 110) → (160, 110) → (160, 160) → (100, 160); D2 loop (150, 70) → (240, 70) → (240, 170) → (150, 170); 9 m up | 40–90 m | 2 spotterDrone | — | Mix. A drone's call here also rings the wall alarm. **Decoy use 3** |
+| E4-d | section load | `placed`, asleep | Trench dugout (62, 150) | 3 m off the lane | 3 midget | — | Trench route: creep past, or a loud brawl in a 3 m lane |
+| E4-e | section load | `placed`, patrol | Walks (118, 150) → (112, 112) → (118, 150), 40 s loop | 20–60 m | 2 obama | — | Centre route: drop them where a rock hides the bodies from the towers |
+| E4-f | section load | `placed`, tethered | Over the lake (200, 95, y 4), (225, 135, y 5) | on the lake route | 2 balloonMidget | — | Lake route: mines over cracking ice. A blast breaks tiles inside 4 m (it opens the cave tile) and is loud |
+| E4-g | `onEnter` n ≥ 150 | `door` | Wall kennel (75, 198) | 50–60 m | 2 frostHound | 0 s, 1 s | Hounds under the rigs. They ignore the blizzard and the Decoy |
+| E4-R | wall alarm: a searchlight holds 2 s, a drone call, or a tower sees a body | `drop`, 2 pods | 20 m north of the player, never north of n 170 | 20 m | 4 midget, 2 obama; all placed squads wake; searchlights follow the player | 5 s | Everyone awake |
+
+Quiet: the towers and drones die one at a time, the dugout sleeps, the hounds are the only rush.
+Loud: E4-R and both searchlights tracking. `maxAlive` 12. Roles: sniper and detection at range;
+turret plus one route role from n 118; the hounds wait for a free role. Hazards: blizzard, cracking
+ice. Nearby: sniper box at the pass gate; rockets box at Last Cover. **2.5 min.**
+
+### E5 The two Bunkers (S2)
+
+Space: two bunkers of 30 × 36 m, each an entry corridor, a bunk room, a stair to the roof and a
+generator room. Either order. Each has a second way in: the roof hatch from the wall walk.
+Objective: `destroy` both generators.
+
+| Squad | Trigger | Method | From | Distance | Enemies | Delay | Teaches or tests |
+|---|---|---|---|---|---|---|---|
+| E5-a | `onEnter` bunker W door | `placed` | Line abreast in the entry corridor (100, 210) | 10 m | 3 riotMidget | — | A phalanx in a 4 m corridor. Go round by the roof hatch, or splash, or Chain Zap the shields |
+| E5-b | `onEnter` generator room W | `door` | Bunk room (108, 208) | 8–12 m | 2 midget | 1 s | Something at your back while you shoot the generator |
+| E5-RW | alarm 5W (a Riot Midget is the runner) | `door` | North service door (100, 235) | 9 m | 2 midget, 1 riotMidget | 6 s | |
+| E5-c | `onEnter` bunker E door | `placed` | Behind the generator-room crates (153, 221), (167, 221), (160, 219) | 18–22 m | 3 glowieAgent, one with a flashbang | — | New enemy, alone. They hold cover and peek. Look away from the flashbang. Flank through the bunk room |
+| E5-d | `onKills(2)` of E5-c, or generator E at 50% | `hidden`, `door` | Supervisor from the north service door (160, 235); Boom Midgets from the bunk room (152, 208) | 8–14 m | 1 elite glowieAgent, "the Supervisor"; 2 boomMidget | 0 s, 2 s | Section elite. Bombers flush you out of cover while he shoots: the mix |
+| E5-RE | alarm 5E (an Agent is the runner) | `drop`, rope | Roof hatch (170, 8, 208) | 12 m | 2 glowieAgent | 6 s | |
+
+Quiet (cut each alarm or kill each runner): 11 enemies. Loud: 16. `maxAlive` 8. Roles: shield, fodder
+/ ranged, rusher. Nearby: shells box in generator room W, bullets box in generator room E. **1.9 min.**
+
+### E6 Frost Halls F1: Intake (S4)
+
+Space: a slick corridor 5 × 44 m with four side rooms and a parallel service passage. Objective:
+`reach` Lift A. Not a lockdown: the player can back out to the vestibule.
+
+| Squad | Trigger | Method | From | Distance | Enemies | Delay | Teaches or tests |
+|---|---|---|---|---|---|---|---|
+| E6-a | `onEnter` corridor (n ≥ 14) | `placed` | Line abreast at the north end (40, 52) | 38 m | 3 riotMidget | advance at once | Shields on ice: they slide, and a bash sends you 8 m. Flank through the service passage and the lockers |
+| E6-b | `onEnter` n ≥ 28 | `door` | Locker W1 (31, 22), behind the player | 6–10 m | 2 midget | 0 s | Pincer from a side door |
+| E6-c | `onKills(3)` | `door` | Kennel (50, 50) | 10–25 m | 2 frostHound | 1 s | Twist: hounds do not slip, and their slick patches spread the ice into the lockers |
+
+`maxAlive` 7. Roles: shield, fodder, tracker. Hazards: slick, cold. Nearby: rack R2 shotgun and a
+shells box in the vestibule. **0.9 min** of fighting (1.3 with the walk in and Lift A).
+
+### E7 Records Library (S4) — lockdown 2 [L]
+
+Room and doors: §6.4. Objective: `clearAll`. The entry door drops 1 s after the player crosses n 50.
+Next wave on `onRemain(2)` or 25 s after the previous wave started, whichever is first.
+
+| Wave | Trigger | Method | Spawn point | Enemies | Teaches or tests |
+|---|---|---|---|---|---|
+| 1 | doors seal | `drop` (ropes); `door` | SP-V1 north-west vent; SP-E stairwell door | 6 midget; 2 glowieAgent | Fodder in the stacks while agents take the tables. Use the aisles |
+| 2 | `onRemain(2)` or +25 s | `door`; `door`; `door` | SP-W archive door; SP-G gallery door; SP-E | 2 riotMidget; 2 auditSniper (perches: east gallery (66, 14, 44), south gallery (40, 14, 14)); 1 manaLeech | Twist on the duel: snipers 27 to 58 m away and above you, shields on the floor. The Leech taxes the Decoy. Shelves block lasers |
+| 3 | `onRemain(2)` or +25 s | `drop`; `door` | SP-V2 south-east vent; SP-W | 4 midget, 2 boomMidget; 2 frostHound | Rush from two sides. The gallery is the safe place from hounds only until they take the stairs |
+| 4 | `onRemain(2)` or +25 s | `drop`; `door`; `hidden` | SP-V1; SP-E; SP-C records cage | 2 midget; 1 glowieAgent; 1 elite robotShooter, "the Archivist" | Section elite. His big laser (1 s wind-up) rakes an aisle; cross aisles break it |
+
+Totals: **25 enemies, 4 waves, 2.8 min**. `maxAlive` 12. Roles per wave: 2, 3, 3, 3. End: both doors
+open, checkpoint *9 saves, a chest, an ammo crate and a mana bloom appear at the index desk, and the
+records cage unlocks (Audit File 3). Anti-stall as PLAN §5.6: the last two of a wave are marked after
+12 s; snipers leave their perch and come down.
+
+## 9. New enemies
+
+Five enemies are new to the player here. `glowieAgent`, `auditSniper` and `miningRig` are used exactly
+as C §3.12 specifies them, with the level settings below. `spotterDrone` and `frostHound` (PLAN §5.3)
+get full blocks. Tier-1 numbers; tier 5 multiplies HP and damage by 1.749. This level proposes no
+further placeholder enemy.
+
+| Enemy | Level settings on top of C §3.12 | Intro (alone) | Mix | Twist |
+|---|---|---|---|---|
+| `auditSniper` | Sight 140 m inside a visible 30° scan cone, 60 m outside it, 40 m in a whiteout. Laser 1.4 s, 35 damage, relocates after 2 shots along a written perch list. Locks onto a Decoy | E3 | E4 towers | E7 gallery, indoors at 27–58 m |
+| `miningRig` | Sight 90 m all round, 40 m in a whiteout. Cannot aim at anything closer than 15 m to the wall under it. Fires at a Decoy. Goo Bolt jams it 4 s | E3 pass | E4, two with offset overheats | F1: the player mounts a captured one |
+| `glowieAgent` | Squads of 3; one flashbang each squad. One agent is the alarm runner | E5 bunker E | F1 Part 2, E7 | F2, roping in beside the Drone Strikes |
+
+### `spotterDrone` — Spotter Drone (detection)
+
+| Field | Value |
+|---|---|
+| HP | 45 (tier 5: 79). Lamp: its own 20 HP part (tier 5: 35) |
+| Movement | Flies a written patrol loop at 8 m/s, 8 to 9 m above the ground (4 m indoors). Turns at 90°/s. Never leaves its encounter zone |
+| Sense | A searchlight cone pointing forward and down: 35 m long, 20° half-angle, ground spot about 5 m radius, 14 m ahead of the drone. Cone colour: white (searching), yellow (the player has been inside for 0.5 s), red (lock) |
+| Attack | None of its own. If the player is inside the cone for 1.5 s out of any 3 s it **calls**: 3 mortar shells on the marked spot, 0.5 s apart, each with a 1.4 s ground ring, radius 3.5 m, 22 damage (tier 5: 38). Every placed squad inside 60 m wakes. In S2 the call also rings the wall alarm. In the vault the call is one extra Drone Strike instead of mortars. 10 s before it can call again |
+| Counter | Stay out of the cone. Shoot the lamp (weak spot): a blind drone drifts in circles and cannot call. Decoy: the cone parks on the standee for 6 s and any call lands on the standee without waking anyone |
+| Stagger | Poise 20. A hit while the cone is yellow resets the 1.5 s count |
+| Affinity | Weak to shock |
+| Drops | Ammo 50%, tickets 2, gun 4% |
+| Hitboxes | Body sphere r 0.6; lamp sphere r 0.25 under it (`weak`) |
+| Look | Box body 1.0 × 0.4 × 1.0 (`metal`); cone lamp r 0.3 h 0.5 under it (`neon` yellow); 4 disc rotors r 0.35 at the corners; a see-through cone for the beam (render only) |
+| Time estimate | 8 s |
+
+### `frostHound` — Frost Hound (tracker)
+
+| Field | Value |
+|---|---|
+| HP | 55 (tier 5: 96) |
+| Movement | Trots at 5 m/s, runs at 9.5 m/s. Follows the player's **trail** (a breadcrumb every 2 m, last 60 m), so walls, weather, camo-like tricks and the Decoy do not shake it. Does not slip on `slick` |
+| Sense | Scent: knows the player inside 45 m without a line of sight. Barking wakes sleepers inside 12 m |
+| Attack | At 9 m it crouches for 0.5 s (growl, eyes flash), then lunges 9 m in a straight line at 20 m/s: 16 damage (tier 5: 28) and knockback 6. Where it lands it leaves a slick patch, radius 2.5 m, for 6 s. Recovers for 0.9 s |
+| Counter | Shotgun on the crouch or the landing. A stagger during the crouch cancels the lunge. Sidestep: the lunge does not turn. Yeet reverses a lunge in flight |
+| Stagger | Poise 30 |
+| Affinity | Weak to fire |
+| Drops | Ammo 40%, health 8%, tickets 2, gun 3% |
+| Hitboxes | Body capsule r 0.5, length 1.2 along its facing, 0.3 to 0.9 m up; head sphere r 0.28 at the front (`weak`) |
+| Look | Box body 1.2 × 0.5 × 0.6 (`ice` blue); box head 0.45 cube; 4 cylinder legs r 0.1 h 0.5; cone tail; 2 small `neon` sphere eyes |
+| Time estimate | 5 s |
+| Elite "Alpha" (F1) | 2.5 × HP, lunges twice in a row, patch radius 3.5 m |
+
+## 10. Finale
+
+Two stages, both lockdowns, with Frost Halls between them.
+
+### F1 "The Abominable Auditor" — mini-boss, lockdown 1 [L], 2 min 40 s
+
+`monster` (BLUE MONSTER) with its Wave Mode data untouched: 3,800 HP (6,646 at tier 5), radius 2.4,
+7 m tall, contact 18, melee 50 (0.75 s wind-up), volley 5 shots × 2 fans at 12, 3 homing missiles at
+34, charge 24 m/s at 40, slam ring at 30 (jump it). Tier 5 multiplies damage by 1.749. The part
+script adds three ice plates, an intermission and an arena shift, and replaces the data's random
+`summon` and its automatic phase-2 grunts with the written adds below. He starts frozen in a block on
+the Ice Machine and breaks out 2 s after the arena door drops.
+
+**Ice plates** (destroyable parts; a hit on a plate damages the plate, not the boss)
+
+| Plate | Covers | HP (tier 5) | While it is on |
+|---|---|---|---|
+| Brow | The head weak spot, sphere r 1.0 at y 6.5 | 250 (437) | The head cannot be hit. A small target: the sniper's job |
+| Chest | The front of the body | 400 (700) | Body hits from the front 180° do 10% (the existing `shield` zone rule) |
+| Back | The rear of the body | 400 (700) | Body hits from behind do 10% |
+
+| Part | Boss HP | Attacks | Adds (exact) | Arena | Ends when |
+|---|---|---|---|---|---|
+| **1. Frozen Assets** (60 s) | 100% → 50%: 1,900 (3,323) | Phase-1 pattern from the data: chase, volley, missiles, chase, charge, slam. A charge that hits a pillar or a wall stuns him 2 s (weak-spot hits × 1.5) | t+20 s: 4 midget, `door` SP-W. t+45 s: 4 midget, `door` SP-E | 4 ice pillars; each breaks after 2 charge hits. Gallery and emplacement open | Boss HP reaches 50%. Any plate left stays on |
+| **2. Cold Storage** (40 s, intermission) | Invulnerable inside an ice dome on the dais | 3 homing missiles every 8 s from the dome | t+0: 3 glowieAgent rope down at SP-N beside the generators (one flashbang). t+18 s: 3 midget from SP-W and 2 boomMidget from SP-E | **Cold aura** on the whole courtyard floor below y 3: no shield regen and 3 damage/s. The galleries are above it. Two generators (500 HP, core × 2) on the north gallery corners power it | Both generators are destroyed. The dome and any plates left shatter and he is stunned 4 s on the dais |
+| **3. Final Notice** (60 s) | 50% → 0: 1,900 (3,323) | Phase-2 pattern: chase, missiles, volley, charge, slam (speed × 1.25). Below 20%: missiles ×4, volley 3 fans, two slam rings, speed × 1.45 | `onBossHp(35%)`: 5 midget, 3 from SP-W and 2 from SP-E. `onBossHp(20%)`: 1 elite frostHound "Alpha" and 2 frostHound from SP-K | **Arena shift:** the centre 30 × 30 m (x 35–65, n 44–74) is `slick` and the 26 × 26 m ice floor cracks under anyone, him included. If he is on a tile when it falls he drops into the basin and is stunned 2 s. His charges slide on the ice and always reach a wall | Boss HP 0. Adds still alive freeze and shatter 2 s later |
+
+Totals: **24 adds + the Auditor = 25 enemies**, never more than 8 adds alive. Hazards: cold (Part 2),
+then slick and cracking ice (Part 3). The section elite is the Alpha hound.
+
+How the level taught each part: plates are the sniper's small-target work from E1 to E4. Generators
+are E5's, and reaching them means using the gallery or shooting 73 m from the emplacement. Cracking
+ice is the lake in E4, and slick ice is the creek in E2.
+
+Every part works with a plain machine gun: plates take any damage, the emplacement has no ammo, and
+the generators can be reached on foot in 12 s by the gallery stairs. This fight is not in the hub's
+canonical boss table, so no `SB` section is needed.
+
+When the lockdown ends: both doors open, checkpoint *7 saves, and on the dais appear the lockdown
+chest, the mini-boss's two guns, an ammo crate and two health packs (§12).
+
+### F2 The vault hold — lockdown 3 [L], 2 min 26 s
+
+The blast door drops 1 s after the player crosses n 46. Holding Interact for 1.5 s on the safe starts
+the drill and wave 1. **Objective:** every wave dead (`clearAll`) **and** the drill at 100%.
+
+| Rule | Value |
+|---|---|
+| Drill | Needs 90 s. It runs only while the player or a Sproto Swarm buddy stands in the ring (r 9 m). Enemies in the ring do not stop it |
+| If the waves die first | The drill runs at × 3 until it is done |
+| Drill at 100% | The safe vents coolant: every enemy alive is frozen for 6 s and takes double damage |
+| Drone Strike | Glowie's power as a level hazard (B §3.4): a reticle of radius 2.6 m tracks the player for 1.8 s, locks for 0.75 s, then hits. 30 damage to the player, 120 to enemies. It follows a Decoy placed while it is tracking |
+| Coolant pulses | The four grates become `cold` zones (r 3 m, no shield regen) for 8 s |
+| Next wave | The time below, or earlier on `onRemain(2)` (PLAN §5.6). The strike clock never moves |
+
+| Time (latest) | Event |
+|---|---|
+| t+0 | Drill starts. **Wave 1:** 6 midget, `drop`, hatch A (south-west) |
+| t+8 | Drone Strike 1 |
+| t+22 | Drone Strike 2 |
+| t+25 | **Wave 2:** 3 glowieAgent, `drop` by rope, hatch B (south-east), flashbang at +6 s; 2 boomMidget, `drop`, hatch C (north-west) |
+| t+30 | Coolant pulse 1 |
+| t+36 | Drone Strike 3 |
+| t+50 | Drone Strike 4. **Wave 3:** 1 spotterDrone, `air`, through the iris; 4 midget, `drop`, hatch D (north-east); 2 frostHound, `door`, guard door (west) |
+| t+60 | Coolant pulse 2 |
+| t+64 | Drone Strike 5 |
+| t+75 | **Wave 4:** 4 midget, `drop`, hatch A; 2 boomMidget, `drop`, hatch C |
+| t+78 | Drone Strike 6 |
+| t+90 | Coolant pulse 3. Earliest moment the drill can finish |
+| t+92 | Drone Strike 7 |
+| t+100 | **Wave 5:** 1 elite riotMidget, "the Vault Warden", `door`, guard door |
+| t+106 and every 14 s | Drone Strikes continue until the room is clear |
+
+Totals: **25 enemies, 5 waves** (14 midget, 4 boomMidget, 3 glowieAgent, 2 frostHound, 1
+spotterDrone, 1 elite riotMidget). `maxAlive` 12. Hazards: Drone Strike and cold. Twists: the
+Spotter Drone's call here is an extra Drone Strike with no tracking time; strikes kill enemies, so
+standing behind the Warden's shield when the reticle locks solves him.
+
+When the lockdown ends: both doors open, the last checkpoint saves, the safe opens (Interact to take
+the ledgers), and a chest and an ammo crate rise beside it. The player walks 20 m of gantry to the pad.
+
+## 11. Mechanisms, magic and explosives used
+
+| Mechanism | Where | New here? | Numbers |
+|---|---|---|---|
+| `searchlight` | S1 practice light; S2 lights W and E | **New** | Beam 120 m, spot r 6 m, sweeps a written arc in 8 s. Holds the player 2 s: alarm. Lamp 30 HP. Locks onto a Decoy for 6 s. 40 m in a whiteout |
+| `alarm` | 1 (E1), 3 (E3), 4 (wall), 5W, 5E (bunkers) | **New** | Box 40 HP, cable 20 HP, runner needs 1.5 s, squad arrives 6 s after the siren (§2) |
+| Blizzard (`weather`) | S2 | **New** | 20 s whiteout every 90 s, 4 s warning (wind, HUD countdown). Player view and all enemy sight capped at 40 m. Hounds unaffected |
+| `hazardZone slick` | S1 creek, S4 corridor, F1 Part 3, hound patches | New to the level | Friction × 0.15 (C §3.9) |
+| `crackTiles` | S2 lake, F1 Part 3 | **New** | Falls 1 s after a step, 0.5 s crack telegraph, back in 20 s. Explosions inside 4 m break tiles at once |
+| `hazardZone cold` | S4 lockers, F1 Part 2 aura, F2 grates | **New** | Shield regen × 0.5 in the lockers; the aura and the grates stop regen and the aura adds 3 damage/s |
+| `target` generator, shield gate | S2 (2), F1 Part 2 (2) | **New** | 500 HP, core weak spot × 2. Both down: the gate drops |
+| `emplacement` Captured Mining Rig | S3 south gallery | **New** | 120° arc, the rig's own gun (8 shots/s, 3 damage at tier 1), no ammo, overheats after 4 s for 2 s |
+| `mover` lifts | S1 mast lift, S4 Lift A, freight lift | Returning | 2 m/s; the freight ride is 15 s |
+| `lockdown` | F1, E7, F2 | PLAN §5.6 | Door slabs 0.6 m with `neon` trim, threshold disc 6 m inside |
+| `hold` ring | F2 | Returning (L01) | 90 s, not paused by enemies |
+| Drone Strike emitter | F2 | **New** (Glowie's power without Glowie) | r 2.6 m, track 1.8 s, lock 0.75 s, every 14 s |
+| `depot`, `cache`, `rack`, `door`, `switch`, kill zone with rescue | all | Returning | — |
+
+Magic: the **Decoy shrine** (new spell, §3); a `manaBloom` in the library reward. No conduit, plate
+or fragile wall is needed. Explosives: one fire `barrel` (E1). Balloon Midgets act as mines over the
+lake. The bazooka is for the three rigs and is optional every time.
+
+## 12. Checkpoints, depots, weapons, loot, ammo, power-ups, secrets
+
+**Checkpoints** (times are the §4 estimate with no alarm)
+
+| # | Where (section, position) | Saves when | At | Ammo next to it |
+|---|---|---|---|---|
+| start | S1 pod (150, 0, 19) | level start | 0:00 | — |
+| *1 | S1 camp (163, 0, 174) | E1 cleared | 1:37 | bullets box |
+| *2 | S1 shrine (150, 0, 300) | shrine used | 2:39 | sniper box |
+| *3 | S1 pass gate (150, 0, 516) | E3 cleared | 4:37 | sniper box |
+| *4 | S2 Last Cover (130, 0, 157) | both tower snipers dead, or the player reaches the apron by another route | 6:12 | rockets box |
+| *5 | S2, the generator room just cleared | first generator destroyed | 7:59 | shells or bullets box |
+| *6 | S3 gate passage (50, 0, 18), outside the arena door | leaving depot 1 | 9:56 | depot crate |
+| *7 | S3 dais | lockdown 1 ends | 12:36 | reward crate |
+| *8 | S4 F2 lobby (40, 7, 64), outside the library door | Lift A arrives | 13:54 | shells box |
+| *9 | S4 index desk | lockdown 2 ends | 16:40 | reward crate |
+| *10 | S5 antechamber (40, 0, 34), outside the blast door | leaving depot 2 | 17:51 | bullets box |
+
+Lockdown 3 saves again when it ends (20:17), 12 s before the level does. Longest gaps: 2 min 40 s and
+2 min 46 s across lockdowns 1 and 2, which PLAN §5.6 restarts from wave 1; every other gap is under
+2 min 30 s.
+
+**Depots** (PLAN §7.7: depot crate, health station, spell loadout bench, ticket shop terminal, checkpoint)
+
+| Depot | Room | Crate | Health station | Loadout bench | Shop terminal |
+|---|---|---|---|---|---|
+| D1 | S3 `room(28–45, 2–20)` | (33, 0, 6) | (33, 0, 16) | (41, 0, 6) | (41, 0, 16) |
+| D2 | S5 armory `room(28–52, 9–25)` | (33, 0, 17) | (33, 0, 21) | (47, 0, 21) | (47, 0, 17) |
+
+**Placed weapons** (base tier Uncommon, `reliable`, no element, gun level 5)
+
+| Id | Gun | Position | Why |
+|---|---|---|---|
+| C1 (cache) | Sniper, magazine full | S1 (156, 0.6, 54) | E1, E3, E4: every long shot in the quiet half |
+| R1 (rack) | Bazooka | S1 (146, 0, 462) | The rig in the pass and the two wall rigs |
+| R2 (rack) | Shotgun | S4 (34, 0, 6) | E6 corridor, Frost Hounds, the Library |
+
+**Loot table**
+
+| Tier odds for enemy drops (PLAN §7.3, L05) | Common | Uncommon | Rare | Epic | Legendary |
+|---|---|---|---|---|---|
+| Percent | 20 | 42 | 30 | 7 | 1 |
+
+| Guaranteed drop | Where it lands | What |
+|---|---|---|
+| Elite 1: the Head Auditor (E3) | Falls from the crow's nest to the mast foot, S1 (150, 0, 448) | 1 gun, rolled one tier step up |
+| Elite 2: the Supervisor (E5) | S2 generator room E | 1 gun, one step up |
+| Elite 3: Alpha hound (F1) | S3 courtyard, where it dies | 1 gun, one step up |
+| Elite 4: the Archivist (E7) | S4 library floor | 1 gun, one step up |
+| Elite 5: the Vault Warden (F2) | S5 vault | 1 gun, one step up |
+| Lockdown 1 chest | S3 dais (50, 0.6, 63) | 1 gun, Uncommon or better, a type the player does not carry if possible |
+| Mini-boss: the Auditor | S3 dais | 2 guns, one of them Rare or better. No boss gun (mini-boss) |
+| Lockdown 2 chest | S4 index desk (42, 7, 34) | 1 gun, Uncommon or better |
+| Lockdown 3 chest | S5 beside the safe (40, 0, 66) | 1 gun, Uncommon or better. Carried into L06 |
+| Secret weapon cache | S1 spire, an alcove behind the P2 ledge (70, 6, 424), seen only from the ledge | 1 sniper at the level's best tier (Legendary, the top of the L05 row) |
+
+Random gun drops on top: about 6 in a run (154 enemies at 2% to 10%).
+
+**Ammo boxes** (small, one type: sniper 8, bullets 60, shells 12, rockets 3)
+
+| Id | Type | Position | Reason (PLAN §7.4) |
+|---|---|---|---|
+| AB1 | Sniper | S1 (154, 0, 56), by cache C1 | Rack rule; 18 m before E1 |
+| AB2 | Bullets | S1 (163, 0, 174), in the snowcat's lee | Checkpoint *1 |
+| AB3 | Sniper | S1 (120, 2.5, 186), on the lookout deck | On a tower you cleared |
+| AB4 | Sniper | S1 (153, 0, 300), at the shrine | Checkpoint *2; 20 m before E3 |
+| AB5 | Sniper | S1 (150, 14, 445), mast deck P1 | On a tower you cleared |
+| AB6 | Sniper | S1 (225, 4, 432), hut roof P3 | On a tower you cleared |
+| AB7 | Rockets | S1 (154, 0, 463) | Rack R1; 50 m before the pass rig (the rig is the encounter; the box is at its start) |
+| AB8 | Sniper | S1 (150, 0, 516), pass gate | Checkpoint *3; start of E4 |
+| AB9 | Bullets | S2 (62, 0, 150), trench dugout | Trench route |
+| AB10 | Sniper | S2 (232, 0, 100), fishing hut 2 | Lake route only |
+| AB11 | Rockets | S2 (130, 0, 157), Last Cover | Checkpoint *4; the wall rigs |
+| AB12 | Sniper | S2 (60, 12, 203), tower W cabin | On a tower you cleared |
+| AB13 | Shells | S2 (93, 0, 230), generator room W | Checkpoint *5 |
+| AB14 | Bullets | S2 (167, 0, 230), generator room E | Checkpoint *5 |
+| AB15 | Sniper | S3 (50, 5, 92), north gallery | Inside lockdown 1, across the yard |
+| AB16 | Bullets | S3 (46, 5, 26), by the emplacement | Inside lockdown 1 |
+| AB17 | Shells | S4 (46, 0, 6), vestibule | Rack R2; before E6 |
+| AB18 | Shells | S4 (44, 7, 64), F2 lobby | Checkpoint *8; before E7 |
+| AB19 | Shells | S4 (38, 7, 36), index desk | Inside lockdown 2 |
+| AB20 | Sniper | S4 (14, 14, 20), west gallery | Inside lockdown 2, on the gallery |
+| AB21 | Bullets | S5 (42, 0, 32), antechamber | Checkpoint *10 |
+| AB22 | Bullets | S5 (60, 0, 62), vault east wall | Inside lockdown 3 |
+| AB23 | Shells | S5 (40, 0, 80), vault north side | Inside lockdown 3 |
+
+23 boxes: 10 sniper, 6 bullets, 5 shells, 2 rockets.
+
+**Ammo crates** (every carried type to 50% of cap, three uses): **AC1** S3 dais, **AC2** S4 index desk,
+**AC3** S5 beside the safe. Each is part of a lockdown reward. There is no crate in the quiet half on
+purpose. **Depot crates** (unlimited): D1 and D2.
+
+**Ammo budget: sniper rounds** (cap 36, box 8, enemy drop 5)
+
+| Quiet half | Shots the encounter asks for | Why |
+|---|---|---|
+| E1 | 8 | 5 Midgets, 2 Obamas, the alarm box |
+| E2 | 4 | Drone lamp, drone, 2 sleepers |
+| E3 | 11 | 2 snipers at 2 shots each, the elite 3, the clerk 1, the cable 1, the rig's vent 2 |
+| E4 | 19 | 2 tower snipers 4, 2 drones 4, 2 rig vents 4, patrol 2, mines 2, 2 searchlight lamps 2, a cable 1 |
+| E5 | 2 | Indoors, the sniper is a spare |
+| **Asked** | **44** | |
+
+| Supply in the quiet half | Rounds |
+|---|---|
+| Cache C1 magazine | 4 |
+| Boxes on every route: AB1, AB3, AB4, AB5, AB6, AB8, AB12 | 56 |
+| Expected enemy drops | 20 |
+| **Total** | **80 = 1.82 × asked** |
+
+Boxes alone are 60 rounds, 1.36 × asked, so drops matter. The drop estimate counts only kills made
+inside pick-up reach, because a pack is gone after 30 s and nobody runs 90 m to a body in that time:
+about 24 close kills × 50% ammo chance × one third going to sniper rounds (smart drops) × 5 = 20.
+The lake route adds AB10 (+8). Stock runs like this for a player who arrives with no sniper rounds:
+12 at the ridge, 4 after E1, 12 at the lookout, 16 at the shrine, 5 at the worst moment of the E3
+duel, 29 at the pass gate, 10 after E4, 18 on tower W, then depot 1 refills to 36 before the
+Auditor. The loud half asks about 24 more (brow plate 3, generators 6, head shots 8, library
+snipers 4, spare 3) and has depot 1, AB15, AC1, AB20, AC2 and depot 2.
+
+**Power-ups:** Overshield in fishing hut 4, S2 (238, 0, 150), the reward for the lake route;
+Overshield on the courtyard's north gallery, S3 (50, 5, 90).
+
+**Secrets**
+
+| Secret | Where | How |
+|---|---|---|
+| Golden Bonk: **Tax Season** (enemies +25% HP, tickets × 2) | S2 ice cave under the lake (212, -4, 126) | Step on tile G in band 2, or pop the second Balloon Midget over it. A gold glow shows under the ice from hut 3's door. The ramp leads back up into hut 3 |
+| **Mana Battery** (+10 max mana, +0.5 mana/s) | S4 F1, cold locker W2 (31, 0.5, 47), behind a pallet stack | Found by players who flank the riot line through the lockers. It hums inside 6 m |
+| Secret weapon cache | S1 spire alcove (70, 6, 424) | Climb the ramp behind the spire after E3 |
+| Audit File 1 | S1 crow's nest (150, 22, 445) | Ride the mast lift to the top |
+| Audit File 2 | S2 tower W cabin (60, 12, 203) | From bunker W's roof walk 40 m west along the wall |
+| Audit File 3 | S4 records cage (17, 7, 17) | The cage unlocks when lockdown 2 ends |
+
+## 13. Difficulty
+
+**Harder than L04** (same pressure row: `maxAlive` 12, 4 roles, 1 elite per section, 2 hazard kinds):
+
+- Tier 5: enemy HP and damage × 1.15 over L04.
+- The first enemies that hurt from beyond the player's comfortable range: a 35-damage sniper shot and a turret with a 90 m reach.
+- The first level where being seen has a cost that lasts (alarms, mortar calls, searchlights that follow).
+- Finite sniper ammo placed forward of the player (§12), so missing has a price.
+- Three lockdowns, where L04 had fights you could fly away from, and no jetpack.
+- Five elites, each with a second trick (relocating sniper, flashbang supervisor, double-lunge hound, aisle-raking laser, shield you beat with a Drone Strike).
+
+| Setting | Easy | Normal | Heroic |
+|---|---|---|---|
+| Sniper laser | 1.8 s | 1.4 s | 1.1 s |
+| Searchlight hold / drone hold | 3 s / 2.5 s | 2 s / 1.5 s | 1.2 s / 1.0 s |
+| Alarm squads | 2 fewer each | as written | 2 more each, one of them elite |
+| Whiteout | 30 s of every 90 | 20 s | 15 s |
+| Rig overheat | 3 s | 2 s | 2 s, and a third rig above the gate |
+| Hounds per squad | 1 | 2 | 3 |
+| Sniper boxes | 12 rounds | 8 | 8, and AB4 and AB8 are removed |
+| Auditor | plates −30% HP, 1 generator | as written | plates +30% HP, 3 generators, Part 2 missiles every 5 s |
+| Lockdown waves | 20% fewer fodder | as written | next wave at `onRemain(4)` |
+| Vault | drill 70 s, strike every 18 s | 90 s, 14 s | 110 s, 10 s, in pairs after t+60 |
+
+## 14. Engine needs
+
+Uses **E1** (collision, including volumes below section ground: lake bed, cave, courtyard basin),
+**E2** (perception, line of sight to 150 m), **E3** (nav, lifts as nav links, flyer patrols),
+**E4** (squads, triggers, `reach`, `clearAll`, `destroy`, `hold`, lockdowns), **E5** (terrain, new
+primitives, 150 m draw distance, fog), **E6** (door, switch, barrel, mover, hazard zones, crack
+tiles, emplacement, depot, target, searchlight, alarm, lockdown), **E7** (`auditSniper`,
+`glowieAgent`, `miningRig`, `riotMidget`, `boomMidget`, `sewerMidget`, `balloonMidget`), **E8**
+(`spotterDrone`, `frostHound`, `manaLeech`), **E10** (Decoy, shrine, mana bloom), **E11** (barrel),
+**E12** (`monster` in a walled arena with a part script), **E13** (depots, checkpoints, boss bar with
+part pips, timers), **E14**, **E15**, **E16**, **E17** (tier odds, guaranteed drops, ammo boxes and
+crates, smart drops).
+
+Needed and not in PLAN §10:
+
+| # | Need | Why |
+|---|---|---|
+| N1 | Per-enemy sight profile in data (range, cone, scan sweep) and a weather cap on it; placed squads pre-spawned at section load | C §3.8 gives snipers 60 m and pre-spawns at 70 m. The duels here are at 125 to 135 m |
+| N2 | `weather` mechanism: timed blizzard with fog distance, perception cap, HUD countdown | C §3.9 has only render-only `dark` |
+| N3 | Stealth-lite hooks: forced crit for sniper hits on unaware targets, body discovery, the alarm runner, alarm box and cable as shootable targets (a cable is thinner than the 0.5 m solid minimum, so it is a non-solid line target) | PLAN §8 names `alarm` without a spec; §2 of this file is the spec |
+| N4 | Destroyable parts on a boss body (plates as hit zones with their own HP), and a way to switch off `summonGrunts` and the `summon` action for a wave boss in a part script | `src/sim/bosses.js` summons 10 Midgets at phase 2 on tier 5 or higher |
+| N5 | A Duel power run as a level hazard without its boss (the Drone Strike emitter) | F2 |
+| N6 | A lockdown whose end also needs a `hold` at 100%, and whose waves have a fixed latest time | F2 |
+| N7 | Decoy: Mining Rigs and searchlights also lock onto the standee; Frost Hounds ignore it; a tracking Drone Strike follows it; cast range 20 m | PLAN §6.2 lists snipers and Spotter Drones only |
+| N8 | Enemy ammo packs from kills beyond 40 m last 120 s instead of 30 s (optional) | Otherwise sniping forfeits its drops; the budget in §12 already assumes they are lost |
+
+## 15. Bot route and tests
+
+**Bot route** (god mode, nav-following, fixed seed):
+
+1. S1: take C1 → ridge slot 3 → `snipe` E1-b runner, E1-b second, E1-a × 5 → walk to the camp, shoot the mounds on `burrowWarn` → wait for the drone to pass x 150 heading east → cross the bridge → turn and shoot both hounds on `enemyTelegraph` → shrine → cast Decoy at the practice light.
+2. Row A: cast Decoy 10 m east, `snipe` P1 while it aims at the standee, then P2, then the elite → walk to the hut, kill the clerk → pass mouth: take R1, cast Decoy at 85 m from the rig, `snipe` the vent → gate.
+3. S2: wait out the first whiteout at the pass mouth → Sniper Rocks: `snipe` tower W, tower E, both drone lamps → centre route to Last Cover during the next whiteout → Decoy, vent shot on rig W, then rig E → apron → hounds → bunker W (roof hatch route), generator → wall walk → bunker E, generator → gate.
+4. S3: depot (refill) → arena door → Part 1 from the south gallery: brow plate, head → Part 2: emplacement on both generators → Part 3: stay on the gallery, shoot during stuns.
+5. S4: R2 → service passage → locker W2 → corridor behind the riot line → Lift A → library: hold the north-west stair top → exit door → freight lift.
+6. S5: depot → blast door → start the drill → circle inside the ring, step out of each reticle → take the ledgers → pad.
+
+**Tests** (`tests/levels/L05.test.js`)
+
+| Test | Checks |
+|---|---|
+| Validator | Solids, thickness, reachability from every checkpoint; S1 to S5 under 600 solids each |
+| Pacing estimate | 1,229 s without alarms, 1,276 s with 2 of 6; inside 1,080 to 1,320 |
+| Enemy count | 128 scripted, 26 conditional; no more than 12 alive at any tick of the bot run |
+| Sneak crit | A sniper hit on an idle Obama is a crit and kills; the same hit on an alert one is not forced |
+| Alarm | Runner reaches the box: squad after 6 s. Box or cable destroyed first: no squad |
+| Perception | Audit Sniper sees at 140 m in its cone and at 40 m in a whiteout; Frost Hound finds the player with no line of sight |
+| Decoy | Sniper, rig, searchlight and drone target the standee for 6 s; a hound does not |
+| Rig | Overheats after 4 s of fire; a vent hit during overheat does × 2.5 or more; cannot hit a target 10 m from the wall base |
+| Lockdowns | Each seals 1 s after the threshold, cannot be left, restarts at wave 1 after a death, and opens with a chest and a crate; wave counts are 25, 25 and 25 |
+| Auditor | Part changes at 50%, on both generators, at 0; no `summonGrunts` call; a charge into a pillar stuns |
+| Vault | Strike times match §10; the drill needs 90 s in the ring; the exit opens only with all waves dead and the drill done |
+| Ammo | 23 boxes and 3 crates exist at the listed positions; sniper supply in S1 + S2 is at least 1.5 × 44 |
+| Determinism | The bot run's state hash is the same twice for one seed |
+
+## 16. Build tasks
+
+Owner: the L05 agent, branch `<agent>/campaign-l05`, files under `src/data/levels/L05/` and `src/data/levels/prefabs/glacier.js`.
+
+1. `prefabs/glacier.js`: the 13 prefabs in §7 and the `room` helper (ask the kit owner if `room` belongs in `kit.js`).
+2. `L05/index.js`: header (stage `glacier`, tier 5, par 1,200 s, no jetpack, `maxAlive` 12), section order S1 to S5, the five section origins.
+3. `L05/S1.js` blockout from §6.1; run the validator and the map export; walk it with the debug fly camera and check the five sightline lengths.
+4. `L05/S2.js` blockout from §6.2, the lake basin, the three routes, the wall and both bunkers; check the 135 m and 119 m lines from Sniper Rocks.
+5. `L05/S3.js`, `S4.js`, `S5.js` blockouts; check each lockdown room's size, doors, thresholds and spawn markers.
+6. Mechanisms: alarms 1, 3, 4, 5W, 5E with cables; searchlights; the blizzard clock; crack tiles; cold and slick zones; generators and the shield gate; three lifts; the emplacement; both depots.
+7. Encounters E1 to E5 with their squads, runners and alarm squads (§8). Tune perches and patrol loops.
+8. Encounter E6 and lockdown E7 (wave table in §8).
+9. F1: the Auditor's part script, plates, Part 2 dome and aura, Part 3 floor (§10). Needs E12 and N4.
+10. F2: the vault lockdown, drill, strike clock and coolant pulses (§10). Needs N5 and N6.
+11. Pick-ups: C1, R1, R2, 23 ammo boxes, 3 crates, 2 Overshields, the loot table entries, the secret cache, Golden Bonk, Mana Battery, 3 Audit Files (§12).
+12. Checkpoints *1 to *10, cutscene cards, objective text, HUD timers (whiteout, drill).
+13. `tests/levels/L05.test.js` (§15) and the bot route; fix until the pacing estimate and the bot run pass.
+14. Easy and Heroic tables (§13). Then the checks in `AGENTS.md`, the map export in the PR, and a note of any pin that moved (the Decoy spell and finite ammo move the campaign fingerprint through E10 and E17, not through this level's data).

@@ -154,17 +154,17 @@ Box size is X × Y × Z (east-west × height × north-south). On terrain, y = 0 
 ### 6.1 S1: Caravan Camp and Souk Alleys
 
 Footprint 200 × 150 m, flat. The player starts in the south and goes north through the souk, then east.
-About 120 solids. Route on foot 252 m.
+About 125 solids. Route on foot 257 m. The Dyers' Court at the east end is lockdown **[L1]**.
 
 ```
- x=0                   60    80  97 103  120   140  150                192
- +----------------------+-------+---------+-----+----+------------------+ z=0
- |                      :       | SHRINE  |     :    | [sd-vatN]         | z=4
- |      filler          :       | COURT   |     :    | (v) (v) (v) DYERS'|
- |                      :       |  ✦  C1 ]=== PASSAGE ==►  [plat]  COURT ]═► caravanGate → S2
- |                      :       +--+   +--+     :    | (v) (v) (v)       | z=31
- |                      :       |thread|        :    | [sd-vatS]         | z=44
- |                      +-------+--+  +--+-------+   +------------------+
+ x=0                   60    80  97 103  120   140  150                 197
+ +----------------------+-------+---------+-----+----+-------------------+ z=0
+ |                      :       | SHRINE  |     :    |    [sp-vatN]      | z=2
+ |      filler          :       | COURT   |     :    | (v) (v) (v)  [L1] |
+ |                      :       | ✦CP2 C1]|== PASSAGE ==►  [plat] DYERS' ]═► caravanGate → S2
+ |                      :       +--+   +--+ ^line    | (v) (v) (v) COURT | z=31
+ |                      :       |thread|    x=120    |    [sp-vatS] [sp-east]
+ |                      +-------+--+  +--+-------+   +-------------------+ z=48
  |                      |  SPICE SQUARE   (well)  |                      | z=44-62
  |      W block         |=== Top Lane ============|      E block         | z=62-67
  |      (8 m)           |Cu| Block A|SPICE|Block B|La|   (8 m)           | z=67-93
@@ -180,7 +180,7 @@ About 120 solids. Route on foot 252 m.
 | Id | Shape | Size (m) | At (x, y, z) | Mat | Purpose |
 |---|---|---|---|---|---|
 | `s1.ground` | box | 200×1×150 | (100, −0.5, 75) | sand | Floor |
-| `s1.fillA` | box ×4 | 86×8×42; 60×8×54; 60×8×52; 28×8×12 | (43, 4, 21); (30, 4, 71); (170, 4, 72); (100, 4, 6) | stone | Out-of-bounds mass north-west, west, east and north of the shrine. Their faces are the outer walls |
+| `s1.fillA` | box ×4 | 86×8×42; 60×8×54; 60×8×50; 28×8×12 | (43, 4, 21); (30, 4, 71); (170, 4, 73); (100, 4, 6) | stone | Out-of-bounds mass north-west, west, east and north of the shrine. Their faces are the outer walls |
 | `s1.fillB` | box ×4 | 58×8×52; 58×8×52; 37×8×18; 37×8×18 | (29, 4, 124); (171, 4, 124); (131.5, 4, 9); (131.5, 4, 35) | stone | Mass beside the camp and on both sides of the Dyers' Passage |
 | `camp.berm` | box ×3 | 2×6×50; 2×6×50; 84×6×2 | (59, 3, 125); (141, 3, 125); (100, 3, 149) | sand | Camp walls west, east, south. Camp floor is x 60–140, z 100–148 |
 | `camp.tent1..3` | prefab `desert.tent` | — | (74, 0, 112); (126, 0, 110); (84, 0, 138) | — | Tents. `tent1` holds spawn door `sd-tent` |
@@ -208,32 +208,37 @@ About 120 solids. Route on foot 252 m.
 | `shrine.walls` | box ×4 | 28×7×2; 2×7×18; 2×7×7; 2×7×7 | (100, 3.5, 13); (87, 3.5, 22); (113, 3.5, 16.5); (113, 3.5, 27.5) | stone | Shrine Court x 88–112, z 14–31. East wall has the gate gap z 20–24 |
 | `shrine.spell` | prefab `desert.shrine` | — | (100, 0, 22) | — | Chain Zap shrine |
 | `shrine.c1` | prefab `desert.conduit` | — | (111.5, 0, 17) | — | Conduit `C1`, 12 m from the shrine, in plain view beside the gate |
-| `pass.walls` | box ×2 | 35×7×2 | (131.5, 3.5, 19); (131.5, 3.5, 25) | stone | Dyers' Passage x 114–149, z 20–24: **4 m wide, 35 m long, no side exits** |
-| `pass.canopy` | box | 35×0.5×8 | (131.5, 7.25, 22) | wood | Rug canopy. Nobody climbs over, no flyers inside |
-| `pass.crates` | box ×2 | 1.5×1.2×1.5 | (120, 0.6, 21); (128, 0.6, 23) | crate | Crouch cover at the player's end |
-| `dye.walls` | box ×6 | 2×7×18; 2×7×22; 43×7×2; 43×7×2; 2×7×20; 2×7×18 | (150, 3.5, 11); (150, 3.5, 35); (170.5, 3.5, 3); (170.5, 3.5, 45); (191, 3.5, 12); (191, 3.5, 37) | stone | Dyers' Court x 151–190, z 4–44. East gap z 22–28 is the Caravan Gate |
-| `dye.vats` | prefab `desert.vat` ×6 | — | (160, 0, 12); (170, 0, 12); (180, 0, 12); (160, 0, 38); (170, 0, 38); (180, 0, 38) | — | Round cover 1.2 m high |
-| `dye.plat` | box | 6×2×10 | (178, 1, 24) | wood | Platform for the two Obamas of squad 3b; they see down the passage |
-| `dye.ramps` | ramp ×2 | 6×2×4 | (178, 1, 17) rises to +z; (178, 1, 31) rises to −z | wood | Up to the platform from both sides |
-| `dye.racks` | box ×3 | 6×2×0.5 | (158, 1, 30); (184, 1, 16); (166, 1, 18) | wood | Drying racks: full cover |
-| `dye.crates` | prefab `desert.crateStack` ×2 | — | (156, 0, 14); (186, 0, 40) | — | Cover |
+| `pass.walls` | box ×2 | 35×7×2 | (131.5, 3.5, 19); (131.5, 3.5, 25) | stone | Dyers' Passage x 114–149, z 20–24: **4 m wide, 35 m long, no side exits**. The entry hall of [L1] |
+| `pass.canopy` | box | 35×0.5×8 | (131.5, 7.25, 22) | wood | Rug canopy: the passage's ceiling |
+| `pass.line` | disc | r 2 | (120, 0, 22) | neon | Lockdown threshold, 6 m inside `dyersGate` |
+| `pass.crates` | box ×2 | 1.5×1.2×1.5 | (122, 0.6, 21); (128, 0.6, 23) | crate | Crouch cover at the player's end |
+| `dye.walls` | box ×6 | 2×7×20; 2×7×24; 48×7×2; 48×7×2; 2×7×21; 2×7×21 | (150, 3.5, 10); (150, 3.5, 36); (173, 3.5, 1); (173, 3.5, 47); (196, 3.5, 10.5); (196, 3.5, 37.5) | stone | **Dyers' Court: floor x 151–195, z 2–46 (44 × 44 m).** West gap z 20–24 is the passage mouth. East gap z 21–27 is `caravanGate` |
+| `dye.lid` | force-field lid | 44×44 at y 7 | (173, 7, 24) | glass | Seals the top of [L1] (no collider below y 7; stops Magic Carpet and flyers) |
+| `dye.vats` | prefab `desert.vat` ×6 | — | (162, 0, 12); (173, 0, 12); (184, 0, 12); (162, 0, 36); (173, 0, 36); (184, 0, 36) | — | Round cover 1.2 m high (cover pieces 1 to 6) |
+| `dye.plat` | box | 6×2×10 | (181, 1, 24) | wood | Second height level. The two Obamas of wave 1 stand here and see down the passage |
+| `dye.ramps` | ramp ×2 | 6×2×4 | (181, 1, 17) rises to +z; (181, 1, 31) rises to −z | wood | Up to the platform from both sides |
+| `dye.racks` | box ×3 | 6×2×0.5 | (158, 1, 30); (188, 1, 16); (168, 1, 20) | wood | Drying racks: full cover (cover pieces 7 to 9) |
+| `dye.crates` | prefab `desert.crateStack` ×2 | — | (156, 0, 14); (190, 0, 40) | — | Cover pieces 10 and 11 |
 
-**Mechanisms and pick-ups in S1**
+**Mechanisms and pick-ups in S1** (ammo boxes and crates are listed in §12)
 
 | Id | Kind | At | Data |
 |---|---|---|---|
 | `cp1` | checkpoint | (100, 0, 144) | Level start |
 | `archCurtain` | door 5×5×2, slides up | (100, 2.5, 99) | Opens when squads 1a and 1b are dead. Squads 1c and 1d come through it |
-| `rack-sg-arch` | rack, shotgun | (104, 0, 96.5) | `why`: "E2 Shield Wall and E3 Phalanx, 4 to 5 m alleys". Shells crate at (106, 0, 96.5) |
-| `ammo-sq`, `ammo-shrine` | ammo crate (bullets, shells), 3 uses | (92, 0, 48); (108, 0, 28) | |
-| `standee-sg-1` | standee, shotgun | (92, 0, 27) | For players who skipped the rack. Within 40 m of E3 |
-| `pot1..7` | barrel (pot) | fire (100, 0, 104); goo (99, 0, 80); fire (112, 0, 64.5); **shock (134, 0, 20.6); shock (142, 0, 23.4)**; fire (164, 0, 24); goo (184, 0, 32) | The two shock pots in the passage are the no-magic answer to the phalanx |
+| `rack-sg-arch` | rack, shotgun (Common) | (104, 0, 96.5) | `why`: "E2 Shield Wall and [L1] Dyers' Court, 4 to 5 m alleys" |
+| `standee-sg-1` | standee, shotgun (Common) | (92, 0, 27) | For players who skipped the rack. Within 40 m of [L1] |
+| `pot1..7` | barrel (pot) | fire (100, 0, 104); goo (99, 0, 80); fire (112, 0, 64.5); **shock (134, 0, 20.6); shock (142, 0, 23.4)**; fire (166, 0, 24); goo (188, 0, 32) | The two shock pots in the passage are the no-magic answer to the phalanx. The last two are in the court |
 | `threadGate` | door 4×5×2 | (100, 2.5, 43) | Opens on `E2.cleared` |
 | `shrine-chainzap` | spellShrine | (100, 0, 22) | Grants Chain Zap, refills mana, saves `cp2` |
-| `C1` | conduit | (111.5, 0, 17) | Zapped: opens `dyersGate` and starts E3. Prompt: "Zap the conduit" |
-| `dyersGate` | door 2×5×4 | (113, 2.5, 22) | `opens: 'conduit:C1'` |
-| `caravanGate` | door 2×5×6 | (191, 2.5, 25) | Opens on `E3.cleared`. Walking through ends S1 |
-| `sd-tent`, `sd-well`, `sd-copper`, `sd-lamp`, `sd-vatN`, `sd-vatS`, `sd-caravan` | spawn door | (76, 0, 112); (100, 0, 60); (80, 0, 78); (120, 0, 72); (165, 0, 4.5); (165, 0, 43.5); (189.5, 0, 34) | Flush doors on wall faces (prefab `desert.spawnDoor`) |
+| `C1` | conduit | (111.5, 0, 17) | Zapped: opens `dyersGate` and saves `cp2` again. Prompt: "Zap the conduit" |
+| `dyersGate` | lockdown door, slab 0.6×7×4 | (113, 3.5, 22) | **Entry door of [L1].** `opens: 'conduit:C1'`. Drops 1 s after the player crosses `pass.line` |
+| `caravanGate` | lockdown door, slab 0.6×7×6 | (196, 3.5, 24) | **Exit door of [L1].** Locked until the last wave is dead. Walking through ends S1 |
+| `lockdown-L1` | lockdown | — | Entry `dyersGate`, exit `caravanGate`, encounter `E3`, checkpoint outside: `cp2` (13 m from the door) |
+| `sp-mouth`, `sp-plat` | spawn points (wave 1) | (146, 0, 22); (181, 2, 24) | Passage mouth (west side of the court); the platform |
+| `sp-vatN`, `sp-vatS`, `sp-east` | spawn doors | (168, 0, 2.5); (168, 0, 45.5); (194.5, 0, 36) | North, south and east walls of the court |
+| `chest-L1`, `cp3` | reward chest; checkpoint | (186, 0, 24) | Appear when [L1] is cleared, with ammo crate `ac1` |
+| `sd-tent`, `sd-well`, `sd-copper`, `sd-lamp` | spawn door | (76, 0, 112); (100, 0, 60); (80, 0, 78); (120, 0, 72) | Flush doors on wall faces (prefab `desert.spawnDoor`) |
 | `secret-confetti` | Golden Bonk | (118.5, 6.3, 80) | On the carpet roll. Route in §12 |
 | `af1` | Audit File | (84, 0.5, 141) | Behind `tent3` |
 
@@ -242,21 +247,21 @@ About 120 solids. Route on foot 252 m.
 ### 6.2 S2: Dune Sea
 
 Footprint 290 × 200 m, heightfield with ±1.2 m of noise; named crests are primitives. The player goes west
-to east. About 90 solids. Route on foot 287 m, plus a 12 m geyser launch. Fight hazard: quicksand only.
-The geysers are in a stretch with no enemies.
+to east. About 95 solids. Route on foot 287 m, plus a 12 m geyser launch. Fight hazard: quicksand only
+(E4). The geysers are in a stretch with no enemies. The High Caravanserai on the Shelf is lockdown **[L2]**.
 
 ```
- x=0      50        100   126     158 164    198  208        244   270  290
+ x=0      50        100   126     158 164    198 204          248    272  290
  +-------------------------------------------------------------------------+ z=0
  |   cactus                                  (Sahil statue, vista)         |
  |              ====== crest B ======            ___fallback ramp___       | z=58-64
- |           . . road . (75,76) . .   [T4]|arch|  G1   G3  #############   | z=64
- |  wreck  c ~~~~~~~~~~    ~~~~~  [T1]   [T3]            # ]N gap[     #   | z=80
- | ◉CP3 . .r ~~  Q1  ~~  . ~Q2~~    THE TEETH  CP4    G5⇧ ]breach (well) L0]D1 CP5 ═pass═► S3   z=98
- |         e ~~~~~~~~~~    ~~~~~  [T2]   [T5]    G2   G4  #  CARAVANSERAI #   | z=116
- |         s                        [T6]                 #############   | z=132
+ |           . . road . (75,76) . .   [T4]|arch|  G1   G3  #[==gallery==]# | z=76
+ |  wreck  c ~~~~~~~~~~    ~~~~~  [T1]   [T3]            #  [sp-north]   # |
+ | ◉ . . . r ~~  Q1  ~~  . ~Q2~~    THE TEETH     G5⇧CP4 ]line (well) [L2] ]D1 CP5 ═pass═► S3   z=98
+ |         e ~~~~~~~~~~    ~~~~~  [T2]   [T5]    G2   G4  #    [sp-east] #   |
+ |         s                        [T6]                 # [sp-arcade]   # | z=120
  |         t A      ====== crest C ======                                  | z=140
- |   cactus                                                                |
+ |   cactus              . . . (secret cache)                              | z=172
  +-------------------------------------------------------------------------+ z=200
 ```
 
@@ -269,41 +274,49 @@ The geysers are in a stretch with no enemies.
 | `road` | disc ×10 | r 1.2 | (16, 0, 100); (30, 0, 100); (44, 0, 100); (58, 0, 96); (66, 0, 84); (75, 0, 76); (88, 0, 78); (100, 0, 84); (112, 0, 82); (124, 0, 84) | stone | Old road slabs. They mark the firm path round both quicksand pools |
 | `crestA` | prefab `desert.dune` L 60, h 5 | — | (50, 0, 100), ridge runs north-south | sand | Squad 4a waits behind it (east side) |
 | `crestB` | prefab `desert.dune` L 50, h 5 | — | (88, 0, 62) yaw 90, ridge runs east-west | sand | Squad 4b comes over it from the north |
-| `crestC` | prefab `desert.dune` L 40, h 4 | — | (120, 0, 140) yaw 90 | sand | Squad 4d comes over it from the south |
+| `crestC` | prefab `desert.dune` L 40, h 4 | — | (120, 0, 140) yaw 90 | sand | Squad 4d comes over it from the south. The secret cache is 30 m behind it |
 | `teeth.walls` | box ×6 | 10×2×1; 1×2×8; 8×1.2×1; 12×3×1; 1×1.2×10; 6×1.2×1 | (130, 1, 90); (134, 1, 106); (142, 0.6, 98); (150, 1.5, 86); (154, 0.6, 108); (144, 0.6, 114) | stone | The Teeth, broken ruin walls T1 to T6 (x 126–158, z 78–118) |
 | `teeth.cols` | cylinder ×5 | r 0.6, h 5 | (128, 0, 82); (138, 0, 82); (148, 0, 116); (156, 0, 116); (158, 0, 94) | pillar | Columns: thin full cover |
 | `teeth.arch` | cylinder ×2 + box | r 0.8, h 6; lintel 8×1×2 | (140, 0, 92); (146, 0, 92); lintel (143, 6.5, 92) | stone | Broken arch. Audit File 2 on the lintel |
 | `flats.ribs` | cone ×6 | r 0.4, h 2.5 | ring of r 4 round (180, 0, 100) | stone | Camel skeleton; marks the Geyser Flats (x 164–198, z 78–118) |
+| `cache.cacti` | prefab `desert.cactus` ×3 | — | (124, 0, 152); (130, 0, 162); (136, 0, 170) | — | A line of three cacti pointing at the secret cache |
 | `shelf` | box | 92×9×68 | (244, 4.5, 98) | rock | The Shelf, a mesa. Top at y 9, x 198–290, z 64–132 |
-| `shelf.ramp` | ramp | 30×9×6 | (213, 4.5, 61) rises to +x | rock | Walk-up for players and bots who do not ride the geyser |
-| `serai.wallW` | box ×2 | 1×4×12 | (208, 11, 86); (208, 11, 110) | stone | West wall of the courtyard (x 208–244, z 80–116). Breach z 92–104 faces the geyser landing |
-| `serai.wallN` | box ×2 | 14×4×1; 16×4×1 | (215, 11, 80); (236, 11, 80) | stone | North wall. Gap x 222–228 is the entry from the ramp |
-| `serai.wallS` | box | 36×4×1 | (226, 11, 116) | stone | South wall with the arcade door `sd-arcade` |
-| `serai.wallE` | box ×2 | 1×4×14 | (244, 11, 87); (244, 11, 109) | stone | East wall. Gap z 94–102 is `depotGate` |
-| `serai.well` | cylinder | r 1.5, h 1.2 | (226, 9, 98) | stone | The Acolyte floats over it |
-| `serai.stubs` | cylinder ×4 | r 0.6, h 1.2 | (216, 9, 88); (236, 9, 88); (216, 9, 108); (236, 9, 108) | pillar | Crouch cover |
-| `serai.rubble` | box ×3 | 3×1.2×1 | (214, 9.6, 98); (234, 9.6, 92); (234, 9.6, 104) | stone | Cover. The two Obamas stand behind the east pair |
-| `depot1.walls` | box ×2 | 24×4×1 | (257, 11, 88); (257, 11, 108) | stone | Depot court x 246–268, z 88–108 |
-| `pass.walls` | box ×2 | 20×10×26 | (280, 14, 81); (280, 14, 115) | rock | Canyon pass x 270–290, z 94–102, 8 m wide |
+| `shelf.ramp` | ramp | 30×9×6 | (213, 4.5, 61) rises to +x | rock | Walk-up for players and bots who do not ride the geyser. It joins the same west door |
+| `serai.wallW` | box ×2 | 1×6×18 | (204, 12, 85); (204, 12, 111) | stone | **High Caravanserai: floor x 204–248, z 76–120 (44 × 44 m)**, walls 6 m. West gap z 94–102 is the entry door |
+| `serai.wallN`, `serai.wallS` | box ×2 | 44×6×1 | (226, 12, 76); (226, 12, 120) | stone | North and south walls |
+| `serai.wallE` | box ×2 | 1×6×18 | (248, 12, 85); (248, 12, 111) | stone | East wall. Gap z 94–102 is the exit door |
+| `serai.lid` | force-field lid | 44×44 at y 15 | (226, 15, 98) | glass | Seals the top of [L2]. Flyers stay under it |
+| `serai.line` | disc | r 4 | (210, 9, 98) | neon | Lockdown threshold, 6 m inside the west door |
+| `serai.gallery` | box | 30×3×5 | (226, 10.5, 79) | stone | Second height level along the north wall, top y 12. `sp-north` opens onto it |
+| `serai.gramps` | ramp ×2 | 6×3×5 | (208, 10.5, 79) rises to +x; (244, 10.5, 79) rises to −x | stone | Both ends of the gallery |
+| `serai.well` | cylinder | r 1.5, h 1.2 | (226, 9, 98) | stone | Cover piece 1. The first Acolyte floats over it |
+| `serai.stubs` | cylinder ×4 | r 0.6, h 1.2 | (214, 9, 90); (238, 9, 90); (214, 9, 106); (238, 9, 106) | pillar | Cover pieces 2 to 5. Acolyte orbs die on them |
+| `serai.rubble` | box ×3 | 3×1.2×1 | (212, 9.6, 98); (236, 9.6, 92); (236, 9.6, 104) | stone | Cover pieces 6 to 8. The two Obamas of wave 1 stand behind the east pair |
+| `serai.crates` | prefab `desert.crateStack` ×2 | — | (220, 9, 112); (232, 9, 86) | — | Cover pieces 9 and 10 |
+| `depot1.walls` | box ×2 | 24×4×1 | (261, 11, 88); (261, 11, 108) | stone | Depot court x 250–272, z 88–108 |
+| `pass.walls` | box ×2 | 18×10×26 | (281, 14, 81); (281, 14, 115) | rock | Canyon pass x 272–290, z 94–102, 8 m wide |
 | `vista.statue` | prefab `desert.sahilStatue` | — | (250, 0, 30) | — | Giant Sahil holding a rolled rug. Not reachable |
 | `cacti` | prefab `desert.cactus` ×8 | — | (20, 0, 70); (34, 0, 130); (70, 0, 130); (96, 0, 120); (150, 0, 60); (170, 0, 130); (186, 0, 70); (100, 0, 40) | — | Scale and landmarks |
 
-**Mechanisms and pick-ups in S2**
+**Mechanisms and pick-ups in S2** (ammo boxes and crates are listed in §12)
 
 | Id | Kind | At | Data |
 |---|---|---|---|
-| `cp3` | checkpoint | (12, 0, 100) | Section start |
+| S2 start | section start | (12, 0, 100) | Respawn point of `cp3` once S2 is loaded |
 | `Q1`, `Q2` | hazardZone `slow` (quicksand) | x 60–90, z 86–116; x 108–122, z 86–112 | Speed × 0.5, no damage. Enemies path round it (nav cost × 4). Darker sand, slow ripple |
 | `G0` | geyser | (143, 0, 96) | Period 6 s. Launches to the arch lintel (Audit File 2). Damage 0 |
 | `G1..G4` | geyser | (170, 0, 90); (176, 0, 108); (184, 0, 94); (190, 0, 106) | Period 5 s, offsets 0, 1.5, 3, 0.5. 1.2 s rumble. Damage 15. They teach the telegraph with nobody shooting |
 | `G5` | geyser (launcher) | (195, 0, 98) | Period 4 s, damage 0, lands at (201, 9, 98) on the Shelf edge. A `neon` ring marks it as the route |
-| `ammo-teeth` | ammo crate (bullets, shells) | (152, 0, 100) | |
-| `cp4` | checkpoint | (160, 0, 98) | On `E4` objective reached |
-| `sd-arcade` | spawn door | (226, 9, 115.5) | |
-| `loom-0` | target `rugLoom` (161 HP) | (240, 9, 98) | Feeds a shield on `depotGate`. First loom, shown alone after E5 |
-| `depotGate` | door 1×4×8 | (244, 11, 98) | `opens: 'target:loom-0'` |
-| `cp5`, `depot-1` | checkpoint; depot | (248, 9, 98); (258, 9, 92) yaw 180 | Weapon Box, shop, unlimited ammo. Safe zone |
-| `standee-sg-2` | standee, shotgun | (250, 9, 104) | |
+| `cache-secret` | secret weapon cache | (136, 0, 172) | Half-buried caravan chest behind crest C. Guaranteed **Rare shotgun** (§12) |
+| `cp4` | checkpoint | (201, 9, 98) | Just outside the entry door of [L2], on the geyser landing |
+| `seraiGateW` | lockdown door, slab 0.6×6×8 | (204, 12, 98) | **Entry door of [L2].** Open on arrival. Drops 1 s after the player crosses `serai.line` |
+| `seraiGateE` | lockdown door, slab 0.6×6×8 | (248, 12, 98) | **Exit door of [L2].** Locked until the last wave is dead |
+| `lockdown-L2` | lockdown | — | Entry `seraiGateW`, exit `seraiGateE`, encounter `E5`, checkpoint outside: `cp4` |
+| `sp-north`, `sp-arcade`, `sp-east` | spawn doors | (226, 12, 77); (226, 9, 119.5); (247.5, 9, 110) | North (on the gallery), south and east walls |
+| `sp-sky` | air entry | over the west wall at (204, 14, 86) | Under the lid |
+| `chest-L2`, `loom-0` | reward chest; target `rugLoom` (161 HP) | (242, 9, 98); (242, 9, 94) | Appear when [L2] is cleared, with ammo crate `ac2`. The loom's beam feeds a shield over the chest and crate: the first loom, shown alone |
+| `cp5`, `depot-1` | checkpoint; depot | (252, 9, 98); (262, 9, 92) yaw 180 | `cp5` saves when [L2] is cleared. Depot: depot crate (unlimited ammo), health station, spell loadout bench, ticket shop terminal. Safe zone |
+| `standee-sg-2` | standee, shotgun (Common) | (254, 9, 104) | |
 
 **Transition out:** seamless. Walk the canyon pass; S3 preloads from `cp5`.
 
@@ -362,11 +375,11 @@ the south (x 90–150), 40 m deep; `killPlane y = −20` with void rescue. About
 | `marketDock.ramp` | ramp | 8×4×3 | (194, 2, 117.5) rises to +x | stone | Walk-up, so carpet `C3` is never the only way |
 | `vista.spires` | cone ×5 | r 3, h 18 | (100, −40, 20); (108, −40, 70); (135, −40, 150); (140, −40, 115); (104, −40, 120) | rock | Rock spires in the canyon |
 
-**Mechanisms and pick-ups in S3**
+**Mechanisms and pick-ups in S3** (ammo boxes are listed in §12)
 
 | Id | Kind | At | Data |
 |---|---|---|---|
-| `rack-sn-tower` | rack, sniper | (40, 6, 62) | `why`: "E6 far ledges, 77 to 83 m". Sniper ammo crate (3 uses) at (41, 6, 60) |
+| `rack-sn-tower` | rack, sniper (Common) | (40, 6, 62) | `why`: "E6 far ledges, 77 to 83 m". **First sniper of the campaign**: picking it up puts the type in the drop pool |
 | `sd-ledgeA`, `sd-ledgeB`, `sd-cave` | spawn door | (119.5, 3, 45); (119.5, −4, 95); (86.5, 0, 122) | |
 | `rimGate` | door 4×5×2 | (88, 2.5, 101) | Opens on `E6.cleared`. `cp6` at (88, 0, 98) |
 | `pot8` | barrel, fire | (86.8, 0, 118) | Beside the cave door |
@@ -375,7 +388,6 @@ the south (x 90–150), 40 m deep; `killPlane y = −20` with void rescue. About
 | `carpetC2` | mover `desert.carpet` | (128.5, −0.25, 139) ⇄ (141.5, −0.25, 127) | 17.7 m, pingpong, 3.5 m/s, pause 2.5 s |
 | `carpetC3` | mover `desert.carpet` | (162, 0.25, 114) → (195.5, 4.25, 112) | 33.8 m, `onTrigger` (boarding), 5 m/s, returns after 4 s. Over ground: a lift, not a risk |
 | `needle.grate` | burrow point | (120, 0, 140) | Squad 7c |
-| `ammo-dockW` | ammo crate (bullets, shells, sniper) | (78, 0, 150) | |
 
 **Transition out:** seamless. Step off the Market Dock at (214, 4, 112) onto roof R1. S4 preloads from the East Dock.
 
@@ -384,8 +396,8 @@ the south (x 90–150), 40 m deep; `killPlane y = −20` with void rescue. About
 Footprint 140 × 240 m. North half: roofs at three heights (Low 4 m, Mid 7 m, High 10 m) over streets at
 y 0. A fall costs time, not health: every route building has an outside stair. South half: the Gate
 Square and the depot. About 150 solids. Route on foot 246 m, plus 91 m on the lift, two ziplines and the
-catapult. (The suggested "Rooftop Market" and "Bazaar Gate" sections are merged: alone they last 2:15 and
-2:24, under the 3-minute floor in PLAN §3.)
+catapult. (The suggested "Rooftop Market" and "Bazaar Gate" sections are merged: alone they last 1:55 and
+2:05, under the 3-minute floor in PLAN §3.) No lockdown here: see §5.
 
 ```
  x=0     26  34       60 64         92  100       124    140
@@ -401,7 +413,7 @@ catapult. (The suggested "Rooftop Market" and "Bazaar Gate" sections are merged:
  |                                street        ╲ Z2        |
  | [F4 5m]                                       ╲  [F5 6m] | z=107-138
  |                        [Gate Landing y2] CP8 ◄─┘         | z=142-154
- |           +-------------[squareGate]-------------+       | z=160
+ |           +-------------[squareArch]-------------+       | z=160
  |           | stall                         stall  |       |
  |           |[guardW ▲L1]   (fountain)  [guardE ▲L2]|      | z=187
  |           | stall       pots              stall  |       |
@@ -444,8 +456,9 @@ catapult. (The suggested "Rooftop Market" and "Bazaar Gate" sections are merged:
 | `stairs.out` | ramp ×4 | 8×4×3; 3×4×8; 14×7×3; 14×7×3 | (14, 2, 27.5) rises to −z... see note; (34.5, 2, 44); (71, 3.5, 57.5) rises to +x; (87, 3.5, 74.5) rises to −x | stone | Outside stairs from the street to R1, R3, M1 and M2. Note: each top is flush with its roof edge |
 | `landing` | box | 16×2×12 | (90, 1, 148) | stone | Gate Landing, top y 2, x 82–98, z 142–154 |
 | `landing.ramps` | ramp ×2 | 6×2×6 | (90, 1, 139) rises to +z; (90, 1, 157) rises to −z | stone | From the street, and down to the square |
-| `fill` | box ×5 | 26×5×24; 56×6×32; 36×9×56; 78×5×24; 30×6×30 | (17, 2.5, 46); (32, 3, 94); (118, 4.5, 34); (41, 2.5, 126); (121, 3, 122) | stone | Filler buildings F1 to F5. They collide and block sight; nothing is on them |
-| `sq.wallN` | box ×2 | 26×8×2 | (73, 4, 161); (107, 4, 161) | stone | Gate Square (x 60–120, z 162–212) north wall. 8 m gap for `squareGate` |
+| `fill` | box ×5 | 26×5×24; 56×6×32; 36×9×56; 78×5×24; 30×6×30 | (17, 2.5, 46); (32, 3, 94); (118, 4.5, 34); (41, 2.5, 126); (121, 3, 122) | stone | Filler buildings F1 to F5. They collide and block sight. Only F1 (roof y 5, x 4–30, z 34–58) has anything on it: the Mana Battery |
+| `F1.tank` | cylinder | r 1.5, h 2 | (14, 5, 50) | metal | Water tank on F1. The Mana Battery is behind it, out of sight from R3 |
+| `sq.wallN` | box ×2 | 26×8×2 | (73, 4, 161); (107, 4, 161) | stone | Gate Square (x 60–120, z 162–212) north wall. 8 m gap: the open `squareArch` |
 | `sq.wallWE` | box ×2 | 2×8×56 | (59, 4, 188); (121, 4, 188) | stone | West and east walls |
 | `sq.guardW`, `sq.guardE` | box ×2 | 10×5×14 | (66, 2.5, 187); (114, 2.5, 187) | stone | Guardhouses. Roof y 5 holds a loom each. Spawn doors `sd-guardW`, `sd-guardE` on the inner faces |
 | `sq.fountain` | cylinder ×2 | r 3, h 1.2; r 0.8, h 3 | (90, 0, 187) | stone | Centre cover; you circle it |
@@ -455,11 +468,12 @@ catapult. (The suggested "Rooftop Market" and "Bazaar Gate" sections are merged:
 | `gate.wall` | box ×2 | 26×10×4 | (73, 5, 214); (107, 5, 214) | stone | The Bazaar Gate wall, top y 10. Rope points for `drop` squads at (78, 10, 212) and (102, 10, 212) |
 | `depot2.walls` | box ×4 | 2×8×20; 2×8×20; 16×8×2; 16×8×2 | (69, 4, 226); (111, 4, 226); (78, 4, 237); (102, 4, 237) | stone | Depot Court x 70–110, z 216–236 |
 
-**Mechanisms and pick-ups in S4**
+**Mechanisms and pick-ups in S4** (ammo boxes are listed in §12)
 
 | Id | Kind | At | Data |
 |---|---|---|---|
-| `cp7` | checkpoint | (4, 4, 16) | Section start. Ammo crate at (8, 4, 22) |
+| `cp7` | checkpoint | (4, 4, 16) | Section start |
+| `mana-battery` | Mana Battery | (12, 5, 50) | On F1 behind the tank. +10 max mana, +0.5 mana/s. Reached by a sprint double jump from R3's west edge over the 6 m alley (1 m up) |
 | `pot9..14` | barrel (pot) | goo (40, 4, 20); fire (54, 4, 22); shock (74, 7, 49); fire (84, 7, 44); goo (78, 7, 90); fire (88, 7, 82) | Small roofs: a pot is as dangerous to you as to them |
 | `c2Shutter` | door 2×2×0.5 over `C2` | (57, 5, 44) | Lifts when squads 8a, 8b and 8c are dead |
 | `C2`, `L1` | conduit; mover 6×0.5×4 | `L1` (61, 3.75, 44) ⇄ (61, 6.75, 44) | Zap `C2`: the lift runs for 20 s (2 m/s, 3 s pause at each end). Zap again any time |
@@ -468,12 +482,12 @@ catapult. (The suggested "Rooftop Market" and "Bazaar Gate" sections are merged:
 | `J2` | jumpPad | (110, 10, 94) → (116, 16.5, 83), apex 19 | To the minaret balcony (Audit File 3) |
 | `os-1` | powerup `overshield` | (108, 10, 80) | Highest roof on the route. Taken just before E9 |
 | `Z2` | zipline | (112, 12.5, 99) → (92, 4.5, 146) | 52 m, the long ride down to the Gate Landing |
-| `cp8` | checkpoint | (90, 2, 150) | Ammo crate (bullets, shells) at (86, 2, 152) |
-| `squareGate` | door 8×6×2 | (90, 3, 161) | Closes when E9 starts |
+| `cp8` | checkpoint | (90, 2, 150) | |
+| `squareArch` | open arch, 8 m wide | (90, 0, 161) | Never closes: E9 is not a lockdown (it is the last fight before [L3]) |
 | `pot15..18` | barrel (pot) | fire (80, 0, 190); fire (100, 0, 184); shock (90, 0, 204); goo (90, 0, 172) | |
 | `loom-1`, `loom-2` | target `rugLoom` (161 HP each) | (67, 5, 187); (113, 5, 187) | On the guardhouse roofs. Shot from the ground |
 | `bazaarGate` | door 8×7×4 with a shield | (90, 3.5, 214) | `opens: 'target:loom-1 & target:loom-2 & E9.cleared'` |
-| `cp9`, `depot-2` | checkpoint; depot | (90, 0, 220); (80, 0, 226) yaw 90 | Weapon Box, shop, unlimited ammo. Last shop before Sahil |
+| `cp9`, `depot-2` | checkpoint; depot | (90, 0, 220); (80, 0, 226) yaw 90 | Depot crate (unlimited ammo), health station, spell loadout bench, ticket shop terminal. Last shop before Sahil |
 | `vaultDoor` | door 8×6×2 | (90, 3, 237) | Interact. Boss card, then `SB` |
 
 **Transition out:** `vaultDoor` → boss card "Sahil, the RugMaster" (2.6 s, hides the load) → `SB` start.
@@ -482,7 +496,11 @@ catapult. (The suggested "Rooftop Market" and "Bazaar Gate" sections are merged:
 
 Footprint 80 × 110 m. A small vault, a corridor, and a round arena with centre **C = (40, 0, 70)** and the
 fire ring at r 27.8. About 70 solids. Everything the fight needs is in this section. A hub boss run
-starts at `cp10` with the starter machine gun.
+starts at `cp10` with the starter machine gun, fills up at depot crate `dc3`, and goes in.
+
+The arena is lockdown **[L3]**: a round floor 56 m across, 12 pieces of cover (6 pillars, 4 rug piles,
+2 carts), a second level in part 3 (the pit), four named spawn points on four sides (the shutters), the
+`ringGate` slab behind the player and a force-field lid at y 14.
 
 ```
  x=0     12       30     40     50       68     80
@@ -515,27 +533,29 @@ starts at `cp10` with the starter machine gun.
 | `cover.pillars` | cylinder ×6 | r 0.7, h 2 | (34, 0, 50); (46, 0, 50); (28, 0, 66); (52, 0, 66); (36, 0, 88); (44, 0, 88) | pillar | Pot pillars. The first two are cover in the first 15 m |
 | `cover.piles` | box ×4 | 3×1.2×1.5 | (32, 0.6, 58); (48, 0.6, 58); (30, 0.6, 82); (50, 0.6, 82) | trim | Rug piles: crouch cover. Destructible, 120 HP, stump 0.5 m (B §4) |
 | `cover.carts` | prefab `desert.cart` ×2 | — | (46, 0, 64) yaw 20; (34, 0, 76) yaw 200 | — | Destructible, 160 HP |
-| `shutters` | prefab `desert.shutterStall` ×4 | — | `sh-NE` (57, 0, 53); `sh-SE` (57, 0, 87); `sh-SW` (23, 0, 87); `sh-NW` (23, 0, 53), doors face C | — | Where adds come from, at r 24, inside the stage-3 ring (r 25.5) |
+| `shutters` | prefab `desert.shutterStall` ×4 | — | `sh-NE` (57, 0, 53); `sh-SE` (57, 0, 87); `sh-SW` (23, 0, 87); `sh-NW` (23, 0, 53), doors face C | — | The four named spawn points, on four sides, at r 24, inside the stage-3 ring (r 25.5) |
 | `balcony` | cylinder | r 4, h 9 | (40, 0, 105.5) | stone | Minaret Balcony outside the ring. Sahil's perch in part 3 |
 | `balcony.roof` | cone | r 4.5, h 4 | (40, 13, 105.5) | gold | Canopy on four posts |
 
 The Duel `bazaar` layout (rugs, a cart, pots) comes from `duelArena('bazaar', C)` (B §4). The cover rows
 above are its stand-ins: if the port has other positions, keep the port and keep the two pillars near the entrance.
 
-**Mechanisms and pick-ups in SB**
+**Mechanisms and pick-ups in SB** (ammo boxes and crates are listed in §12)
 
 | Id | Kind | At | Data |
 |---|---|---|---|
 | `cp10` | checkpoint, section start | (40, 0, 6) | The hub's issued start |
-| `rack-bz-vault` | rack, bazooka | (45, 0, 12) | `why`: "SB-BOSS looms, pylons and add clumps". Rockets crate at (47, 0, 12) |
-| `ammo-vault` | ammo crate (bullets, shells, sniper), unlimited | (35, 0, 12) | |
-| `vaultGate`, `ringGate` | doors 4×5×2 and 6×5×2 | (40, 2.5, 25); (40, 2.5, 41) | `vaultGate` on interact. `ringGate` closes behind you; the boss card plays |
-| `fireRing` | boss boundary | C, r 27.8 → 26.8 → 25.5 | B §2.5. Burns on crossing |
+| `rack-bz-vault` | rack, bazooka (Common) | (45, 0, 12) | `why`: "SB-BOSS looms, pylons and add clumps". **First bazooka of the campaign** |
+| `dc3` | depot crate (unlimited ammo, every type carried) | (35, 0, 12) | Required by PLAN §7.4: a hub run starts here with a machine gun whose ammo is finite |
+| `vaultGate` | door 4×5×2 | (40, 2.5, 25) | Opens on interact |
+| `ring.line` | disc r 3 | (40, 0, 48) | Lockdown threshold, 6 m inside the ring |
+| `ringGate` | lockdown door, slab 0.6×6×6 | (40, 3, 41) | **Entry door of [L3].** Drops 1 s after the player crosses `ring.line`; the boss card plays. Reopens when Sahil dies. There is no exit door: the level ends on `exitRug` |
+| `lockdown-L3` | lockdown | — | Entry `ringGate`, encounter `SB-BOSS`, checkpoint outside: `cp10`. Lid: force field at y 14 over the facade octagon. For Magic Carpet (replays) the fire ring is a wall |
+| `fireRing` | boss boundary | C, r 27.8 → 26.8 → 25.5 | B §2.5. Burns on crossing. Floor inside is 56 m across |
 | `loom-E`, `loom-W` | target `rugLoom` (161 HP) | (58, 0, 70); (22, 0, 70) | Part 1. At r 18 |
 | `pylon-N`, `pylon-SE`, `pylon-SW` | target `carpetPylon` (230 HP) | (40, 0, 52); (55.6, 0, 79); (24.4, 0, 79) | Part 3. Sunk under hatches until then |
 | `pit` | hazardZone `slow`, r 7 at C | (40, 0, 70) | Part 3 only: speed × 0.5, 4 dps (Sahil's Quicksand numbers) |
 | `pot19..22` | barrel (pot) | shock (56, 0, 66); shock (24, 0, 74); fire (55, 0, 84); fire (25, 0, 84) | One within 4 m of each loom and of the two south pylons: 60 damage to the target, for a gun-only run |
-| `ammo-ring` | ammo crate (bullets, shells, rockets), unlimited | (40, 0, 94) | |
 | `exitRug` | level end | C | Appears when Sahil dies |
 
 ## 7. Prefabs (`src/data/levels/prefabs/desert.js`)
@@ -561,12 +581,23 @@ above are its stand-ins: if the port has other positions, keep the port and keep
 | `desert.pylon` | disc r 1.5 hatch + cylinder r 0.8, h 4 (`gold`) + sphere r 1 at y 4.5 (rolled carpet, the weak spot) |
 | `desert.shutterStall` | box 4×3×2 (`wood`) + `desert.spawnDoor` on the inner face + awning box 4.4×0.5×1.5 |
 | `desert.sahilStatue` | cylinder r 5, h 24 + sphere r 4 at y 27 (`stone`) + cylinder r 1.5, h 14 on its side at y 16 (`trim`, the rug) |
+| `desert.lockSlab(w, h)` | box 0.6×h×w (`metal`) + `neon` trim boxes on both faces: red while locked, green when open (PLAN §5.6). Full height of its wall |
+| `desert.chest` | box 1.4×0.8×0.9 (`wood`) + lid box 1.4×0.3×0.9 (`gold`) that swings open. Lockdown reward and secret cache |
 
 ## 8. Encounters
 
 Rules for all nine: `maxAlive` is at most 10 and a squad that would exceed it waits in a queue. Triggers
-are written so that **no more than three threat roles** (fodder, rusher, flyer, ranged, shield, support) can
-be alive at once. Tier 2 stats (× 1.15) apply. Counts are Normal.
+are written so that **no more than three threat roles** (fodder, rusher, flyer, ranged, shield, support) are
+alive at once. Tier 2 stats (× 1.15) apply. Counts are Normal. Ammo boxes near each fight are in §12.
+
+**Lockdown rules (PLAN §5.6) for [L1], [L2] and [L3].** The entry door is open when the player arrives.
+One second after the player crosses the threshold line 6 m inside, the entry slab drops (it pushes a
+player standing under it inward) and the exit locks. Wave n + 1 starts on `onRemain(2)` of wave n or
+25 s after wave n started, whichever is first. If the last 2 enemies of a wave live more than 12 s they
+are marked on the HUD and run at the player. HUD: "LOCKDOWN", "wave 2 / 4", enemies left. When the last
+enemy dies both doors open, a checkpoint saves and the reward appears. Dying returns the player to the
+checkpoint outside the entry door and resets the room to wave 1. Each room has a lid, so Magic Carpet
+(on replays), geysers and catapults do not lead out; L02 has no jetpack and no Blink.
 
 ### E1: Caravan Camp (S1) — objective `clearAll`
 
@@ -575,14 +606,14 @@ basics again, then the first Boom Midget with nothing else on screen.
 
 | Squad | Trigger | Method | From | Enemies | Delay | Teaches or tests |
 |---|---|---|---|---|---|---|
-| 1a | `onAlert` (or `onEnter` z < 128) | `placed` | Round the campfire (100, 118); the Obama at the coin cart (112, 122) | 4 midget, 1 obama | 0 | A free opening shot. Cover against bursts |
-| 1b | `onKills(3)` | `door` | `sd-tent`, the west tent | 2 midget | 0 | A flank from the side |
+| 1a | `onAlert` (or `onEnter` z < 128) | `placed` | Round the campfire (100, 118); the Obama at the coin cart (112, 122) | 3 midget, 1 obama | 0 | A free opening shot. Cover against bursts |
+| 1b | `onKills(2)` | `door` | `sd-tent`, the west tent | 1 midget | 0 | A flank from the side |
 | 1c | `onRemain(0)` | `door` | Souk Arch, as `archCurtain` lifts | 1 boomMidget | 1.5 s | **Boom Midget alone.** It beeps and runs 35 m straight at you past fire pot `pot1`. Shoot it early, or shoot the pot |
 | 1d | 1c dead, + 2 s | `door` | Souk Arch | 2 midget, then 1 boomMidget behind them | 0, 1 s | Kill the bomber first and it kills its friends |
 
 Roles at once: fodder, ranged, then fodder, rusher. `maxAlive` 8. Approaches: straight up the middle from
 crate to crate, or along the west tents. Weapons: start guns; the shotgun rack is 6 m past the arch.
-Estimate: 36 s × 1.3 + 45 m ÷ 5.5 = **55 s (0.9 min)**.
+Estimate: 30 s × 1.3 + 45 m ÷ 5.5 = **47 s (0.8 min)**.
 
 ### E2: Shield Wall (S1) — objective `clearAll`, opens `threadGate`
 
@@ -592,30 +623,42 @@ at both ends, and two 4 m roofs reached by the crate stairs. Lesson: a Riot Midg
 | Squad | Trigger | Method | From | Enemies | Delay | Teaches or tests |
 |---|---|---|---|---|---|---|
 | 2a | `onEnter` Arch Lane | `door` | `sd-well` in Spice Square, marching south down Spice Alley | 2 riotMidget side by side | 0 | **Riot Midget.** Bullets stop on the shields. Copper Lane and Lamp Lane lead behind them (35 m). Feet and peeks also work |
-| 2b | `t+6` | `door` | `sd-copper`, half-way up Copper Lane | 4 midget | 0 | The obvious flank is contested: use the shotgun in the 3 m lane, or switch to the east lane or the roofs |
+| 2b | `t+6` | `door` | `sd-copper`, half-way up Copper Lane | 3 midget | 0 | The obvious flank is contested: use the shotgun in the 3 m lane, or switch to the east lane or the roofs |
 | 2c | `onKills(3)` | `hidden` | Roof parapets on Block A and Block B | 2 obama | 0 | Fire from above. The awnings and stalls block it; the crate stairs reach them |
-| 2d | `onRemain(2)` | `door` | `sd-lamp` in Lamp Lane | 4 midget | 0 | Arrives behind a player who went west: look at the motion tracker |
+| 2d | `onRemain(2)` | `door` | `sd-lamp` in Lamp Lane | 3 midget | 0 | Arrives behind a player who went west: look at the motion tracker |
 
 Roles at once: shield, fodder, ranged. `maxAlive` 8. Approaches: west lane, east lane, roofs, or pot `pot2`
 (goo) in the alley to slow the pair. Weapons: `rack-sg-arch` 4 m from the start, shells beside it and in the
-square. Estimate: 52 s × 1.3 + 95 m ÷ 5.5 = **85 s (1.4 min)**.
+square. Estimate: 46 s × 1.3 + 95 m ÷ 5.5 = **77 s (1.3 min)**.
 
-### E3: Phalanx (S1) — objective `clearAll`, opens `caravanGate`
+### E3: Dyers' Court — LOCKDOWN [L1] (S1) — objective `clearAll`
 
-Space: the Dyers' Passage, 4 m × 35 m, walled and roofed, **no side exits**, then the Dyers' Court (39 × 40 m)
-with six vats. Starts when Chain Zap hits conduit `C1`. Lesson: when you cannot go round, stun the shield.
+**Room.** The Dyers' Court, floor **44 × 44 m** (x 151–195, z 2–46), walls 7 m, force-field lid at y 7.
+Its entry hall is the Dyers' Passage, 4 × 35 m, walled and roofed, with no side exits. Eleven pieces of
+cover (6 vats, 3 drying racks, 2 crate stacks) and a second level (the 2 m platform with two ramps).
+Blockout: §6.1, rows `pass.*` and `dye.*`.
 
-| Squad | Trigger | Method | From | Enemies | Delay | Teaches or tests |
-|---|---|---|---|---|---|---|
-| 3a | `onSwitch(C1)` | `placed` | East mouth of the passage (146, 22), marching west | 3 riotMidget: 2 in front, 1 behind | 0 | **The phalanx.** Chain Zap stuns all three shields for 2 s (one cast chains within 6 m), then the shotgun. Without magic: shock pots `pot4` and `pot5` as they pass, or feet and peeks |
-| 3b | `t+4` | `hidden` | Vat platform (178, 2, 24) | 2 obama | 0 | Bursts down the lane over the shields: do not stand in the open lane. The crates at (120, 21) and (128, 23) are the cover |
-| 3c | `onKills(4)` | `door` | `sd-vatN` and `sd-vatS` | 6 midget (3 + 3) | 0 | Shotgun work among the vats |
-| 3d | `onRemain(0)` | `door` | `sd-caravan`, beside the exit | 1 riotMidget, 2 boomMidget behind it | 2 s | Twist: bombers behind a shield. Zap the shield and shoot a bomber so it blows the shield up |
+| Part of the room | Detail |
+|---|---|
+| Entry door | `dyersGate`, slab 0.6×7×4 at (113, 3.5, 22). Opened by Chain Zap on conduit `C1`. Threshold `pass.line` at x 120; the slab drops 1 s later |
+| Exit door | `caravanGate`, slab 0.6×7×6 at (196, 3.5, 24), east wall |
+| Checkpoint outside | `cp2`, the Shrine Court, 13 m from the door. The shrine there refills mana |
+| Spawn points | `sp-mouth` (146, 0, 22) west; `sp-plat` (181, 2, 24) on the platform; `sp-vatN` (168, 0, 2.5) north wall; `sp-vatS` (168, 0, 45.5) south wall; `sp-east` (194.5, 0, 36) east wall |
+| Inside the room | Shock pots `pot4`, `pot5` in the passage; fire `pot6` and goo `pot7` in the court; ammo boxes `ab07` (shells) and `ab08` (bullets) |
+| Reward | `chest-L1` (one gun, §12), ammo crate `ac1`, checkpoint `cp3`, at (186, 0, 24) |
 
-Roles at once: shield, ranged, then fodder, then shield, rusher. `maxAlive` 9. Approaches: zap and push;
-shock pots; or fall back into the Shrine Court (24 × 17 m) and circle them as they come out of the gate.
-Weapons: the shrine refills mana; `ammo-shrine` and `standee-sg-1` are within 12 m of the gate.
-Estimate: 68 s × 1.3 + 78 m ÷ 5.5 = **103 s (1.7 min)**.
+| Wave | Trigger | Method | Spawn point | Enemies | Teaches or tests |
+|---|---|---|---|---|---|
+| 1 | Door drops | `placed`; `hidden` | `sp-mouth`, marching west up the passage; `sp-plat` | 3 riotMidget (2 in front, 1 behind); 2 obama | **The phalanx that cannot be flanked**, with the door shut behind you. Chain Zap stuns all three shields for 2 s (one cast chains within 6 m), then the shotgun. Without magic: shock pots `pot4` and `pot5` as they pass, or feet and peeks. The Obamas fire down the lane over the shields: use the two crates |
+| 2 | `onRemain(2)` or 25 s | `door` | `sp-vatN` (4), `sp-vatS` (3) | 7 midget | You are in the court now. Shotgun work among the vats, from two sides |
+| 3 | `onRemain(2)` or 25 s | `door` | `sp-east` (riot, bombers); `sp-vatN` (midgets) | 1 riotMidget, 2 boomMidget behind it, 3 midget | Twist: bombers behind a shield. Zap the shield and shoot a bomber so it blows the shield up |
+| 4 | `onRemain(2)` or 25 s | `door` | `sp-vatS` (2 boom, 3 midget); `sp-east` (2 boom) | 4 boomMidget, 3 midget | Bombers from two sides in a yard full of round cover: keep moving, use the platform, shoot them near `pot6` |
+
+Totals: 4 riotMidget, 2 obama, 13 midget, 6 boomMidget = **25**. Roles at once: shield, ranged, then
+fodder, then shield, rusher, fodder. `maxAlive` 10. Approaches to wave 1: zap and push; shock pots; hold
+the crates and shoot feet. Approaches after it: ground among the vats, or the platform. Weapons:
+`rack-sg-arch` earlier, `standee-sg-1` and shells box `ab05` at `cp2`.
+Estimate: 101 s × 1.3 + 83 m ÷ 5.5 + 6 s = **152 s (2.5 min)**, of which 2:11 is sealed.
 
 ### E4: Boom Dunes (S2) — objective `reach` (the east side of The Teeth)
 
@@ -625,28 +668,44 @@ Hazard: quicksand.
 | Squad | Trigger | Method | From | Enemies | Delay | Teaches or tests |
 |---|---|---|---|---|---|---|
 | 4a | `onEnter` x > 24 | `hidden` | Behind crest A | 3 boomMidget | 1.5 s apart | You hear the beeps before they top the crest. At 40 m the machine gun is the right gun |
-| 4b | `onEnter` the road at (66, 84) | `hidden` | Behind crest B, to the north | 2 boomMidget, 4 midget | 0 | Quicksand `Q1` is behind you: backing away from a bomber puts you in it at half speed |
+| 4b | `onEnter` the road at (66, 84) | `hidden` | Behind crest B, to the north | 1 boomMidget, 2 midget | 0 | Quicksand `Q1` is behind you: backing away from a bomber puts you in it at half speed |
 | 4c | `onEnter` x > 100 | `placed` | The Teeth, behind walls T4 and T5 | 2 obama | 0 | Ranged across `Q2`. Wade it under fire, or take the firm gap to the north (z 76–86) |
-| 4d | `onKills(8)` | `hidden` | Behind crest C, to the south | 2 boomMidget, 3 midget | 0 | A flank while you trade with the Obamas. Enemies path round the quicksand, so their line is readable |
+| 4d | `onKills(6)` | `hidden` | Behind crest C, to the south | 2 boomMidget, 2 midget | 0 | A flank while you trade with the Obamas. Enemies path round the quicksand, so their line is readable |
 
 Roles at once: rusher, fodder, ranged. `maxAlive` 10. Approaches: the firm road, or straight through the
-quicksand if the bombers are dead. Weapons: `ammo-teeth` in the ruin. Cover in the first 15 m: two carts,
-two crate stacks. Estimate: 54 s × 1.3 + 163 m ÷ 5.5 = **100 s (1.7 min)**.
+quicksand if the bombers are dead. Cover in the first 15 m: two carts, two crate stacks.
+Estimate: 42 s × 1.3 + 163 m ÷ 5.5 = **84 s (1.4 min)**.
 
-### E5: High Caravanserai (S2) — objective `clearAll`, then `destroy` (`loom-0`)
+### E5: High Caravanserai — LOCKDOWN [L2] (S2) — objective `clearAll`
 
 Before it: the **Geyser Flats**, 35 m with four timed geysers and no enemies, then launcher `G5` up to the Shelf
-(or the walk-up ramp, 60 m longer). Space: a walled courtyard 36 × 36 m with a well. Lesson: the Hex Acolyte.
+(or the walk-up ramp, 60 m longer). Checkpoint `cp4` is on the landing.
 
-| Squad | Trigger | Method | From | Enemies | Delay | Teaches or tests |
-|---|---|---|---|---|---|---|
-| 5a | `onAlert` (or `onEnter` the breach) | `placed` | The Acolyte over the well; the Obamas behind the east rubble | 1 hexAcolyte, 2 obama | 0 | **Hex Acolyte.** Every 8 s it bubbles allies within 12 m (46 HP). Kill it first, or one Chain Zap pops every bubble it reaches. Its 3 homing orbs die on the column stubs |
-| 5b | `onKills(1)` | `door` | `sd-arcade`, south wall | 5 midget | 0 | Bubbled fodder if the Acolyte is still alive: the price of ignoring it |
-| 5c | `onRemain(0)` | `air` | Over the west wall | 3 flyingMidget | 2 s | Flyers alone in an open court, as in L01 |
-| — | E5 cleared | — | `loom-0` in front of `depotGate` | 1 Rug Loom, 161 HP | — | **Rug Loom alone.** The beam from the loom to the gate shield shows the link. Shoot the spool |
+**Room.** A walled courtyard, floor **44 × 44 m** (x 204–248, z 76–120, on the Shelf at y 9), walls 6 m,
+force-field lid at y 15. Ten pieces of cover (the well, 4 column stubs, 3 rubble walls, 2 crate stacks)
+and a second level (the 3 m gallery along the north wall, a ramp at each end). No hazard inside.
+Blockout: §6.2, rows `serai.*`.
 
-Roles at once: support, ranged, fodder, then flyer. `maxAlive` 8. Approaches: the west breach or the north
-gap. Estimate: 50 s × 1.3 + 78 m ÷ 5.5 + 12 s = **91 s (1.5 min)**. Depot 1 is 14 m past the gate.
+| Part of the room | Detail |
+|---|---|
+| Entry door | `seraiGateW`, slab 0.6×6×8 at (204, 12, 98), west wall. Threshold `serai.line` at x 210 |
+| Exit door | `seraiGateE`, slab 0.6×6×8 at (248, 12, 98), east wall, 4 m from Depot 1 |
+| Checkpoint outside | `cp4` at (201, 9, 98), 3 m from the door |
+| Spawn points | `sp-north` (226, 12, 77) on the gallery; `sp-arcade` (226, 9, 119.5) south wall; `sp-east` (247.5, 9, 110) east wall; `sp-sky` over the west wall, under the lid |
+| Inside the room | Ammo boxes `ab13` (shells) and `ab14` (bullets) |
+| Reward | `chest-L2` and ammo crate `ac2` at (242, 9, 98) under a shield fed by `loom-0` (161 HP): **the first Rug Loom, alone, with nobody shooting**. Checkpoint `cp5` |
+
+| Wave | Trigger | Method | Spawn point | Enemies | Teaches or tests |
+|---|---|---|---|---|---|
+| 1 | Door drops | `placed` | Over the well; behind the east rubble | 1 hexAcolyte, 2 obama | **Hex Acolyte.** Every 8 s it bubbles allies within 12 m (46 HP). Kill it first, or one Chain Zap pops every bubble it reaches. Its 3 homing orbs die on the column stubs |
+| 2 | `onRemain(2)` or 25 s | `door` | `sp-arcade` (4), `sp-north` (3, down the gallery ramps) | 7 midget | Bubbled fodder if the Acolyte is still alive: the price of ignoring it |
+| 3 | `onRemain(2)` or 25 s | `air`; `door` | `sp-sky` (flyers); `sp-east` (midgets) | 3 flyingMidget, 4 midget | Look up and down at once. The gallery gives a level shot at the flyers |
+| 4 | `onRemain(2)` or 25 s | `door` | `sp-north` (Acolyte, bombers); `sp-arcade` (midgets) | 1 hexAcolyte, 4 boomMidget, 3 midget | Twist: **bubbled bombers**. A bubble soaks the shot that would set one off early. Zap first, or kill the Acolyte on the gallery |
+
+Totals: 2 hexAcolyte, 2 obama, 14 midget, 3 flyingMidget, 4 boomMidget = **25**. Roles at once: support,
+ranged, fodder; then flyer, fodder; then support, rusher, fodder. `maxAlive` 10. Approaches: hold the
+gallery, or circle the well on the ground. Weapons: shells box `ab12` at `cp4`.
+Estimate: 97 s × 1.3 + 82 m ÷ 5.5 + 18 s = **159 s (2.7 min)**, of which 2:06 is sealed. Depot 1 is 14 m past the exit door.
 
 ### E6: Far Ledge (S3) — objective `clearAll`, opens `rimGate`
 
@@ -661,8 +720,8 @@ From the tower (77 to 83 m) nothing can hit you. From the front wall (26 to 34 m
 | 6d | `onRemain(1)` | `door` | `sd-ledgeB` | 1 robotShooter | 0 | 196 HP and a 44 m charged laser that reaches the east half of the terrace: stay on the tower or behind a boulder |
 
 Roles at once: ranged, support. `maxAlive` 7. Approaches: snipe from the tower, or fight from the front
-wall with the machine gun (full damage to 30 m). Weapons: `rack-sn-tower`, sniper ammo beside it.
-Estimate: 47 s × 1.3 + 116 m ÷ 5.5 + 5 s = **87 s (1.5 min)**.
+wall with the machine gun (full damage to 30 m). Weapons: `rack-sn-tower` (the first sniper) with two
+sniper boxes on the tower; bullets box `ab17` at the front wall. Estimate: 47 s × 1.3 + 116 m ÷ 5.5 + 5 s = **87 s (1.5 min)**.
 
 ### E7: Narrows and Carpets (S3) — objective `reach` (the Market Dock)
 
@@ -672,14 +731,14 @@ from a moving platform. Hazard: the void (void rescue).
 
 | Squad | Trigger | Method | From | Enemies | Delay | Teaches or tests |
 |---|---|---|---|---|---|---|
-| 7a | `onEnter` the Narrows, z > 108 | `door` | `sd-cave` in the rock wall | 4 midget, then 2 boomMidget | 0, 2 s | Shotgun on a ledge. A bomb at the edge throws you toward the void. Fire pot `pot8` is beside the door |
-| 7b | `onEnter` carpet `C1` | `air` | Up from under the north rim | 3 flyingMidget | 0 | Aim while the floor moves at 3 m/s. The carpet's rolled edge is crouch cover |
+| 7a | `onEnter` the Narrows, z > 108 | `door` | `sd-cave` in the rock wall | 2 midget, then 2 boomMidget | 0, 2 s | Shotgun on a ledge. A bomb at the edge throws you toward the void. Fire pot `pot8` is beside the door |
+| 7b | `onEnter` carpet `C1` | `air` | Up from under the north rim | 2 flyingMidget | 0 | Aim while the floor moves at 3 m/s. The carpet's rolled edge is crouch cover |
 | 7c | `onEnter` the Needle top | `burrow` | `needle.grate` | 2 midget | 0.6 s dust | A fight on a 12 m disc |
 | 7d | `onEnter` the Needle top | `placed` | East Dock, behind bales | 2 obama | 0 | They shoot at carpet `C2` (26 to 34 m). Snipe them from the Needle first, or ride behind the rolled edge |
 
 Roles at once: fodder, rusher, then flyer, then fodder, ranged. Ground enemies have no nav link onto a
 carpet, so nothing follows you across. `maxAlive` 8. Approaches: clear the East Dock from the Needle with the
-sniper, or ride in firing. Estimate: 51 s × 1.3 + 131 m ÷ 5.5 + 30 s = **120 s (2.0 min)**.
+sniper, or ride in firing. Estimate: 40 s × 1.3 + 131 m ÷ 5.5 + 30 s = **106 s (1.8 min)**.
 
 ### E8: Rooftop Market (S4) — objective `reach` (the Gate Landing)
 
@@ -688,36 +747,37 @@ high roof, and a 52 m zipline down. Lesson: everything from S1 again with gaps o
 
 | Squad | Trigger | Method | From | Enemies | Delay | Teaches or tests |
 |---|---|---|---|---|---|---|
-| 8a | `onEnter` R2 | `door` | `sd-r2` and `sd-r3` | 6 midget (3 + 3) | 0 | They must use the plank bridges: hold a 3 m bridge with the shotgun |
-| 8b | `t+8` | `hidden` | Behind the hung rugs on R2 | 2 boomMidget, 2 midget | 0 | Bombers that start 6 m away. Step back over a bridge, or shoot goo pot `pot9` |
-| 8c | `onKills(6)` | `hidden` | West parapet of M1, 3 m above | 2 obama | 0 | Fire from above. Killing them lifts `c2Shutter` |
+| 8a | `onEnter` R2 | `door` | `sd-r2` and `sd-r3` | 5 midget (3 + 2) | 0 | They must use the plank bridges: hold a 3 m bridge with the shotgun |
+| 8b | `t+8` | `hidden` | Behind the hung rugs on R2 | 2 boomMidget | 1 s apart | Bombers that start 6 m away. Step back over a bridge, or shoot goo pot `pot9` |
+| 8c | `onKills(5)` | `hidden` | West parapet of M1, 3 m above | 2 obama | 0 | Fire from above. Killing them lifts `c2Shutter` |
 | 8d | `onEnter` the top of lift `L1` | `door` | `sd-m1` | 2 riotMidget, 1 hexAcolyte | 0 | Twist: **bubbled shields**. One Chain Zap pops both bubbles and stuns both shields. Or circle the market tent |
-| 8e | `onEnter` the `Z1` landing on M2 | `drop` | Crane arm over M2 | 2 boomMidget | 1.2 s shadow | Bombers on a 28 × 24 m roof with you. The catapult `J1` is the way out |
 
-Roles at once: fodder, rusher, ranged, then shield, support, then rusher. `maxAlive` 10. Approaches: roofs,
-or the streets and outside stairs (slower, out of the Obamas' sight). Weapons: ammo at `cp7`; Overshield on
-H1 after the last squad. Estimate: 72 s × 1.3 + 148 m ÷ 5.5 + 14 s = **135 s (2.2 min)**.
+After 8d the route is quiet on purpose: zipline `Z1`, catapult `J1`, the Overshield on H1, zipline `Z2`.
+Roles at once: fodder, rusher, ranged, then shield, support. `maxAlive` 10. Approaches: roofs, or the
+streets and outside stairs (slower, out of the Obamas' sight).
+Estimate: 57 s × 1.3 + 148 m ÷ 5.5 + 14 s = **115 s (1.9 min)**.
 
 ### E9: Bazaar Gate (S4) — objective `destroy` (`loom-1`, `loom-2`) and `clearAll`
 
 Space: the Gate Square, 60 × 50 m, a fountain in the middle, two guardhouses with a loom on each roof.
-`squareGate` closes behind you. Lesson: the boss's first part, with squads instead of Sahil.
+Not a lockdown: the entry arch stays open and the player may back out to the Gate Landing. Lesson: the
+boss's first part, with squads instead of Sahil.
 
 | Squad | Trigger | Method | From | Enemies | Delay | Teaches or tests |
 |---|---|---|---|---|---|---|
-| 9a | `onEnter` the square, z > 170 | `drop` | Two ropes from the gate wall | 6 midget (3 + 3) | 1.2 s shadow | A swarm while you find the two beams that feed the gate shield |
-| 9b | `onRemain(2)` | `door` | `sd-guardW`, under `loom-1` | 2 riotMidget, 2 midget | 0 | Shields under the loom you are aiming at. Circle the fountain or zap them |
-| 9c | `onPartDestroyed` (first loom) | `drop` | Both ropes | 4 boomMidget, in pairs | 0, 3 s | Bombers while you look up. Four pots in the square work for either side |
+| 9a | `onEnter` the square, z > 170 | `drop` | Two ropes from the gate wall | 4 midget (2 + 2) | 1.2 s shadow | A swarm while you find the two beams that feed the gate shield |
+| 9b | `onRemain(1)` | `door` | `sd-guardW`, under `loom-1` | 2 riotMidget | 0 | Shields under the loom you are aiming at. Circle the fountain or zap them |
+| 9c | `onPartDestroyed` (first loom) | `drop` | Both ropes | 3 boomMidget | 0, 1.5 s, 3 s | Bombers while you look up. Four pots in the square work for either side |
 | 9d | `onPartDestroyed` (second loom) | `door` | `sd-guardE` | 2 midget | 0 | Clean-up. Then the gate shield drops |
 
 Roles at once: fodder, shield, rusher. `maxAlive` 10. Approaches: looms first (ends sooner, bombers arrive
-sooner) or squads first. Weapons: ammo at `cp8`, 20 m before the square. Estimate: 58 s × 1.3 + 66 m ÷ 5.5
-+ 6 s = **93 s (1.6 min)**. Depot 2 is behind the gate.
+sooner) or squads first. Estimate: 43 s × 1.3 + 66 m ÷ 5.5 + 6 s = **74 s (1.2 min)**. Depot 2 is behind the gate.
 
 ## 9. New enemies
 
 No new placeholder enemy is proposed. L02 introduces three C §3.12 enemies; these are the stat blocks the
 level assumes. `src/data/enemies.js` today has them as re-skins with other numbers (HP 34, 58, 64).
+No enemy drops a crafting resource (PLAN §7.1).
 
 | Field | `boomMidget` | `riotMidget` | `hexAcolyte` |
 |---|---|---|---|
@@ -730,7 +790,7 @@ level assumes. `src/data/enemies.js` today has them as re-skins with other numbe
 | Hitboxes | body capsule r 0.45; weak sphere r 0.22 head; weak sphere r 0.28 backpack (×2) | body capsule r 0.5; `shield` zone box 1.1×1.4, 0.5 m in front; weak sphere r 0.22 head | body capsule r 0.4; weak sphere r 0.22 head |
 | Look (primitives added to the model) | `midget` stage 1 + sphere r 0.28 `gold` on the back + cylinder fuse r 0.04, h 0.2 + blinking disc | `midget` stage 2 + shield box 1.1×1.4×0.12 `metal` with a `glass` slit | `sahil` stage 1 at 0.75 + 3 orb spheres r 0.2 + bubble sphere r 0.9 (see-through) on each shielded ally |
 | Events | `hazardWarn`, `explode` | `shieldBash`, `shieldStunned` | `shieldBuff`, `bubblePop`, `enemyBlink` |
-| Extra drop | Springs | Springs | Mana Crystal (25%) |
+| Drops (no resources) | Ammo 40%, health 8%, gun 2%, 1 ticket | Ammo 40%, health 8%, gun 2%, 2 tickets. The elite always drops a gun | Ammo 70%, health 18%, mana orb 25%, gun 6%, 2 tickets |
 | Pacing seconds | 3 | 8 | 8 |
 
 **Destroyable targets** (C §3.9 `target`, no AI)
@@ -740,39 +800,50 @@ level assumes. `src/data/enemies.js` today has them as re-skins with other numbe
 | `rugLoom` | 140 → 161 | Spool, × 2 | A beam links it to what it shields. While any linked loom lives, the shielded thing takes no damage |
 | `carpetPylon` | 200 → 230 | Rolled carpet on top, × 2 | Same link. Rises from a hatch over 1.5 s; cannot be hurt while rising |
 
-## 10. Finale: `SB-BOSS`, Sahil the RugMaster
+## 10. Finale: `SB-BOSS`, Sahil the RugMaster — LOCKDOWN [L3]
 
-One encounter, `SB-BOSS`, objective `boss`, in section `SB`. Five parts, **270 s**. Parts 2, 4 and 5 are the
+One encounter, `SB-BOSS`, objective `boss`, in section `SB`. Five parts, **255 s**. Parts 2, 4 and 5 are the
 three Duel stages with B §3.1 data unchanged: attacks, powers, cooldowns, AI profile, fire ring, pools,
 spring, vents, transform style `bazaar`. Parts 1 and 3 are added around them (PLAN §9). `maxAlive` 10 for
 adds; a squad that would exceed it queues. `onBossHp(p)` means p% of the **current** bar.
 
-| Part | Kind | Time | HP | Sahil's attacks | Adds (trigger → method, from, count) | Arena | Ends when |
+As a lockdown: the room is the fire ring (56 m across, 12 cover pieces, room blockout in §6.5). Entry
+door `ringGate`; threshold `ring.line`; checkpoint outside `cp10`; spawn points `sh-NE`, `sh-SE`, `sh-SW`,
+`sh-NW`. The five parts are its waves and the add squads below are the wave table: 40 enemies. Inside:
+3 bullets boxes, 2 shells boxes, 1 rockets box and 2 ammo crates (§12). Reward: Sahil's drops.
+
+| Part | Kind | Time | HP | Sahil's attacks | Adds (trigger → method, spawn point, count) | Arena | Ends when |
 |---|---|---|---|---|---|---|---|
 | **1. The Showroom** | Entry; destroyable parts | 30 s | Sahil cannot be hurt. `loom-E`, `loom-W`: 161 each | Hovers on a carpet 6 m over the Grand Rug inside the **Warranty Shield**. Bolts only, at half rate (1 burst, pause × 2) | `t+2` → `door`, `sh-NW` and `sh-NE`: 6 midget (3 + 3). `onPartDestroyed` (first loom) → `door`, `sh-SE`: 2 boomMidget, 1.5 s apart | Fire ring r 27.8. No shifts | Both looms are destroyed. The shield bursts, the carpet drops, Sahil is stunned on the floor for 3 s (head weak zone open) |
-| **2. Friendly Discount** | Phase (Duel stage 1) | 60 s | **1,714** (1,490 × 1.15) | Bolts. Shield bubble 0.8 s every 5 s (stops bullets). Power: **Carpet Sweep** (200° low sweep, 15 m, warn 1.1 s, every 15 s): jump it | `onBossHp(65)` → `door`, `sh-SW` and `sh-SE`: 4 midget (2 + 2). `onBossHp(30)` → `door`, `sh-NW`: 1 midget, 2 boomMidget | Unchanged | The bar is empty. No transform yet: part 3 |
-| **3. Rug Pull** | Intermission; arena shift; destroyable parts | 45 s | Sahil cannot be hurt. 3 `carpetPylon`: 230 each | He pulls the Grand Rug away (1.5 s ripple telegraph, r 7) and flies to the Minaret Balcony. From there: **Bazaar Rain** at low strength (4 circles, one cast every 12 s), a preview of part 4 | `t+0` → `door`, `sh-NE`: 2 riotMidget, 1 hexAcolyte. `t+10` → `door`, `sh-SE` and `sh-SW`: 6 midget (3 + 3). `onPartDestroyed` (second pylon) → `door`, `sh-NW`: 3 midget | The floor under the rug is a quicksand **pit**, r 7 (speed × 0.5, 4 dps). Three pylons rise at r 18 | All three pylons are destroyed. He drops into the ring; transform cinematic `bazaar`; the pit fills and is floor again |
-| **4. No Refunds** | Phase (Duel stage 2) | 65 s | **1,909** (1,660 × 1.15) | Bolts, **Blast**, **Stun** (1 s, 0.2 s tell). Powers: Carpet Sweep, **Bazaar Rain** (7 circles r 2 over 2.4 s, warn 1.15 s, every 17 s × 0.85) | `onBossHp(70)` → `door`, `sh-NE` and `sh-SW`: 4 midget (2 + 2). `onBossHp(35)` → `door`, `sh-SE`: 1 midget, 3 boomMidget, 1.5 s apart | Ring r 26.8. 4 **Quicksand** pools (4 dps, slow 0.5). 1 **Oasis** spring (9 HP/s, 40 HP) | The bar is empty. Transform cinematic |
-| **5. Full Rug Pull** | Phase (Duel stage 3) | 70 s | **1,967** (1,710 × 1.15) | Bolts, Blast, Stun, **Ultimate** (wave to 40 m: jump or dash), volley **Rug Barrage** (3 shots, 22° fan). Powers: Carpet Sweep, Bazaar Rain, **Magic Carpet Drop** (r 2.7, tracks 1.6 s, warn 0.85 s, every 16 s × 0.72) | `onBossHp(75)` → `door`, `sh-NW`: **1 elite riotMidget "Head of Rug Security"** (173 HP), 4 midget. `onBossHp(40)` → `door`, `sh-NE` and `sh-SE`: 4 midget, 2 boomMidget | Ring r 25.5. 3 **Sand Geyser** vents (warn 1.3 s, every 7 to 9.5 s). The spring refills. Pools stay | The bar is empty: Sahil is dead. Ring out, `exitRug` appears, `rewardSpellLearned` **Magic Carpet** |
+| **2. Friendly Discount** | Phase (Duel stage 1) | 55 s | **1,714** (1,490 × 1.15) | Bolts. Shield bubble 0.8 s every 5 s (stops bullets). Power: **Carpet Sweep** (200° low sweep, 15 m, warn 1.1 s, every 15 s): jump it | `onBossHp(65)` → `door`, `sh-SW` and `sh-SE`: 4 midget (2 + 2). `onBossHp(30)` → `door`, `sh-NW`: 2 boomMidget | Unchanged | The bar is empty. No transform yet: part 3 |
+| **3. Rug Pull** | Intermission; arena shift; destroyable parts | 45 s | Sahil cannot be hurt. 3 `carpetPylon`: 230 each | He pulls the Grand Rug away (1.5 s ripple telegraph, r 7) and flies to the Minaret Balcony. From there: **Bazaar Rain** at low strength (4 circles, one cast every 12 s), a preview of part 4 | `t+0` → `door`, `sh-NE`: 2 riotMidget, 1 hexAcolyte. `t+10` → `door`, `sh-SE` and `sh-SW`: 5 midget (3 + 2). `onPartDestroyed` (second pylon) → `door`, `sh-NW`: 3 midget | The floor under the rug is a quicksand **pit**, r 7 (speed × 0.5, 4 dps). Three pylons rise at r 18 | All three pylons are destroyed. He drops into the ring; transform cinematic `bazaar`; the pit fills and is floor again |
+| **4. No Refunds** | Phase (Duel stage 2) | 60 s | **1,909** (1,660 × 1.15) | Bolts, **Blast**, **Stun** (1 s, 0.2 s tell). Powers: Carpet Sweep, **Bazaar Rain** (7 circles r 2 over 2.4 s, warn 1.15 s, every 17 s × 0.85) | `onBossHp(70)` → `door`, `sh-NE` and `sh-SW`: 3 midget (2 + 1). `onBossHp(35)` → `door`, `sh-SE`: 3 boomMidget, 1.5 s apart | Ring r 26.8. 4 **Quicksand** pools (4 dps, slow 0.5). 1 **Oasis** spring (9 HP/s, 40 HP) | The bar is empty. Transform cinematic |
+| **5. Full Rug Pull** | Phase (Duel stage 3) | 65 s | **1,967** (1,710 × 1.15) | Bolts, Blast, Stun, **Ultimate** (wave to 40 m: jump or dash), volley **Rug Barrage** (3 shots, 22° fan). Powers: Carpet Sweep, Bazaar Rain, **Magic Carpet Drop** (r 2.7, tracks 1.6 s, warn 0.85 s, every 16 s × 0.72) | `onBossHp(75)` → `door`, `sh-NW`: **1 elite riotMidget "Head of Rug Security"** (173 HP), 3 midget. `onBossHp(40)` → `door`, `sh-NE` and `sh-SE`: 3 midget, 2 boomMidget | Ring r 25.5. 3 **Sand Geyser** vents (warn 1.3 s, every 7 to 9.5 s). The spring refills. Pools stay | The bar is empty: Sahil is dead. Ring out, `ringGate` reopens, `exitRug` appears, drops fall (§12), `rewardSpellLearned` **Magic Carpet** |
 
-**Add totals:** part 1: 8, part 2: 7, part 3: 12, part 4: 8, part 5: 11 = **46** (33 midget, 9 boomMidget,
+**Add totals:** part 1: 8, part 2: 6, part 3: 11, part 4: 6, part 5: 9 = **40** (27 midget, 9 boomMidget,
 2 riotMidget, 1 hexAcolyte, 1 elite riotMidget). Roles at once never pass three (part 3 has shield, support,
-fodder and no bombers).
+fodder and no bombers). The elite always drops a gun, one tier step up.
 
-**What the level taught first:** looms (E5, E9), quicksand (E4), geysers (Geyser Flats), shields with an
-Acolyte (E8), bombers at close range (E1, E8, E9). Bazaar Rain is shown at low strength in part 3 before
-part 4 uses it in full.
+**What the level taught first:** looms ([L2] reward, E9), quicksand (E4), geysers (Geyser Flats), shields
+with an Acolyte (E8), bombers at close range (E1, [L1], [L2]), a sealed room with waves ([L1], [L2]).
+Bazaar Rain is shown at low strength in part 3 before part 4 uses it in full.
 
 **Starter-loadout check (hub rule).** No part needs a spell or a rack. Looms and pylons take bullets; each
-has a pot within 4 m. Riot Midgets in a 55 m ring can be circled. A bubble is 46 HP of bullets. The
-bazooka rack, rockets and ammo are in the Rug Vault and the ring. There is no shrine in `SB`, so a hub run
-has no Chain Zap, and nothing in `SB` is a conduit.
+has a pot within 4 m. Riot Midgets in a 56 m ring can be circled. A bubble is 46 HP of bullets. The
+bazooka rack and depot crate `dc3` are in the Rug Vault. There is no shrine in `SB`, so a hub run has
+only Goo Bolt, and nothing in `SB` is a conduit.
+
+**Bullets for a hub run.** The fight is 8,570 HP of targets (bars 5,590, looms 322, pylons 690, adds
+1,970): 953 bullets at 9 damage, about 1,360 at 70% accuracy. Supply: 480 carried from `dc3`, 3 bullets
+boxes in the ring (180), 2 ammo crates × 3 uses × 240 (1,440), and about 16 enemy packs of 45 (720,
+all bullets, because smart drops follow the only gun carried). That is 2,820, or 2.1 times the need;
+2,100 (1.5 times) with no drops at all.
 
 **Time check.** A starter machine gun does 90 dps on paper and about 40 sustained on a moving boss
-(reloads, misses, bubble). That is 43, 48 and 49 s of fire for the three bars, plus adds: about 5:20 for a
-hub run. A campaign player with a tier-2 shotgun, rockets and Chain Zap on add clumps lands near the 4:30
-budget. Both are inside PLAN §9's 4 to 5.5 minutes. The HP figures are a first pass for the TTK tool;
-they replace `hp: 980` in `src/data/duelBosses.js`, which is a re-pin.
+(reloads, misses, bubble). That is 43, 48 and 49 s of fire for the three bars, plus adds and crate
+stops: about 5:10 for a hub run. A campaign player with a tier-2 shotgun, rockets and Chain Zap on add
+clumps lands near the 4:15 budget. Both are inside PLAN §9's 4 to 5.5 minutes. The HP figures are a
+first pass for the TTK tool; they replace `hp: 980` in `src/data/duelBosses.js`, which is a re-pin.
 
 **Risk to tune.** With B §1's conversion, Sahil's own damage is tiny (a stage-1 Bolt is 4 × 0.77 × 0.45 ×
 0.68 = 0.94; Carpet Sweep is about 1.5). In this fight the adds, the pit and the ring carry the danger.
@@ -783,6 +854,7 @@ If playtests show the boss himself is harmless, raise `DUEL_DMG_K`, not the add 
 | Thing | Where | New to L02 | Note |
 |---|---|---|---|
 | Doors, switches as conduits, spawn doors | All sections | — | |
+| **Lockdown arenas** (`lockdown`) | [L1] Dyers' Court (S1), [L2] High Caravanserai (S2), [L3] the fire ring (SB) | Yes | Entry slab, exit slab, lid, wave counter, reward chest (PLAN §5.6) |
 | Explosive pots (`barrel` with fire, shock or goo) | 22 pots: S1 7, S3 1, S4 10, SB 4 | Elements are new | Shock pots are the no-magic answer to shields |
 | Quicksand (`hazardZone slow`) | S2 `Q1`, `Q2`; SB pit and Sahil's pools | Yes | Speed × 0.5. Enemies path round it |
 | Sand geyser | S2 `G0` to `G5`; SB vents | Yes | Traversal geysers do no damage (§14 N2) |
@@ -792,48 +864,151 @@ If playtests show the boss himself is harmless, raise `DUEL_DMG_K`, not the add 
 | Rug catapult (`jumpPad`) | S4 `J1`, `J2` | Yes | |
 | Lift (`mover`, `onTrigger`) | S4 `L1` | — | Powered by `C2` |
 | Destroyable targets | `loom-0`, `loom-1`, `loom-2`, `loom-E`, `loom-W`, 3 pylons | Yes | Shield link |
-| Depot | S2, S4 | Yes | |
+| Depot | S2, S4 | Yes | Depot crate, health station, spell loadout bench, ticket shop terminal, checkpoint. No Weapon Box |
+| Ammo boxes, ammo crates, depot crates | 36 boxes, 4 crates, 3 depot crates (§12) | Yes | Every gun's ammo is finite |
+| Reward chests, secret cache | `chest-L1`, `chest-L2`, `cache-secret` | Yes | Guns come as drops (§12 loot table) |
 | **Chain Zap** shrine | S1 | Yes | Stun shields 2 s, pop bubbles, chain through pots |
 | **Conduits** | `C1` (Dyers' Gate, S1), `C2` (lift, S4) | Yes | Two uses, as required. None in `SB` |
 | Goo Bolt | Any | — | Slows bombers. Gooed targets are Conductive: +50% from Chain Zap |
 | Overshield | S4, H1 | Yes | |
+| Mana Battery | S4, on F1 | Yes | +10 max mana, +0.5 mana/s |
 | Magic Carpet | Reward | Yes | Learned on the kill |
 
-## 12. Checkpoints, depots, weapons, power-ups, secrets
+## 12. Checkpoints, depots, weapons, loot, ammo, power-ups, secrets
+
+**Checkpoints.** Every one has an ammo box beside it (or a crate, or a depot crate).
 
 | Checkpoint | Where | Saved when | Clock | Gap |
 |---|---|---|---|---|
 | `cp1` | S1 camp (100, 0, 144) | Start | 0:00 | — |
-| `cp2` | S1 Chain Zap shrine | Shrine used | 2:26 | 146 s |
-| `cp3` | S2 start (12, 0, 100) | E3 cleared | 4:29 | 123 s |
-| `cp4` | S2 The Teeth (160, 0, 98) | E4 reached | 6:09 | 100 s |
-| `cp5` | S2 Depot 1 (248, 9, 98) | `loom-0` destroyed | 7:40 | 91 s |
-| `cp6` | S3 Rim Gate (88, 0, 98) | E6 cleared | 10:00 | 140 s (45 s of it in the depot) |
-| `cp7` | S4 Landing Roof (4, 4, 16) | E7 reached | 12:00 | 120 s |
-| `cp8` | S4 Gate Landing (90, 2, 150) | E8 reached | 14:15 | 135 s |
-| `cp9` | S4 Depot 2 (90, 0, 220) | E9 cleared | 15:48 | 93 s |
-| `cp10` | SB Rug Vault (40, 0, 6) | Section start | 16:39 | 51 s |
+| `cp2` | S1 Shrine Court, outside the [L1] door | Shrine used (2:11); again when `C1` is zapped (2:31) | 2:11 | 131 s |
+| `cp3` | S1 Dyers' Court (186, 0, 24); respawn moves to the S2 start once S2 loads | [L1] cleared | 4:48 | 137 s from the `C1` save |
+| `cp4` | S2 Shelf landing (201, 9, 98), outside the [L2] door | Reached | 6:41 | 113 s |
+| `cp5` | S2 Depot 1 (252, 9, 98) | [L2] cleared; again on leaving the depot | 8:56 | 135 s |
+| `cp6` | S3 Rim Gate (88, 0, 98) | E6 cleared | 11:26 | 150 s from the clear, 137 s from the depot |
+| `cp7` | S4 Landing Roof (4, 4, 16) | E7 reached | 13:12 | 106 s |
+| `cp8` | S4 Gate Landing (90, 2, 150) | E8 reached | 15:07 | 115 s |
+| `cp9` | S4 Depot 2 (90, 0, 220) | E9 cleared | 16:21 | 74 s |
+| `cp10` | SB Rug Vault (40, 0, 6), outside the [L3] door | Section start | 17:11 | 51 s |
 
-No gap is over 150 s. The boss fight (4:30) has no checkpoint inside it; see §14, open question 3.
+No gap is over 150 s. The boss fight (4:15) has no checkpoint inside it; see §14, open question 3.
+
+**Depots** (PLAN §7.7: no Weapon Box, no crafting)
 
 | Depot | Where | Contents |
 |---|---|---|
-| `depot-1` | S2, depot court on the Shelf | Weapon Box, shop, unlimited ammo, spell-slot assignment |
-| `depot-2` | S4, behind the Bazaar Gate | The same. Last shop before the boss |
+| `depot-1` | S2, depot court on the Shelf, 4 m past the [L2] exit | Depot crate `dc1` (unlimited ammo), health station, spell loadout bench, ticket shop terminal, checkpoint `cp5` |
+| `depot-2` | S4, behind the Bazaar Gate | Depot crate `dc2`, health station, spell loadout bench, ticket shop terminal, checkpoint `cp9`. Last shop before the boss |
+
+**Placed weapons.** Racks and standees give the level's base tier, Common, at gun level 2.
 
 | Weapon | Id | Where | `why` |
 |---|---|---|---|
-| Shotgun | `rack-sg-arch` | S1 (104, 0, 96.5) | E2 Shield Wall and E3 Phalanx, 4 to 5 m alleys |
-| Shotgun | `standee-sg-1`, `standee-sg-2` | S1 Shrine Court; S2 depot court | Second chances |
-| Sniper | `rack-sn-tower` | S3 (40, 6, 62) | E6 far ledges, 77 to 83 m; also the East Dock from the Needle |
-| Bazooka | `rack-bz-vault` | SB (45, 0, 12) | `SB-BOSS` looms, pylons and add clumps |
+| Shotgun | `rack-sg-arch` | S1 (104, 0, 96.5) | E2 Shield Wall and [L1] Dyers' Court, 4 to 5 m alleys |
+| Shotgun | `standee-sg-1`, `standee-sg-2` | S1 Shrine Court (92, 0, 27); S2 depot court (254, 9, 104) | Second chances |
+| **Sniper (first found)** | `rack-sn-tower` | S3 (40, 6, 62) | E6 far ledges, 77 to 83 m; also the East Dock from the Needle |
+| **Bazooka (first found)** | `rack-bz-vault` | SB (45, 0, 12) | `SB-BOSS` looms, pylons and add clumps |
 
-Ammo crates: 10 (S1 3, S2 1, S3 2, S4 2, SB 2) plus both depots. Every rack has its ammo within 2 m.
-**Power-up:** Overshield `os-1` on H1.
+**Loot table**
+
+| Level | Base tier (racks) | Common | Uncommon | Rare | Epic | Legendary |
+|---|---|---|---|---|---|---|
+| L02 enemy drops (PLAN §7.3) | Common | 65 | 30 | 5 | 0 | 0 |
+
+Enemy gun-drop chances stay as today (Midget and its re-skins 2%, Flying Midget 4%, Obama, Acolyte and
+Laser Bot 6%, Shooter Bot 10%): about 4 random guns over the level. The drop pool is Machine Gun and
+Shotgun at the start; Sniper joins when `rack-sn-tower` is taken.
+
+| Guaranteed drop | Where | What |
+|---|---|---|
+| `chest-L1`, lockdown reward | S1 Dyers' Court (186, 0, 24), when [L1] is cleared | 1 gun, tier rolled on the L02 row (never below Common), a type the player does not carry if possible (here: the Machine Gun or Shotgun they lack, else a Shotgun). With ammo crate `ac1` |
+| `chest-L2`, lockdown reward | S2 High Caravanserai (242, 9, 98), when [L2] is cleared and `loom-0` is destroyed | 1 gun, same rule. With ammo crate `ac2` |
+| `cache-secret`, secret weapon cache | S2 (136, 0, 172), behind crest C, marked by three cacti in a line | **Rare Shotgun**, guaranteed: the level's best tier, in its headline type |
+| Elite "Head of Rug Security" | `SB-BOSS` part 5, from `sh-NW` | 1 gun, one tier step up: Uncommon 65, Rare 30, Epic 5 |
+| **Sahil** ([L3] reward) | `SB-BOSS`, on the kill, at the Grand Rug | 2 guns at Uncommon (one tier above base); **1 boss gun, Ray Gun or Big Bullets: the first boss gun of the campaign**; 3 ammo packs, 2 big health, tickets; the spell Magic Carpet |
+
+**Ammo boxes** (one type each; small box = 60 bullets, 12 shells, 8 sniper rounds, 3 rockets)
+
+| Id | Type | Sec. | At (x, y, z) | Placed for |
+|---|---|---|---|---|
+| `ab01` | bullets | S1 | (98, 0, 142) | `cp1` |
+| `ab02` | shells | S1 | (106, 0, 96.5) | 2 m from `rack-sg-arch`; 4 m before E2 |
+| `ab03` | shells | S1 | (92, 0, 48) | Spice Square, after E2 |
+| `ab04` | bullets | S1 | (110, 0, 56) | Spice Square |
+| `ab05` | shells | S1 | (108, 0, 28) | `cp2`; 9 m before the [L1] door |
+| `ab06` | bullets | S1 | (92, 0, 16) | `cp2` |
+| `ab07` | shells | S1 | (156, 0, 32) | **Inside [L1]** |
+| `ab08` | bullets | S1 | (188, 0, 12) | **Inside [L1]** |
+| `ab09` | bullets | S2 | (14, 0, 104) | S2 start; before E4 (machine-gun range) |
+| `ab10` | shells | S2 | (152, 0, 100) | The Teeth, end of E4 |
+| `ab11` | bullets | S2 | (150, 0, 104) | The Teeth |
+| `ab12` | shells | S2 | (200, 9, 94) | `cp4`; 4 m before the [L2] door |
+| `ab13` | shells | S2 | (212, 9, 84) | **Inside [L2]** |
+| `ab14` | bullets | S2 | (242, 9, 114) | **Inside [L2]** |
+| `ab15` | sniper | S3 | (41, 6, 60) | 2 m from `rack-sn-tower` |
+| `ab16` | sniper | S3 | (38, 6, 64) | Tower top; E6 |
+| `ab17` | bullets | S3 | (82, 0, 66) | Terrace front wall; the machine-gun approach to E6 |
+| `ab18` | shells | S3 | (86.5, 0, 98) | `cp6`; 20 m before the cave of E7 |
+| `ab19` | bullets | S3 | (78, 0, 150) | West Dock, before the carpets |
+| `ab20` | sniper | S3 | (118, 0, 143) | The Needle; for the two Obamas on the East Dock |
+| `ab21` | shells | S3 | (166, 0, 120) | East Dock |
+| `ab22` | shells | S4 | (8, 4, 22) | `cp7`; 30 m before E8 |
+| `ab23` | bullets | S4 | (54, 4, 36) | R3; the Obamas on M1 |
+| `ab24` | shells | S4 | (67, 7, 46) | M1 lift landing; squad 8d |
+| `ab25` | bullets | S4 | (104, 10, 96) | H1 |
+| `ab26` | shells | S4 | (86, 2, 152) | `cp8` |
+| `ab27` | bullets | S4 | (94, 2, 152) | `cp8` |
+| `ab28` | shells | S4 | (88, 0, 165) | Square entrance; 5 m before E9 |
+| `ab29` | rockets | SB | (47, 0, 11) | 2 m from `rack-bz-vault` |
+| `ab30` | rockets | SB | (47, 0, 13) | 2 m from `rack-bz-vault` |
+| `ab31` | shells | SB | (30, 0, 48) | **Inside [L3]**, north |
+| `ab32` | bullets | SB | (50, 0, 48) | **Inside [L3]**, north |
+| `ab33` | bullets | SB | (20, 0, 62) | **Inside [L3]**, west |
+| `ab34` | bullets | SB | (60, 0, 78) | **Inside [L3]**, east |
+| `ab35` | shells | SB | (46, 0, 92) | **Inside [L3]**, south |
+| `ab36` | rockets | SB | (34, 0, 92) | **Inside [L3]**, south |
+
+**36 ammo boxes:** 15 shells (180), 15 bullets (900), 3 sniper (24), 3 rockets (9).
+
+**Ammo crates** (every type carried to 50% of cap, 3 uses) **and depot crates** (unlimited)
+
+| Id | Kind | Sec. | At (x, y, z) | Note |
+|---|---|---|---|---|
+| `ac1` | ammo crate | S1 | (184, 0, 24) | [L1] reward, beside `chest-L1` and `cp3` |
+| `ac2` | ammo crate | S2 | (240, 9, 100) | [L2] reward, beside `chest-L2` |
+| `ac3` | ammo crate | SB | (40, 0, 94) | Inside [L3], south |
+| `ac4` | ammo crate | SB | (28, 0, 57) | Inside [L3], north-west |
+| `dc1` | depot crate | S2 | (262, 9, 92) | `depot-1`, `cp5` |
+| `dc2` | depot crate | S4 | (80, 0, 226) | `depot-2`, `cp9` |
+| `dc3` | depot crate | SB | (35, 0, 12) | Rug Vault, `cp10`. The [L3] reward crate too: `ringGate` reopens on the kill |
+
+**4 ammo crates, 3 depot crates.** PLAN §7.4 placement check: every rack has a box of its type within
+2 m; every encounter has a box of its gun within 20 m before it; each lockdown has at least 2 boxes
+inside and a crate in its reward; all 10 checkpoints have a box, a crate or a depot crate.
+
+**Ammo budget for shells** (the headline gun; cap 64, box 12, enemy pack 8)
+
+| Line | Shells |
+|---|---|
+| **Ask.** Close kills with the shotgun at tier 2: 1 shell per Midget or Boom Midget, 2 per Riot Midget or Acolyte, 3 for the elite, × 1.3 for misses. E1 8, E2 13, [L1] 31, E4 5, [L2] 26, E7 7, E8 14, E9 13, boss adds 47 | **164** |
+| Ammo boxes: 15 × 12 | 180 |
+| Ammo crates: 4, counted as one use each at 50% of cap (32) | 128 |
+| Depot crates: 3 fills, counted as half a cap each (32) | 96 |
+| **Placed** | **404** (2.5 × the ask) |
+| Expected enemy packs: about 72 ammo drops in the level (40% of Midget types, 70% of Obama types); smart drops give roughly a third as shells: 24 × 8 | 192 |
+| **Placed + drops** | **596** (**3.6 × the ask**; rule: at least 1.5 ×) |
+
+The cap matters more than the total: the largest ask between two refills is 47 (the boss adds, with
+2 boxes and 2 crates in the ring) and 31 ([L1], entered 9 m after a box, with a box inside). Both are
+under one full carry of 64. Sniper: E6 asks about 14 rounds; the rack gun's magazine plus 3 boxes give 28.
+
+**Power-up:** Overshield `os-1` on H1 at (108, 10, 80).
 
 | Secret | Where | How |
 |---|---|---|
 | **Golden Bonk: Confetti Everything** | S1, on the rolled carpet over Lamp Lane (118.5, 6.3, 80) | Crate stairs in Top Lane → Block A roof → the awning at z 74 across Spice Alley → Block B roof → double jump onto the roll (2 m up) |
+| **Mana Battery** (+10 max mana, +0.5 mana/s) | S4, filler roof F1 at (12, 5, 50), behind the water tank | From R3's west edge, sprint and double jump the 6 m alley to F1 (1 m up). Nothing else is on F1, so the detour is the tell |
+| **Secret weapon cache** (Rare Shotgun) | S2 (136, 0, 172) | Behind crest C, 30 m south of the route. Three cacti in a line point at it |
 | Audit File 1, "Invoice 0001: one (1) city gate, rug included" | S1, behind the south tent (84, 0.5, 141) | Turn round at the start |
 | Audit File 2, "Shipping manifest: 400 rugs, 0 rugs delivered" | S2, on the broken arch (143, 7.5, 92) | Ride geyser `G0` |
 | Audit File 3, "Warranty terms: void where prohibited, and over the void" | S4, minaret balcony (118, 16.5, 80) | Rug catapult `J2` on H1 |
@@ -842,32 +1017,35 @@ Ammo crates: 10 (S1 3, S2 1, S3 2, S4 2, SB 2) plus both depots. Every rack has 
 
 **Harder than L01 because:** tier 2 (× 1.15 HP and damage); `maxAlive` 10 instead of 8; three threat roles
 at once instead of two; three new enemy types that each need an answer (shoot early, flank or stun, kill
-first); the first hazards during fights (quicksand, the void); the first elite; the first boss with stages,
-powers and arena shifts; and space that is a quarter the width of L01's streets.
+first); the first hazards during fights (quicksand, the void); two lockdowns of four waves where L01's
+fights could be walked away from; the first elite; the first boss with stages, powers and arena shifts;
+space that is a quarter the width of L01's streets; and shells that run out if every shot is wasted.
 
 | Setting | Changes |
 |---|---|
-| Easy | `maxAlive` 8. E2: one Riot Midget instead of two. E3 squad 3a: two instead of three. Bubbles 30 HP. Quicksand speed × 0.65. Looms 120 HP. Boss: no adds in part 2, no elite in part 5 (4 midgets only), spring heals 60 HP |
+| Easy | `maxAlive` 8. E2: one Riot Midget instead of two. [L1] wave 1: two Riot Midgets instead of three; waves 3 and 4 lose one Boom Midget each (the lockdown keeps 25 by adding 3 Midgets). Bubbles 30 HP. Quicksand speed × 0.65. Looms 120 HP. Lockdown wave timer 35 s instead of 25 s. Boss: no adds in part 2, no elite in part 5 (3 midgets only), spring heals 60 HP. Ammo boxes give × 1.5 |
 | Normal | As written |
-| Heroic | `maxAlive` 12. One elite per section (E3 squad 3d Riot Midget, E5 Acolyte, E6 Shooter Bot, E8 one Riot Midget). E9 gains a squad 9e: 1 bigObama from the main gate on the second loom. Bubbles 60 HP. Boss: pylons regrow their shield link if not all three are destroyed within 25 s; the spring does not refill in part 5 |
+| Heroic | `maxAlive` 12. One elite per section ([L1] wave 3 Riot Midget, [L2] wave 4 Acolyte, E6 Shooter Bot, E8 one Riot Midget), each dropping a gun one tier up. E9 gains a squad 9e: 1 bigObama from the main gate on the second loom. Bubbles 60 HP. Lockdown wave timer 20 s. Boss: pylons regrow their shield link if not all three are destroyed within 25 s; the spring does not refill in part 5. Ammo crates have 2 uses |
 
 ## 14. Engine needs
 
 | Id | Used for |
 |---|---|
 | E1 | Solids everywhere; ground height on dunes and roofs; kill plane and void rescue in S3 |
-| E2 | Shields and cover stop hitscan; LOS for Obamas on parapets and ledges; `onAlert` squads in E1 and E5 |
-| E3 | Nav in 3 m lanes, over plank bridges and stairs; quicksand as a nav cost; no links onto carpets; flyer steering in the canyon |
-| E4 | Sections `S1`..`S4`, `SB`; 34 squads with triggers and methods; objectives `clearAll`, `reach`, `destroy`, `boss` |
+| E2 | Shields and cover stop hitscan; LOS for Obamas on parapets and ledges; `onAlert` squads in E1 |
+| E3 | Nav in 3 m lanes, over plank bridges and stairs; quicksand as a nav cost; no links onto carpets; flyer steering in the canyon and under the lockdown lids |
+| E4 | Sections `S1`..`S4`, `SB`; 28 squads, 8 lockdown waves and 11 boss add squads with triggers and methods; objectives `clearAll`, `reach`, `destroy`, `boss`; **three lockdown arenas** (sealed slabs, threshold, wave counter, 25 s wave timer, anti-stall, reset on death) |
 | E5 | Merged meshes, `sphere`, `cone`, `disc`, new materials, prefab instancing |
-| E6 | Door, barrel with elements, kill plane, jump pad, mover, hazard zone, geyser, zipline, depot, target |
+| E6 | Door, barrel with elements, kill plane, jump pad, mover, hazard zone, geyser, zipline, depot, target, `lockdown` |
 | E7 | `boomMidget`, `riotMidget`, `hexAcolyte` with real behaviour; `robotLaser` and `robotShooter` in the campaign |
-| E10 | Chain Zap shrine and rework (stun shields, pop bubbles, conduits, pots); `conduit`; reward spell Magic Carpet; slot assignment at depots |
+| E10 | Chain Zap shrine and rework (stun shields, pop bubbles, conduits, pots); `conduit`; reward spell Magic Carpet; slot assignment at depots; the Mana Battery |
 | E11 | Barrel damage and elements |
 | E12 | Sahil's Duel port; the five-part script |
-| E13 | Carry-over from L01, depots, checkpoint toast, boss bar with part pips, cutscene cards |
+| E13 | Carry-over from L01, depots without a Weapon Box, checkpoint toast, boss bar with part pips, cutscene cards |
 | E14 | Validator, pacing estimate, map export, autopilot bot |
 | E15 | `SB-BOSS` replaces `S4-E4` in `CANONICAL_BOSSES`; Sahil's HP changes. Campaign fingerprint re-pin |
+| E16 | No crafting, no resources, no Magic levels: this level places none of them |
+| E17 | L02 tier odds; guaranteed drops (2 lockdown chests, the elite, Sahil, the secret cache); Sniper and Bazooka type unlocks; 36 ammo boxes, 4 ammo crates, 3 depot crates; smart drops; finite machine-gun ammo in the hub run |
 
 Not used: E8 (no new placeholder enemy), E9 (no jetpack).
 
@@ -878,8 +1056,10 @@ Not used: E8 (no new placeholder enemy), E9 (no jetpack).
 | N1 | `hazardZone` kind **`slow`** (speed multiplier, optional dps, nav cost) | Quicksand. C §3.9 lists `slick` (friction) but no slow zone |
 | N2 | `geyser` takes `damage` and an optional `to` landing point per instance | C §3.9 fixes 15 damage. A geyser that is the route (`G5`, `G0`) should not cost health |
 | N3 | Boss part script: `shieldLink` (no damage while linked targets live), `perch` (hold the boss at a point with a limited attack list and rate), a scripted hazard (the pit), `onBossHp` as a share of the current bar | Parts 1 and 3. Probably inside E12; written here so it is not missed |
-| N4 | `onPartDestroyed` for targets in ordinary encounters, and doors that open on `target:<id>` | E5 (`depotGate`) and E9 (`bazaarGate`) |
-| N5 | A per-boss HP scale | B §1 has one `DUEL_HP_K` for all bosses and aims at 90 to 150 s per bar. PLAN §9 wants 4 to 5.5 minutes for the whole fight with added parts, which means 60 to 70 s bars here |
+| N4 | `onPartDestroyed` for targets in ordinary encounters, doors that open on `target:<id>`, and a shield link from a target to a chest | E9 (`bazaarGate`) and the [L2] reward (`loom-0`) |
+| N5 | A per-boss HP scale | B §1 has one `DUEL_HP_K` for all bosses and aims at 90 to 150 s per bar. PLAN §9 wants 4 to 5.5 minutes for the whole fight with added parts, which means 55 to 65 s bars here |
+| N6 | A lockdown whose entry door is first opened by a switch, and whose "room" includes an entry hall | [L1]: `dyersGate` opens on conduit `C1`, then drops; the threshold is in the passage |
+| N7 | A lockdown with no exit door, ended by the boss objective | [L3]: PLAN §5.6 assumes two doors and `clearAll` |
 
 **Open questions**
 
@@ -887,10 +1067,18 @@ Not used: E8 (no new placeholder enemy), E9 (no jetpack).
    with positive coordinates. This document uses the north-west corner.
 2. PLAN §3 allows one kind of hazard in an L02 fight. Sahil's stage 3 has quicksand pools, vents and the
    fire ring together (B §3.1). This document keeps B's arena shifts and treats the boss as the exception.
-3. PLAN §3 wants checkpoints at most 2.5 minutes apart. The boss fight is 4:30. A campaign-only retry
-   point at the start of part 3 would fix it; hub runs would ignore it.
+3. PLAN §3 wants checkpoints at most 2.5 minutes apart. The boss fight is 4:15, and PLAN §5.6 lets a
+   lockdown run 3.5 minutes with a restart at wave 1. This document keeps the gaps under 150 s outside
+   the boss. A campaign-only retry point at the start of part 3 would cover the boss; hub runs would ignore it.
 4. PLAN §3 says 10 to 13 beats but lists up to 15 kinds of beat. This level has 13 rows by folding the
    Geyser Flats into E5's beat.
+5. PLAN §5.6 asks 25 to 45 enemies and at least 2 minutes per lockdown. With L02's 160 to 180 enemies and
+   a 20-minute par, two lockdowns at the minimum (25 each) leave 7 to 12 enemies for each open
+   encounter, and the estimate lands at 21:34. A third non-boss lockdown does not fit. Either a
+   21-minute par or a 20-enemy floor per lockdown would give L02 more room.
+6. PLAN §5.6 says lockdowns are never back to back. E9 (the Gate Square) is the natural lockdown of S4
+   but only Depot 2 separates it from the boss arena, so it is left open here. If a depot counts as a
+   separator, E9 can be sealed with no other change.
 
 ## 15. Bot route and tests
 
@@ -898,45 +1086,56 @@ Not used: E8 (no new placeholder enemy), E9 (no jetpack).
 
 | Section | Waypoints and actions |
 |---|---|
-| S1 | (100, 144) → clear E1 → (100, 99) → take `rack-sg-arch` → west along Arch Lane → north up Copper Lane → east along Top Lane → clear E2 → (100, 53) → (100, 22) use shrine → cast Chain Zap at `C1` → (149, 22) → clear E3 → (191, 25) |
-| S2 | (12, 100) → follow the road discs to (124, 84) → clear E4 → (160, 98) → (195, 98) wait for `G5` (or take `shelf.ramp` if the nav link fails) → (226, 98) clear E5 → shoot `loom-0` → (258, 92) depot → (288, 98) |
+| S1 | (100, 144) → clear E1 → (100, 99) → take `rack-sg-arch` → west along Arch Lane → north up Copper Lane → east along Top Lane → clear E2 → (100, 53) → (100, 22) use shrine → cast Chain Zap at `C1` → cross `pass.line` at (120, 22) → **[L1]**: hold at the crates for wave 1, then circle the vats until wave 4 is dead → open `chest-L1`, use `ac1` → (196, 24) |
+| S2 | (12, 100) → follow the road discs to (124, 84) → clear E4 → (195, 98) wait for `G5` (or take `shelf.ramp` if the nav link fails) → `cp4` → cross `serai.line` at (210, 98) → **[L2]**: circle the well until wave 4 is dead → shoot `loom-0`, open `chest-L2` → (262, 92) depot → (288, 98) |
 | S3 | (4, 80) → tower top (40, 6, 62), take `rack-sn-tower`, clear E6 from there → (88, 101) → (88, 146) → ride `C1` → cross the Needle → ride `C2` → (162, 114) ride `C3` (or `marketDock.ramp`) → (214, 4, 112) |
-| S4 | (4, 4, 16) → B1 → B2 → clear 8a to 8c → zap `C2` → ride `L1` → clear 8d → `Z1` → clear 8e → `J1` → take `os-1` → `Z2` → (90, 2, 150) → (90, 187) shoot `loom-1`, `loom-2`, clear E9 → (80, 226) depot → (90, 237) |
-| SB | (40, 6) → take `rack-bz-vault` → (40, 44) → looms → boss bar 1 → pylons → bars 2 and 3, circling at r 15 and jumping sweeps → `exitRug` |
+| S4 | (4, 4, 16) → B1 → B2 → clear 8a to 8c → zap `C2` → ride `L1` → clear 8d → `Z1` → `J1` → take `os-1` → `Z2` → (90, 2, 150) → (90, 187) shoot `loom-1`, `loom-2`, clear E9 → (80, 226) depot → (90, 237) |
+| SB | (40, 6) → fill at `dc3` → take `rack-bz-vault` → cross `ring.line` at (40, 48) → **[L3]**: looms → boss bar 1 → pylons → bars 2 and 3, circling at r 15, jumping sweeps, stopping at `ac3` and `ac4` when under 100 bullets → `exitRug` |
+
+The bot skips the secrets. A second scripted route collects the Golden Bonk, the Mana Battery, the
+secret cache and the three Audit Files to prove each can be reached.
 
 **Tests**
 
 | Test | Asserts |
 |---|---|
-| Validator | No solid under 0.5 m; doorways ≥ 2.2 × 2.6 m; every rack has a `why` and ammo within 30 m; reachability from all 10 checkpoints; pacing estimate 1,277 s ± 5 |
-| Counts | 117 enemies in E1 to E9 and 46 adds in `SB-BOSS`, by type, as in §4 and §10 |
+| Validator | No solid under 0.5 m; doorways ≥ 2.2 × 2.6 m; every rack has a `why` and an ammo box of its type within 30 m; reachability from all 10 checkpoints; pacing estimate 1,294 s ± 5 |
+| Counts | 121 enemies in E1 to E9 and 40 adds in `SB-BOSS`, by type, as in §4 and §10 |
 | Pressure | In a full bot run, live ground enemies never exceed 10 and live threat roles never exceed 3 |
-| Phalanx | With `dyersGate` open, nav has no path from the Shrine Court to the Dyers' Court except through the passage |
-| Chain Zap | One cast at squad 3a puts all three shields in `shieldStunned` for 2 s; one cast at squad 8d pops both bubbles; a cast at `C1` and at `C2` fires `switchOn` |
+| Lockdown shape | [L1] and [L2] floors are 44 × 44 m, [L3] is 56 m across; each has ≥ 8 cover pieces, a second level and ≥ 3 spawn points on different sides; each has ≥ 2 ammo boxes inside |
+| Lockdown seal | The entry slab drops 1 s after the threshold and never closes on the player; the exit is locked; with god mode off and Magic Carpet granted, no cast, catapult, geyser or double jump leaves the room; flyers stay under the lid |
+| Lockdown waves | Wave n + 1 starts on `onRemain(2)` or at 25 s, whichever is first; 25 enemies in each of [L1] and [L2]; after 12 s the last 2 of a wave are marked and charge |
+| Lockdown end and death | On the last kill both doors open, the checkpoint saves and the chest and crate appear. Dying inside respawns at `cp2`, `cp4` or `cp10` with the room reset to wave 1 and the entry door open |
+| Phalanx | Nav has no path from the passage to the court except through the phalanx |
+| Chain Zap | One cast at wave 1 of [L1] puts all three shields in `shieldStunned` for 2 s; one cast at squad 8d pops both bubbles; a cast at `C1` and at `C2` fires `switchOn` |
 | Quicksand | Player speed × 0.5 inside `Q1`; enemy paths from crest B to the road do not cross `Q1` |
 | Void | Stepping off `carpetC1` gives `voidRescue`, −25% max HP, and puts the player on the West Dock; a midget pushed off dies with no loot |
-| Looms | `depotGate` and `bazaarGate` stay shut until their looms are destroyed; Sahil takes 0 damage in parts 1 and 3 |
+| Looms | The chest shield in [L2] and `bazaarGate` hold until their looms are destroyed; Sahil takes 0 damage in parts 1 and 3 |
 | Boss schedule | Each of the 11 add squads spawns once, at its trigger, from its shutter, with its count |
-| Hub run | A bot starting at `cp10` with the starter machine gun and level-1 skills, with no spells and without taking the rack, kills Sahil. The run is deterministic for a fixed seed |
+| Loot | Racks give Common guns at gun level 2; 10,000 seeded enemy-drop rolls match 65 / 30 / 5 / 0 / 0 within 1.5 points; each of the 5 guaranteed drops appears once with its tier floor; Sniper is not in the drop pool before `rack-sn-tower` is taken; no drop is a crafting resource |
+| Ammo | 36 boxes, 4 crates, 3 depot crates at the §12 positions; the machine gun has no endless reserve; a bot using only the shotgun on Midget types never has 0 shells for more than 5 s; the supply drone never fires in the bot run |
+| Hub run | A bot starting at `cp10` with the starter machine gun, Goo Bolt only, filling at `dc3` and without taking the rack, kills Sahil without the supply drone. The run is deterministic for a fixed seed |
 | Golden | State hash at each checkpoint for seed 7 |
-| Pins | Wave Mode, Sandbox and PvP hashes unchanged |
+| Pins | PvP hashes unchanged. Wave Mode and Sandbox hashes unchanged after the E16 re-pin |
 
 ## 16. Build tasks
 
 In order, for the agent that owns `src/data/levels/L02/` (and `prefabs/desert.js`), on branch `<agent>/campaign-l02`.
 
-1. `prefabs/desert.js`: the 19 prefabs in §7. Unit test: each flattens to valid solids.
-2. `L02/index.js`: header (stage, tier 2, par 1,200 s, `maxAlive` 10), section order `S1`, `S2`, `S3`, `S4`, `SB`, the three cards.
-3. `L02/S1.js` blockout from §6.1. Export the map; walk it in debug fly; check the 5 m, 3 m and 4 m widths.
-4. `L02/S2.js` blockout: terrain, three crests, The Teeth, the Shelf, the caravanserai. Needs N1 and N2.
+1. `prefabs/desert.js`: the 21 prefabs in §7. Unit test: each flattens to valid solids.
+2. `L02/index.js`: header (stage, tier 2, par 1,200 s, `maxAlive` 10, loot row 65 / 30 / 5 / 0 / 0, base tier Common), section order `S1`, `S2`, `S3`, `S4`, `SB`, the three cards.
+3. `L02/S1.js` blockout from §6.1. Export the map; walk it in debug fly; check the 5 m, 3 m and 4 m widths and the 44 × 44 m court.
+4. `L02/S2.js` blockout: terrain, three crests, The Teeth, the Shelf, the 44 × 44 m caravanserai with its gallery. Needs N1 and N2.
 5. `L02/S3.js` blockout: rims, ledges, the Needle, docks, kill plane, three carpets.
 6. `L02/S4.js` blockout: six roofs, bridges, stairs, the square, the depot court.
 7. `L02/SB.js` blockout: vault, corridor, facade, `duelArena('bazaar', [40, 0, 70])` or the stand-in cover.
-8. Mechanisms, section by section, from the tables in §6: doors and spawn doors, pots, racks and ammo, shrine and conduits, quicksand, geysers, movers, ziplines, catapults, looms, depots, checkpoints.
-9. Encounters E1 to E9 from §8, one at a time, each with its squad table as data. Run the bot after each.
-10. Enemy data check with the E7 owner: the three stat blocks in §9; `rugLoom` and `carpetPylon` targets.
-11. `SB-BOSS` part script from §10 with the boss-track agent (B §9): parts 1 and 3 first with a dummy boss, then the Duel stages. Needs N3 and N5.
-12. Secrets and Audit Files (§12), Overshield, standees. Easy and Heroic deltas (§13).
-13. Tests in §15. Tune counts and HP in level data only until the pacing estimate and one human Normal run are inside 20:00 ± 3:00.
-14. Pin PR with the boss owner: `SB-BOSS` in `CANONICAL_BOSSES`, Sahil's HP, `npm run build:server-sim`, hub re-vendor. Say in the PR that the campaign fingerprint moved on purpose.
-15. Run every check in `AGENTS.md`; attach the five map exports to the PR.
+8. Mechanisms, section by section, from the tables in §6: doors and spawn doors, pots, racks, shrine and conduits, quicksand, geysers, movers, ziplines, catapults, looms, depots, checkpoints.
+9. Lockdowns `lockdown-L1`, `lockdown-L2`, `lockdown-L3`: slabs, thresholds, lids, named spawn points, reward chests. Needs N6 and N7. Run the lockdown tests in §15 before adding waves.
+10. Encounters E1 to E9 from §8, one at a time, each with its squad or wave table as data. Run the bot after each.
+11. Enemy data check with the E7 owner: the three stat blocks in §9; `rugLoom` and `carpetPylon` targets.
+12. `SB-BOSS` part script from §10 with the boss-track agent (B §9): parts 1 and 3 first with a dummy boss, then the Duel stages. Needs N3 and N5.
+13. Loot and ammo from §12 with the E17 owner: the 5 guaranteed drops, 36 ammo boxes, 4 ammo crates, 3 depot crates. Check the shells budget and the hub-run bullets figure against a bot run.
+14. Secrets (§12): Golden Bonk, Mana Battery, secret cache, three Audit Files; Overshield; standees. Easy and Heroic deltas (§13).
+15. Tests in §15. Tune counts and HP in level data only until the pacing estimate and one human Normal run are inside 20:00 ± 3:00.
+16. Pin PR with the boss owner: `SB-BOSS` in `CANONICAL_BOSSES`, Sahil's HP, `npm run build:server-sim`, hub re-vendor. Say in the PR that the campaign fingerprint moved on purpose.
+17. Run every check in `AGENTS.md`; attach the five map exports to the PR.
