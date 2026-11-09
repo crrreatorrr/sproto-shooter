@@ -65,13 +65,13 @@ describe('protocol 2 identity (SHOOTER-S2a, sim 2 since SHOOTER-S2b)', () => {
     expect(PROTOCOL).toBe(2);
     expect(SIM_VERSION).toBe(2);
     // S2b (sim 2) is a deliberate fingerprint bump from 0e584d36 (S2a, sim 1).
-    expect(CONTENT_FINGERPRINT).toBe('ec36c8fa');
+    expect(CONTENT_FINGERPRINT).toBe('17d87c54');
     expect(OP.PING).toBe(10);
     expect(OP.PONG).toBe(11);
     const props = matchmakerProps();
     expect(props.query).toBe(MATCHMAKER_QUERY);
-    expect(props.query).toBe('+properties.game:sproto-shooter +properties.mode:free +properties.protocol:2 +properties.content:ec36c8fa');
-    expect(props.stringProperties).toMatchObject({ protocol: '2', content: 'ec36c8fa', sim: '2' });
+    expect(props.query).toBe('+properties.game:sproto-shooter +properties.mode:free +properties.protocol:2 +properties.content:17d87c54');
+    expect(props.stringProperties).toMatchObject({ protocol: '2', content: '17d87c54', sim: '2' });
     expect(matchmakerProps('deadbeef').query).toContain('+properties.content:deadbeef');
   });
 });
@@ -428,12 +428,14 @@ describe('review fixes (SHOOTER-S2a)', () => {
     expect(JSON.parse(replayJSON(JSON.stringify(golden.record))).verified).toBe(true);
   });
 
-  it('createHostedDirector requires an explicit seed and match id', () => {
-    expect(() => createHostedDirector({})).toThrow(/seed/);
-    expect(() => createHostedDirector({ seed: 5 })).toThrow(/matchId/);
-    expect(() => createHostedDirector({ seed: 1.5, matchId: 'm' })).toThrow(/seed/);
-    const director = createHostedDirector({ seed: 5, matchId: 'm-1' });
-    expect(director.exportState()).toMatchObject({ seed: 5, matchId: 'm-1', hosted: true });
+  it('createHostedDirector requires a host spawn seed, a secret combat seed and the match id', () => {
+    const combatSeed = '00112233445566778899aabbccddeeff';
+    expect(() => createHostedDirector({ combatSeed, matchId: 'm' })).toThrow(/spawnSeed/);
+    expect(() => createHostedDirector({ spawnSeed: 5, combatSeed })).toThrow(/matchId/);
+    expect(() => createHostedDirector({ spawnSeed: 1.5, combatSeed, matchId: 'm' })).toThrow(/spawnSeed/);
+    expect(() => createHostedDirector({ spawnSeed: 5, matchId: 'm' })).toThrow(/combatSeed/);
+    const director = createHostedDirector({ spawnSeed: 5, combatSeed, matchId: 'm-1' });
+    expect(director.exportState()).toMatchObject({ spawnSeed: 5, matchId: 'm-1', hosted: true, combatSeedDerived: false });
     expect(pvp.createHostedDirector).toBe(createHostedDirector);
   });
 });
@@ -544,6 +546,6 @@ describe('mock match handler', () => {
     expect(live.frozen).toBeNull();
     expect(frozen.sent).toEqual(live.sent);
     expect(live.sent.length).toBeGreaterThan(90);
-    expect(live.label).toEqual({ kind: 'sproto_shooter_free', game: 'sproto-shooter', mode: 'free', protocol: 2, content: 'ec36c8fa', stake: 0 });
+    expect(live.label).toEqual({ kind: 'sproto_shooter_free', game: 'sproto-shooter', mode: 'free', protocol: 2, content: '17d87c54', stake: 0 });
   });
 });

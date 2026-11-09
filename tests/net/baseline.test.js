@@ -81,8 +81,9 @@ describe('pins the harness must never move', () => {
     const state = replay(scriptedMatch(7, 180));
     // Sim 2 (SHOOTER-S2b) is a deliberate golden bump from ce272de1 (sim 1).
     expect(hashState(state)).toBe('6545ca0a');
-    // Fingerprints: f5949631 (protocol 1) -> 0e584d36 (S2a) -> ec36c8fa (S2b, sim 2).
-    expect(CONTENT_FINGERPRINT).toBe('ec36c8fa');
+    // Fingerprints: f5949631 (protocol 1) -> 0e584d36 (S2a) -> ec36c8fa (S2b, sim 2) -> 17d87c54
+    // (S2b review fixes: 128-bit combat RNG, echo cap 1000 ms, view step 2).
+    expect(CONTENT_FINGERPRINT).toBe('17d87c54');
     expect(contentFingerprint(1)).toBe('3c657fb5');
   });
 });
@@ -162,7 +163,7 @@ describe('baseline: documents current behaviour (S1 client, director v2)', () =>
   });
 
   // SHOOTER-S2b. The rewind itself is exact: scored at the client's full claim, every check
-  // agrees. The director's cap is min(10 ticks, its own RTT + the client's announced
+  // agrees except where the client drew an extrapolated target. The director's cap is min(10 ticks, its own RTT + the client's announced
   // interpolation delay + 2 ticks) (review decision: an honest claim is about uplink lead +
   // downlink + interpolation delay + input buffer, i.e. RTT + D + a tick or two; the first draft's
   // min(6, RTT/2 + D + 1) clipped 97% of claims at RTT 100 and scored 69.5%).
@@ -170,15 +171,26 @@ describe('baseline: documents current behaviour (S1 client, director v2)', () =>
     const zero = measure('rtt0', { fire: true });
     expect(zero.rewind.checks).toBeGreaterThan(300);
     expect(zero.rewind.agreement).toBeGreaterThanOrEqual(TARGETS.rewindAgreement);
-    expect(zero.rewind.unclampedAgreement).toBe(1);
+    // At the full claim the rewind is exact except where the client drew an extrapolated
+    // target (a late snapshot on the jittered loop): 99.2-99.8% on the realistic harness.
+    expect(zero.rewind.unclampedAgreement).toBeGreaterThanOrEqual(0.99);
     for (const name of ['rtt100j30', 'rtt150']) {
       const report = measure(name, { fire: true });
       expect(report.rewind.checks).toBeGreaterThan(300);
-      expect(report.rewind.unclampedAgreement).toBe(1);
-      // Only the first second (no RTT sample yet: cap 5) clamps.
+      expect(report.rewind.unclampedAgreement).toBeGreaterThanOrEqual(0.99);
+      // The second PING right after the first PONG gives the director an RTT before the first
+      // shots, so honest claims are (almost) never clamped.
       expect(report.rewind.clampedFraction).toBeLessThan(0.05);
       expect(report.rewind.appliedTicks.max).toBeLessThanOrEqual(10);
+      // Honest views are continuous: the backtrack rule never fires.
+      for (const peer of report.peers) expect(peer.directorViewClamped).toBe(0);
     }
+    // During an RTT spike the director's RTT median lags, so the cap cuts honest claims for a
+    // while: the shooter is the one who pays for the spike (measured 16.6% clamped, 93.8%).
+    const spike = measure('rttSpike', { fire: true });
+    expect(spike.rewind.clampedFraction).toBeGreaterThan(0.05);
+    expect(spike.rewind.agreement).toBeLessThan(TARGETS.rewindAgreement);
+    expect(spike.rewind.unclampedAgreement).toBeGreaterThanOrEqual(0.99);
     const mid = measure('rtt100j30', { fire: true });
     expect(mid.rewind.claimTicks.p50).toBe(8);
     for (const peer of mid.peers) {

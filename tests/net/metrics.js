@@ -211,6 +211,8 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
             directorAppliedFraction: used && ticks ? round(used.applied / ticks) : null,
             directorHeld: used ? used.held : null,
             directorNeutral: used ? used.neutral : null,
+            // S2b: inputs whose view claim broke continuity (went back, or moved > 2 ticks).
+            directorViewClamped: used && used.viewClamped != null ? used.viewClamped : null,
             inputsSent: seat.inputsSent,
             inputsDroppedWhileDown: seat.inputsDroppedWhileDown,
             inputsAccepted: seat.inputsAccepted,

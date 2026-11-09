@@ -18,10 +18,10 @@ import './fixtures/director-golden.js';
 
 // SHOOTER-S2b: sim 2 (lag compensation, split seed, no crits) is a deliberate golden bump from
 // ce272de1 (sim 1, tick 61). The fingerprint went f5949631 (protocol 1) -> 0e584d36 (S2a) ->
-// ec36c8fa (S2b).
+// ec36c8fa (S2b) -> 17d87c54 (S2b review fixes).
 const GOLDEN_HASH = '6545ca0a';
 const GOLDEN_TICK = 65;
-const FINGERPRINT = 'ec36c8fa';
+const FINGERPRINT = '17d87c54';
 const DRIVER = path.resolve('tests', 'fixtures', 'director-golden.js');
 const { comment: _comment, ...DIRECTOR_GOLDEN } = directorGoldenFixture;
 
@@ -156,9 +156,10 @@ describe('browser, node, and goja', () => {
     expect(pin.replayVersion).toBe(2);
     expect(pin.matchmakerQuery).toContain(`+properties.protocol:2 +properties.content:${FINGERPRINT}`);
     expect(pin.limits).toMatchObject({ futureFrames: 8, maxFramesPerSecond: 45, maxFramesPerCursor: 9, holdTicks: 3, catchUpTicks: 4, maxHelloPerSecond: 2, maxReadyPerSecond: 2, frameBytes: 18 });
-    expect(pin.rewind).toMatchObject({ maxTicks: 10, historyTicks: 12, maxBack: 255, fracSteps: 256, interpMs: 100, interpMinMs: 50, interpMaxMs: 150, extraTicks: 2 });
+    expect(pin.rewind).toMatchObject({ maxTicks: 10, historyTicks: 12, maxBack: 255, fracSteps: 256, interpMs: 100, interpMinMs: 50, interpMaxMs: 150, extraTicks: 2, maxRttMs: 1000, maxBackStep: 2 });
+    expect(pin.replayLimits).toEqual({ maxTicks: 2700, maxBytes: 524288 });
     expect(pin.crits).toBe(false);
-    expect(pin.combatSeed).toBe('sha256-commit-reveal');
+    expect(pin.combatSeed).toBe('sha256-commit-reveal-128');
     expect(pin.campaignProtocol).toBe(1);
     expect(pin.campaignContentFingerprint).toBe('3c657fb5');
     expect(pin.mintsTickets).toBe(false);
