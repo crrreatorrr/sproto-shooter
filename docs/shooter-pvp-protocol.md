@@ -185,7 +185,13 @@ A client `RESULT` (op 8), or a hello/ready body containing `winner`, `result`, `
 
 Button bits, low to high: `fire`, `zoom`, `sprint`, `jump`, `dash`, `reload`, `slide`. Bit 7 must be 0. `slide` is accepted and does not move the arena body in sim 1. `jump` and `dash` are edges. `fire` and `zoom` are held.
 
-The reference client runs a fixed 30 Hz input clock and sends exactly one input per input tick, stamped `frame` = estimated server tick + lead. The estimate is the least-delayed recent snapshot's `tick` plus elapsed time at 30 Hz. The lead starts at 2 (or the HELLO/READY round trip in ticks plus one), rises by `cursor - frame + 1` on a late `frame` reject, drops back into the window on a frame past `cursor + 4`, and is capped at 12. After a reject it resends from `lastSeq + 1` and ignores the `sequence` rejects of inputs that were already in flight. Inputs also serve as the heartbeat. Caps, checked before the sequence advances:
+The reference client runs a fixed 30 Hz input clock and sends exactly one input per input tick, stamped `frame` = estimated server tick + lead. The estimate is the least-delayed recent snapshot's `tick` plus elapsed time at 30 Hz. The lead starts at 2 (or the round trip in ticks plus one), rises by `cursor - frame + 1` on a late `frame` reject, drops back into the window on a frame past `cursor + 4`, and is capped at 12. After a reject it resends from `lastSeq + 1` and ignores the `sequence` rejects of inputs that were already in flight. Inputs also serve as the heartbeat.
+
+Round trip: protocol 1 has no PING, so the client measures HELLO/READY → its own WELCOME. While live it repeats READY every 500 ms as a probe; director v1 answers a READY from a seated, live session with WELCOME (and a PHASE) and changes nothing. The RTT is the median of the last 5 samples, and a probe unanswered for 2 s is dropped. Whenever that median falls, the lead is capped at the round-trip lead (`ceil(RTT / 33.3 ms) + 1`) plus 2 ticks of jitter margin. Late rejects during an RTT spike can raise the lead to 12, and without the cap only the 30 s probe would have brought it down, one tick at a time. With the cap it comes back within about 3 probes (~1.5–2 s) of the spike ending.
+
+**Hidden tab:** browsers stop animation frames in a background tab. The client's input clock and probes run from the render loop, so a hidden tab sends no inputs and no probes. The director forfeits that seat after `STALL_MS` (10 s) with no input (`stall`). This is deliberate: a player who tabs away for 10 s has left the duel.
+
+Caps, checked before the sequence advances:
 
 | Check | Limit | Reason |
 |---|---|---|
