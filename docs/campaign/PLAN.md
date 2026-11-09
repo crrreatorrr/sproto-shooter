@@ -107,6 +107,7 @@ A level document must add up. Every beat gets an estimated time, and the beats s
 - 10 to 13 **beats**: 7 to 9 combat encounters, 2 or 3 traversal or mechanism beats, 1 or 2
   breathers at a depot, 1 finale.
 - Route length 1.0 to 1.6 km. The player walks at 6.5 m/s and sprints at 9.5 m/s; budget **5.5 m/s** average.
+- 3 or 4 **lockdown arenas** (§5.6): semi-large rooms whose doors close until every wave is dead.
 - 8 to 10 checkpoints (never more than 2.5 minutes apart), 2 depots (mid level and before the finale).
 - 1 Golden Bonk (the old modifier table in C-level-designs §1.4 stays) and 3 optional **Audit Files**
   (tickets and a line of story each).
@@ -278,6 +279,33 @@ Every squad in a level document names one.
 `onSwitch(id)`, `onHold(p%)` (hold or objective progress), `onBossHp(p%)`, `onPartDestroyed(id)`,
 `onAlert` (a placed squad noticed the player).
 
+### 5.6 Lockdown arenas (doors close until every wave is dead)
+
+A lockdown is a semi-large room or yard that seals when the player walks in and opens only when
+every wave in it is dead. Every level has them. They are the level's set-piece fights.
+
+| Rule | Value |
+|---|---|
+| How many | **3 or 4 per level**, spread across sections, never two back to back. A boss or mini-boss arena is also a lockdown and counts as one of them |
+| Size | **Semi-large**: between 40 × 40 m and 80 × 80 m of floor. Not a corridor, not an open field |
+| Shape | At least two height levels (a balcony, a roof, a pit) or at least 8 pieces of cover, and room to circle |
+| Entrances for enemies | At least 3 named spawn points on different sides (doors, vents, roofs, mounds, portals) |
+| Waves | **3 to 5 waves**, 25 to 45 enemies in all, 2 to 3.5 minutes |
+| Start | The player crosses a threshold 6 m inside the room. One second later the entry door drops behind them and the exit door locks. The door never closes on a player standing in it: it pushes them in |
+| Next wave | `onRemain(2)` of the wave before, or 25 s after it started, whichever comes first |
+| End | Last enemy dead: both doors open, a checkpoint saves, and a reward appears (ammo crate, mana bloom or health) |
+| No escape | The doors are full-height slabs. Blink, Magic Carpet, jump pads and the jetpack cannot leave: the room has a ceiling or a force-field lid, and Blink fails against a locked door |
+| No stalling | Every enemy must be able to reach or shoot the player. Flyers stay inside the room's volume. If the last 2 enemies of a wave live more than 12 s, they are marked on the HUD and run at the player |
+| Dying | A checkpoint sits just outside the entry door. Dying restarts the lockdown at wave 1 with the doors open |
+| Tools | Any gun, ammo or spell object the lockdown needs is inside the room |
+| HUD | "LOCKDOWN" banner, wave counter "2 / 4", enemies remaining |
+| Look | Door = a box slab 0.6 m thick with `neon` trim: red while locked, green when open. The threshold is a `disc` line on the floor |
+
+In level data a lockdown is a `lockdown` mechanism that names its entry door, its exit door and its
+encounter. The encounter's objective is `clearAll` and its squads are the waves. A level document
+marks each lockdown in its overview map with **[L]**, gives the room's blockout, and writes the
+wave table like any other spawn timeline.
+
 ---
 
 ## 6. Magic
@@ -382,6 +410,7 @@ The catalog in C §3.9 stands: door, switch, barrel, kill volume and void rescue
 collapsing bridge, hazard zones, geyser, conveyor, crusher, laser grid, zipline, portal, gravity
 well, energy bridge, rotating platform, cracking tiles, rising hazard, rail ride, emplacement, fuel
 pad, depot, destructible target. This plan adds the magic objects in §6.2, the explosives in §7,
+`lockdown` (§5.6: the doors of a semi-large arena seal until every wave is dead; every level),
 `searchlight` (L05), `alarm` (L05, L08: reinforcements arrive if it is not cut), `capture zone`
 (L09) and `escort` (a slow mover the player protects; L06 and L07 may use it).
 
@@ -431,7 +460,7 @@ Level documents cite these ids in their "engine needs" section.
 | **E1** | World collision: solids for player, enemies, projectiles and pick-ups; ground height; step-up 0.4 m; kill planes and void rescue | none in campaign | C §3.4 |
 | **E2** | World raycasts: hitscan stopped by solids, `hasLOS`, enemy perception (sight, hearing, alert states), cover queries | ground plane only | C §3.5 |
 | **E3** | Navigation: baked grid per section, nav links for pads, lifts and portals, 3D flyer steering | none | C §3.6, §3.7 |
-| **E4** | Level format v2: free-form sections, several squads per encounter with triggers (§5.5) and spawn methods (§5.4), objectives `clearAll`, `reach`, `switch`, `hold`, `destroy`, `survive`, `capture`, `escort`, `escape`, `boss` | one squad, two objectives | C §3.2, §3.8 |
+| **E4** | Level format v2: free-form sections, several squads per encounter with triggers (§5.5) and spawn methods (§5.4), objectives `clearAll`, `reach`, `switch`, `hold`, `destroy`, `survive`, `capture`, `escort`, `escape`, `boss`; lockdown arenas with sealed doors, wave counter and anti-stall (§5.6) | one squad, two objectives | C §3.2, §3.8 |
 | **E5** | Rendering big sections: merged static meshes, new primitives and materials, prefab instancing, culling, the placeholder-enemy `look` view | boxes and cylinders, one mesh each | C §3.15 |
 | **E6** | Mechanisms with real behaviour (§8) | proximity stubs | C §3.9 |
 | **E7** | Enemy archetype framework with the data-driven attack runner; real behaviour for the 13 re-skins | re-skins | C §3.12, COOP_PLAN §6.3 |
@@ -500,6 +529,7 @@ Every file in `docs/campaign/levels/` has these sections, in this order.
 8. **Encounters**: for each one, the space, the objective, and a **spawn timeline**: one row per
    squad with trigger (§5.5), spawn method (§5.4), where from, enemy types and counts, and what it
    teaches or tests. Then `maxAlive`, weapons and ammo nearby, and the estimated minutes.
+   Mark the 3 or 4 **lockdown arenas** (§5.6) and give each its room size, doors, spawn points and waves.
 9. **New enemies**: full stat block and primitive look for any enemy this level introduces.
 10. **Finale**: the mini-boss or boss as a **parts table** (§9): HP, attacks, adds, arena change, what ends the part.
 11. **Mechanisms, magic and explosives used**, with what is new to this level.
