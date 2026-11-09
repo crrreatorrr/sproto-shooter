@@ -10,6 +10,37 @@ function asset(path) {
 
 let playerPromise = null;
 
+const CAM_BACK = 11;
+const CAM_UP = 5.5;
+const CAM_AHEAD = 8;
+const CAM_EYE = 1.1;
+
+/**
+ * Chase camera from the LOCAL look (the yaw and pitch this client is sending), not the server's
+ * echo of it, which arrives a round trip late. Pitch tilts the view; at pitch 0 this is the
+ * original level chase camera.
+ */
+export function chaseCamera(me, yaw, pitch = 0) {
+  const p = Math.max(-1.5, Math.min(1.5, Number.isFinite(pitch) ? pitch : 0));
+  const y = Number.isFinite(yaw) ? yaw : 0;
+  const cp = Math.cos(p);
+  const dx = -Math.sin(y) * cp;
+  const dy = Math.sin(p);
+  const dz = -Math.cos(y) * cp;
+  return {
+    position: {
+      x: me.x - dx * CAM_BACK,
+      y: Math.max(me.y + 0.3, me.y + CAM_UP - dy * CAM_BACK),
+      z: me.z - dz * CAM_BACK,
+    },
+    target: {
+      x: me.x + dx * CAM_AHEAD,
+      y: me.y + CAM_EYE + dy * CAM_AHEAD,
+      z: me.z + dz * CAM_AHEAD,
+    },
+  };
+}
+
 function loadPlayer() {
   if (!playerPromise) {
     playerPromise = (async () => {
@@ -104,7 +135,8 @@ export function createArenaView(canvas) {
     camera.updateProjectionMatrix();
   }
 
-  function render(sample, seat) {
+  /** `look` is the local {yaw, pitch}; without it the camera falls back to the sampled yaw. */
+  function render(sample, seat, look = null) {
     resize();
     const players = sample && sample.players;
     for (let i = 0; i < 2; i++) {
@@ -115,11 +147,11 @@ export function createArenaView(canvas) {
       body.position.set(p.x, p.y, p.z);
       body.rotation.y = p.yaw;
     }
-    const me = players && players[seat] ? players[seat] : { x: 0, y: 0, z: 16, yaw: 0 };
-    const backX = Math.sin(me.yaw) * 11;
-    const backZ = Math.cos(me.yaw) * 11;
-    camera.position.set(me.x + backX, me.y + 5.5, me.z + backZ);
-    camera.lookAt(me.x - Math.sin(me.yaw) * 8, me.y + 1.1, me.z - Math.cos(me.yaw) * 8);
+    const me = players && players[seat] ? players[seat] : { x: 0, y: 0, z: 16, yaw: 0, pitch: 0 };
+    if (look && players && players[seat]) bodies[seat].group.rotation.y = look.yaw;
+    const cam = look ? chaseCamera(me, look.yaw, look.pitch) : chaseCamera(me, me.yaw, me.pitch || 0);
+    camera.position.set(cam.position.x, cam.position.y, cam.position.z);
+    camera.lookAt(cam.target.x, cam.target.y, cam.target.z);
     renderer.render(scene, camera);
   }
 

@@ -71,6 +71,12 @@ export const PROFILES = Object.freeze({
   }),
   // RTT ~100 ms with a heavy tail: 3% of messages pick up an extra Pareto(alpha 1.5) delay of
   // 40 ms scale, capped at 400 ms. TCP order means everything behind such a message waits too.
+  // RTT 80 ms, then a 300 ms spike for 3 s from 4 s after live start, then 80 ms again.
+  rttSpike: Object.freeze({
+    latencyMs: 40,
+    jitterMs: 5,
+    spikes: Object.freeze([Object.freeze({ atMs: 4000, forMs: 3000, latencyMs: 150 })]),
+  }),
   heavyTail: Object.freeze({
     latencyMs: 50,
     jitterMs: 10,
@@ -184,6 +190,17 @@ export function createTcpLink({ scheduler, rng, profile = {}, deliver, horizonMs
   const jitter = profile.jitterMs || 0;
   const bandwidth = profile.bandwidth || 0;
   const tail = profile.tail || null;
+  const spikes = profile.spikes || [];
+  // Spike times count from the origin (runScenario sets it at live start).
+  let origin = null;
+  function latencyAt(time) {
+    if (origin == null) return latency;
+    for (const spike of spikes) {
+      const t = time - origin;
+      if (t >= spike.atMs && t < spike.atMs + spike.forMs) return spike.latencyMs;
+    }
+    return latency;
+  }
   const stalls = [];
   if (profile.stall) {
     const { everyMs, minMs, maxMs } = profile.stall;
@@ -215,7 +232,7 @@ export function createTcpLink({ scheduler, rng, profile = {}, deliver, horizonMs
       const serial = bandwidth > 0 ? (bytes * 1000) / bandwidth : 0;
       const departs = Math.max(now, wireFree) + serial;
       wireFree = departs;
-      let arrival = departs + latency + (jitter > 0 ? rng.range(-jitter, jitter) : 0);
+      let arrival = departs + latencyAt(departs) + (jitter > 0 ? rng.range(-jitter, jitter) : 0);
       if (tail && rng.next() < tail.p) {
         // Pareto: scale * (U^(-1/alpha) - 1), capped.
         const extra = tail.scaleMs * ((1 - rng.next()) ** (-1 / tail.alpha) - 1);
@@ -241,6 +258,8 @@ export function createTcpLink({ scheduler, rng, profile = {}, deliver, horizonMs
         deliver(payload);
       });
     },
+    /** Latency spikes (profile.spikes) are timed from here. */
+    setOrigin(time) { origin = time; },
     /** Connection reset: in-flight data is gone, and a fresh connection starts empty. */
     reset() {
       epoch += 1;
@@ -364,7 +383,8 @@ export function botWish(sample, seat, frame, { fire = false, strafe = 0 } = {}) 
  *   durationMs      how long to run after both seats are live
  *   profile         link profile for both directions, or { up, down }
  *   disconnects     [{ peer, atMs, downMs }], peer 0 = 'ada', 1 = 'bea'; atMs from live start
- *   renderHz        client frame rate (inputs are submitted from the render loop, as today)
+ *   renderHz        client frame rate. Each render frame calls client.update(), whose own 30 Hz
+ *                   input clock decides how many inputs (0..4) that frame sends.
  *   fire            whether bots fire (off by default so matches run the whole window)
  *   leaveDetectMs   how long the server takes to notice a reset socket
  *   realism         REALISM (default) or IDEAL, or an object with the same fields
@@ -534,7 +554,7 @@ export function runScenario(options = {}) {
       onRejoin(fn) { peer.rejoinFns.push(fn); return () => {}; },
     };
     join(peer);
-    peer.client = createPvpClient({ accountId: peer.accountId, match });
+    peer.client = createPvpClient({ accountId: peer.accountId, match, clock: () => peer.clock.now(scheduler.now) });
   }
 
   // Client render loops at renderHz with seeded phase offsets.
@@ -549,14 +569,16 @@ export function runScenario(options = {}) {
         client.ready();
       }
       if (client.phase === 'live' && !client.result) {
-        const sample = client.sample();
+        const local = peer.clock.now(scheduler.now);
+        const sample = client.sample(local);
         const viewKey = sample && sample.players
           ? `${sample.tick}|${sample.players.map((p) => `${p.x},${p.z},${p.yaw}`).join('|')}`
           : null;
-        metrics.renderFrame(peer.index, scheduler.now, viewKey);
+        metrics.renderFrame(peer.index, scheduler.now, viewKey, sample && sample.mode);
         if (sample && sample.players && sample.players[0] && sample.players[1] && client.seat >= 0) {
-          client.submit(botWish(sample, client.seat, peer.frame, { fire, strafe: peer.strafe }));
+          client.update(local, (frame) => botWish(sample, client.seat, frame, { fire, strafe: peer.strafe }));
         }
+        metrics.clientNet(peer.index, client.net, scheduler.now);
       }
       return true;
     }, rng.range(0, frameMs));
@@ -592,6 +614,10 @@ export function runScenario(options = {}) {
       liveAt = scheduler.now;
       endAt = liveAt + durationMs;
       metrics.live(liveAt);
+      for (const peer of peers) {
+        peer.up.setOrigin(liveAt);
+        peer.down.setOrigin(liveAt);
+      }
       armDrops();
     }
     if (director.phase === 'done' && peers.every((peer) => !peer.connected || peer.client.result)) return true;
