@@ -20,7 +20,7 @@ export function damageEnemy(state, e, hit) {
   let dmg = hit.base;
   const p = state.players[hit.sourceId];
   if (p) {
-    if (hit.sourceKind === 'spell') dmg *= 1 + 0.08 * (p.skills.magic.level - 1);
+    if (hit.sourceKind === 'spell' && state.tier > 1) dmg *= Math.pow(1.15, state.tier - 1);
   }
   const isWeak = hit.zone === 'weak';
   if (isWeak) {

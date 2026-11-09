@@ -19,7 +19,7 @@ Outputs:
 
 `sourceCommit` is `git rev-parse HEAD` baked into the bundle before the sha256. Rebuild on the merged shooter SHA and vendor both files. Refuse to boot if `bundleSha256` or `contentFingerprint` disagrees with the running copy. A stale pin is not accepted.
 
-Measured on this phase's build host: the bundle is about 277 KB. Content fingerprint for protocol 1 is `3c657fb5`. The sha256 changes with the commit baked into the file, so read it from the pin of the build you vendor.
+Measured on this phase's build host: the bundle is about 277 KB. Content fingerprint for protocol 1 is `bfe99bf4`. The sha256 changes with the commit baked into the file, so read it from the pin of the build you vendor.
 
 Entry points:
 
@@ -57,7 +57,7 @@ Payable ids, one each. A flee is not a kill. `obamaDuo` and `midgetDuo` are part
 
 `canonicalCount` is 1 when every required part died, including obama. It is 0 when the run failed or never finished. `eligible` is true only for a gun or gun-splash kill by the bound player, with that player still alive and no flee. A spell, damage-over-time, or other killing blow is `outcome: "assisted"`: the replay is authentic, `eligible` is false, and it is unranked.
 
-The issued start is the campaign section that contains that encounter. The player stands on the section's authored start with the starter MG (common, Ol' Reliable, no element, no wacky), level-1 skills, zero Tickets, and zero resources. `loadout` must be `canonical-start`. A profile, gun list, loot table, or checkpoint blob is `injected_inventory` or `bad_checkpoint`.
+The issued start is the campaign section that contains that encounter. The player stands on the section's authored start with the starter MG (common, Ol' Reliable, no element, no wacky), level-1 Health and Gunslinger, Goo Bolt known, and zero Tickets. There is no Magic skill, no Crafting skill, and no resource inventory. `loadout` must be `canonical-start`. A profile, gun list, loot table, or checkpoint blob is `injected_inventory` or `bad_checkpoint`.
 
 ## Issuance
 
@@ -79,7 +79,7 @@ H2-S stores this. The client never supplies it.
   "parts": ["sahil"],
   "countAs": 1,
   "loadout": "canonical-start",
-  "contentFingerprint": "3c657fb5",
+  "contentFingerprint": "bfe99bf4",
   "maxFrames": 162000,
   "duelId": "sahil",
   "distinctFrom": [],
@@ -170,7 +170,7 @@ Check order inside `verifyRun`, before the sim loop: shape, hostile keys, versio
   "tick": 2491,
   "frames": 2491,
   "protocol": 1,
-  "contentFingerprint": "3c657fb5",
+  "contentFingerprint": "bfe99bf4",
   "sourceCommit": "40 hex chars or null in unpacked source",
   "logDigest": "8 hex chars",
   "bindingHash": "8 hex chars",
@@ -183,7 +183,7 @@ Check order inside `verifyRun`, before the sim loop: shape, hostile keys, versio
 
 `outcome` is `clear`, `assisted`, `fail` (`player_down` or `boss_fled`), `incomplete` (`boss_alive`), or `rejected`. Pay only `clear`. Rank only `clear`. Assisted, failed, incomplete, and rejected pay 0 and do not write a board.
 
-`stateHash` is `verifyStateHash`: FNV-1a over canonical JSON of the state with every finite number rounded to micro-units (`Math.round(n * 1e6)`). Goja and V8 differ by 1 ulp in `sin`/`cos`, which changes raw JSON digits but not hits. The arena baseline `stateHash` is unchanged and still matches `tests/fixtures/baseline-hashes.json`.
+`stateHash` is `verifyStateHash`: FNV-1a over canonical JSON of the state with every finite number rounded to micro-units (`Math.round(n * 1e6)`). Goja and V8 differ by 1 ulp in `sin`/`cos`, which changes raw JSON digits but not hits. E16 re-pinned the Wave Mode and Sandbox hashes in `tests/fixtures/baseline-hashes.json` once, when crafting and the Magic skill left the arena. Later campaign work must not move them again.
 
 ## Checkpoints
 

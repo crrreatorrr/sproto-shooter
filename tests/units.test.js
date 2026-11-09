@@ -7,10 +7,10 @@ import { raySphere, rayCapsule, raycastEnemies } from '../src/sim/collision.js';
 import { damageEnemy, damagePlayer } from '../src/sim/combat.js';
 import { rollDrops } from '../src/sim/drops.js';
 import { addXp } from '../src/sim/progression.js';
-import { validateCraft, startCraft } from '../src/sim/economy.js';
+import { validateCraft } from '../src/sim/economy.js';
 import { xpToNext } from '../src/data/skills.js';
 import { WAVES } from '../src/data/waves.js';
-import { GUN_RECIPES, RECIPES_BY_ID } from '../src/data/recipes.js';
+import { GUN_RECIPES } from '../src/data/recipes.js';
 import { createGameState, createEnemy, createBoss } from '../src/sim/state.js';
 import { BOSSES, ENEMIES } from '../src/data/enemies.js';
 import { run, cmd } from './helpers.js';
@@ -188,17 +188,14 @@ describe('level-scoped loading', () => {
 });
 
 describe('drops', () => {
-  it('each enemy drops its own resource; elites drop double', () => {
+  it('enemies drop ammo, health, guns and tickets, and never a crafting resource', () => {
     const r = createRng(1);
     const tank = rollDrops(r, 'bigObama', { tier: 1 });
-    expect(tank.some((d) => d.resId === 'plating')).toBe(true);
-    const sumScrap = (elite) => { const rr = createRng(9); let n = 0; for (let i = 0; i < 200; i++) n += rollDrops(rr, 'obama', { elite, tier: 1 }).filter((d) => d.resId === 'scrap').reduce((a, d) => a + d.amount, 0); return n; };
-    expect(sumScrap(true)).toBeGreaterThan(sumScrap(false) * 1.7);
-  });
-  it('bosses drop a Boss Core; Hex drops Mana Crystals', () => {
-    const r = createRng(2);
-    expect(rollDrops(r, 'megaSproto', { tier: 1 }).some((d) => d.resId === 'bossCore')).toBe(true);
-    expect(rollDrops(r, 'hexAuditor', { tier: 1 }).some((d) => d.resId === 'manaCrystal')).toBe(true);
+    expect(tank.some((d) => d.kind === 'resource')).toBe(false);
+    expect(tank.some((d) => d.kind === 'ammo' || d.kind === 'health' || d.kind === 'gun' || d.kind === 'tickets')).toBe(true);
+    const bosses = rollDrops(createRng(2), 'hexAuditor', { tier: 1, boss: true });
+    expect(bosses.some((d) => d.kind === 'resource')).toBe(false);
+    expect(bosses.some((d) => d.kind === 'bossGun' || d.source === 'boss' || d.kind === 'gun')).toBe(true);
   });
 });
 
@@ -207,19 +204,19 @@ describe('use-based XP', () => {
     expect(xpToNext('health', 1)).toBe(100);
     expect(xpToNext('gunslinger', 2)).toBe(174);
     const s = createGameState(); const p = s.players[s.localPlayerId];
-    addXp(s, p, 'magic', 80 + 116 + 1);
-    expect(p.skills.magic.level).toBe(3);
-    expect(p.perks.chainZap).toBe(true);
-    expect(p.maxMana).toBe(130);
+    expect(p.skills.magic).toBeUndefined();
+    expect(p.skills.crafting).toBeUndefined();
+    expect(p.perks.gooBolt).toBe(true);
+    expect(p.spellUnlocks.gooBolt).toBe(true);
+    expect(p.maxMana).toBe(100);
   });
-  it('casting spells levels Magic; killing a magic boss gives big Magic XP', () => {
+  it('casting does not create a Magic skill, and a campaign start has no spells', () => {
     const s = createGameState(); const p = s.players[s.localPlayerId];
-    run(s, 300, (st, i) => cmd({ pressed: { gooBolt: i % 40 === 0 } }));
-    expect(p.skills.magic.total).toBeGreaterThan(0);
-    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'spawnBoss', args: { type: 'hexAuditor' } }] }));
-    const before = p.skills.magic.total;
-    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'killAll' }] })); // gun kill of a Magic boss
-    expect(p.skills.magic.total - before).toBeGreaterThanOrEqual(200);
+    run(s, 30, (st, i) => cmd({ pressed: { gooBolt: i % 10 === 0 } }));
+    expect(p.skills.magic).toBeUndefined();
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'campaign', level: 'L01' }] }));
+    expect(p.perks.gooBolt).toBe(false);
+    expect(p.spellUnlocks.gooBolt).toBeUndefined();
   });
   it('kills give Health and Gunslinger XP; damage taken gives a little Health XP', () => {
     const s = createGameState(); const p = s.players[s.localPlayerId];
@@ -235,31 +232,13 @@ describe('use-based XP', () => {
 });
 
 describe('crafting', () => {
-  it('every gun type has 5 tiers; bazooka always needs a Boss Core', () => {
-    for (const t of ['mg', 'shotgun', 'sniper', 'bazooka']) expect(GUN_RECIPES.filter((r) => r.gunType === t)).toHaveLength(5);
-    for (const r of GUN_RECIPES.filter((x) => x.gunType === 'bazooka')) expect(r.cost.bossCore).toBeGreaterThan(0);
-  });
-  it('validates distance, level and cost; crafting T1 gives Crafting XP', () => {
+  it('has no recipes, no weapon boxes and no crafting skill', () => {
+    expect(GUN_RECIPES).toEqual([]);
     const s = createGameState(); const p = s.players[s.localPlayerId];
-    const box = s.weaponBoxes[0];
-    expect(validateCraft(s, p, { boxId: box.id, recipeId: 'mg_t1' })).toMatch(/far/);
-    p.pos = { x: box.pos.x + 1.5, y: 0, z: 0 };
-    expect(validateCraft(s, p, { boxId: box.id, recipeId: 'mg_t1' })).toMatch(/resources/);
-    p.resources.scrap = 100;
-    expect(validateCraft(s, p, { boxId: box.id, recipeId: 'mg_t2' })).toMatch(/Lv 3/);
-    expect(startCraft(s, p, { boxId: box.id, recipeId: 'mg_t1' })).toBe(true);
-    expect(p.resources.scrap).toBe(80);
-    const ev = run(s, 120, () => { p.pos = { x: box.pos.x + 1.5, y: 0, z: 0 }; return cmd(); });
-    expect(ev.some((e) => e.type === 'craftComplete')).toBe(true);
-    expect(p.skills.crafting.total).toBeGreaterThanOrEqual(60);
-    expect(s.pickups.some((k) => k.kind === 'gun' && k.gun.source === 'craft')).toBe(true);
-  });
-  it('ammo is cheap (scrap only, at most 10) except rockets', () => {
-    for (const id of ['ammo_bullets', 'ammo_shells', 'ammo_sniper']) {
-      const r = RECIPES_BY_ID[id];
-      expect(Object.keys(r.cost)).toEqual(['scrap']);
-      expect(r.cost.scrap).toBeLessThanOrEqual(10);
-    }
+    expect(s.weaponBoxes).toEqual([]);
+    expect(p.resources).toBeUndefined();
+    expect(p.skills.crafting).toBeUndefined();
+    expect(validateCraft()).toBe('Crafting is gone');
   });
 });
 
@@ -316,7 +295,7 @@ describe('god mode', () => {
     expect(p.hp).toBe(99);
     expect(p.downed).toBe(false);
     expect(p.tickets).toBe(99999);
-    for (const v of Object.values(p.resources)) expect(v).toBe(9999);
+    expect(p.resources).toBeUndefined();
     p.tickets = 0; run(s, 1, () => cmd());
     expect(p.tickets).toBe(99999); // kept topped up while god mode is on
     for (const id of ['gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor']) expect(p.perks[id]).toBe(true);

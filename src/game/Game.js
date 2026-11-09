@@ -459,7 +459,7 @@ export class Game {
     const gui = new GUI({ title: 'Sproto Debug [`]', width: 300 });
     this.gui = gui;
     const d = { enemy: 'midget', count: 1, elite: false, tier: 1, boss: 'monster', gunType: 'random', quality: 'random', element: 'random', wacky: 'random',
-      tickets: 200, skill: 'magic', god: false, infAmmo: false, freeze: false, unlock: false, hitboxes: false, dummyInf: false, hpMult: 1, dmgMult: 1, timeScale: 1 };
+      tickets: 200, skill: 'health', god: false, infAmmo: false, freeze: false, unlock: false, hitboxes: false, dummyInf: false, hpMult: 1, dmgMult: 1, timeScale: 1 };
     const q = (op, args) => this.queue({ type: 'debug', op, args });
     const sp = gui.addFolder('Spawn');
     sp.add(d, 'enemy', Object.keys(ENEMIES)); sp.add(d, 'count', 1, 10, 1); sp.add(d, 'elite'); sp.add(d, 'tier', 1, 10, 1);
@@ -477,7 +477,6 @@ export class Game {
     gn.add({ go: () => q('refillAmmo') }, 'go').name('Refill ammo');
     const pl = gui.addFolder('Player');
     pl.add(d, 'tickets', 10, 2000, 10).name('Run Cash'); pl.add({ go: () => q('giveTickets', { amount: d.tickets }) }, 'go').name('Give Run Cash');
-    pl.add({ go: () => q('giveResources', { amount: 100 }) }, 'go').name('Give resources');
     pl.add(d, 'skill', SKILL_IDS); pl.add({ go: () => q('levelSkill', { skill: d.skill }) }, 'go').name('Level up skill');
     pl.add({ go: () => q('maxSkills') }, 'go').name('Max all skills');
     pl.add({ go: () => q('heal') }, 'go').name('Heal / revive');
@@ -486,7 +485,6 @@ export class Game {
     Object.defineProperty(god, 'on', { get: () => this.state.tuning.godMode, set: (v) => q('setTuning', { key: 'godMode', value: v }) });
     pl.add(god, 'on').name('God mode [P]').listen();
     pl.add(d, 'infAmmo').name('Infinite ammo').onChange((v) => q('setTuning', { key: 'infiniteAmmo', value: v }));
-    pl.add(d, 'unlock').name('Unlock all recipes').onChange((v) => q('setTuning', { key: 'unlockAllRecipes', value: v }));
     const w = gui.addFolder('World & tuning');
     w.add(d, 'tier', 1, 10, 1).name('Set tier').onFinishChange((v) => q('setTier', { tier: v }));
     w.add(d, 'freeze').name('Freeze enemies').onChange((v) => q('setTuning', { key: 'freezeEnemies', value: v }));

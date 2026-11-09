@@ -115,6 +115,10 @@ export const DROP_TABLES = {
   ],
 };
 
+for (const id of Object.keys(DROP_TABLES)) {
+  DROP_TABLES[id] = DROP_TABLES[id].filter((entry) => entry.kind !== 'resource');
+}
+
 // quality weights C U R E L
 export const QUALITY_TABLES = {
   enemyGun: [55, 27, 12, 5, 1],
