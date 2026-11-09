@@ -261,6 +261,114 @@ describe('input lead, late counts and rejects (protocol 2)', () => {
   });
 });
 
+describe('the lead after an RTT spike, and buffer trim (S1/S2a review fixes)', () => {
+  /**
+   * Render at 60 Hz for `ms` with 30 Hz snapshots. Every PING is answered after rttAt(sentAt)
+   * ms; each snapshot carries you.late = late() and you.buffer = buffer().
+   */
+  function runPinged(r, { ms, rttAt, late = () => 0, buffer = () => 1 }) {
+    const answered = new Set();
+    const frameMs = 1000 / 60;
+    let nextSnap = Math.floor(r.now / STEP_MS) + 1;
+    const end = r.now + ms;
+    while (r.now < end) {
+      r.now += frameMs;
+      r.sent.forEach((m, i) => {
+        if (m.op !== OP.PING || answered.has(i) || m.at + rttAt(m.at) > r.now) return;
+        answered.add(i);
+        r.deliver(OP.PONG, { t: m.data.t, serverMs: 0, tick: 0, clockTick: 0, phase: 'live' });
+      });
+      while (nextSnap * STEP_MS <= r.now) {
+        r.deliver(OP.SNAPSHOT, snapshot(nextSnap, { you: { seat: 0, late: late(r.now), buffer: buffer(r.now) } }));
+        nextSnap += 1;
+      }
+      r.client.update(r.now, () => ({ yaw: 0 }));
+    }
+  }
+
+  it('sends a second PING as soon as the first PONG arrives', () => {
+    const r = rig();
+    r.deliver(OP.WELCOME, { accountId: 'ada', seat: 0, phase: 'lobby', tick: 0, lastSeq: 0 });
+    expect(r.sent.filter((m) => m.op === OP.PING).length).toBe(1);
+    r.now += 80;
+    r.pong();
+    // Without waiting NET.pingMs: the server's first echo sample comes one round trip later.
+    expect(r.sent.filter((m) => m.op === OP.PING).length).toBe(2);
+    r.now += 80;
+    r.pong();
+    expect(r.sent.filter((m) => m.op === OP.PING).length).toBe(2);
+  });
+
+  it('ignores a round-trip sample longer than NET.rttMaxSampleMs', () => {
+    const r = rig({ rttMs: 80 });
+    r.goLive();
+    r.deliver(OP.PONG, { t: r.now - NET.rttMaxSampleMs - 1, serverMs: 0, tick: 0, clockTick: 0, phase: 'live' });
+    expect(r.client.net.rttSamples.every((v) => v <= NET.rttMaxSampleMs)).toBe(true);
+    expect(r.client.net.rttMs).toBe(80);
+  });
+
+  it('caps the lead at leadForRtt + NET.leadJitterTicks as soon as the measured RTT falls', () => {
+    const r = rig({ rttMs: 80 });
+    r.goLive();
+    runPinged(r, { ms: 1500, rttAt: () => 80 });
+    const calm = r.client.net.lead;
+    expect(calm).toBe(Math.ceil(80 / STEP_MS) + 1);
+    // A spike: the RTT jumps to 300 ms for 3 s, and the late count keeps rising, which raises
+    // the lead once per round trip up to the (now higher) round-trip ceiling.
+    const spikeStart = r.now;
+    const spiking = (at) => at >= spikeStart && at < spikeStart + 3000;
+    const rttAt = (at) => (spiking(at) ? 300 : 80);
+    let late = 0;
+    runPinged(r, { ms: 3000, rttAt, late: (at) => (spiking(at) ? (late += 1) : late), buffer: () => 0 });
+    const spiked = r.client.net.lead;
+    expect(spiked).toBeGreaterThanOrEqual(calm + 4);
+    // Back to 80 ms: within ~2 s the lead is back to the round-trip lead plus the jitter margin.
+    runPinged(r, { ms: 2000, rttAt, late: () => late, buffer: () => 0 });
+    expect(r.client.net.rttMs).toBeLessThan(100);
+    expect(r.client.net.lead).toBeLessThanOrEqual(Math.ceil(80 / STEP_MS) + 1 + NET.leadJitterTicks);
+    expect(r.client.net.leadCaps).toBeGreaterThanOrEqual(1);
+    expect(NET.leadJitterTicks).toBe(2);
+  });
+
+  it('never caps while the RTT is rising', () => {
+    const r = rig({ rttMs: 80 });
+    r.goLive();
+    runPinged(r, { ms: 1500, rttAt: () => 80 });
+    runPinged(r, { ms: 3000, rttAt: () => 300 });
+    expect(r.client.net.rttMs).toBeGreaterThanOrEqual(300);
+    expect(r.client.net.leadCaps).toBe(0);
+  });
+
+  it('trims the lead when the server buffer stays above 2 frames for a second', () => {
+    const r = rig({ rttMs: 80 });
+    r.goLive();
+    let late = 0;
+    // Push the lead to its ceiling with late counts, at a steady RTT (no RTT cap).
+    runPinged(r, { ms: 3000, rttAt: () => 80, late: () => (late += 1), buffer: () => 0 });
+    const high = r.client.net.lead;
+    expect(high).toBe(Math.ceil(80 / STEP_MS) + 1 + NET.leadJitterTicks);
+    // The server now reports 5 frames queued ahead, all the time: 3 more than needed.
+    runPinged(r, { ms: NET.bufferTrimMs + 300, rttAt: () => 80, late: () => late, buffer: () => 5 });
+    expect(r.client.net.lead).toBe(high - (5 - NET.bufferTarget));
+    expect(r.client.net.leadTrims).toBe(1);
+  });
+
+  it('does not trim when the buffer dips to the target within the second', () => {
+    const r = rig({ rttMs: 80 });
+    r.goLive();
+    let late = 0;
+    runPinged(r, { ms: 3000, rttAt: () => 80, late: () => (late += 1), buffer: () => 0 });
+    const high = r.client.net.lead;
+    let n = 0;
+    runPinged(r, {
+      ms: 3 * NET.bufferTrimMs, rttAt: () => 80, late: () => late, buffer: () => ((n += 1) % 20 === 0 ? 2 : 6),
+    });
+    expect(r.client.net.lead).toBe(high);
+    expect(r.client.net.leadTrims).toBe(0);
+    expect(NET.bufferTarget).toBe(2);
+  });
+});
+
 describe('monotonic phase (SHOOTER-S1)', () => {
   it('ignores phase changes once a result exists', () => {
     const r = rig();

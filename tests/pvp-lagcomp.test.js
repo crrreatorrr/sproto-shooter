@@ -543,9 +543,13 @@ describe('client view stamps, PING echoes and hit events', () => {
     expect(r.pings()[0]).toEqual({ t: 0, interpMs: 100 });
     r.now = 80;
     r.deliver(OP.PONG, { t: 0, serverMs: 5000, tick: 0, clockTick: 0, phase: 'lobby' });
+    // The first PONG is echoed at once (S2a: second PING right after the first PONG).
+    expect(r.pings()[1]).toEqual({ t: 80, interpMs: 100, echo: 5000, hold: 0 });
+    r.now = 160;
+    r.deliver(OP.PONG, { t: 80, serverMs: 5080, tick: 0, clockTick: 0, phase: 'lobby' });
     r.now = 600;
     r.client.update(r.now, () => null);
-    expect(r.pings()[1]).toEqual({ t: 600, interpMs: 100, echo: 5000, hold: 520 });
+    expect(r.pings()[2]).toEqual({ t: 600, interpMs: 100, echo: 5080, hold: 440 });
     expect(r.sent.find((m) => m.op === OP.HELLO).data).toMatchObject({ interpMs: 100 });
   });
 

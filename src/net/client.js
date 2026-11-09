@@ -5,14 +5,21 @@
 //   when it was sent (negative during the live-start lead-in). Each gives an offset
 //   `clockTick * STEP_MS - arrival`; the estimate uses the largest of the last few, i.e. the
 //   least-delayed packet.
-// - Round trip: PING/PONG every NET.pingMs, median of the last NET.rttWindow samples.
+// - Round trip: PING/PONG every NET.pingMs (and once more right after the first PONG), median of
+//   the last NET.rttWindow samples; a sample over NET.rttMaxSampleMs is ignored.
 // - Input clock: a fixed 30 Hz accumulator, not the render loop. Each input tick builds one wish
 //   and sends exactly one INPUT stamped frame = estimated server tick + lead (never below 0, so
 //   nothing is sent until the lead-in has a tick to aim at).
 // - Lead adapts: it starts at the round trip in ticks plus one; the director accepts and
 //   discards late frames and counts them in the snapshot (`you.late`), and a new late count
-//   raises the lead by one at most once per round trip; a `frame` reject past the director's
-//   futureFrames window lowers it; a long clean run probes one tick lower. Capped at NET.leadMax.
+//   raises the lead by one at most once per round trip, up to the round-trip lead +
+//   NET.leadJitterTicks; whenever the measured RTT falls, the lead is capped at that same
+//   ceiling (an RTT spike's raises come back down within ~2 s); when the snapshot's `you.buffer`
+//   (frames queued ahead at the server) stays above NET.bufferTarget for NET.bufferTrimMs, the
+//   lead drops by the excess; a `frame` reject past the director's futureFrames window lowers
+//   it; a long clean run probes one tick lower. Capped at NET.leadMax.
+// - A hidden tab gets no animation frames: no update(), so no inputs and no PINGs. The director
+//   forfeits a seat after STALL_MS (10 s) without input.
 // - Sequence numbers only increase. Protocol 2 allows gaps, so a reject never rewinds them.
 // - Rejoin on a new session id sends HELLO (the director rebinds the seat), not RESYNC.
 // - Remote interpolation: render time = estimated server time - delay. Interpolate between the
@@ -44,11 +51,17 @@ export const NET = Object.freeze({
   /** Most input ticks one update() may send after a slow render frame. */
   maxTicksPerUpdate: 4,
   pingMs: 500,
-  rttWindow: 8,
+  rttWindow: 5,
+  /** A round trip longer than this is not a sample (a PONG held up by a long stall). */
+  rttMaxSampleMs: 2000,
   /** A late count rising by at most this much per snapshot is jitter (more is a stall burst). */
   lateJitterFrames: 2,
-  /** Late frames may raise the lead to the round-trip lead plus this many ticks, no further. */
+  /** Late frames may raise the lead to the round-trip lead plus this many ticks, no further; and
+   * whenever the RTT falls, the lead is capped there. */
   leadJitterTicks: 2,
+  /** Trim the lead when `you.buffer` stays above bufferTarget for bufferTrimMs. */
+  bufferTarget: 2,
+  bufferTrimMs: 1000,
   interpDelayMs: 100,
   extrapolateMs: 100,
   snapshotBuffer: 24,
@@ -243,9 +256,13 @@ export function createPvpClient({
   let lateSeen = 0;
   let leadRaisedAt = -Infinity;
   let ack = null;
+  // Server buffer (you.buffer) since the last trim: its minimum and when the window started.
+  let bufferMin = Infinity;
+  let bufferSince = null;
+  let pongs = 0;
   const stats = {
-    inputTicks: 0, leadRaises: 0, leadDrops: 0, lateFrames: 0, pings: 0, maxLead: NET.leadStart,
-    hitsConfirmed: 0, damageConfirmed: 0,
+    inputTicks: 0, leadRaises: 0, leadDrops: 0, leadCaps: 0, leadTrims: 0, lateFrames: 0, pings: 0,
+    maxLead: NET.leadStart, hitsConfirmed: 0, damageConfirmed: 0,
   };
   let server = { rttMs: null, rewindCap: null };
   let look = { yaw: 0, pitch: 0 };
@@ -271,8 +288,8 @@ export function createPvpClient({
     });
   }
 
-  function maybePing(now = clock()) {
-    if (seat < 0 || link !== 'live' || now - lastPingAt < NET.pingMs) return;
+  function maybePing(now = clock(), force = false) {
+    if (seat < 0 || link !== 'live' || (!force && now - lastPingAt < NET.pingMs)) return;
     lastPingAt = now;
     stats.pings += 1;
     const body = { t: now, interpMs: interpDelayMs };
@@ -316,6 +333,22 @@ export function createPvpClient({
     stats.maxLead = Math.max(stats.maxLead, lead);
   }
 
+  function leadCeiling() {
+    return Math.min(NET.leadMax, leadForRtt() + NET.leadJitterTicks);
+  }
+
+  /** Lower the lead to `want`. The next frames repeat ones already sent; the director replaces them. */
+  function lowerLead(want) {
+    if (want >= lead) return false;
+    if (lastFrame >= 0) lastFrame -= lead - want;
+    lead = want;
+    stats.leadDrops += 1;
+    // What the server buffers changes only after the frames sent from now on arrive.
+    bufferMin = Infinity;
+    bufferSince = null;
+    return true;
+  }
+
   function estTick(now) {
     return clockOffset == null ? null : (now + clockOffset) / STEP_MS;
   }
@@ -346,13 +379,36 @@ export function createPvpClient({
     if (!body || typeof body.t !== 'number') return;
     const now = clock();
     const rtt = now - body.t;
-    if (!(rtt >= 0)) return;
+    if (!(rtt >= 0) || rtt > NET.rttMaxSampleMs) return;
     if (typeof body.serverMs === 'number' && Number.isFinite(body.serverMs)) lastPong = { serverMs: body.serverMs, at: now };
+    pongs += 1;
     rtts.push(rtt);
     if (rtts.length > NET.rttWindow) rtts.shift();
+    const before = rttMs;
     const sorted = [...rtts].sort((a, b) => a - b);
     rttMs = sorted[Math.floor((sorted.length - 1) / 2)];
+    // The RTT fell: a spike's raises may not outlive it.
+    if (before != null && rttMs < before && lastFrame >= 0) {
+      if (lowerLead(Math.max(NET.leadMin, leadCeiling()))) stats.leadCaps += 1;
+    }
     if (body.phase === 'live' && !result) clockSample(body.clockTick, now);
+    // A second PING right away gives the server its first round trip one RTT sooner.
+    if (pongs === 1) maybePing(now, true);
+  }
+
+  /** you.buffer above NET.bufferTarget for a whole NET.bufferTrimMs: lower the lead by the excess. */
+  function bufferSample(depth, now) {
+    if (!Number.isInteger(depth) || lastFrame < 0) return;
+    if (bufferSince == null) bufferSince = now;
+    bufferMin = Math.min(bufferMin, depth);
+    if (now - bufferSince < NET.bufferTrimMs) return;
+    const excess = bufferMin - NET.bufferTarget;
+    if (excess > 0 && lowerLead(Math.max(NET.leadMin, lead - excess))) {
+      stats.leadTrims += 1;
+      return;
+    }
+    bufferMin = Infinity;
+    bufferSince = now;
   }
 
   function onSnapshot(body) {
@@ -379,6 +435,7 @@ export function createPvpClient({
     if (you && you.seat === seat) {
       ack = { frame: you.ackFrame, seq: you.ackSeq, buffer: you.buffer, late: you.late };
       server = { rttMs: you.rttMs ?? null, rewindCap: you.rewindCap ?? null };
+      bufferSample(you.buffer, now);
       if (Number.isInteger(you.late) && you.late > lateSeen) {
         const fresh = you.late - lateSeen;
         stats.lateFrames += fresh;
@@ -387,7 +444,7 @@ export function createPvpClient({
         // A frame or two late is jitter: raise by one, at most once per round trip (frames sent
         // before the raise cannot benefit). A larger run is a TCP stall; the director's hold-last
         // covers it, and a bigger lead would only add input delay.
-        const ceiling = Math.min(NET.leadMax, leadForRtt() + NET.leadJitterTicks);
+        const ceiling = leadCeiling();
         if (fresh <= NET.lateJitterFrames && now - leadRaisedAt >= (rttMs ?? 0) + STEP_MS && lead < ceiling) {
           lead += 1;
           leadRaisedAt = now;
@@ -431,12 +488,7 @@ export function createPvpClient({
     if (body.reason === 'frame' && Number.isInteger(body.frame) && Number.isInteger(body.tick)
       && body.frame > body.tick + INPUT_LIMITS.futureFrames) {
       const over = body.frame - body.tick - Math.floor(INPUT_LIMITS.futureFrames / 2);
-      const want = Math.max(NET.leadMin, lead - over);
-      if (want < lead) {
-        lastFrame -= lead - want;
-        lead = want;
-        stats.leadDrops += 1;
-      }
+      lowerLead(Math.max(NET.leadMin, lead - over));
     }
     changed();
   }
@@ -609,6 +661,7 @@ export function createPvpClient({
       return {
         lead,
         rttMs,
+        rttSamples: [...rtts],
         estTick: estTick(clock()),
         lastFrame,
         seq,

@@ -155,7 +155,7 @@ describe('browser, node, and goja', () => {
     expect(pin.directorState).toBe(3);
     expect(pin.replayVersion).toBe(2);
     expect(pin.matchmakerQuery).toContain(`+properties.protocol:2 +properties.content:${FINGERPRINT}`);
-    expect(pin.limits).toMatchObject({ futureFrames: 8, maxFramesPerSecond: 45, maxFramesPerCursor: 6, holdTicks: 3, catchUpTicks: 4, frameBytes: 18 });
+    expect(pin.limits).toMatchObject({ futureFrames: 8, maxFramesPerSecond: 45, maxFramesPerCursor: 9, holdTicks: 3, catchUpTicks: 4, maxHelloPerSecond: 2, maxReadyPerSecond: 2, frameBytes: 18 });
     expect(pin.rewind).toMatchObject({ maxTicks: 10, historyTicks: 12, maxBack: 255, fracSteps: 256, interpMs: 100, interpMinMs: 50, interpMaxMs: 150, extraTicks: 2 });
     expect(pin.crits).toBe(false);
     expect(pin.combatSeed).toBe('sha256-commit-reveal');

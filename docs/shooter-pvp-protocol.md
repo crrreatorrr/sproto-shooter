@@ -148,7 +148,9 @@ Every director output is `{ op, body, to }`. `to` is `null` (broadcast to the ma
 
 `interpMs` (optional, sim 2) is the client's remote interpolation delay in ms; the director clamps it to 50..150 and uses it in the rewind cap (100 until announced). `accountId` must equal the socket's user id. `protocol`, `sim`, and `content` must all match or the reason is `version`. The presence session id is the seat session. The body does not get to name a session. The seat's display name is the presence `username` (cut to 32 chars); the hub sanitizes names before they reach the director.
 
-HELLO is the **only** way to rebind a seat to a new session (a reconnect on a new session id). The answer is a `WELCOME` to every connected seat and, once live, a `SNAPSHOT` to the sender:
+HELLO is the **only** way to rebind a seat to a new session (a reconnect on a new session id). A HELLO that takes a new seat is answered with a `WELCOME` to every connected seat (so the other seat learns its opponent). A HELLO that rebinds an existing seat is answered **only to the rebinding seat**: its `WELCOME` and, once live, a `SNAPSHOT`. After the match is `done`, a HELLO from a seated account rebinds it and gets its `WELCOME`, the final `SNAPSHOT` and a copy of `RESULT` (to that session only; the match-wide `RESULT` is still sent once). A HELLO from anyone else after `done` is `ended`.
+
+Message data may arrive as a string, a `Uint8Array` or a raw `ArrayBuffer` (what goja's match handler hands over); the director decodes all three and treats undecodable JSON or a bad INPUT length as `malformed`, never `wrong_sender`.
 
 ```json
 {
@@ -175,6 +177,8 @@ HELLO is the **only** way to rebind a seat to a new session (a reconnect on a ne
 
 `lastSeq` is the highest input sequence the seat has accepted; a client resuming after a reload continues above it. `READY` is `{"accountId":"nakama-user-id"}`. `RESYNC` is the same shape, for the **bound** session only (a new session gets `wrong_sender` until it sends HELLO); the answer is a WELCOME and a snapshot. Neither resets health, seed, or the accepted sequence.
 
+Per seat, HELLO and RESYNC together are limited to 2 per second, and READY to 2 per second (fixed one-second windows); more is `rate`. Each costs a WELCOME (and HELLO/RESYNC a full snapshot), so they cannot be spammed into a downlink flood.
+
 ### PING / PONG
 
 `PING` is `{"t": clientTimeMs}`, at most 10 per second per seat (`rate`). Since sim 2 it may also carry `echo` (the `serverMs` of the newest PONG the client got), `hold` (ms the client sat on that PONG) and `interpMs` (the client's current interpolation delay, as in HELLO; S3 will make it adaptive, so the client re-announces it in every PING). `PONG` echoes `t` with the server clock:
@@ -183,7 +187,7 @@ HELLO is the **only** way to rebind a seat to a new session (a reconnect on a ne
 {"t": 1234.5, "serverMs": 98765, "tick": 41, "clockTick": 41.012, "phase": "live"}
 ```
 
-The client keeps the median of its last 8 round trips. PINGs do not refresh the stall timer.
+The client pings on its WELCOME, **once more as soon as the first PONG arrives** (so a server that measures round trips from PING echoes gets its first sample one RTT later instead of 500 ms later), then every 500 ms. It keeps the median of its last 5 round trips and ignores a sample over 2 s. PINGs do not refresh the stall timer.
 
 The director keeps its **own** round trip per seat for the rewind cap: `now - echo - hold`, counted only when `echo` is one of the last 4 `serverMs` values it sent that seat and `0 <= hold <= now - echo`, median of the last 8 samples (`you.rttMs` in snapshots, `seatStats().rttMs`).
 
@@ -256,7 +260,7 @@ Button bits, low to high: `fire`, `zoom`, `sprint`, `jump`, `dash`, `reload`, `s
 | Late frame (`frame < cursor`) | **accepted and discarded**: it consumes its seq, refreshes the stall timer and the held aim, counts in the seat's `late`. No reject, so a TCP burst never becomes a reject storm |
 | Sequence | must be greater than `lastSeq`; gaps are fine |
 | Frame rate | a token bucket of 45 frames, refilled at 45/s, counts every frame (late too). A burst after a stall passes because the bucket refilled while the link was quiet |
-| Per tick | at most 6 queued (not late) frames per server clock tick |
+| Per tick | at most 9 queued (not late) frames per server clock tick: `futureFrames + 1`, so a TCP burst that delivers the whole window at once (lead ≥ 7 after a stall) is not cut |
 | Missing tick | repeat the last applied wish's move, aim and held buttons (`fire`, `zoom`, `sprint`) for up to 3 ticks, then neutral (no move, no buttons, aim held). Edge buttons and slot picks never repeat |
 | Catch-up | at most 4 ticks per advance |
 
@@ -270,12 +274,19 @@ Rejects, checked in this order:
 | Not finite | `nan` |
 | Sequence not above `lastSeq` (or below 1) | `sequence` |
 | Frame &gt; cursor + 8, negative, or &gt; 1000000 | `frame` |
-| Token bucket empty, or 6 queued frames this tick already | `rate` |
+| Token bucket empty, or 9 queued frames this tick already | `rate` |
 | Id not 1..80 chars of `[A-Za-z0-9_.:@|-]` | `malformed` |
 
 `REJECT` goes to the sender only and carries `accountId`, `reason`, `lastSeq`, `tick` (the cursor), and for INPUT the rejected `seq` and `frame`, plus `ticketsMinted: 0`. A rejected input does not consume the sequence.
 
-The reference client (`src/net/client.js`) runs a fixed 30 Hz input clock and sends exactly one input per input tick, stamped `frame` = estimated server tick + lead, never below 0 (so during the lead-in it starts sending `lead` ticks before tick 0). The estimate uses the least-delayed recent `clockTick`. The lead starts at the PING round trip in ticks plus one, rises by one (at most once per round trip, at most to that lead plus 2) when a snapshot's `you.late` grows by one or two, ignores larger jumps (a TCP stall: hold-last covers it), drops back into the window on a `frame` reject past `cursor + 8`, and is capped at 12. It never rewinds its sequence. After a reconnect on a new session id it sends HELLO, not RESYNC.
+The reference client (`src/net/client.js`) runs a fixed 30 Hz input clock and sends exactly one input per input tick, stamped `frame` = estimated server tick + lead, never below 0 (so during the lead-in it starts sending `lead` ticks before tick 0). The estimate uses the least-delayed recent `clockTick`. The lead starts at the PING round trip in ticks plus one, rises by one (at most once per round trip, at most to that lead plus 2) when a snapshot's `you.late` grows by one or two, ignores larger jumps (a TCP stall: hold-last covers it), drops back into the window on a `frame` reject past `cursor + 8`, and is capped at 12. It also comes back down:
+
+- **RTT cap:** whenever the median round trip falls, the lead is capped at `ceil(RTT / 33.3 ms) + 1 + 2`. After an RTT spike (harness: 300 ms for 3 s, then 80 ms) the server-side buffer is back to its calm depth within 2 s.
+- **Buffer trim:** when `you.buffer` (frames queued at or after the cursor) stays above 2 for a whole second, the lead drops by the excess. The window restarts after any lead change, since the server sees a change only one uplink later.
+
+It never rewinds its sequence. After a reconnect on a new session id it sends HELLO, not RESYNC.
+
+**Hidden tab:** browsers stop animation frames in a background tab. The input clock and PINGs run from the render loop, so a hidden tab sends neither, and the director forfeits that seat after `STALL_MS` (10 s) with no input (`stall`). This is deliberate: a player who tabs away for 10 s has left the duel.
 
 Each input also carries `viewTick`/`viewFrac` from the render time of the newest drawn frame (`estimated server tick - interpDelayMs/STEP_MS` at the last `sample()`), i.e. what the shooter saw. Spread is cosmetic on the client: damage, hitmarkers and kills come from the server's `hits` events and the snapshots.
 
@@ -360,7 +371,7 @@ Clients render the other seat at estimated server time minus 100 ms, interpolati
 
 ## Used-input log and replay v2
 
-The director records the exact wish it applied for each seat on each tick, held and neutral substitutes included: 10 bytes per seat-tick as hex (`src/sim/pvp/used.js`; sim 2 added the clamped `rewind` and `viewFrac` bytes to S2a's 8), in chunks of 30 ticks. A full 90 s match is about 108 KB. `director.usedAt(tick)` decodes one tick. `director.replayRecord()` returns:
+The director records the exact wish it applied for each seat on each tick, held and neutral substitutes included: 10 bytes per seat-tick as hex (`src/sim/pvp/used.js`; sim 2 added the clamped `rewind` and `viewFrac` bytes to S2a's 8), in chunks of 30 ticks. It steps the sim with the entry **decoded back from the log**, not the in-memory record, so a replay of the log is the same match by construction. A full 90 s match is about 108 KB. `director.usedAt(tick)` decodes one tick. `director.replayRecord()` returns:
 
 ```json
 {"v":2,"spawnSeed":4242,"combatSeed":"5eed00c0ffee5eed00c0ffee5eed0042","combatCommit":"6d5a619f…1fc6","matchId":"golden","protocol":2,"sim":2,"content":"ec36c8fa","used":["<hex>", "..."],"expect":{"tick":892,"stateHash":"078282e5","outcome":null,"winner":null,"reason":null},"result":{"outcome":"forfeit","winner":0,"reason":"stall","tick":892,"stateHash":"078282e5","spawnSeed":4242,"combatSeed":"…","combatCommit":"…","ticketsMinted":0,"stakes":false},"ticketsMinted":0}
@@ -368,13 +379,18 @@ The director records the exact wish it applied for each seat on each tick, held 
 
 `replayJSON(record)` re-runs the log from `spawnSeed` and the revealed `combatSeed`, applying each logged rewind, and returns the receipt plus `combatCommit`, `verified` and `mismatch` (any of `tick`, `stateHash`, `outcome`, `winner`, `reason`, `extraTicks`, `expect`, `combatCommit` when sha256(combatSeed) is not the commit). A malformed log or seed is `{ ok: false, reason: "malformed" }`; a record for another `sim` is `{ ok: false, reason: "version" }`. Replay v1 (`{ seed, inputs }` or `{ spawnSeed, combatSeed, inputs }`) still runs the sim directly. `expect` holds the **sim's** outcome fields; a director outcome (forfeit, stall, cancel) is in `result` and leaves the sim's at `null`. A wager settles only on `verified: true`.
 
-## Freeze and thaw
+## Keeping the director, and freeze/thaw
 
-All director state is plain JSON. `director.exportState()` returns it; `restoreDirector(state)` (or `createDirector().importState(state)`) brings it back. Nakama copies match state between callbacks, so H3 keeps only the exported object in match state and thaws a director at the start of each callback. Freezing and thawing after every call gives identical messages, log and hash (tested in Node, goja and Chromium). The state carries the whole used-input log; H3 may move completed log chunks out to `nk.localcache` if the per-callback copy shows up in loop timing.
+**Keep the live director object for the whole match, in the match's own JS VM.** Nakama's JS runtime runs each authoritative match in its own goja VM and hands the same state object back to every callback, so the state can hold the director instance itself. Do **not** freeze and thaw on every callback: measured in goja during review, `exportState()` + `restoreDirector()` per callback costs 7.4 ms mean and 14 ms p95 late in a match (the used-input log grows to ~86 KB), which is over the per-tick budget of a 30 Hz loop that also has to step the sim.
+
+All director state is still plain JSON. `director.exportState()` returns it and `restoreDirector(state)` (or `createDirector().importState(state)`) brings it back, with identical messages, log and hash afterwards (tested in Node, goja and Chromium, frozen and thawed after every call). Use it only:
+
+- at phase changes (lobby → live, live → done), to keep a recovery copy; and
+- for crash recovery: if the match VM is lost, thaw the last copy and continue. The sim is deterministic from the used-input log, so a copy taken at go-live plus the log replays to the same state.
 
 ## What H3-S must do
 
-1. Load `shooter-pvp-sim.js` in goja. Per match, `createDirector({ spawnSeed, combatSeed, matchId })`: `spawnSeed` server-chosen 32-bit, `combatSeed` a fresh secret of 32..128 lowercase hex chars from a CSPRNG (assert `combatSeedDerived === false`). Then keep `director.exportState()` in match state and `restoreDirector(state)` per callback. The exported state holds the combat seed: never send it to clients.
+1. Load `shooter-pvp-sim.js` in goja. Per match you **must** use `createHostedDirector({ spawnSeed, combatSeed, matchId })`: `spawnSeed` server-chosen 32-bit, `combatSeed` a fresh secret of 32..128 lowercase hex chars from a CSPRNG, `matchId` the Nakama match id. Keep the director object in match state for the whole match. Export it only at phase changes and for crash recovery (see above). The exported state holds the combat seed: never send it to clients.
 2. `joinAttempt`: same account may rejoin; a third account is `match_full`; a finished match is `ended`.
 3. On match data, `director.handle(presence, opCode, bytes, serverNowMs)` with the presence's `userId`, `sessionId` and `username`. Send its `messages` (each to `to`, or to everyone when `to` is null).
 4. On a fixed 30 Hz server tick, `director.advance(serverNowMs)` and send its `messages` the same way. `RESULT` is among them exactly once.
@@ -384,10 +400,10 @@ All director state is plain JSON. `director.exportState()` returns it; `restoreD
 8. Keep the campaign verifier pinned separately. A free-arena hash is not a boss clear.
 9. Before settling anything, run `replayJSON(director.replayRecord())` and require `verified: true`.
 
-The in-repo stub is `registerFreeMatch` / `createMockArena` in `src/net/client.js`. It speaks this contract over `createMockRealtimeServer` until H3-S replaces it, and with `freeze: true` it thaws the director per callback exactly as above. Offline practice uses the same director locally and is not a match.
+The in-repo stub is `registerFreeMatch` / `createMockArena` in `src/net/client.js`. It speaks this contract over `createMockRealtimeServer` until H3-S replaces it. Its `freeze: true` option thaws the director on every callback; that is a test of state completeness, not how a host should run it. Offline practice uses the same director locally and is not a match.
 
 ## Left for later tickets
 
 - **S2b** (sim 2): done, including the ≥ 98% rewind-agreement gate (99.49% at RTT 100±30, 99.75% at RTT 150).
-- **S2c**: binary INPUT batches and per-recipient binary snapshots (JSON is ~29 KB/s down per client on the wire at 30 Hz, measured on the harness; the target is ~6.6 KB/s). Check goja's `broadcastMessage` with binary first.
-- **S3**: prediction and reconciliation from `you.ackFrame` / `you.private`, adaptive interpolation delay (client starvation at RTT 100±30 is ~1.0% with the fixed 100 ms delay, right on the gate), clock-rate adjustment from `you.buffer`, predicted muzzle/tracers with server hitmarkers from `hits`, aim from the camera ray. When the interpolation delay becomes adaptive, keep announcing it in every PING (`interpMs`); the director already clamps it to 50..150 ms for the rewind cap.
+- **S2c**: binary INPUT batches and per-recipient binary snapshots (JSON is ~25–28 KB/s down per client on the wire at 30 Hz with 130 B Nakama envelopes, measured on the realistic harness; the target is ~6.6 KB/s). Check goja's `broadcastMessage` with binary first.
+- **S3**: prediction and reconciliation from `you.ackFrame` / `you.private`, adaptive interpolation delay (client starvation at RTT 100±30 is 1.1–1.4% with the fixed 100 ms delay on the realistic harness, just over the gate), clock-rate adjustment from `you.buffer`, predicted muzzle/tracers with server hitmarkers from `hits`, aim from the camera ray. When the interpolation delay becomes adaptive, keep announcing it in every PING (`interpMs`); the director already clamps it to 50..150 ms for the rewind cap.

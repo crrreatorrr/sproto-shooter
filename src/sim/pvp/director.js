@@ -74,6 +74,31 @@ function clampLeadIn(value) {
   return Math.min(INPUT_LIMITS.maxLeadInTicks, value);
 }
 
+/** Fixed one-second windows: true when the call fits under `limit`, and counts it. */
+function allow(seat, atKey, countKey, limit, now) {
+  if (!(now - (seat[atKey] || 0) < 1000)) {
+    seat[atKey] = now;
+    seat[countKey] = 0;
+  }
+  if ((seat[countKey] || 0) >= limit) return false;
+  seat[countKey] = (seat[countKey] || 0) + 1;
+  return true;
+}
+
+/**
+ * Nakama hands the match handler message data as an ArrayBuffer (goja) or a Uint8Array (tests,
+ * other hosts). Everything below reads a Uint8Array, a string or a plain object.
+ */
+function asBytes(data) {
+  if (typeof ArrayBuffer !== 'undefined') {
+    if (data instanceof ArrayBuffer) return new Uint8Array(data);
+    if (ArrayBuffer.isView(data) && !(data instanceof Uint8Array)) {
+      return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    }
+  }
+  return data;
+}
+
 function blankSeat(accountId, sessionId, name) {
   return {
     accountId,
@@ -96,6 +121,10 @@ function blankSeat(accountId, sessionId, name) {
     rtts: [],
     rttMs: null,
     interpMs: REWIND.interpMs,
+    helloAt: 0,
+    hellos: 0,
+    readyAt: 0,
+    readys: 0,
     ackFrame: -1,
     ackSeq: 0,
     applied: 0,
@@ -147,7 +176,7 @@ export function clampView(wish, frame, cap) {
 }
 
 export function createDirector({
-  seed = 1, spawnSeed, combatSeed, matchId = 'local', leadInTicks = LEAD_IN_TICKS,
+  seed = 1, spawnSeed, combatSeed, matchId = 'local', leadInTicks = LEAD_IN_TICKS, hosted = false,
 } = {}) {
   const spawn = (spawnSeed != null ? spawnSeed : seed) >>> 0;
   const combat = resolveCombatSeed(combatSeed, spawn, String(matchId));
@@ -158,6 +187,7 @@ export function createDirector({
     combatCommit: combatCommitOf(combat.seed),
     combatSeedDerived: combat.derived,
     matchId: String(matchId),
+    hosted: !!hosted,
     leadInTicks: clampLeadIn(leadInTicks),
     phase: 'lobby',
     seats: [null, null],
@@ -372,8 +402,11 @@ export function createDirector({
 
   /**
    * HELLO seats an account, or rebinds its seat to a new session (the only way a reconnect on a
-   * new session id gets the seat back). The answer is a WELCOME for every connected seat, and a
-   * snapshot for the sender once the match is live.
+   * new session id gets the seat back). A new seat is announced with a WELCOME for every
+   * connected seat; a rebind answers only the rebinding seat (WELCOME, plus a snapshot once
+   * live). After the match is done, a seated account gets WELCOME, the final snapshot and a copy
+   * of RESULT, so a client that reconnects late still learns the result. HELLO and RESYNC share
+   * a per-seat budget of INPUT_LIMITS.maxHelloPerSecond.
    */
   function hello({ presenceUserId, sessionId, body, now, name }) {
     const from = presence(presenceUserId, sessionId);
@@ -383,22 +416,36 @@ export function createDirector({
     if (hostile) return reject(from, hostile);
     if (body.accountId !== presenceUserId) return reject(from, 'wrong_sender');
     if (!versionsMatch(body)) return reject(from, 'version');
-    if (director.phase === 'done') return reject(from, 'ended');
     let index = seatIndex(presenceUserId);
+    if (index >= 0 && !allow(director.seats[index], 'helloAt', 'hellos', INPUT_LIMITS.maxHelloPerSecond, now)) {
+      return reject(from, 'rate');
+    }
+    if (director.phase === 'done') {
+      if (index < 0) return reject(from, 'ended');
+      const seat = director.seats[index];
+      seat.sessionId = sessionId;
+      seat.connected = true;
+      const messages = [welcomeTo(index)];
+      if (director.sim) messages.push(snapshotFor(index, now));
+      if (director.result) messages.push({ op: OP.RESULT, body: { ...director.result }, to: seatTo(seat) });
+      return { ok: true, seat: index, messages };
+    }
     if (index < 0) {
       if (occupied() >= 2) return reject(from, 'match_full');
       index = director.seats[0] ? 1 : 0;
       director.seats[index] = blankSeat(presenceUserId, sessionId, cleanName(name, presenceUserId));
+      allow(director.seats[index], 'helloAt', 'hellos', INPUT_LIMITS.maxHelloPerSecond, now);
+      takeInterp(director.seats[index], body);
       if (occupied() === 1) director.waitDeadline = now + READY_MS;
       if (occupied() === 2) director.readyDeadline = now + READY_MS;
-    } else {
-      const seat = director.seats[index];
-      seat.sessionId = sessionId;
-      seat.connected = true;
-      if (typeof name === 'string' && name) seat.name = cleanName(name, seat.name);
+      return { ok: true, seat: index, messages: welcomeAll() };
     }
-    takeInterp(director.seats[index], body);
-    const messages = welcomeAll();
+    const seat = director.seats[index];
+    seat.sessionId = sessionId;
+    seat.connected = true;
+    if (typeof name === 'string' && name) seat.name = cleanName(name, seat.name);
+    takeInterp(seat, body);
+    const messages = [welcomeTo(index)];
     if (director.phase === 'live' && director.sim) messages.push(snapshotFor(index, now));
     return { ok: true, seat: index, messages };
   }
@@ -406,6 +453,9 @@ export function createDirector({
   function ready({ presenceUserId, sessionId, now }) {
     const got = requireSeat(presence(presenceUserId, sessionId));
     if (got.error) return got.error;
+    if (!allow(got.seat, 'readyAt', 'readys', INPUT_LIMITS.maxReadyPerSecond, now)) {
+      return reject(presence(presenceUserId, sessionId), 'rate');
+    }
     if (director.phase === 'done') return reject(presence(presenceUserId, sessionId), 'ended');
     got.seat.ready = true;
     const messages = [welcomeTo(got.index)];
@@ -581,8 +631,9 @@ export function createDirector({
       while (sim.phase === 'live' && sim.tick < target && sim.tick < cap) {
         const tick = sim.tick;
         const pair = [takeWish(director.seats[0], tick), takeWish(director.seats[1], tick)];
-        appendUsedTick(director.log, pair);
-        step(sim, [wishOfUsed(pair[0]), wishOfUsed(pair[1])], events);
+        // Step what the log holds (decoded), so replay identity holds by construction.
+        const logged = appendUsedTick(director.log, pair);
+        step(sim, [wishOfUsed(logged[0]), wishOfUsed(logged[1])], events);
         for (const seat of director.seats) dropStale(seat, sim.tick);
         stepped += 1;
       }
@@ -617,7 +668,8 @@ export function createDirector({
     return reject(from, 'client_result', { tick: cursor() });
   }
 
-  function handle(sender, op, data, now) {
+  function handle(sender, op, raw, now) {
+    const data = asBytes(raw);
     const presenceUserId = sender && sender.userId;
     const sessionId = sender && sender.sessionId;
     const from = presence(presenceUserId, sessionId);
@@ -635,6 +687,7 @@ export function createDirector({
       // RESYNC only serves the session bound to the seat. A new session sends HELLO first.
       const got = requireSeat(from);
       if (got.error) return got.error;
+      if (!allow(got.seat, 'helloAt', 'hellos', INPUT_LIMITS.maxHelloPerSecond, now)) return reject(from, 'rate');
       const messages = [welcomeTo(got.index)];
       if (director.sim) messages.push(snapshotFor(got.index, now));
       return { ok: true, seat: got.index, messages };
@@ -730,6 +783,21 @@ export function createDirector({
     clientResult(userId, sessionId) { return clientResult(presence(userId, sessionId)); },
     exportState, importState, replayRecord, seatStats,
   };
+}
+
+/**
+ * The constructor a host (H3, Nakama) must use. It refuses to start without the host's own
+ * match seed and match id, so a hosted match never runs on the defaults.
+ */
+export function createHostedDirector(options = {}) {
+  const { seed, matchId } = options;
+  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) {
+    throw new Error('hosted director: seed must be a 32-bit unsigned integer chosen by the host');
+  }
+  if (typeof matchId !== 'string' || !matchId || matchId.length > 128) {
+    throw new Error('hosted director: matchId must be the Nakama match id');
+  }
+  return createDirector({ ...options, hosted: true });
 }
 
 /** Thaw a director from exportState(). */

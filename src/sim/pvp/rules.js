@@ -36,11 +36,15 @@ export const GUN_IDS = Object.freeze(['mg', 'shotgun', 'sniper']);
  */
 export const INPUT_LIMITS = Object.freeze({
   maxFramesPerSecond: 45,
-  maxFramesPerCursor: 6,
+  // At least futureFrames + 1, so a TCP burst that delivers the whole window in one tick passes.
+  maxFramesPerCursor: 9,
   futureFrames: 8,
   holdTicks: 3,
   catchUpTicks: 4,
   maxPingsPerSecond: 10,
+  /** Per seat: HELLO and RESYNC together, and READY, each at most this many per second. */
+  maxHelloPerSecond: 2,
+  maxReadyPerSecond: 2,
   frameBytes: 18,
   maxFrame: 1000000,
   maxIdLength: 80,
