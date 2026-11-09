@@ -100,7 +100,7 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
         <button class="btn big" data-pvp-go="practice">Practice offline <small>local opponent, not recorded</small></button>
         <button class="btn big alt" data-pvp-go="mock">Two-client mock <small>authoritative stub until the hub match exists</small></button>
         <button class="btn big alt" data-pvp-go="queue">Find free match <small>hub realtime, no stake</small></button>
-        <button class="btn alt" data-pvp-go="back">← Back</button>
+        <button class="btn alt" data-pvp-go="back" data-nav-back>← Back</button>
       </div>
       <p data-pvp-note class="tag"></p>
     </div>`;
@@ -117,7 +117,7 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
 
   function openPractice() {
     root.onclick = null;
-    root.innerHTML = `<div style="position:absolute;inset:0;display:flex;flex-direction:column">${panelHtml('Practice')}<button class="btn alt" data-pvp-go="back" style="position:absolute;top:12px;right:12px">Leave practice</button></div>`;
+    root.innerHTML = `<div style="position:absolute;inset:0;display:flex;flex-direction:column">${panelHtml('Practice')}<button class="btn alt" data-pvp-go="back" data-nav-back style="position:absolute;top:12px;right:12px">Leave practice</button></div>`;
     const canvas = root.querySelector('canvas');
     const view = createArenaView(canvas);
     views.push(view);
@@ -152,7 +152,7 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
 
   async function openMock() {
     root.onclick = null;
-    root.innerHTML = `<div data-pvp-mock style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;height:100%">${panelHtml('Ada')}${panelHtml('Bea')}</div><button class="btn alt" data-pvp-go="back" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:2">Leave mock</button>`;
+    root.innerHTML = `<div data-pvp-mock style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;height:100%">${panelHtml('Ada')}${panelHtml('Bea')}</div><button class="btn alt" data-pvp-go="back" data-nav-back style="position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:2">Leave mock</button>`;
     const panels = [...root.querySelectorAll('[data-seat-panel]')];
     panels.forEach((panel, index) => panel.dataset.seat = String(index));
     const clock = { now: 0 };

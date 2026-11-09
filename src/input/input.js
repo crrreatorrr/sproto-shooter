@@ -1,13 +1,28 @@
 // Keyboard/mouse + pointer lock -> Command objects. Edge latches consumed once per tick. PLAN §0.3, §1.3
-const BIND = {
-  forward: ['KeyW'], back: ['KeyS'], left: ['KeyA'], right: ['KeyD'],
+// A gamepad feeds the same Command through setPad / padPress / addLook (src/input/padController.js).
+// With no pad state every keyboard and mouse path below is unchanged.
+// Keyboard layout follows the shared Sproto convention: WASD or arrows move, Space jumps, Shift runs,
+// E uses (G still works), R reloads, Esc pauses. Keep README.md and the in-game controls list in sync.
+export const BIND = {
+  forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
   sprint: ['ShiftLeft', 'ShiftRight'], jump: ['Space'], slide: ['KeyC', 'ControlLeft'], dash: ['AltLeft', 'KeyV'],
-  reload: ['KeyR'], interact: ['KeyG'], medkit: ['KeyH'],
-  gooBolt: ['KeyQ'], chainZap: ['KeyE'], swarm: ['KeyZ'], manaShield: ['KeyX'], meteor: ['KeyT'],
+  reload: ['KeyR'], interact: ['KeyE', 'KeyG'], medkit: ['KeyH'],
+  gooBolt: ['KeyQ'], chainZap: ['KeyY'], swarm: ['KeyZ'], manaShield: ['KeyX'], meteor: ['KeyT'],
   aimToggle: ['KeyF'], // press to aim, press again to stop (holding right-click also aims)
   skip: ['Enter'],
 };
-const LATCHED = ['jump', 'slide', 'dash', 'reload', 'interact', 'medkit', 'gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor', 'skip'];
+export const LATCHED = ['jump', 'slide', 'dash', 'reload', 'interact', 'medkit', 'gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor', 'skip'];
+
+/** Key label shown in prompts and on the HUD for an action (the first key bound to it). */
+export function keyLabel(action) {
+  const code = (BIND[action] || [])[0] || '';
+  return code.replace(/^Key|^Digit/, '').replace(/^(Shift|Alt|Control)(Left|Right)$/, '$1').replace(/^Arrow/, '');
+}
+
+/** Keys that move menu focus (arrows and W / A / S / D), as a direction. */
+export const NAV_KEYS = {
+  ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
+};
 
 export function createInput(canvas) {
   const held = new Set();
@@ -20,12 +35,33 @@ export function createInput(canvas) {
   let enabled = true; // false while a menu is open
   let lockEl = canvas;
   let relay = null;
+  let pad = null; // { moveX, moveZ, fire, zoom, sprint } from the gamepad this frame, or null
+  let device = 'kbm'; // last device used: 'kbm' or 'pad' (decides which prompts show)
   const listeners = {};
   const api = {
     sensitivity: 0.0022,
     zoomLevels: 1, // set each frame from the active gun
     /** 0 when not aiming, else the zoom level (1 or 2). */
-    get zoomLevel() { return enabled && api.locked && (mouseR || aimToggled) ? Math.min(zoomStep, api.zoomLevels) : 0; },
+    get zoomLevel() { return enabled && ((api.locked && (mouseR || aimToggled)) || (pad && pad.zoom)) ? Math.min(zoomStep, api.zoomLevels) : 0; },
+    get device() { return device; },
+    setDevice(d) { if (d === device) return; device = d; emit('device', d); },
+    /** Gamepad gameplay state for this frame (null when no pad is driving play). */
+    setPad(next) {
+      const was = !!(pad && pad.zoom), now = !!(next && next.zoom);
+      if (now !== was && !aimToggled && !mouseR) zoomStep = 1; // like pressing / letting go of right-click
+      pad = next;
+    },
+    /** One gamepad press of a latched action (jump, reload, a spell...). */
+    padPress(name) { if (LATCHED.includes(name)) latch[name] = true; },
+    padWheel(dir) { if (enabled) wheel = dir; },
+    /** Two-zoom scopes: zoom 1 <-> zoom 2 while aiming (the pad's version of the wheel while zoomed). */
+    cycleZoom() { if (api.zoomLevel > 0 && api.zoomLevels > 1) zoomStep = zoomStep >= 2 ? 1 : 2; },
+    /** Right-stick look, already scaled to radians for this frame. */
+    addLook(dYaw, dPitch) {
+      if (!enabled) return;
+      yaw += dYaw;
+      pitch = Math.max(-1.5, Math.min(1.5, pitch + dPitch));
+    },
     get locked() { return document.pointerLockElement === lockEl; },
     // Free-arena practice locks a different canvas. Campaign play leaves this on the game view.
     setLockElement(el) {
@@ -46,11 +82,20 @@ export function createInput(canvas) {
       const has = (k) => BIND[k].some((c) => held.has(c));
       const pressed = {};
       for (const k of LATCHED) { pressed[k] = !!latch[k]; latch[k] = false; }
+      let moveX = enabled ? (has('right') ? 1 : 0) - (has('left') ? 1 : 0) : 0;
+      let moveZ = enabled ? (has('forward') ? 1 : 0) - (has('back') ? 1 : 0) : 0;
+      if (enabled && pad) {
+        moveX = Math.max(-1, Math.min(1, moveX + pad.moveX));
+        moveZ = Math.max(-1, Math.min(1, moveZ + pad.moveZ));
+      }
+      const padHeld = enabled && pad;
       const cmd = {
-        tick, yaw, pitch,
-        moveX: enabled ? (has('right') ? 1 : 0) - (has('left') ? 1 : 0) : 0,
-        moveZ: enabled ? (has('forward') ? 1 : 0) - (has('back') ? 1 : 0) : 0,
-        held: { fire: enabled && mouseL && api.locked, zoom: enabled && (mouseR || aimToggled) && api.locked, sprint: enabled && has('sprint') },
+        tick, yaw, pitch, moveX, moveZ,
+        held: {
+          fire: enabled && ((mouseL && api.locked) || !!(padHeld && pad.fire)),
+          zoom: enabled && (((mouseR || aimToggled) && api.locked) || !!(padHeld && pad.zoom)),
+          sprint: enabled && (has('sprint') || !!(padHeld && pad.sprint)),
+        },
         pressed: enabled ? pressed : { skip: pressed.skip },
         slot: enabled ? slot : -1, wheel: enabled ? wheel : 0,
         actions,
@@ -61,6 +106,7 @@ export function createInput(canvas) {
     },
   };
   function onMouseDown(e) {
+    api.setDevice('kbm');
     if (!api.locked) { emit('clickUnlocked', e); return; }
     if (e.button === 0) mouseL = true;
     if (e.button === 2) { if (!aimToggled) zoomStep = 1; mouseR = true; }
@@ -69,9 +115,10 @@ export function createInput(canvas) {
 
   window.addEventListener('keydown', (e) => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
-    if (e.code === 'AltLeft' || e.code === 'Tab' || e.code === 'Space' || e.code === 'Backquote' || (e.ctrlKey && e.code !== 'ControlLeft')) e.preventDefault();
+    if (e.code === 'AltLeft' || e.code === 'Tab' || e.code === 'Space' || e.code === 'Backquote' || e.code.startsWith('Arrow') || (e.ctrlKey && e.code !== 'ControlLeft')) e.preventDefault();
+    api.setDevice('kbm');
     emit('key', e);
-    if (e.repeat) return;
+    if (e.repeat || e.sprotoMenuKey) return; // a key a menu used (Space / Enter confirm) never reaches play
     held.add(e.code);
     for (const k of LATCHED) if (BIND[k].includes(e.code)) latch[k] = true;
     if (/^Digit[1-4]$/.test(e.code)) slot = Number(e.code.slice(5)) - 1;
@@ -96,6 +143,7 @@ export function createInput(canvas) {
   }, { passive: true });
   document.addEventListener('mousemove', (e) => {
     if (!api.locked || !enabled) return;
+    if (Math.abs(e.movementX) + Math.abs(e.movementY) > 2) api.setDevice('kbm');
     const zoomK = api.zoomSensitivity || 1;
     yaw -= e.movementX * api.sensitivity * zoomK;
     pitch -= e.movementY * api.sensitivity * zoomK;

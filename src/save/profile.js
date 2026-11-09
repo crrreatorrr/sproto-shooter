@@ -17,6 +17,8 @@ function clamp(value, lo, hi, fallback) {
 export function defaultSettings() {
   return {
     sensitivity: 1,
+    padSensitivity: 1,
+    aimAssist: 1,
     hitstop: true,
     shake: 1,
     fxQuality: 'high',
@@ -31,6 +33,8 @@ function settingsOf(value) {
   const fx = src.fxQuality;
   return {
     sensitivity: clamp(src.sensitivity, 0.3, 3, 1),
+    padSensitivity: clamp(src.padSensitivity, 0.3, 3, 1), // controller look speed
+    aimAssist: clamp(src.aimAssist, 0, 1.5, 1), // controller only; 0 turns it off
     hitstop: typeof src.hitstop === 'boolean' ? src.hitstop : true,
     shake: clamp(src.shake, 0, 1.5, 1),
     fxQuality: fx === 'low' || fx === 'medium' || fx === 'high' ? fx : 'high',
