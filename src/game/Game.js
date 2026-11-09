@@ -18,6 +18,11 @@ import { createPerfCounters } from '../render/debug/perfCounters.js';
 import { createStatsOverlay } from '../render/debug/StatsOverlay.js';
 import { createFeel, wireHitstop } from './feel.js';
 import { crashGuard } from '../core/crashGuard.js';
+import { createPadController } from '../input/padController.js';
+import { NAV_KEYS, keyLabel } from '../input/input.js';
+import { padGlyph } from '../input/gamepad.js';
+import { PAD_BINDINGS } from '../input/padConfig.js';
+import { createMenuNav } from '../ui/menuNav.js';
 
 const MAX_FRAME = 0.25, MAX_TICKS = 5;
 
@@ -45,6 +50,12 @@ export class Game {
     this.audio = createAudio(this.bus);
     this.ui = createUI(app.querySelector('#ui'), { input: this.input, bus: this.bus, project: (p) => this.renderer.project(p), game: this });
     this.screen = app.querySelector('#screen');
+    // Menu focus for keyboard and gamepad, and the gamepad itself (polled every frame).
+    this.nav = createMenuNav();
+    this.padStyle = 'xbox';
+    this.pvpNav = false; // Free 1v1 practice: the pad's Menu button moves focus to Ready / Leave
+    this.pad = createPadController(this);
+    this.input.on('device', () => this.refreshControlsHelp());
 
     this.input.sensitivity = 0.0022 * this.settings.sensitivity;
     this.input.setLook(this.state.players[this.state.localPlayerId].yaw, 0);
@@ -124,11 +135,18 @@ export class Game {
       inp.lock();
     });
     inp.on('lockchange', (locked) => {
+      this._lockChangedAt = performance.now();
       if (this.pvpActive) return;
       if (locked) { this.paused = false; this.hidePause(); }
       else if (!this.ui.menuOpen && this.screen.hidden && !this.debugOpen) this.showPause();
     });
     inp.on('key', (e) => {
+      if (this.navRoot() && this.handleNavKey(e)) { e.preventDefault(); e.sprotoMenuKey = true; return; }
+      // Free 1v1 practice: once the mouse is released (Esc), a second Esc leaves.
+      if (e.code === 'Escape' && this.pvpActive && this.pvp && this.pvp.wantsLock && !inp.locked && performance.now() - (this._lockChangedAt || 0) > 400) {
+        this.screen.querySelector('[data-pvp-go="back"]')?.click();
+        return;
+      }
       if (e.code === 'Backquote') this.toggleDebug();
       if (e.code === 'F3') { e.preventDefault(); this.toggleStats(); }
       if (e.code === 'KeyM') this.audio.toggleMute();
@@ -172,7 +190,7 @@ export class Game {
           <button class="btn alt" data-go="hub">${this.hubReturnLabel()}</button>
           <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
         </div>
-        ${controlsHtml()}</div>`;
+        ${controlsHtml(this.input.device, this.padStyle)}</div>`;
     } else if (kind === 'bossSelect') {
       const cards = Object.entries(BOSSES).filter(([, b]) => !b.campaign).map(([id, b]) => `<button class="btn boss-card" data-go="boss" data-boss="${id}" style="--c:#${b.color.toString(16).padStart(6, '0')}">
           <b>${b.name}</b><small>${b.tag === 'magic' ? '🔮 Magic' : '💪 Physical'} · ${b.hp.toLocaleString()} HP</small><span>${BOSS_BLURB[id] || ''}</span></button>`).join('');
@@ -180,7 +198,7 @@ export class Game {
         <p class="tag">Pick a boss. You get one of every gun with full ammo. Real damage: no god mode unless you press P.</p>
         <div class="boss-grid">${cards}</div>
         <div class="menu"><div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
-          <button class="btn alt" data-go="title">← Back</button></div></div>`;
+          <button class="btn alt" data-go="title" data-nav-back>← Back</button></div></div>`;
     } else if (kind === 'bossWon' || kind === 'bossLost') {
       const win = kind === 'bossWon', b = BOSSES[this.lastBoss] || {}, r = s.run;
       body = `<div class="end ${win ? 'victory' : 'defeat'}"><h1>${win ? `${b.name} DOWN!` : 'DEFEATED'}</h1>
@@ -201,7 +219,7 @@ export class Game {
       body = `<div class="title boss-select"><h1>THE GREAT <span>SPROTO AUDIT</span></h1>
         <p class="tag">Ten levels. Your guns stay the same. The world does not.</p>
         <div class="boss-grid">${cards}</div>
-        <div class="menu"><button class="btn alt" data-go="title">← Back</button></div></div>`;
+        <div class="menu"><button class="btn alt" data-go="title" data-nav-back>← Back</button></div></div>`;
     } else if (kind === 'levelClear' || kind === 'levelLost') {
       const win = kind === 'levelClear';
       const lv = s.level || {};
@@ -284,10 +302,13 @@ export class Game {
   showPause() {
     if (!this.screen.hidden) return;
     this.paused = true;
-    this.screen.innerHTML = `<div class="pause"><h1>PAUSED</h1><button class="btn big" data-p="resume">Resume</button>
+    this._pausedAt = performance.now();
+    this.screen.innerHTML = `<div class="pause"><h1>PAUSED</h1><button class="btn big" data-p="resume" data-nav-default>Resume</button>
       <button class="btn" data-p="title">Main menu</button>
       <button class="btn alt" data-p="hub">${this.hubReturnLabel()}</button>
       <label>Mouse sensitivity <input id="sens" type="range" min="0.3" max="3" step="0.05" value="${this.settings.sensitivity}"></label>
+      <label>Controller look speed <input id="padsens" type="range" min="0.3" max="3" step="0.05" value="${this.settings.padSensitivity ?? 1}"></label>
+      <label>Controller aim assist <input id="aimassist" type="range" min="0" max="1.5" step="0.05" value="${this.settings.aimAssist ?? 1}"></label>
       <label><input id="hs" type="checkbox" ${this.settings.hitstop ? 'checked' : ''}> Hitstop on big hits</label>
       <label>Screen shake <input id="shk" type="range" min="0" max="1.5" step="0.1" value="${this.settings.shake}"></label>
       <label>FX quality <select id="fxq">${['low', 'medium', 'high'].map((q) => `<option value="${q}" ${this.settings.fxQuality === q ? 'selected' : ''}>${q}</option>`).join('')}</select></label>
@@ -295,7 +316,7 @@ export class Game {
       <label>Master <input id="vol-master" type="range" min="0" max="1" step="0.05" value="${this.settings.volumes.master}"></label>
       <label>Music <input id="vol-music" type="range" min="0" max="1" step="0.05" value="${this.settings.volumes.music}"></label>
       <label>SFX <input id="vol-sfx" type="range" min="0" max="1" step="0.05" value="${this.settings.volumes.sfx}"></label>
-      ${controlsHtml()}</div>`;
+      ${controlsHtml(this.input.device, this.padStyle)}</div>`;
     this.screen.hidden = false;
     this.screen.onclick = (e) => {
       const b = e.target.closest('[data-p]');
@@ -306,6 +327,8 @@ export class Game {
     };
     this.screen.oninput = (e) => {
       if (e.target.id === 'sens') { this.settings.sensitivity = +e.target.value; this.input.sensitivity = 0.0022 * this.settings.sensitivity; }
+      if (e.target.id === 'padsens') this.settings.padSensitivity = +e.target.value;
+      if (e.target.id === 'aimassist') this.settings.aimAssist = +e.target.value;
       if (e.target.id === 'hs') this.settings.hitstop = e.target.checked;
       if (e.target.id === 'shk') this.settings.shake = +e.target.value;
       if (e.target.id === 'fxq') this.settings.fxQuality = e.target.value;
@@ -318,6 +341,82 @@ export class Game {
     };
   }
   hidePause() { if (this.screen.querySelector('.pause')) this.hideScreen(); }
+
+  // ---------- keyboard / gamepad menus ----------
+  /** The menu container that owns keyboard and gamepad focus right now, or null during play. */
+  navRoot() {
+    if (this.pvpActive) return this.pvp && this.pvp.wantsLock && !this.pvpNav ? null : this.screen;
+    if (!this.screen.hidden) return this.screen;
+    if (this.ui.menuOpen) return this.ui.els.panel;
+    return null;
+  }
+  /** Menu keys: arrows or W / A / S / D move, Enter or Space confirm, Esc goes back. True if used. */
+  handleNavKey(e) {
+    const dir = NAV_KEYS[e.code];
+    if (dir) { this.nav.move(dir); return true; }
+    if (e.repeat) return false;
+    if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Space') {
+      if (this.nav.current) this.nav.activate();
+      else {
+        const enter = e.code !== 'Space' && this.navRoot().querySelector('[data-nav-enter]');
+        if (enter) enter.click(); else this.nav.ensure();
+      }
+      return true;
+    }
+    if (e.code === 'Escape') {
+      if (this.ui.menuOpen && this.screen.hidden) return false; // the UI closes its own panels
+      if (this.screen.querySelector('.pause')) {
+        // The Esc that released the mouse can arrive here too; only a later press resumes. Browsers do not
+        // let Esc capture the mouse, so keep the pause up until the capture works (Enter / click on Resume).
+        if (performance.now() - (this._pausedAt || 0) > 400) this.input.lock(); // lockchange hides the pause
+        return true;
+      }
+      this.navBack();
+      return true;
+    }
+    return false;
+  }
+  /** Gamepad B (and Esc on screens): close, go back or resume. */
+  navBack() {
+    if (this.pvpActive) {
+      if (this.pvpNav) this.pvpNav = false;
+      else this.nav.back();
+      return;
+    }
+    if (this.screen.hidden && this.ui.menuOpen) { this.ui.closeMenu(); return; }
+    if (this.screen.querySelector('.pause')) { this.resumeFromPause(); return; }
+    this.nav.back();
+  }
+  /** Gamepad Menu / Start: pause or resume; in Free 1v1 practice it moves focus to Ready / Leave. */
+  navStart() {
+    if (this.pvpActive) {
+      if (this.pvp && this.pvp.wantsLock) { this.pvpNav = !this.pvpNav; if (this.pvpNav) this.input.unlock(); }
+      return;
+    }
+    if (this.screen.querySelector('.pause')) { this.resumeFromPause(); return; }
+    if (this.screen.hidden) this.pauseGame();
+  }
+  pauseGame() {
+    if (!this.screen.hidden || this.pvpActive) return;
+    if (this.ui.menuOpen) this.ui.closeMenu();
+    if (this.input.locked) this.input.unlock(); // lockchange shows the pause screen
+    else this.showPause();
+  }
+  resumeFromPause() {
+    if (!this.screen.querySelector('.pause')) return;
+    this.hideScreen();
+    this.paused = false;
+    this.input.lock(); // works after a key or click; a pad press cannot capture the mouse, and play does not need it
+  }
+  onPadConnection(connected) {
+    this.ui.toast(connected ? '🎮 Controller connected' : '🎮 Controller disconnected', connected ? 'good' : 'bad');
+    if (!connected && this.input.device === 'pad' && this.playing && !this.pvpActive) this.pauseGame();
+  }
+  /** Redraw the controls list on an open title or pause screen when the player switches devices. */
+  refreshControlsHelp() {
+    const box = this.screen.hidden ? null : this.screen.querySelector('.controls-wrap');
+    if (box) box.outerHTML = controlsHtml(this.input.device, this.padStyle);
+  }
 
   // ---------- debug panel ----------
   openDebugPanel() {
@@ -409,6 +508,9 @@ export class Game {
     const frameMs = now - this.last;
     let ft = Math.min(frameMs / 1000, MAX_FRAME);
     this.last = now;
+    this.nav.setRoot(this.navRoot());
+    this.nav.sync();
+    this.pad.frame(ft, now);
     const stepped = this.feel.scaleFrame(ft, this.settings.hitstop);
     if (this.pvpActive) {
       const cmd = this.input.buildCommand(this.state.tick);
@@ -460,6 +562,7 @@ export class Game {
   async openPvp(opts = {}) {
     if (this.pvpActive) return;
     this.pvpActive = true;
+    this.pvpNav = false;
     this.playing = false;
     this.ui.setPvp(true);
     this.input.unlock();
@@ -472,6 +575,7 @@ export class Game {
         demo: !!opts.demo,
         onExit: () => {
           this.pvpActive = false;
+          this.pvpNav = false;
           this.pvp = null;
           this.ui.setPvp(false);
           this.showScreen('title');
@@ -528,12 +632,24 @@ const BOSS_BLURB = {
   hexAuditor: 'Floating caster: bullet hell, homing bolts, teleports.',
 };
 
-function controlsHtml() {
+/** Controls list for the title and pause screens: the device in use first. */
+function controlsHtml(device = 'kbm', style = 'xbox') {
   const k = (a, b) => `<div><kbd>${a}</kbd><span>${b}</span></div>`;
-  return `<div class="controls">
-    ${k('WASD', 'Move')}${k('Mouse', 'Look · LMB fire · RMB hold to aim')}${k('F', 'Aim on / off (sniper: zoom 1 → zoom 2 → off)')}${k('Wheel while zoomed', 'Sniper zoom 1 / 2')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
-    ${k('C', 'Slide (Ctrl works, but Ctrl+W closes the tab!)')}${k('Alt / V', 'Dash')}${k('R', 'Reload')}${k('1-4 / Wheel', 'Switch gun')}
-    ${k('G', 'Pick up gun · open Weapon Box')}${k('H', 'Use medkit')}${k('Q E Z X T', 'Spells (unlock with Magic XP)')}
-    ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('5', 'Stats & powers')}${k('Enter', 'Ready / skip break')}${k('`', 'Debug panel')}${k('F3', 'Frame stats')}${k('M', 'Mute')}${k('P', 'God mode (health stays at 99)')}
+  const kb = `<div class="controls" data-device="kbm">
+    ${k('WASD / Arrows', 'Move')}${k('Mouse', 'Look · LMB fire · RMB hold to aim')}${k('F', 'Aim on / off (sniper: zoom 1 → zoom 2 → off)')}${k('Wheel while zoomed', 'Sniper zoom 1 / 2')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
+    ${k('C', 'Slide (Ctrl works, but Ctrl+W closes the tab!)')}${k('V / Alt', 'Dash')}${k('R', 'Reload')}${k('1-4 · L / Wheel', 'Switch gun (L = legendary slot)')}
+    ${k('E (or G)', 'Pick up gun · open Weapon Box')}${k('H', 'Use medkit')}${k(['gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor'].map(keyLabel).join(' '), 'Spells (unlock with Magic XP)')}
+    ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('5', 'Stats & powers')}${k('Enter', 'Ready / skip break')}${k('Esc', 'Pause · back in menus')}
+    ${k('Arrows / WS · Enter', 'Menus: move · confirm')}${k('`', 'Debug panel')}${k('F3', 'Frame stats')}${k('M', 'Mute')}${k('P', 'God mode (health stays at 99)')}
   </div>`;
+  const g = (a) => padGlyph(PAD_BINDINGS[a] || a, style);
+  const pad = `<div class="controls" data-device="pad">
+    ${k('Left stick', 'Move')}${k('Right stick', 'Look (aim assist near enemies)')}${k(g('fire'), 'Fire')}${k(g('aim'), 'Aim (hold)')}
+    ${k(g('jump'), 'Jump / double jump')}${k(g('slide'), 'Slide')}${k(g('dash'), 'Dash')}${k(g('sprint'), 'Sprint (toggle)')}
+    ${k(g('reload'), `Reload · hold: pick up gun / open Weapon Box`)}${k(g('swap'), 'Next gun · aiming a sniper: zoom 1 / 2')}
+    ${k(g('gooBolt'), 'Goo Bolt')}${k(`${g('chainZap')} ${g('swarm')} ${g('manaShield')}`, 'Chain Zap · Sproto Swarm · Mana Shield')}${k(g('meteor'), 'Meteor Bonk')}${k(g('medkit'), 'Use medkit')}
+    ${k(g('panel'), 'Shop (between waves) or your guns')}${k(g('pause'), 'Pause')}
+    ${k(`D-pad / stick · ${padGlyph('a', style)}`, 'Menus: move · confirm')}${k(`${padGlyph('b', style)} · ${padGlyph('lb', style)} ${padGlyph('rb', style)}`, 'Back · switch tabs')}
+  </div>`;
+  return device === 'pad' ? `<div class="controls-wrap">${pad}${kb}</div>` : `<div class="controls-wrap">${kb}${pad}</div>`;
 }

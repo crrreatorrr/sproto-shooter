@@ -9,6 +9,9 @@ import { WAVES } from '../data/waves.js';
 import { BOSSES } from '../data/enemies.js';
 import { compareGuns, sellValue, salvageYield, dpsOf, REROLLABLE } from '../sim/guns.js';
 import { canAfford, mergeCost, recipeUnlocked, nearBox } from '../sim/economy.js';
+import { PAD_BINDINGS } from '../input/padConfig.js';
+import { padGlyph } from '../input/gamepad.js';
+import { keyLabel } from '../input/input.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -16,6 +19,7 @@ const fmt = (n, d = 0) => (Math.round(n * 10 ** d) / 10 ** d).toLocaleString();
 const RES_BY_ID = Object.fromEntries(RESOURCES.map((r) => [r.id, r]));
 const SPELL_ICON = { gooBolt: '●', chainZap: 'ϟ', swarm: '✲', manaShield: '◈', meteor: '☄' };
 const TYPE_ICON = { mg: '▬', shotgun: '▮', sniper: '━', bazooka: '◉', raygun: '⚡', bigbullets: '●', duckgun: '🦆' };
+const PANEL_NAMES = { shop: 'Shop', inventory: 'Your guns', skills: 'Skills', stats: 'Stats & powers', craft: 'Weapon Box' };
 
 export function createUI(root, { input, bus, project, game }) {
   const st = { menu: null, tabHeld: false, statsOpen: false, craftTab: 'guns', craftType: 'mg', choice: { element: null, part: null, arcane: false }, lastKey: {}, rerollSlot: 0 };
@@ -77,7 +81,7 @@ export function createUI(root, { input, bus, project, game }) {
 
   // ---------- skill mini bars & spells (built once) ----------
   els.skills.innerHTML = SKILL_IDS.map((id) => `<div class="sk" data-sk="${id}" style="--c:${SKILLS[id].color}"><span class="ic">${SKILLS[id].icon}</span><span class="lv"></span><div class="xp"><b></b></div></div>`).join('');
-  els.spells.innerHTML = SPELL_IDS.map((id) => `<div class="sp" data-sp="${id}"><div class="ico">${SPELL_ICON[id]}</div><div class="key">${SPELLS[id].key}</div><div class="cd"></div><div class="lock">🔒</div></div>`).join('');
+  els.spells.innerHTML = SPELL_IDS.map((id) => `<div class="sp" data-sp="${id}"><div class="ico">${SPELL_ICON[id]}</div><div class="key">${keyLabel(id)}</div><div class="cd"></div><div class="lock">🔒</div></div>`).join('');
 
   // ---------- cache-based writes ----------
   const cache = new Map();
@@ -152,7 +156,10 @@ export function createUI(root, { input, bus, project, game }) {
   bus.on('wavePre', (ev) => banner(`<small>GET READY</small>WAVE ${ev.waveIndex + 1}<em>${WAVES[ev.waveIndex].name.split(': ')[1]}</em>`, 'wave', 2600));
   bus.on('waveStart', () => banner('FIGHT!', 'fight', 900));
   bus.on('waveCleared', (ev) => banner(`<small>WAVE ${ev.waveIndex + 1}</small>CLEARED! <em>+${ev.tickets} Run Cash</em>`, 'cleared'));
-  bus.on('intermissionStart', () => { banner('<small>INTERMISSION</small>SHOP [B] · CRAFT AT WEAPON BOXES<em>ENTER when ready</em>', 'inter', 3200); });
+  bus.on('intermissionStart', () => {
+    const msg = pad() ? `SHOP [${glyph(PAD_BINDINGS.panel)}] · CRAFT AT WEAPON BOXES<em>READY is in the shop</em>` : 'SHOP [B] · CRAFT AT WEAPON BOXES<em>ENTER when ready</em>';
+    banner(`<small>INTERMISSION</small>${msg}`, 'inter', 3200);
+  });
   bus.on('bossIntro', (ev) => banner(`<small>⚠ BOSS INCOMING ⚠</small>${ev.types.map((t) => BOSSES[t].name).join(' + ')}`, 'boss', 3000));
   bus.on('bossPhase', (ev) => banner(`${BOSSES[ev.bossType].name}<em>${ev.phaseIdx === 2 ? 'FINAL AUDIT!' : 'IS ANGRY NOW'}</em>`, 'boss', 1800));
   bus.on('bossDefeated', (ev) => banner(`<small>BOSS DEFEATED</small>${BOSSES[ev.bossType].name}`, 'cleared', 2600));
@@ -188,6 +195,37 @@ export function createUI(root, { input, bus, project, game }) {
     renderPanel();
     els.panel.hidden = false;
   }
+  /** Gamepad: the menus LB / RB step through. The shop only between waves (or in the sandbox). */
+  function padMenus() { return [...(game.shopOpen() ? ['shop'] : []), 'inventory', 'skills', 'stats']; }
+  /** Gamepad View button: the shop when it is open, otherwise your guns. */
+  function openGearPanel() { openMenu(game.shopOpen() ? 'shop' : 'inventory'); }
+  /** Gamepad LB / RB inside a menu: Weapon Box tabs, otherwise the next menu. */
+  function cycleMenu(dir) {
+    if (!st.menu) return;
+    if (st.menu === 'craft') {
+      const tabs = ['guns', 'items', 'workshop'];
+      st.craftTab = tabs[(tabs.indexOf(st.craftTab) + dir + tabs.length) % tabs.length];
+      renderPanel();
+      return;
+    }
+    const list = padMenus();
+    const i = list.indexOf(st.menu);
+    st.menu = list[(Math.max(0, i) + dir + list.length) % list.length];
+    renderPanel();
+  }
+  /** Gamepad hold-X: pick up the gun in reach (through the sim, like G), else open the Weapon Box in reach. */
+  function padInteract() {
+    const s = game.state, p = s.players[s.localPlayerId];
+    input.padPress('interact');
+    if (!p.nearGunPickupId && nearBox(s, p)) openMenu('craft');
+  }
+  const pad = () => input.device === 'pad';
+  const glyph = (b) => padGlyph(b, game.padStyle || 'xbox');
+  /** Prompt label for an action on the device in use: '[E]' on keyboard, '[Hold X]' on a pad. */
+  function keyTag(kbm, padButton, hold = false) {
+    if (!pad()) return `[${kbm}]`;
+    return `[${hold ? 'Hold ' : ''}${glyph(padButton)}]`;
+  }
   function closeMenu() {
     st.menu = null;
     els.panel.hidden = true;
@@ -202,14 +240,14 @@ export function createUI(root, { input, bus, project, game }) {
     if (e.code === 'Tab') { st.tabHeld = true; return; }
     if (!els.screen.hidden) return;
     if (e.code === 'Digit5' && !st.menu) { st.statsOpen = !st.statsOpen; return; }
-    if (e.code === 'KeyG' && !st.menu) {
+    if ((e.code === 'KeyE' || e.code === 'KeyG') && !st.menu) {
       const s = game.state, p = s.players[s.localPlayerId];
       if (!p.nearGunPickupId && nearBox(s, p)) openMenu('craft');
     } else if (e.code === 'KeyB' && !st.menu) {
       const s = game.state;
       if (game.shopOpen()) openMenu('shop'); else toast('Shop opens between waves', 'bad');
     } else if (e.code === 'KeyI' && !st.menu) openMenu('inventory');
-    else if ((e.code === 'Escape' || e.code === 'KeyB' || e.code === 'KeyG' || e.code === 'KeyI') && st.menu) closeMenu();
+    else if ((e.code === 'Escape' || e.code === 'KeyB' || e.code === 'KeyE' || e.code === 'KeyG' || e.code === 'KeyI') && st.menu) closeMenu();
   });
   input.on('keyup', (e) => { if (e.code === 'Tab') st.tabHeld = false; });
 
@@ -278,7 +316,15 @@ export function createUI(root, { input, bus, project, game }) {
     if (st.menu === 'craft') body = craftHtml(s, p);
     else if (st.menu === 'shop') body = shopHtml(s, p);
     else if (st.menu === 'inventory') body = inventoryHtml(s, p);
-    els.panel.innerHTML = `<div class="pwrap">${body}<button class="x" data-act="close">✕ Close [Esc]</button></div>`;
+    else if (st.menu === 'skills') body = skillsHtml(p);
+    else if (st.menu === 'stats') body = statsHtml(s, p);
+    let padTabs = '';
+    if (pad()) {
+      const names = st.menu === 'craft' ? ['Tabs'] : padMenus().map((m) => PANEL_NAMES[m]);
+      const on = st.menu === 'craft' ? 'Tabs' : PANEL_NAMES[st.menu];
+      padTabs = `<div class="padtabs"><kbd>${glyph('lb')}</kbd>${names.map((n) => `<span class="${n === on ? 'on' : ''}">${n}</span>`).join('')}<kbd>${glyph('rb')}</kbd></div>`;
+    }
+    els.panel.innerHTML = `<div class="pwrap">${padTabs}${body}<button class="x" data-act="close" data-nav-back>✕ Close ${pad() ? `[${glyph('b')}]` : '[Esc]'}</button></div>`;
   }
 
   function resBar(p) {
@@ -354,7 +400,7 @@ export function createUI(root, { input, bus, project, game }) {
         <div><h3>Upgrades</h3>${ups}</div>
         <div><h3>Sell guns</h3>${sells}</div>
       </div>
-      ${inter ? '<button class="btn big" data-act="ready">READY! Start next wave [Enter]</button>' : ''}`;
+      ${inter ? `<button class="btn big" data-act="ready" data-nav-enter>READY! Start next wave ${pad() ? '' : '[Enter]'}</button>` : ''}`;
   }
 
   function inventoryHtml(s, p) {
@@ -371,7 +417,7 @@ export function createUI(root, { input, bus, project, game }) {
       return `<div class="skc" style="--c:${def.color}"><div class="skh">${def.icon} ${def.name} <span>Lv ${sk.level}</span></div>
         <div class="xpb"><b style="width:${sk.level >= 10 ? 100 : (sk.xp / need) * 100}%"></b><span>${sk.level >= 10 ? 'MAX' : `${Math.floor(sk.xp)} / ${need} XP`}</span></div>
         <div class="src">XP from: ${src}</div>${perks}</div>`;
-    }).join('')}</div><div class="hint">Hold TAB · Skills level up just by doing things. No points to spend.</div>`;
+    }).join('')}</div><div class="hint">${st.menu === 'skills' ? (pad() ? `${glyph('lb')} / ${glyph('rb')} switch · ${glyph('b')} close` : 'Esc to close') : 'Hold TAB'} · Skills level up just by doing things. No points to spend.</div>`;
   }
 
   // ---------- stats & powers overlay (5) ----------
@@ -402,14 +448,14 @@ export function createUI(root, { input, bus, project, game }) {
         : cd > 0 ? `<em class="wait">Cooldown ${cd.toFixed(1)} s</em>`
         : p.mana < cost - 0.5 ? '<em class="wait">Not enough mana</em>' : '<em class="ok">READY</em>';
       const viaGod = p.perks[id] && magic < pk.level ? ' <em class="god">via god mode</em>' : '';
-      return `<div class="power ${p.perks[id] ? '' : 'locked'}"><kbd>${sp.key}</kbd><div><b>${SPELL_ICON[id]} ${sp.name}</b> ${status}${viaGod}
+      return `<div class="power ${p.perks[id] ? '' : 'locked'}"><kbd>${pad() ? glyph(PAD_BINDINGS[id]) : keyLabel(id)}</kbd><div><b>${SPELL_ICON[id]} ${sp.name}</b> ${status}${viaGod}
         <small>${pk.desc} · ${id === 'meteor' ? 'all mana' : sp.mana + ' mana'}${id === 'manaShield' ? ' + drain' : ''} · ${sp.cd}s cooldown</small></div></div>`;
     }).join('');
     const perks = PERKS.filter((k) => !SPELLS[k.id]).map((k) => `<div class="power ${p.perks[k.id] ? '' : 'locked'}"><kbd>${ICON[k.skill]}</kbd><div><b>${k.name}</b> ${p.perks[k.id] ? '<em class="ok">ACTIVE</em>' : `<em class="lock">🔒 LOCKED · needs ${SKILLS[k.skill].name} Lv ${k.level} (you're Lv ${p.skills[k.skill].level})</em>`}<small>${k.desc}</small></div></div>`).join('');
     return `<div class="stats-screen">${stats}
       <div class="skc" style="--c:#9b6bff"><div class="skh">🔮 Spells <span>Magic Lv ${magic}</span></div>${spells}<div class="src">Level Magic by casting spells, spell kills and beating Magic bosses.</div></div>
       <div class="skc" style="--c:#4fd1c5"><div class="skh">✨ Perks</div>${perks}</div>
-    </div><div class="hint">Press 5 to close · the game keeps running</div>`;
+    </div><div class="hint">${st.menu === 'stats' ? (pad() ? `${glyph('b')} to close` : 'Esc to close') : 'Press 5 to close'} · the game keeps running</div>`;
   }
 
   // ---------- per-frame update ----------
@@ -442,6 +488,7 @@ export function createUI(root, { input, bus, project, game }) {
       const cost = id === 'meteor' ? p.maxMana : SPELLS[id].mana;
       const state = !unlocked ? 'locked' : (id === 'manaShield' && p.spells.manaShieldOn) ? 'active' : cd > 0 ? 'cd' : p.mana < cost - 0.5 ? 'nomana' : 'ready';
       set(el, 'sps' + id, state, (e, v) => { e.className = 'sp ' + v; });
+      text(el.querySelector('.key'), 'spk' + id, pad() ? glyph(PAD_BINDINGS[id]) : keyLabel(id));
       set(el, 'spc' + id, Math.round((cd / max) * 100), (e, v) => { e.querySelector('.cd').style.height = v + '%'; });
     }
     // weapon
@@ -459,7 +506,7 @@ export function createUI(root, { input, bus, project, game }) {
       return `<div class="slot ${i === p.activeSlot ? 'on' : ''} ${locked ? 'lockd' : ''} ${leg ? 'legslot' : ''}" style="--q:${x ? QUALITIES_BY_ID[x.quality].color : leg ? '#ff9f1a' : '#555'}"><b>${leg ? 'L' : i + 1}</b>${x ? TYPE_ICON[x.type] + ' ' + GUN_TYPES_BY_ID[x.type].short : locked ? '🔒' : leg ? '★' : '—'}</div>`;
     }).join(''));
     void slotsKey;
-    text(els.medkits, 'mk', p.medkits ? `✚ ×${p.medkits} [H]` : '');
+    text(els.medkits, 'mk', p.medkits ? `✚ ×${p.medkits} ${keyTag(keyLabel('medkit'), PAD_BINDINGS.medkit)}` : '');
 
     // top bar
     text(els.tickets, 'tk', `Run Cash ${p.tickets}`);
@@ -470,12 +517,12 @@ export function createUI(root, { input, bus, project, game }) {
       const fuel = lv.fuel > 0 || (s.players[s.localPlayerId].jetpack) ? ` · fuel ${Math.ceil(lv.fuel)}` : '';
       wave = `<b>${lv.name}</b> · ${lv.objective || ''}${fuel}`;
     } else if (s.mode === 'boss' && s.bossFight) wave = `<b>BOSS FIGHT</b> · ${BOSSES[s.bossFight.type].name} · Tier ${s.tier}`;
-    else if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> · Tier ${s.tier} <small>[\`] debug · [B] shop</small>`;
+    else if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> · Tier ${s.tier} <small>${pad() ? `[${glyph(PAD_BINDINGS.panel)}] shop` : '[`] debug · [B] shop'}</small>`;
     else if (s.wave) {
       const w = s.wave;
       const left = s.enemies.filter((e) => !e.dead && e.type !== 'dummy').length + w.spawnQueue.length;
       const remainingGroups = WAVES[w.index].groups.slice(w.groupIdx).reduce((n, gg) => n + gg.spawns.reduce((m, x) => m + x.count, 0), 0);
-      const phaseTxt = { pre: 'Get ready…', combat: `Enemies left: ${left + remainingGroups}`, bossIntro: 'BOSS INCOMING', boss: 'BOSS FIGHT', cleared: 'Cleared!', intermission: `Intermission ${Math.ceil(w.intermissionT)}s · [B] Shop · [Enter] Ready`, victory: 'VICTORY', defeat: 'DEFEAT' }[w.phase];
+      const phaseTxt = { pre: 'Get ready…', combat: `Enemies left: ${left + remainingGroups}`, bossIntro: 'BOSS INCOMING', boss: 'BOSS FIGHT', cleared: 'Cleared!', intermission: `Intermission ${Math.ceil(w.intermissionT)}s · ${pad() ? `[${glyph(PAD_BINDINGS.panel)}] Shop · Ready in the shop` : '[B] Shop · [Enter] Ready'}`, victory: 'VICTORY', defeat: 'DEFEAT' }[w.phase];
       wave = `<b>WAVE ${w.index + 1}/3</b> · Tier ${s.tier} · ${phaseTxt}`;
     }
     if (s.tuning.godMode) wave += ' · <b class="god">GOD MODE</b>';
@@ -527,10 +574,10 @@ export function createUI(root, { input, bus, project, game }) {
     else if (nearGun) {
       const leg = nearGun.gun && nearGun.gun.quality === 'legendary';
       const full = p.guns.slice(0, p.unlockedSlots).every(Boolean);
-      prompt = `<b>[G]</b> Pick up${leg ? (p.guns[LEGENDARY_SLOT] && full ? ' (swaps your legendary)' : ' → legendary slot [L]') : full ? ' (swaps with equipped)' : ''}`;
+      prompt = `<b>${keyTag(keyLabel('interact'), PAD_BINDINGS.interact, true)}</b> Pick up${leg ? (p.guns[LEGENDARY_SLOT] && full ? ' (swaps your legendary)' : ` → legendary slot${pad() ? '' : ' [L]'}`) : full ? ' (swaps with equipped)' : ''}`;
     }
-    else if (box) prompt = `<b>[G]</b> Open Weapon Box${box.craft ? ' (crafting…)' : ''}`;
-    else if (s.wave && s.wave.phase === 'intermission') prompt = '<b>[B]</b> Shop · <b>[Enter]</b> Ready';
+    else if (box) prompt = `<b>${keyTag(keyLabel('interact'), PAD_BINDINGS.interact, true)}</b> Open Weapon Box${box.craft ? ' (crafting…)' : ''}`;
+    else if (s.wave && s.wave.phase === 'intermission') prompt = pad() ? `<b>${keyTag('B', PAD_BINDINGS.panel)}</b> Shop · Ready` : '<b>[B]</b> Shop · <b>[Enter]</b> Ready';
     html(els.prompt, 'prompt', prompt);
     html(els.loot, 'loot', nearGun ? gunCardHtml(nearGun.gun, g) : '');
     set(els.loot, 'lootv', !!nearGun, (e, v) => e.classList.toggle('on', v));
@@ -558,5 +605,5 @@ export function createUI(root, { input, bus, project, game }) {
     if (hud) hud.style.visibility = on ? 'hidden' : '';
   }
 
-  return { update, closeMenu, openMenu, banner, toast, setPvp, get menuOpen() { return !!st.menu; }, els };
+  return { update, closeMenu, openMenu, openGearPanel, cycleMenu, padInteract, banner, toast, setPvp, get menuOpen() { return !!st.menu; }, get menu() { return st.menu; }, els };
 }

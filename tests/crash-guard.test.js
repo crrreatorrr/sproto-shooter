@@ -46,6 +46,8 @@ function fakeGame({ tickThrows = () => false, renderThrows = () => false } = {})
     ui: { update() {} },
     perfCounters: { push() {} },
     statsOn: false,
+    nav: { setRoot() {}, sync() {} },
+    pad: { frame() {} },
     // The sim tick: the real loop calls this.onSimCommand(cmd, state) before simulate().
     onSimCommand: () => {
       ticks++;
