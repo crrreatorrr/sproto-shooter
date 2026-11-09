@@ -1,12 +1,21 @@
 // Fixed-step free arena. Two equal fighters, no loot, no client winner.
+//
+// Sim 2 (SHOOTER-S2b):
+// - Lag compensation. The state keeps an 8-tick history ring of {x, y, z, alive, invuln} per
+//   player. A shot is traced from the shooter's current position against the target's capsule
+//   interpolated from history at the tick the shooter saw (wish.viewTick + viewFrac/256, at most
+//   REWIND.maxTicks back). invuln comes from the rewound tick, alive from the current one.
+// - Split seed. spawnSeed (public) places the spawns; combatSeed (secret until RESULT) seeds
+//   both seats' RNG. The raw combat seed is not kept in the state.
+// - No crits. The only randomness left is pellet spread.
 import { TUNING } from '../../data/tuning.js';
 import { rangeFalloff } from '../../data/guns.js';
-import { createRng, float, chance } from '../../core/rng.js';
+import { createRng, float } from '../../core/rng.js';
 import { dirFromYawPitch, deg, yawTo } from '../../core/math.js';
-import { verifyStateHash } from '../hash.js';
+import { fnv1a, verifyStateHash } from '../hash.js';
 import { rayCapsule } from './hit.js';
 import {
-  DT, LOADOUT, MATCH_TICKS, RESERVE, SPAWN_RADIUS, STAGE_ID,
+  DT, LOADOUT, MATCH_TICKS, RESERVE, REWIND, SPAWN_RADIUS, STAGE_ID,
 } from './rules.js';
 
 const MAX_HP = TUNING.maxHp * 1000;
@@ -20,6 +29,15 @@ function rngOf(seed) {
   return createRng((seed >>> 0) || 1);
 }
 
+/**
+ * The 32-bit RNG seed both seats start from. A number is used as is (tests, replay v1); a
+ * string (the host's secret hex combat seed) goes through FNV-1a.
+ */
+export function combatRngSeed(combatSeed) {
+  if (typeof combatSeed === 'string') return parseInt(fnv1a(`sproto-shooter:combat:${combatSeed}`), 16) >>> 0;
+  return (Number(combatSeed) >>> 0);
+}
+
 export function spawnsFor(seed) {
   const angle = ((seed >>> 0) % 360) * Math.PI / 180;
   const x = q4(Math.cos(angle) * SPAWN_RADIUS);
@@ -29,7 +47,7 @@ export function spawnsFor(seed) {
   return [a, b];
 }
 
-function makePlayer(seat, pos, yaw, seed) {
+function makePlayer(seat, pos, yaw, rngSeed) {
   return {
     seat,
     x: pos.x, y: 0, z: pos.z,
@@ -49,17 +67,32 @@ function makePlayer(seat, pos, yaw, seed) {
     fireCd: 0,
     reloadT: 0,
     swapT: 0,
-    rng: rngOf(seed),
+    rng: rngOf(rngSeed),
   };
 }
 
-export function createMatch(seed) {
-  const n = seed >>> 0;
+function histEntry(tick, p) {
+  return { t: tick, x: p.x, y: p.y, z: p.z, alive: p.alive, invuln: p.invuln };
+}
+
+/** Write both players' current state into the history ring as tick `tick`. */
+function record(state, tick) {
+  const slot = tick % REWIND.historyTicks;
+  for (let i = 0; i < 2; i++) state.hist[i][slot] = histEntry(tick, state.players[i]);
+}
+
+/**
+ * createMatch(spawnSeed, combatSeed). combatSeed defaults to spawnSeed (replay v1 and the
+ * mirrored golden); the director always passes its secret one.
+ */
+export function createMatch(spawnSeed, combatSeed = spawnSeed) {
+  const n = spawnSeed >>> 0;
+  const rngSeed = combatRngSeed(combatSeed);
   const points = spawnsFor(n);
   const yaw0 = yawTo(points[0], points[1]);
   const yaw1 = yawTo(points[1], points[0]);
-  return {
-    seed: n,
+  const state = {
+    spawnSeed: n,
     stage: STAGE_ID,
     tick: 0,
     phase: 'live',
@@ -67,17 +100,39 @@ export function createMatch(seed) {
     winner: null,
     reason: null,
     players: [
-      makePlayer(0, points[0], yaw0, n),
-      makePlayer(1, points[1], yaw1, n),
+      makePlayer(0, points[0], yaw0, rngSeed),
+      makePlayer(1, points[1], yaw1, rngSeed),
     ],
+    hist: [[], []],
   };
+  for (let i = 0; i < REWIND.historyTicks; i++) {
+    state.hist[0].push(null);
+    state.hist[1].push(null);
+  }
+  record(state, 0);
+  return state;
 }
 
-export function normalizeWish(player, raw) {
+function viewOf(wish, tick) {
+  // rewind (ticks back from the frame) wins over an absolute viewTick: the director's used log
+  // stores the clamped rewind.
+  let back = 0;
+  if (Number.isInteger(wish.rewind)) back = wish.rewind;
+  else if (Number.isInteger(wish.viewTick)) back = tick - wish.viewTick;
+  let frac = Number.isInteger(wish.viewFrac) ? Math.max(0, Math.min(REWIND.fracSteps - 1, wish.viewFrac)) : 0;
+  if (back < 0) { back = 0; frac = 0; }
+  if (back > REWIND.maxTicks) { back = REWIND.maxTicks; frac = 0; }
+  // History starts at tick 0.
+  if (back > tick) { back = tick; frac = 0; }
+  return { back, frac };
+}
+
+export function normalizeWish(player, raw, tick = 0) {
   const wish = raw || {};
   const num = (value, fallback) => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
   let slot = -1;
   if (Number.isInteger(wish.slot) && wish.slot >= 0 && wish.slot <= 2) slot = wish.slot;
+  const view = viewOf(wish, tick);
   return {
     yaw: num(wish.yaw, player.yaw),
     pitch: Math.max(-1.5, Math.min(1.5, num(wish.pitch, player.pitch))),
@@ -90,7 +145,46 @@ export function normalizeWish(player, raw) {
     dash: !!wish.dash,
     reload: !!wish.reload,
     slot,
+    rewind: view.back,
+    viewFrac: view.frac,
   };
+}
+
+function histAt(state, seat, tick) {
+  const entry = state.hist[seat][tick % REWIND.historyTicks];
+  return entry && entry.t === tick ? entry : null;
+}
+
+/**
+ * The target's capsule as the shooter saw it while stepping frame `frame`: interpolated between
+ * history ticks base and base + 1, where base = frame - rewind and t = viewFrac / 256. Tick
+ * frame + 1 is the target's position this step (written before the shots), so rewind 0 with
+ * frac 0 is the start of this tick. invuln is the rewound tick's; alive is NOT taken from here.
+ */
+export function rewoundTarget(state, seat, frame, rewind, viewFrac) {
+  const base = frame - rewind;
+  const a = histAt(state, seat, base) || histAt(state, seat, frame + 1);
+  const b = histAt(state, seat, base + 1) || a;
+  const t = viewFrac / REWIND.fracSteps;
+  return {
+    x: q4(a.x + (b.x - a.x) * t),
+    y: q4(a.y + (b.y - a.y) * t),
+    z: q4(a.z + (b.z - a.z) * t),
+    invuln: a.invuln,
+    base,
+    rewind,
+    viewFrac,
+  };
+}
+
+/** Position of `seat` at fractional history tick `at` (harness and tests). Null when not kept. */
+export function historyAt(state, seat, at) {
+  const base = Math.floor(at);
+  const a = histAt(state, seat, base);
+  if (!a) return null;
+  const b = histAt(state, seat, base + 1) || a;
+  const t = at - base;
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t, invuln: a.invuln, alive: a.alive };
 }
 
 /**
@@ -250,9 +344,10 @@ export function weaponTick(p, wish, dt) {
 }
 
 /**
- * Hitscan for one shot that weaponTick allowed: spread, ray against the target's capsule,
- * range falloff and crits. Returns the damage of each pellet that hits, in milli-HP. It only
- * advances `p.rng` and never writes `target`.
+ * Hitscan for one shot that weaponTick allowed: spread, ray against the target's capsule and
+ * range falloff. No crits in PvP (sim 2). `target` is any {x, y, z} capsule base: the sim passes
+ * the rewound one. Returns the damage of each pellet that hits, in milli-HP. It only advances
+ * `p.rng` and never writes `target`.
  */
 export function traceShots(p, target, wish) {
   const hits = [];
@@ -268,15 +363,10 @@ export function traceShots(p, target, wish) {
     if (dist < 0) continue;
     const fall = rangeFalloff(gun.range, dist);
     if (fall <= 0) continue;
-    let raw = gun.stats.damage * fall;
-    if (chance(p.rng, gun.stats.critChance)) raw *= gun.stats.critMult;
+    const raw = gun.stats.damage * fall;
     hits.push(Math.max(0, Math.round(raw * 1000)));
   }
   return hits;
-}
-
-function shotsOf(p, other, wish, dt) {
-  return weaponTick(p, wish, dt) ? traceShots(p, other, wish) : [];
 }
 
 function canReload(p, gun) {
@@ -292,9 +382,15 @@ function finishReload(p) {
   p.mag[p.slot] += got;
 }
 
-function applyHits(target, hits) {
-  if (!target.alive || target.invuln > 0) return;
+/**
+ * Damage lands only on a target that is alive now (no hits on corpses) and was not invulnerable
+ * at the rewound tick. Returns the milli-HP applied (0 when blocked or missed).
+ */
+function applyHits(target, hits, invuln) {
+  if (!target.alive || invuln > 0 || hits.length === 0) return 0;
+  let total = 0;
   for (let i = 0; i < hits.length; i++) {
+    total += hits[i];
     let left = hits[i];
     const absorb = Math.min(target.shield, left);
     target.shield -= absorb;
@@ -302,6 +398,7 @@ function applyHits(target, hits) {
     target.hp -= left;
     target.shieldDelay = TUNING.shieldDelay;
   }
+  return total;
 }
 
 function regen(p, dt) {
@@ -337,28 +434,62 @@ function finish(state, outcome, winner, reason) {
   return state;
 }
 
-export function step(state, wishes) {
+/**
+ * One tick. `events`, when given, receives one entry per shot fired:
+ * { tick, shooter, dmg, pellets, hits, rewind, viewFrac } (dmg 0 = missed or blocked). Events are
+ * not part of the state.
+ */
+export function step(state, wishes, events = null) {
   if (state.phase === 'done') return state;
+  const frame = state.tick;
   const wish = [
-    normalizeWish(state.players[0], wishes && wishes[0]),
-    normalizeWish(state.players[1], wishes && wishes[1]),
+    normalizeWish(state.players[0], wishes && wishes[0], frame),
+    normalizeWish(state.players[1], wishes && wishes[1], frame),
   ];
   for (let i = 0; i < 2; i++) if (state.players[i].alive) movePlayer(state.players[i], wish[i], DT);
   separate(state.players);
   for (const p of state.players) snap(p);
-  const hits = [
-    state.players[0].alive ? shotsOf(state.players[0], state.players[1], wish[0], DT) : [],
-    state.players[1].alive ? shotsOf(state.players[1], state.players[0], wish[1], DT) : [],
+  // This tick's positions go into history first, so rewind 0 can interpolate toward them.
+  record(state, frame + 1);
+  const seen = [
+    rewoundTarget(state, 1, frame, wish[0].rewind, wish[0].viewFrac),
+    rewoundTarget(state, 0, frame, wish[1].rewind, wish[1].viewFrac),
   ];
-  applyHits(state.players[1], hits[0]);
-  applyHits(state.players[0], hits[1]);
+  const fired = [false, false];
+  const hits = [[], []];
+  for (let i = 0; i < 2; i++) {
+    const p = state.players[i];
+    if (!p.alive || !weaponTick(p, wish[i], DT)) continue;
+    fired[i] = true;
+    hits[i] = traceShots(p, seen[i], wish[i]);
+  }
+  const dealt = [
+    applyHits(state.players[1], hits[0], seen[0].invuln),
+    applyHits(state.players[0], hits[1], seen[1].invuln),
+  ];
+  if (events) {
+    for (let i = 0; i < 2; i++) {
+      if (!fired[i]) continue;
+      events.push({
+        tick: frame,
+        shooter: i,
+        dmg: dealt[i],
+        pellets: LOADOUT[state.players[i].slot].stats.pellets || 1,
+        hits: hits[i].length,
+        rewind: wish[i].rewind,
+        viewFrac: wish[i].viewFrac,
+      });
+    }
+  }
   for (const p of state.players) {
     snap(p);
     regen(p, DT);
     snap(p);
   }
   state.tick += 1;
-  return resolve(state);
+  resolve(state);
+  record(state, state.tick);
+  return state;
 }
 
 export function hashState(state) {
@@ -398,8 +529,11 @@ export function scriptedMatch(seed = 7, ticks = 180) {
   return { seed, inputs };
 }
 
+/** Replay v1: { seed, inputs } or { spawnSeed, combatSeed, inputs }. */
 export function replay(body) {
-  const state = createMatch(body.seed >>> 0);
+  const spawn = body.spawnSeed != null ? body.spawnSeed : body.seed;
+  const combat = body.combatSeed != null ? body.combatSeed : spawn;
+  const state = createMatch(spawn >>> 0, typeof combat === 'string' ? combat : combat >>> 0);
   const inputs = Array.isArray(body.inputs) ? body.inputs : [];
   for (let i = 0; i < inputs.length; i++) step(state, inputs[i]);
   return state;

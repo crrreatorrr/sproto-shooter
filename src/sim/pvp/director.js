@@ -1,5 +1,8 @@
 // Director v2 (protocol 2): seat ownership, ready deadline, live-start lead-in, the input jitter
 // buffer, hold-last substitutes, the used-input log and the 10 s stall rule.
+// Sim 2 (SHOOTER-S2b) adds the per-seat rewind clamp (from the director's own PING-echo RTT),
+// the split seed (public spawnSeed, secret combatSeed committed by sha256 and revealed in
+// RESULT) and server-confirmed hit events in snapshots.
 // The outcome is this object's result. Callers do not invent a winner.
 //
 // Every output is a message { op, body, to }. `to` is null (send to the whole match) or the
@@ -12,15 +15,37 @@ import { decodeInput, encodeInput, PvpInputError } from '../../net/inputCodec.js
 import {
   OP, hostileReason, parseJsonBody, validId, versionsMatch, CONTENT, PROTOCOL, SIM_VERSION,
 } from '../../net/protocol.js';
+import { sha256Hex } from '../../core/sha256.js';
 import { createMatch, hashState, step } from './sim.js';
 import {
-  HASH_EVERY_TICKS, INPUT_LIMITS, LEAD_IN_TICKS, LOADOUT_HASH, READY_MS, STALL_MS, STEP_MS,
+  HASH_EVERY_TICKS, INPUT_LIMITS, LEAD_IN_TICKS, LOADOUT_HASH, READY_MS, REWIND, STALL_MS, STEP_MS,
 } from './rules.js';
 import {
-  HELD_MASK, SOURCE, appendUsedTick, neutralUsed, usedOf, wishOfUsed,
+  HELD_MASK, SOURCE, appendUsedTick, neutralUsed, usedOf, usedTickAt, wishOfUsed,
 } from './used.js';
 
-export const DIRECTOR_STATE_VERSION = 2;
+export const DIRECTOR_STATE_VERSION = 3;
+
+const COMBAT_SEED_RE = /^[0-9a-f]{32,128}$/;
+
+/** The commitment sent at match start: sha256 of the combat seed's hex text. */
+export function combatCommitOf(combatSeed) {
+  return sha256Hex(String(combatSeed));
+}
+
+/**
+ * The host passes a secret combatSeed (32..128 lowercase hex chars, at least 128 bits, so its
+ * sha256 cannot be brute-forced). Without one the director derives a predictable seed from the
+ * spawn seed and match id and reports combatSeedDerived: fine for practice and tests, never
+ * for a hosted match.
+ */
+function resolveCombatSeed(combatSeed, spawnSeed, matchId) {
+  if (combatSeed == null) return { seed: sha256Hex(`derived:${spawnSeed}:${matchId}`).slice(0, 32), derived: true };
+  if (typeof combatSeed !== 'string' || !COMBAT_SEED_RE.test(combatSeed)) {
+    throw new Error('combatSeed: 32..128 lowercase hex chars');
+  }
+  return { seed: combatSeed, derived: false };
+}
 
 // Fields every snapshot already carries in `players`, and the combat RNG, which stays secret.
 const PRIVATE_SKIP = new Set([
@@ -67,6 +92,9 @@ function blankSeat(accountId, sessionId, name) {
     framesThisCursor: 0,
     pingAt: 0,
     pings: 0,
+    pongs: [],
+    rtts: [],
+    rttMs: null,
     ackFrame: -1,
     ackSeq: 0,
     applied: 0,
@@ -80,10 +108,47 @@ function round3(n) {
   return Math.round(n * 1000) / 1000;
 }
 
-export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD_IN_TICKS } = {}) {
+/** Median of a short list of numbers. */
+function median(values) {
+  const sorted = values.slice().sort((a, b) => a - b);
+  return sorted[Math.floor((sorted.length - 1) / 2)];
+}
+
+/**
+ * The most this seat may rewind, in ticks: min(REWIND.maxTicks, RTT/2 + the reference client's
+ * interpolation delay + one tick), rounded up. RTT is the director's own PING-echo median; with
+ * no sample yet it counts as 0.
+ */
+export function rewindCapFor(rttMs) {
+  const rtt = Number.isFinite(rttMs) && rttMs > 0 ? rttMs : 0;
+  const ticks = Math.ceil((rtt / 2 + REWIND.interpMs + STEP_MS) / STEP_MS - 1e-9);
+  return Math.max(0, Math.min(REWIND.maxTicks, ticks));
+}
+
+/**
+ * Clamp a decoded input's view claim for frame `frame`: back = frame - viewTick, cut to `cap`.
+ * A cut claim drops its fraction (the target is taken exactly `cap` ticks back).
+ */
+export function clampView(wish, frame, cap) {
+  const claim = Number.isInteger(wish.viewTick) ? frame - wish.viewTick : 0;
+  let frac = Number.isInteger(wish.viewFrac) ? wish.viewFrac : 0;
+  let rewind = claim;
+  if (rewind < 0) { rewind = 0; frac = 0; }
+  if (rewind > cap) { rewind = cap; frac = 0; }
+  return { rewind, frac, claim, clamped: claim > cap };
+}
+
+export function createDirector({
+  seed = 1, spawnSeed, combatSeed, matchId = 'local', leadInTicks = LEAD_IN_TICKS,
+} = {}) {
+  const spawn = (spawnSeed != null ? spawnSeed : seed) >>> 0;
+  const combat = resolveCombatSeed(combatSeed, spawn, String(matchId));
   let director = {
     v: DIRECTOR_STATE_VERSION,
-    seed: seed >>> 0,
+    spawnSeed: spawn,
+    combatSeed: combat.seed,
+    combatCommit: combatCommitOf(combat.seed),
+    combatSeedDerived: combat.derived,
     matchId: String(matchId),
     leadInTicks: clampLeadIn(leadInTicks),
     phase: 'lobby',
@@ -95,6 +160,8 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
     waitDeadline: null,
     readyDeadline: null,
     log: [],
+    hits: [],
+    clamped: [0, 0],
   };
 
   function occupied() {
@@ -130,7 +197,8 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
       protocol: PROTOCOL,
       sim: SIM_VERSION,
       content: CONTENT,
-      seed: director.seed,
+      spawnSeed: director.spawnSeed,
+      combatCommit: director.combatCommit,
       loadoutHash: LOADOUT_HASH,
       phase: director.phase,
       tick: cursor(),
@@ -167,7 +235,8 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
       clockTick: clockTick(now),
       startTick: 0,
       leadInTicks: director.leadInTicks,
-      seed: director.seed,
+      spawnSeed: director.spawnSeed,
+      combatCommit: director.combatCommit,
       matchId: director.matchId,
       ticketsMinted: 0,
       stakes: false,
@@ -188,7 +257,11 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
     return out;
   }
 
-  function snapshotFor(index, now) {
+  function rewindCap(seat) {
+    return rewindCapFor(seat.rttMs);
+  }
+
+  function snapshotFor(index, now, hits = []) {
     const sim = director.sim;
     const seat = director.seats[index];
     const body = {
@@ -216,9 +289,14 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
         late: seat.late,
         held: seat.held,
         neutral: seat.neutral,
+        rttMs: seat.rttMs,
+        rewindCap: rewindCap(seat),
         // The rest of this seat's exact sim state: players[seat] plus these fields.
         private: privateOf(sim.players[index]),
       },
+      // Server-confirmed hits stepped since the last snapshot: { tick, shooter, dmg, ... }.
+      // Clients draw hitmarkers and damage from these, never from their own spread.
+      hits: hits.map((hit) => ({ ...hit })),
       ticketsMinted: 0,
     };
     if (sim.tick % HASH_EVERY_TICKS === 0 || director.phase === 'done' || sim.phase === 'done') {
@@ -227,15 +305,15 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
     return { op: OP.SNAPSHOT, body, to: seatTo(seat) };
   }
 
-  function snapshotsAll(now) {
+  function snapshotsAll(now, hits = []) {
     const out = [];
     if (!director.sim) return out;
-    director.seats.forEach((seat, index) => { if (seat && seat.connected) out.push(snapshotFor(index, now)); });
+    director.seats.forEach((seat, index) => { if (seat && seat.connected) out.push(snapshotFor(index, now, hits)); });
     return out;
   }
 
   function startLive(now) {
-    director.sim = createMatch(director.seed);
+    director.sim = createMatch(director.spawnSeed, director.combatSeed);
     director.phase = 'live';
     director.liveStart = now + director.leadInTicks * STEP_MS;
     for (const seat of director.seats) {
@@ -257,10 +335,14 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
       reason,
       tick: cursor(),
       stateHash: director.sim ? hashState(director.sim) : null,
+      spawnSeed: director.spawnSeed,
+      // Revealed now so clients can check sha256(combatSeed) against the commit they got at start.
+      combatSeed: director.combatSeed,
+      combatCommit: director.combatCommit,
       ticketsMinted: 0,
       stakes: false,
     };
-    const out = [...snapshotsAll(now), { op: OP.PHASE, body: phaseBody('done', now), to: null }];
+    const out = [...snapshotsAll(now, director.hits), { op: OP.PHASE, body: phaseBody('done', now), to: null }];
     if (!director.resultSent) {
       director.resultSent = true;
       out.push({ op: OP.RESULT, body: { ...director.result }, to: null });
@@ -372,7 +454,9 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
     seat.tokens -= 1;
     seat.lastSeq = wish.seq;
     seat.lastInputAt = Math.max(now, seat.lastInputAt);
-    const used = usedOf(wish, SOURCE.input);
+    const view = clampView(wish, wish.frame, rewindCap(seat));
+    if (view.clamped) director.clamped[got.index] += 1;
+    const used = usedOf(wish, SOURCE.input, view);
     if (late) {
       seat.late += 1;
       seat.hold.y = used.y;
@@ -395,6 +479,9 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
     }
     if (seat.pings >= INPUT_LIMITS.maxPingsPerSecond) return reject(from, 'rate');
     seat.pings += 1;
+    rttSample(seat, body, now);
+    seat.pongs.push(now);
+    if (seat.pongs.length > REWIND.pongMemory) seat.pongs.shift();
     return {
       ok: true,
       seat: got.index,
@@ -404,6 +491,24 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
         to: from,
       }],
     };
+  }
+
+  /**
+   * The director's own round trip for a seat: a PING may echo the `serverMs` of a PONG this seat
+   * was sent, plus `hold`, how long the client sat on it. sample = now - echo - hold. Only echoes
+   * of the seat's own recent PONGs count, and the median of the last REWIND.rttWindow is used.
+   */
+  function rttSample(seat, body, now) {
+    if (typeof body.echo !== 'number' || !Number.isFinite(body.echo)) return;
+    if (seat.pongs.indexOf(body.echo) < 0) return;
+    const hold = typeof body.hold === 'number' && Number.isFinite(body.hold) ? body.hold : 0;
+    const span = now - body.echo;
+    if (hold < 0 || hold > span) return;
+    const sample = span - hold;
+    if (!(sample >= 0) || sample > REWIND.maxRttMs) return;
+    seat.rtts.push(round3(sample));
+    if (seat.rtts.length > REWIND.rttWindow) seat.rtts.shift();
+    seat.rttMs = median(seat.rtts);
   }
 
   /** The wish this seat uses on `tick`: its queued frame, else the held wish, else neutral. */
@@ -417,7 +522,10 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
       seat.ackSeq = entry.seq;
       seat.applied += 1;
       const u = entry.u;
-      seat.hold = { y: u.y, p: u.p, mx: u.mx, mz: u.mz, b: u.b & HELD_MASK, s: -1, src: SOURCE.hold };
+      // A repeated tick keeps the same rewind: the shooter's view moves on with the clock.
+      seat.hold = {
+        y: u.y, p: u.p, mx: u.mx, mz: u.mz, b: u.b & HELD_MASK, s: -1, src: SOURCE.hold, r: u.r, f: u.f,
+      };
       return u;
     }
     seat.miss += 1;
@@ -450,13 +558,20 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
       const target = Math.floor((now - director.liveStart) / STEP_MS + 1e-9);
       const cap = sim.tick + INPUT_LIMITS.catchUpTicks;
       let stepped = 0;
+      const events = [];
+      director.hits = [];
       while (sim.phase === 'live' && sim.tick < target && sim.tick < cap) {
         const tick = sim.tick;
         const pair = [takeWish(director.seats[0], tick), takeWish(director.seats[1], tick)];
         appendUsedTick(director.log, pair);
-        step(sim, [wishOfUsed(pair[0]), wishOfUsed(pair[1])]);
+        step(sim, [wishOfUsed(pair[0]), wishOfUsed(pair[1])], events);
         for (const seat of director.seats) dropStale(seat, sim.tick);
         stepped += 1;
+      }
+      if (events.length > 0) {
+        director.hits = events.filter((hit) => hit.dmg > 0).map((hit) => ({
+          tick: hit.tick, shooter: hit.shooter, dmg: hit.dmg, hits: hit.hits, rewind: hit.rewind,
+        }));
       }
       if (sim.phase === 'done') {
         messages.push(...finish(sim.outcome, sim.winner, sim.reason, now));
@@ -465,7 +580,7 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
         if (stalled[0] && stalled[1]) messages.push(...finish('draw', null, 'both_stall', now));
         else if (stalled[0]) messages.push(...finish('forfeit', 1, 'stall', now));
         else if (stalled[1]) messages.push(...finish('forfeit', 0, 'stall', now));
-        else if (stepped > 0) messages.push(...snapshotsAll(now));
+        else if (stepped > 0) messages.push(...snapshotsAll(now, director.hits));
       }
     }
     return { messages, result: director.result };
@@ -517,7 +632,8 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
 
   function importState(state) {
     const copy = typeof state === 'string' ? JSON.parse(state) : JSON.parse(JSON.stringify(state));
-    if (!copy || copy.v !== DIRECTOR_STATE_VERSION || !Array.isArray(copy.seats) || !Array.isArray(copy.log)) {
+    if (!copy || copy.v !== DIRECTOR_STATE_VERSION || !Array.isArray(copy.seats) || !Array.isArray(copy.log)
+      || typeof copy.combatSeed !== 'string') {
       throw new Error('director state: unsupported version');
     }
     director = copy;
@@ -531,7 +647,9 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
     const sim = director.sim;
     return {
       v: 2,
-      seed: director.seed,
+      spawnSeed: director.spawnSeed,
+      combatSeed: director.combatSeed,
+      combatCommit: director.combatCommit,
       matchId: director.matchId,
       protocol: PROTOCOL,
       sim: SIM_VERSION,
@@ -562,6 +680,9 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
       held: seat.held,
       neutral: seat.neutral,
       late: seat.late,
+      rttMs: seat.rttMs,
+      rewindCap: rewindCap(seat),
+      clamped: director.clamped[index],
     };
   }
 
@@ -571,6 +692,12 @@ export function createDirector({ seed = 1, matchId = 'local', leadInTicks = LEAD
     get sim() { return director.sim; },
     get liveStart() { return director.liveStart; },
     get leadInTicks() { return director.leadInTicks; },
+    get spawnSeed() { return director.spawnSeed; },
+    get combatCommit() { return director.combatCommit; },
+    /** True when no combatSeed was passed: the seed is predictable. A hosted match must be false. */
+    get combatSeedDerived() { return director.combatSeedDerived; },
+    /** The used-input pair applied on `tick` (decoded), or null. */
+    usedAt(tick) { return usedTickAt(director.log, tick); },
     seatOf: seatIndex,
     occupied,
     joinAttempt(userId) {

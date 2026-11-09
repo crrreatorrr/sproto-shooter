@@ -44,6 +44,13 @@ function paint(panel, state, title) {
   }
   const ready = panel.querySelector('[data-pvp-ready]');
   if (ready) ready.hidden = state.phase !== 'lobby';
+  // Hitmarkers come only from server-confirmed hit events, never from local spread.
+  const marker = panel.querySelector('[data-pvp-hit]');
+  if (marker) {
+    const hits = (state.hits || []).filter((hit) => hit.shooter === state.seat);
+    const last = hits[hits.length - 1];
+    marker.textContent = last ? `Hit ${hpLabel(last.dmg)}` : '';
+  }
 }
 
 function panelHtml(name) {
@@ -54,6 +61,7 @@ function panelHtml(name) {
         <div data-pvp-name style="font-family:Bungee,sans-serif;color:#ffd166;font-size:22px">${name}</div>
         <div data-pvp-score style="color:#fff7ec"></div>
         <div data-pvp-phase style="color:#4fd1c5;font-weight:800"></div>
+        <div data-pvp-hit style="color:#ff6b6b;font-weight:800"></div>
       </div>
       <div data-pvp-reconnect hidden style="${BANNER}">Reconnecting</div>
     </div>

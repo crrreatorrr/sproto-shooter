@@ -10,7 +10,7 @@ import { contentFingerprint } from '../src/data/serverManifest.js';
 import { LIMITS, PROTOCOL_VERSION } from '../src/server/protocol.js';
 import {
   CONTENT_FINGERPRINT, INPUT_LIMITS, LEAD_IN_TICKS, LOADOUT_HASH, PVP_PROTOCOL_VERSION, PVP_SIM_VERSION,
-  matchmakerQuery,
+  REWIND, matchmakerQuery,
 } from '../src/sim/pvp/rules.js';
 import { DIRECTOR_STATE_VERSION } from '../src/sim/pvp/director.js';
 
@@ -84,6 +84,9 @@ export async function buildPvpBundle(dir) {
     leadInTicks: LEAD_IN_TICKS,
     directorState: DIRECTOR_STATE_VERSION,
     replayVersion: 2,
+    rewind: REWIND,
+    crits: false,
+    combatSeed: 'sha256-commit-reveal',
     matchmakerQuery: matchmakerQuery(CONTENT_FINGERPRINT),
     mintsTickets: false,
     stakes: false,

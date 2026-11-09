@@ -12,8 +12,12 @@
 import { createPvpClient, registerFreeMatch } from '../../src/net/client.js';
 import { decodeInput } from '../../src/net/inputCodec.js';
 import { OP } from '../../src/net/protocol.js';
+import { TUNING } from '../../src/data/tuning.js';
+import { rayCapsule } from '../../src/sim/pvp/hit.js';
 import { practiceWish } from '../../src/sim/pvp/practice.js';
-import { STEP_MS } from '../../src/sim/pvp/rules.js';
+import { REWIND, STEP_MS } from '../../src/sim/pvp/rules.js';
+import { rewoundTarget } from '../../src/sim/pvp/sim.js';
+import { SOURCE } from '../../src/sim/pvp/used.js';
 import { createMetrics } from './metrics.js';
 
 /** §R.8 launch gates. S1, S2a and S3 turn the pending baseline tests on against these. */
@@ -233,6 +237,68 @@ export function botWish(sample, seat, frame, { fire = false, strafe = 0 } = {}) 
   return wish;
 }
 
+const FIRE_BIT = 1;
+/** Lateral aim offsets for the rewind check: uniform in +-AIM_SPREAD_M around the drawn target. */
+const AIM_SPREAD_M = 0.8;
+
+function capsuleHit(eye, dir, at) {
+  return rayCapsule(eye, dir, at.x, at.z, at.y, at.y + TUNING.playerHeight, TUNING.playerRadius) >= 0;
+}
+
+/**
+ * The S2b rewind-agreement check for one applied, firing input. Geometry only (spread is server
+ * randomness, not netcode): a ray from the shooter's server eye at the frame, toward a seeded
+ * point near the target the client drew, against (a) the capsule the client drew and (b) the
+ * capsule the server rewound to with the clamped rewind it logged. It also scores the same ray
+ * against the capsule at the client's full, unclamped claim, to show what the clamp costs.
+ * The aim from the server eye stands in for S3's prediction and aim convergence.
+ */
+function rewindCheck({ history, frame, seat, used, view, rng }) {
+  const at = (tick) => history.get(tick);
+  const now = at(frame + 1);
+  if (!now || !now[seat].alive || !now[1 - seat].alive) return null;
+  // A state with just the ring rewoundTarget reads, built from the harness's full history.
+  const hist = [[], []];
+  for (let tick = frame - REWIND.historyTicks + 2; tick <= frame + 1; tick++) {
+    const row = at(tick);
+    for (let s = 0; s < 2; s++) hist[s][((tick % REWIND.historyTicks) + REWIND.historyTicks) % REWIND.historyTicks] = row ? row[s] : null;
+  }
+  const server = rewoundTarget({ hist }, 1 - seat, frame, used.r, used.f);
+  const shooter = now[seat];
+  const eye = { x: shooter.x, y: shooter.y + TUNING.eyeHeight, z: shooter.z };
+  const drawn = view.target;
+  const dx = drawn.x - eye.x;
+  const dz = drawn.z - eye.z;
+  const flat = Math.hypot(dx, dz) || 1;
+  const offset = rng.range(-AIM_SPREAD_M, AIM_SPREAD_M);
+  const aim = {
+    x: drawn.x + (-dz / flat) * offset,
+    y: drawn.y + TUNING.playerHeight / 2,
+    z: drawn.z + (dx / flat) * offset,
+  };
+  const len = Math.hypot(aim.x - eye.x, aim.y - eye.y, aim.z - eye.z) || 1;
+  const dir = { x: (aim.x - eye.x) / len, y: (aim.y - eye.y) / len, z: (aim.z - eye.z) / len };
+  const clientHit = capsuleHit(eye, dir, drawn);
+  const serverHit = capsuleHit(eye, dir, server);
+  const claimAt = view.viewTick + view.viewFrac / REWIND.fracSteps;
+  const base = Math.floor(claimAt);
+  const a = at(base);
+  const b = at(base + 1) || a;
+  let unclampedHit = null;
+  if (a && b) {
+    const t = claimAt - base;
+    const p = a[1 - seat];
+    const q = b[1 - seat];
+    unclampedHit = capsuleHit(eye, dir, { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t, z: p.z + (q.z - p.z) * t });
+  }
+  return {
+    agree: clientHit === serverHit,
+    agreeUnclamped: unclampedHit == null ? null : clientHit === unclampedHit,
+    claim: frame - view.viewTick,
+    applied: used.r,
+  };
+}
+
 /**
  * Run one scenario and return its metrics report.
  *
@@ -273,6 +339,12 @@ export function runScenario(options = {}) {
   const { state } = handler.init({ seed: matchSeed, clock: () => scheduler.now });
   const director = state.director;
   metrics.watchDirector(director);
+  // Rewind check: every tick's positions (copied out of the sim's 8-tick ring after each loop),
+  // and what each client drew when it sent each frame.
+  const history = new Map();
+  // Its own stream, so the link and render streams stay what S0-S2a measured.
+  const checkRng = createRng((seed ^ 0x5eed5eed) >>> 0);
+  let checkedTo = 0;
 
   const inbox = [];
   const peers = accounts.map((accountId, index) => {
@@ -287,6 +359,9 @@ export function runScenario(options = {}) {
       closeFns: [],
       client: null,
       frame: 0,
+      // frame -> { viewTick, viewFrac, target } for the inputs this peer sent.
+      views: new Map(),
+      drawn: null,
       strafe: Math.floor(rng.range(0, 1000)),
     };
     const upRng = rng.fork();
@@ -342,9 +417,43 @@ export function runScenario(options = {}) {
     },
   };
 
+  function copyHistory() {
+    const sim = director.sim;
+    if (!sim) return;
+    for (let i = 0; i < REWIND.historyTicks; i++) {
+      const a = sim.hist[0][i];
+      const b = sim.hist[1][i];
+      if (a && b && a.t === b.t) history.set(a.t, [{ ...a }, { ...b }]);
+    }
+  }
+
+  function checkRewinds() {
+    const sim = director.sim;
+    if (!sim || !fire) return;
+    for (; checkedTo < sim.tick; checkedTo++) {
+      const frame = checkedTo;
+      const pair = director.usedAt(frame);
+      if (!pair) continue;
+      for (const peer of peers) {
+        const seat = director.seatOf(peer.accountId);
+        if (seat < 0) continue;
+        const used = pair[seat];
+        if (used.src !== SOURCE.input || !(used.b & FIRE_BIT)) continue;
+        const view = peer.views.get(frame);
+        if (!view || !view.target) continue;
+        const got = rewindCheck({ history, frame, seat, used, view, rng: checkRng });
+        if (!got) continue;
+        metrics.rewindCheck(got.agree);
+        metrics.rewindClaim(got.claim, got.applied, got.agreeUnclamped);
+      }
+    }
+  }
+
   scheduler.every(STEP_MS, () => {
     const messages = inbox.splice(0);
     handler.loop(state, messages, dispatcher);
+    copyHistory();
+    checkRewinds();
     metrics.loopRan(scheduler.now);
   });
 
@@ -360,7 +469,9 @@ export function runScenario(options = {}) {
         const payload = encodePayload(data);
         if (opCode === OP.INPUT) {
           try {
-            metrics.inputSent(peer.index, decodeInput(payload).frame, scheduler.now);
+            const sent = decodeInput(payload);
+            metrics.inputSent(peer.index, sent.frame, scheduler.now);
+            peer.views.set(sent.frame, { viewTick: sent.viewTick, viewFrac: sent.viewFrac, target: peer.drawn });
           } catch {
             metrics.inputSent(peer.index, null, scheduler.now);
           }
@@ -403,6 +514,8 @@ export function runScenario(options = {}) {
           metrics.renderFrame(peer.index, scheduler.now, viewKey, sample && sample.mode);
         }
         if (sample && sample.players && sample.players[0] && sample.players[1] && client.seat >= 0) {
+          const other = sample.players[1 - client.seat];
+          peer.drawn = { x: other.x, y: other.y, z: other.z };
           client.update(scheduler.now, (frame) => botWish(sample, client.seat, frame, { fire, strafe: peer.strafe }));
         }
         metrics.clientNet(peer.index, client.net);

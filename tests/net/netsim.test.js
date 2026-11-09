@@ -126,7 +126,7 @@ describe('scenario runner', () => {
     expect(report.links[0].up.sent).toBeGreaterThan(0);
   });
 
-  it('records the stubbed S3 metrics through hooks', () => {
+  it('records the S3 correction and S2b rewind metrics through hooks', () => {
     const metrics = createMetrics();
     const fakeDirector = { sim: null, result: null, seatOf: () => -1, handle: () => ({ ok: true }) };
     metrics.watchDirector(fakeDirector);
@@ -136,8 +136,12 @@ describe('scenario runner', () => {
     for (let i = 0; i < 100; i++) metrics.correction(0, i === 99 ? 0.2 : 0.01);
     metrics.rewindCheck(true);
     metrics.rewindCheck(false);
+    metrics.rewindClaim(8, 6, true);
+    metrics.rewindClaim(5, 5, true);
     empty = metrics.report({ director: fakeDirector });
     expect(empty.peers[0].correctionP99Cm).toBe(1);
-    expect(empty.rewind).toEqual({ checks: 2, agreement: 0.5 });
+    expect(empty.rewind).toMatchObject({ checks: 2, agreement: 0.5, clampedFraction: 0.5, unclampedAgreement: 1 });
+    expect(empty.rewind.claimTicks).toMatchObject({ count: 2, max: 8 });
+    expect(empty.rewind.appliedTicks).toMatchObject({ count: 2, max: 6 });
   });
 });

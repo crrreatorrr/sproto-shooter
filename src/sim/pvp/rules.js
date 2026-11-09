@@ -4,7 +4,8 @@ import { GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, QUALITIES_BY_ID } from '../../dat
 import { fnv1a, stableStringify } from '../hash.js';
 
 export const PVP_PROTOCOL_VERSION = 2;
-export const PVP_SIM_VERSION = 1;
+/** Sim 2 (SHOOTER-S2b): history ring + viewTick rewind, split spawn/combat seed, crits off. */
+export const PVP_SIM_VERSION = 2;
 export const MATCH_NAME = 'sproto_shooter_free';
 export const GAME_ID = 'sproto-shooter';
 
@@ -40,11 +41,32 @@ export const INPUT_LIMITS = Object.freeze({
   holdTicks: 3,
   catchUpTicks: 4,
   maxPingsPerSecond: 10,
-  frameBytes: 16,
+  frameBytes: 18,
   maxFrame: 1000000,
   maxIdLength: 80,
   maxNameLength: 32,
   maxLeadInTicks: 90,
+});
+
+/**
+ * Lag compensation (sim 2). Each input says which interpolated tick the shooter saw the
+ * opponent at: viewTick = frame - back (back 0..255) plus viewFrac/256. The director clamps the
+ * rewind back = frame - viewTick to min(maxTicks, its own per-seat estimate of
+ * RTT/2 + interpMs + one tick), so a client claiming more is cut short. The sim clamps to
+ * maxTicks again, so a forged replay log cannot reach further.
+ * - historyTicks: the per-player ring of {x, y, z, alive, invuln} kept inside the sim state.
+ * - interpMs: the reference client's remote interpolation delay (src/net/client.js NET).
+ * - rttWindow: PING echo samples in the director's per-seat median.
+ */
+export const REWIND = Object.freeze({
+  maxTicks: 6,
+  historyTicks: 8,
+  maxBack: 255,
+  fracSteps: 256,
+  interpMs: 100,
+  rttWindow: 8,
+  maxRttMs: 2000,
+  pongMemory: 4,
 });
 
 /** Ticks between the last READY and tick 0, so the first round trip of ticks can carry input. */
@@ -71,6 +93,9 @@ export function arenaGun(typeId) {
   stats.spread *= quality.spreadMult;
   stats.adsSpread *= quality.spreadMult;
   stats.elementChance = 0;
+  // Crits are off in PvP (owner decision): a crit makes the Sniper a one-shot, and luck must
+  // not decide a wager. The campaign guns keep theirs.
+  stats.critChance = 0;
   stats.splashRadius = 0;
   stats.splashDamage = 0;
   for (const key of Object.keys(stats)) {
@@ -117,6 +142,9 @@ export function contentBody() {
     readyMs: READY_MS,
     stallMs: STALL_MS,
     perks: [],
+    crits: false,
+    rewind: REWIND,
+    combatSeed: 'commit-reveal',
     stakes: false,
   };
 }

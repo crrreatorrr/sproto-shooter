@@ -1,10 +1,12 @@
-# Shooter free 1v1 protocol (S5, protocol 2 since SHOOTER-S2a)
+# Shooter free 1v1 protocol (S5, protocol 2 since SHOOTER-S2a, sim 2 since SHOOTER-S2b)
 
 This is the contract H3-S implements for a Nakama authoritative match. The arena is free. The bundle does not stake, settle, refund, or mint Tickets. A later escrow may move existing Tickets between the two accounts. It must not create any.
 
 Campaign verification is a different artifact. It stays protocol **1**, content fingerprint **3c657fb5**, global `SprotoShooterSim`, entry `verifyRunJSON`. Do not point the campaign verifier at this bundle.
 
-Protocol 2 (director v2) replaced protocol 1 in SHOOTER-S2a. It is a deliberate pin bump: a protocol 1 client gets `version` on HELLO and never matchmakes with a protocol 2 client. The sim did not change (golden `ce272de1`).
+Protocol 2 (director v2) replaced protocol 1 in SHOOTER-S2a. It is a deliberate pin bump: a protocol 1 client gets `version` on HELLO and never matchmakes with a protocol 2 client. The S2a sim did not change (golden `ce272de1`).
+
+Sim 2 (SHOOTER-S2b) is a deliberate golden bump: lag compensation (an 8-tick history ring and a `viewTick` rewind), a split spawn/combat seed with a sha256 commit, and no crits. Protocol 2 was not frozen yet (the hub hosts protocol 1 until the S-train merges), so S2b changes it in place: INPUT grows to 18 bytes, WELCOME/PHASE carry `spawnSeed` and `combatCommit` instead of `seed`, RESULT reveals `combatSeed`, and snapshots carry `hits`. `sim` 2 and the new content fingerprint keep an S2a build (`sim` 1, `0e584d36`) from pairing or saying HELLO.
 
 ## Artifact
 
@@ -17,7 +19,7 @@ npm run build:server-sim
 | `build/shooter-sim.js` | Unchanged campaign verifier. Global `SprotoShooterSim`. |
 | `build/shooter-sim.pin.json` | Campaign pin. `protocol` 1, `contentFingerprint` `3c657fb5`. |
 | `build/shooter-pvp-sim.js` | Free arena. Global `SprotoShooterPvp`. |
-| `build/shooter-pvp-sim.pin.json` | Arena pin. `protocol` 2, `sim` 1, `contentFingerprint` `0e584d36`, `directorState` 2, `replayVersion` 2. |
+| `build/shooter-pvp-sim.pin.json` | Arena pin. `protocol` 2, `sim` 2, `contentFingerprint` `accf6cd7`, `directorState` 3, `replayVersion` 2, `rewind` (the REWIND table), `crits` false, `combatSeed` `"sha256-commit-reveal"`. |
 
 `sourceCommit` is `git rev-parse HEAD` baked in before the sha256. Rebuild on the merged shooter SHA and vendor `shooter-pvp-sim.js` plus its pin. Refuse the match if `bundleSha256`, `protocol`, `sim`, or `contentFingerprint` disagrees with the running copy.
 
@@ -26,12 +28,13 @@ Measured identity of this phase:
 | Field | Value |
 |---|---|
 | `protocol` | 2 (was 1) |
-| `sim` | 1 |
-| `contentFingerprint` | `0e584d36` (protocol 1 was `f5949631`) |
-| `loadoutHash` | `9eb7cd63` |
+| `sim` | 2 (S2a was 1) |
+| `contentFingerprint` | `accf6cd7` (S2a `0e584d36`, protocol 1 `f5949631`) |
+| `loadoutHash` | `4cdfab55` (S2a `9eb7cd63`; crit chance is now 0) |
 | Global | `SprotoShooterPvp` |
 | JSON entry | `replayJSON` (v1 `{seed, inputs}` and v2 used-input logs) |
 | Director | `createDirector`, `restoreDirector` |
+| Helpers | `combatCommitOf`, `rewindCapFor`, `sha256Hex`, `REWIND` |
 | `mintsTickets` | false |
 | `stakes` | false |
 
@@ -39,8 +42,8 @@ Measured identity of this phase:
 
 Two goldens, each checked in Node, Chromium and goja:
 
-- The mirrored sim golden (`scriptedMatch(7, 180)` in `src/sim/pvp/sim.js`) ends `outcome: "draw"`, `reason: "double_ko"`, `winner: null`, `tick: 61`, `stateHash: "ce272de1"`.
-- The director golden (`tests/fixtures/director-golden.js`: a scripted two-client session with a lead-in, jittered and stalled uplinks, a resent frame, a frame past the window, a disconnect and a rejoin on a new session id, pings, then a stall) ends `outcome: "forfeit"`, `winner: 0`, `reason: "stall"`, `tick: 892`, `stateHash: "e421cba8"`, 57 late frames, and its used-input log replays verified. It gives the same result when the director is frozen and thawed after every call.
+- The mirrored sim golden (`scriptedMatch(7, 180)` in `src/sim/pvp/sim.js`) ends `outcome: "draw"`, `reason: "double_ko"`, `winner: null`, `tick: 65`, `stateHash: "4b3e8828"` (sim 1: tick 61, `ce272de1`).
+- The director golden (`tests/fixtures/director-golden.js`: a scripted two-client session with a lead-in, jittered and stalled uplinks, a resent frame, a frame past the window, a disconnect and a rejoin on a new session id, pings and PING echoes, viewTick claims (some oversized, so clamped), then a stall) ends `outcome: "forfeit"`, `winner: 0`, `reason: "stall"`, `tick: 892`, `stateHash: "758673ea"` (sim 1: `e421cba8`), 57 late frames, 6 server-confirmed hits (54000 milli-HP), combat commit `6d5a619f…1fc6` for seed `5eed00c0ffee5eed00c0ffee5eed0042`, and its used-input log replays verified. It gives the same result when the director is frozen and thawed after every call.
 
 ## Match
 
@@ -64,15 +67,15 @@ Two goldens, each checked in Node, Chromium and goja:
 Matchmaker, through the hub SDK. The query requires the same protocol **and** content fingerprint, so mismatched builds never pair:
 
 ```text
-query: +properties.game:sproto-shooter +properties.mode:free +properties.protocol:2 +properties.content:0e584d36
+query: +properties.game:sproto-shooter +properties.mode:free +properties.protocol:2 +properties.content:accf6cd7
 minCount: 2
 maxCount: 2
 stringProperties:
   game: sproto-shooter
   mode: free
   protocol: "2"
-  sim: "1"
-  content: 0e584d36
+  sim: "2"
+  content: accf6cd7
 ```
 
 One account, one seat. A HELLO from the same account on a new session replaces that seat's session. The previous session is `wrong_sender`. A third account is `match_full`. Guests are not given a second seat. Do not reuse a Fighter match id or its wallet functions.
@@ -80,20 +83,28 @@ One account, one seat. A HELLO from the same account on a new session replaces t
 Label the match so listings can see it is free:
 
 ```json
-{"kind":"sproto_shooter_free","game":"sproto-shooter","mode":"free","protocol":2,"content":"0e584d36","stake":0}
+{"kind":"sproto_shooter_free","game":"sproto-shooter","mode":"free","protocol":2,"content":"accf6cd7","stake":0}
 ```
 
 ## Loadout
 
-Both seats get the same three existing guns. Common, Ol' Reliable, stock parts, level 1, no element, no wacky, no ±5% jitter, no perks.
+Both seats get the same three existing guns. Common, Ol' Reliable, stock parts, level 1, no element, no wacky, no ±5% jitter, no perks, **no crits** (sim 2, owner decision: a crit made the Sniper a one-shot, and luck must not decide a wager; `critChance` is 0 in the loadout and the sim never rolls one; campaign guns keep theirs).
 
-| Slot | Gun | Damage | Mag | Spread | Crit mult | Reserve |
-|---|---|---:|---:|---:|---:|---|
-| 0 | Machine Gun | 9 | 36 | 0.84 | 2.3 | infinite, magazine still reloads |
-| 1 | Shotgun | 8 | 6 | 4.2 | 2.3 | 24 shells, plus the mag |
-| 2 | Sniper | 85 | 4 | 2.1 | 3.3 | 12 rounds, plus the mag |
+| Slot | Gun | Damage | Mag | Spread | Crits | Reserve |
+|---|---|---:|---:|---:|---|---|
+| 0 | Machine Gun | 9 | 36 | 0.84 | off | infinite, magazine still reloads |
+| 1 | Shotgun | 8 | 6 | 4.2 | off | 24 shells, plus the mag |
+| 2 | Sniper | 85 | 4 | 2.1 | off | 12 rounds, plus the mag |
 
-Health is 100, shield is 50, in milli-units on the wire (`100000` and `50000`). Each seat has its own RNG started from the same match seed, so identical inputs take identical damage. The server seed is chosen by the match, never by the client. (The seed is still sent in WELCOME and PHASE; S2b splits it into a public spawn seed and a secret combat seed.)
+Health is 100, shield is 50, in milli-units on the wire (`100000` and `50000`). Pellet spread is the only randomness left.
+
+## Seeds: public spawn seed, secret combat seed (sim 2)
+
+- `spawnSeed` (32-bit, public) places the spawns. It is in WELCOME, PHASE and RESULT.
+- `combatSeed` (secret) seeds both seats' RNG (each seat its own RNG, started from the same seed, so identical inputs take identical damage). The host passes 32..128 lowercase hex chars (at least 128 bits) to `createDirector({ spawnSeed, combatSeed, matchId })`; anything else throws. The RNG start is FNV-1a of `sproto-shooter:combat:<seed>`. The raw seed is not kept in the sim state.
+- At start only `combatCommit = sha256(combatSeed)` (sha256 of the hex text, 64 hex chars) is sent, in WELCOME and PHASE. RESULT reveals `combatSeed`; the reference client sets `result.combatVerified` from `sha256(combatSeed) === combatCommit`. `sha256Hex` is a small pure-JS SHA-256 in the bundle (`src/core/sha256.js`), so goja needs nothing.
+- Without a `combatSeed` (practice, tests, the local mock) the director derives a predictable one and `director.combatSeedDerived` is true. **H3 must pass a fresh secret seed and may assert `combatSeedDerived === false`.**
+- Both seeds are chosen by the server, never by a client.
 
 ## Opcodes
 
@@ -132,7 +143,7 @@ Every director output is `{ op, body, to }`. `to` is `null` (broadcast to the ma
 `HELLO`:
 
 ```json
-{"accountId":"nakama-user-id","protocol":2,"sim":1,"content":"0e584d36"}
+{"accountId":"nakama-user-id","protocol":2,"sim":2,"content":"accf6cd7"}
 ```
 
 `accountId` must equal the socket's user id. `protocol`, `sim`, and `content` must all match or the reason is `version`. The presence session id is the seat session. The body does not get to name a session. The seat's display name is the presence `username` (cut to 32 chars); the hub sanitizes names before they reach the director.
@@ -145,10 +156,11 @@ HELLO is the **only** way to rebind a seat to a new session (a reconnect on a ne
   "seat": 0,
   "matchId": "nakama-match-id",
   "protocol": 2,
-  "sim": 1,
-  "content": "0e584d36",
-  "seed": 7,
-  "loadoutHash": "9eb7cd63",
+  "sim": 2,
+  "content": "accf6cd7",
+  "spawnSeed": 7,
+  "combatCommit": "64 hex chars: sha256(combatSeed)",
+  "loadoutHash": "4cdfab55",
   "phase": "lobby",
   "tick": 0,
   "ready": false,
@@ -165,13 +177,15 @@ HELLO is the **only** way to rebind a seat to a new session (a reconnect on a ne
 
 ### PING / PONG
 
-`PING` is `{"t": clientTimeMs}`, at most 10 per second per seat (`rate`). `PONG` echoes it with the server clock:
+`PING` is `{"t": clientTimeMs}`, at most 10 per second per seat (`rate`). Since sim 2 it may also carry `echo` (the `serverMs` of the newest PONG the client got) and `hold` (ms the client sat on that PONG). `PONG` echoes `t` with the server clock:
 
 ```json
 {"t": 1234.5, "serverMs": 98765, "tick": 41, "clockTick": 41.012, "phase": "live"}
 ```
 
 The client keeps the median of its last 8 round trips. PINGs do not refresh the stall timer.
+
+The director keeps its **own** round trip per seat for the rewind cap: `now - echo - hold`, counted only when `echo` is one of the last 4 `serverMs` values it sent that seat and `0 <= hold <= now - echo`, median of the last 8 samples (`you.rttMs` in snapshots, `seatStats().rttMs`).
 
 ## Clock, ready, lead-in, stall
 
@@ -184,7 +198,7 @@ The client keeps the median of its last 8 round trips. PINGs do not refresh the 
 - Going live broadcasts `PHASE` and sends each seat the spawn snapshot. Tick 0 is `leadInTicks` (9) ticks after the last READY, so the first inputs reach the server before the clock starts and the first round trip of ticks carries real input. `PHASE` announces it:
 
 ```json
-{"phase":"live","tick":0,"clockTick":-9,"startTick":0,"leadInTicks":9,"seed":7,"matchId":"m","ticketsMinted":0,"stakes":false}
+{"phase":"live","tick":0,"clockTick":-9,"startTick":0,"leadInTicks":9,"spawnSeed":7,"combatCommit":"…","matchId":"m","ticketsMinted":0,"stakes":false}
 ```
 
 - `clockTick` (in PHASE, SNAPSHOT and PONG) is the server clock in ticks when the message was sent: negative during the lead-in, fractional between ticks. `tick` is the cursor, the next frame the sim will step.
@@ -203,8 +217,11 @@ The client keeps the median of its last 8 round trips. PINGs do not refresh the 
   "outcome": "ko",
   "winner": 0,
   "reason": "ko",
-  "tick": 61,
+  "tick": 65,
   "stateHash": "8 hex chars",
+  "spawnSeed": 7,
+  "combatSeed": "the secret seed, revealed",
+  "combatCommit": "sha256(combatSeed)",
   "ticketsMinted": 0,
   "stakes": false
 }
@@ -214,7 +231,7 @@ The client keeps the median of its last 8 round trips. PINGs do not refresh the 
 
 ## Input codec
 
-16 bytes, little-endian. Unchanged from protocol 1.
+18 bytes, little-endian (16 in S2a; sim 2 appended the view bytes). A 16-byte packet is `malformed`.
 
 | Offset | Type | Meaning |
 |---:|---|---|
@@ -226,6 +243,8 @@ The client keeps the median of its last 8 round trips. PINGs do not refresh the 
 | 13 | int8 | moveZ, same. Positive is forward |
 | 14 | uint8 | buttons |
 | 15 | int8 | slot `-1..2`. `-1` keeps the current gun |
+| 16 | uint8 | view back: `viewTick = frame - back` (0..255, never before tick 0). The interpolated server tick the shooter saw the opponent at |
+| 17 | uint8 | `viewFrac`: the shooter saw `viewTick + viewFrac/256` |
 
 Button bits, low to high: `fire`, `zoom`, `sprint`, `jump`, `dash`, `reload`, `slide`. Bit 7 must be 0. `slide` is accepted and does not move the arena body in sim 1. `jump`, `dash`, `reload` and a slot pick are edges. `fire`, `zoom` and `sprint` are held.
 
@@ -247,7 +266,7 @@ Rejects, checked in this order:
 |---|---|
 | Wrong account, or a session that is not the seat's bound one | `wrong_sender` |
 | Match not live | `not_live` |
-| Packet length not 16, slot outside `-1..2`, button bit 7 | `malformed` |
+| Packet length not 18, slot outside `-1..2`, button bit 7 | `malformed` |
 | Not finite | `nan` |
 | Sequence not above `lastSeq` (or below 1) | `sequence` |
 | Frame &gt; cursor + 8, negative, or &gt; 1000000 | `frame` |
@@ -257,6 +276,35 @@ Rejects, checked in this order:
 `REJECT` goes to the sender only and carries `accountId`, `reason`, `lastSeq`, `tick` (the cursor), and for INPUT the rejected `seq` and `frame`, plus `ticketsMinted: 0`. A rejected input does not consume the sequence.
 
 The reference client (`src/net/client.js`) runs a fixed 30 Hz input clock and sends exactly one input per input tick, stamped `frame` = estimated server tick + lead, never below 0 (so during the lead-in it starts sending `lead` ticks before tick 0). The estimate uses the least-delayed recent `clockTick`. The lead starts at the PING round trip in ticks plus one, rises by one (at most once per round trip, at most to that lead plus 2) when a snapshot's `you.late` grows by one or two, ignores larger jumps (a TCP stall: hold-last covers it), drops back into the window on a `frame` reject past `cursor + 8`, and is capped at 12. It never rewinds its sequence. After a reconnect on a new session id it sends HELLO, not RESYNC.
+
+Each input also carries `viewTick`/`viewFrac` from the render time of the newest drawn frame (`estimated server tick - interpDelayMs/STEP_MS` at the last `sample()`), i.e. what the shooter saw. Spread is cosmetic on the client: damage, hitmarkers and kills come from the server's `hits` events and the snapshots.
+
+## Lag compensation (sim 2)
+
+| Rule | Value (`REWIND` in `src/sim/pvp/rules.js`) |
+|---|---|
+| History | the sim state keeps `hist`: per player a ring of 8 `{t, x, y, z, alive, invuln}` entries, written for each tick (and for tick F+1 right after movement, before the shots). It is part of the state hash, so replays reproduce it |
+| Claim | `back = frame - viewTick` from the input (0..255) |
+| Cap (director) | per seat: `min(6, ceil((rttMs/2 + 100 + 33.3) / 33.3))` ticks, `rttMs` the director's own PING-echo median (0 until the first echo, so 4 ticks). `100` is the reference client's interpolation delay |
+| Clamp | `rewind = clamp(back, 0, cap)`. A claim past the cap is cut to the cap and its `viewFrac` dropped, so a lag-switch claim never reaches further than the seat's measured link. A claim in the future is rewind 0 |
+| Sim | clamps again to 6 and to tick 0, so a forged log cannot reach further |
+| Target | interpolated between history ticks `F - rewind` and `F - rewind + 1` at `viewFrac/256` (rewind 0, frac 0 = the start of tick F). The shooter's eye stays at its current position |
+| invuln | from the rewound tick (`F - rewind`) |
+| alive | from the current tick: no hits on a corpse, a dead shooter cannot fire |
+| Trades | both seats shoot on the same tick; two deaths are the existing `double_ko` |
+| Held ticks | a repeated (hold-last) tick keeps the input's rewind and frac; neutral ticks claim none |
+
+All three guns are hitscan and splash is zero, so there is no projectile rewind. The director counts cut claims per seat (`seatStats().clamped`). Snapshots tell each seat `you.rttMs` and `you.rewindCap`.
+
+**Measured on the S0 harness** (`tests/net/baseline.test.js`, 15 s, firing bots; a geometric check of the ray from the shooter's server eye toward a seeded point near the target the client drew, against the drawn capsule and the server's rewound capsule):
+
+| Profile | Claim p50 | Applied | Agreement | At the full claim |
+|---|---:|---:|---:|---:|
+| RTT 0 | 5 | 5 | 99.7% | 100% |
+| RTT 100±30 | 8 | 6 | 69.5% | 100% |
+| RTT 150 | 9 | 6 | 43.4% | 100% |
+
+The rewind is exact; the cap decides agreement. With the S1 input lead (about one full RTT plus a tick, because the client clock trails the server by the downlink) plus the 100 ms interpolation delay, an honest claim at RTT 100 is 8-9 ticks, beyond the 6-tick and `RTT/2 + D + 1` caps. A cap of `min(9, RTT + 100 ms + 2 ticks)` with an 11-tick ring measured 99.5% / 99.75% at RTT 100±30 / 150. That is an owner decision for S3 (a wider rewind is a wider backtrack window); the ≥ 98% gate stays pending until then.
 
 ## Snapshots
 
@@ -282,13 +330,18 @@ One per tick (30 Hz) per connected seat, plus the spawn snapshot at go-live, one
     "late": 0,
     "held": 1,
     "neutral": 0,
+    "rttMs": 104,
+    "rewindCap": 6,
     "private": {"vy":0,"shieldDelay":0,"onGround":true,"invuln":0,"dashT":0,"dashCd":0,"dashX":0,"dashZ":0,"mag":[36,6,4],"shells":24,"sniper":12,"fireCd":0,"reloadT":0,"swapT":0}
   },
+  "hits": [{"tick": 11, "shooter": 1, "dmg": 9000, "hits": 1, "rewind": 6}],
   "ticketsMinted": 0
 }
 ```
 
 - `ackFrame` / `ackSeq`: the newest tick that used this seat's own input, and that input's sequence. Ticks after it used held or neutral substitutes.
+- `you.rttMs` / `you.rewindCap`: the director's own round trip for this seat and the rewind cap it gives (sim 2).
+- `hits` (sim 2): the server-confirmed hits stepped since the previous snapshot, `[{ tick, shooter, dmg, hits, rewind }]` (`dmg` in milli-HP after invuln; `hits` pellets that connected; `rewind` the applied ticks). Same list to both seats; `[]` on HELLO/RESYNC snapshots. Clients draw hitmarkers and damage numbers from these only.
 - `buffer`: frames queued at or after the cursor. `late`: late frames so far. `held` / `neutral`: substitute ticks so far.
 - `private`: the rest of this seat's exact sim state; with `players[seat]` it is the whole player (S3 reconciles from it). The combat RNG is never sent.
 - `hash` (FNV-1a over the sim state with floats quantized to micro-units, the same `verifyStateHash` the campaign bundle uses) is present once per second (`tick % 30 === 0`) and on the final snapshot. It is not a receipt the client can submit for Tickets.
@@ -297,13 +350,13 @@ Clients render the other seat at estimated server time minus 100 ms, interpolati
 
 ## Used-input log and replay v2
 
-The director records the exact wish it applied for each seat on each tick, held and neutral substitutes included: 8 bytes per seat-tick as hex (`src/sim/pvp/used.js`), in chunks of 30 ticks. A full 90 s match is about 86 KB. `director.replayRecord()` returns:
+The director records the exact wish it applied for each seat on each tick, held and neutral substitutes included: 10 bytes per seat-tick as hex (`src/sim/pvp/used.js`; sim 2 added the clamped `rewind` and `viewFrac` bytes to S2a's 8), in chunks of 30 ticks. A full 90 s match is about 108 KB. `director.usedAt(tick)` decodes one tick. `director.replayRecord()` returns:
 
 ```json
-{"v":2,"seed":7,"matchId":"m","protocol":2,"sim":1,"content":"0e584d36","used":["<hex>", "..."],"expect":{"tick":892,"stateHash":"e421cba8","outcome":null,"winner":null,"reason":null},"result":{"outcome":"forfeit","winner":0,"reason":"stall","tick":892,"stateHash":"e421cba8","ticketsMinted":0,"stakes":false},"ticketsMinted":0}
+{"v":2,"spawnSeed":4242,"combatSeed":"5eed00c0ffee5eed00c0ffee5eed0042","combatCommit":"6d5a619f…1fc6","matchId":"golden","protocol":2,"sim":2,"content":"accf6cd7","used":["<hex>", "..."],"expect":{"tick":892,"stateHash":"758673ea","outcome":null,"winner":null,"reason":null},"result":{"outcome":"forfeit","winner":0,"reason":"stall","tick":892,"stateHash":"758673ea","spawnSeed":4242,"combatSeed":"…","combatCommit":"…","ticketsMinted":0,"stakes":false},"ticketsMinted":0}
 ```
 
-`replayJSON(record)` re-runs the log from the seed and returns the receipt plus `verified` and `mismatch` (any of `tick`, `stateHash`, `outcome`, `winner`, `reason`, `extraTicks`, `expect`). A malformed log is `{ ok: false, reason: "malformed" }`. `expect` holds the **sim's** outcome fields; a director outcome (forfeit, stall, cancel) is in `result` and leaves the sim's at `null`. A wager settles only on `verified: true`.
+`replayJSON(record)` re-runs the log from `spawnSeed` and the revealed `combatSeed`, applying each logged rewind, and returns the receipt plus `combatCommit`, `verified` and `mismatch` (any of `tick`, `stateHash`, `outcome`, `winner`, `reason`, `extraTicks`, `expect`, `combatCommit` when sha256(combatSeed) is not the commit). A malformed log or seed is `{ ok: false, reason: "malformed" }`; a record for another `sim` is `{ ok: false, reason: "version" }`. Replay v1 (`{ seed, inputs }` or `{ spawnSeed, combatSeed, inputs }`) still runs the sim directly. `expect` holds the **sim's** outcome fields; a director outcome (forfeit, stall, cancel) is in `result` and leaves the sim's at `null`. A wager settles only on `verified: true`.
 
 ## Freeze and thaw
 
@@ -311,7 +364,7 @@ All director state is plain JSON. `director.exportState()` returns it; `restoreD
 
 ## What H3-S must do
 
-1. Load `shooter-pvp-sim.js` in goja. Per match, `createDirector({ seed, matchId })` (seed server-chosen, 32-bit), then keep `director.exportState()` in match state and `restoreDirector(state)` per callback.
+1. Load `shooter-pvp-sim.js` in goja. Per match, `createDirector({ spawnSeed, combatSeed, matchId })`: `spawnSeed` server-chosen 32-bit, `combatSeed` a fresh secret of 32..128 lowercase hex chars from a CSPRNG (assert `combatSeedDerived === false`). Then keep `director.exportState()` in match state and `restoreDirector(state)` per callback. The exported state holds the combat seed: never send it to clients.
 2. `joinAttempt`: same account may rejoin; a third account is `match_full`; a finished match is `ended`.
 3. On match data, `director.handle(presence, opCode, bytes, serverNowMs)` with the presence's `userId`, `sessionId` and `username`. Send its `messages` (each to `to`, or to everyone when `to` is null).
 4. On a fixed 30 Hz server tick, `director.advance(serverNowMs)` and send its `messages` the same way. `RESULT` is among them exactly once.
@@ -325,6 +378,6 @@ The in-repo stub is `registerFreeMatch` / `createMockArena` in `src/net/client.j
 
 ## Left for later tickets
 
-- **S2b** (sim 2): history ring and `viewTick` rewind, split spawn/combat seed (stop sending the combat seed), crits off in PvP, new sim golden.
+- **S2b** (sim 2): done. Left open: the ≥ 98% rewind-agreement gate (measured 69.5% at RTT 100±30, clamp-limited; see Lag compensation) and the cap formula decision.
 - **S2c**: binary INPUT batches and per-recipient binary snapshots (JSON is ~29 KB/s down per client on the wire at 30 Hz, measured on the harness; the target is ~6.6 KB/s). Check goja's `broadcastMessage` with binary first.
-- **S3**: prediction and reconciliation from `you.ackFrame` / `you.private`, adaptive interpolation delay (client starvation at RTT 100±30 is ~1.0% with the fixed 100 ms delay, right on the gate), clock-rate adjustment from `you.buffer`.
+- **S3**: prediction and reconciliation from `you.ackFrame` / `you.private`, adaptive interpolation delay (client starvation at RTT 100±30 is ~1.0% with the fixed 100 ms delay, right on the gate), clock-rate adjustment from `you.buffer`, predicted muzzle/tracers with server hitmarkers from `hits`, aim from the camera ray. The rewind cap: with an adaptive delay the director's `REWIND.interpMs` must follow the client's (or the client reports it), and the 6-tick / `RTT/2` cap needs the owner's call before the rewind gate can pass.

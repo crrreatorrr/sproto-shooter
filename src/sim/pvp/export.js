@@ -1,12 +1,15 @@
 // Separately versioned free-arena export. Campaign verifyRun stays on the other bundle.
 import { createMatch, replay, hashState, step } from './sim.js';
-import { createDirector, restoreDirector } from './director.js';
+import {
+  combatCommitOf, createDirector, rewindCapFor, restoreDirector,
+} from './director.js';
 import { decodeUsedLog, wishOfUsed } from './used.js';
+import { sha256Hex } from '../../core/sha256.js';
 import { encodeInput, decodeInput } from '../../net/inputCodec.js';
 import { OP } from '../../net/protocol.js';
 import {
   CONTENT_FINGERPRINT, ECONOMY, INPUT_LIMITS, LEAD_IN_TICKS, LOADOUT_HASH,
-  PVP_PROTOCOL_VERSION, PVP_SIM_VERSION,
+  PVP_PROTOCOL_VERSION, PVP_SIM_VERSION, REWIND,
 } from './rules.js';
 
 export const SOURCE_COMMIT = '0000000000000000000000000000000000000000';
@@ -42,16 +45,22 @@ function refused(reason) {
 
 const EXPECT_KEYS = ['tick', 'stateHash', 'outcome', 'winner', 'reason'];
 
+const SEED_RE = /^[0-9a-f]{32,128}$/;
+
 /**
- * Replay v2: re-run the director's used-input log (every wish it applied, substitutes included)
- * and compare the end state with `expect`. `verified` is true only when every expected field
- * matches. A wager settles only on a verified replay.
+ * Replay v2: re-run the director's used-input log (every wish it applied, substitutes included,
+ * with the clamped rewind of each) from the spawn seed and the revealed combat seed, and compare
+ * the end state with `expect`. `verified` is true only when every expected field matches and
+ * sha256(combatSeed) equals the commit sent at start. A wager settles only on a verified replay.
  */
 function replayUsed(body) {
+  if (body.sim !== undefined && body.sim !== PVP_SIM_VERSION) return refused('version');
   const ticks = decodeUsedLog(body.used);
   if (!ticks) return refused('malformed');
-  if (!Number.isInteger(body.seed) || body.seed < 0 || body.seed > 0xffffffff) return refused('malformed');
-  const state = createMatch(body.seed >>> 0);
+  const spawn = body.spawnSeed;
+  if (!Number.isInteger(spawn) || spawn < 0 || spawn > 0xffffffff) return refused('malformed');
+  if (typeof body.combatSeed !== 'string' || !SEED_RE.test(body.combatSeed)) return refused('malformed');
+  const state = createMatch(spawn >>> 0, body.combatSeed);
   let extra = 0;
   for (let i = 0; i < ticks.length; i++) {
     if (state.phase === 'done') {
@@ -65,6 +74,8 @@ function replayUsed(body) {
   out.ticksLogged = ticks.length;
   const mismatch = [];
   if (extra > 0) mismatch.push('extraTicks');
+  out.combatCommit = combatCommitOf(body.combatSeed);
+  if (body.combatCommit !== out.combatCommit) mismatch.push('combatCommit');
   const expect = body.expect && typeof body.expect === 'object' ? body.expect : null;
   if (!expect) mismatch.push('expect');
   else {
@@ -95,6 +106,10 @@ export function replayJSON(text) {
 export {
   createDirector,
   restoreDirector,
+  combatCommitOf,
+  rewindCapFor,
+  sha256Hex,
+  REWIND,
   encodeInput,
   decodeInput,
   OP,

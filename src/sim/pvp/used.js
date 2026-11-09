@@ -2,7 +2,7 @@
 // held and neutral substitutes. replayJSON v2 re-runs a match from it and must reach the same
 // tick and state hash before a wager can settle.
 //
-// One seat-tick is 8 bytes, written as 16 hex chars (a tick is 32 chars, both seats):
+// One seat-tick is 10 bytes, written as 20 hex chars (a tick is 40 chars, both seats):
 //   int16 yaw    quantized like the input codec (-32767..32767 -> -pi..pi), -32768 = keep the
 //                player's current yaw (no input has arrived yet)
 //   int16 pitch  -32767..32767 -> -1.5..1.5, -32768 = keep
@@ -10,11 +10,14 @@
 //   int8  moveZ
 //   uint8 buttons, input-codec bits: fire, zoom, sprint, jump, dash, reload, slide
 //   uint8 meta   low 2 bits slot + 1 (0 = keep the gun), bits 2-3 source (input, hold, neutral)
+//   uint8 rewind ticks back from this tick, already clamped by the director (sim 2)
+//   uint8 frac   viewFrac, 0..255 (the shooter saw rewind - frac/256 ticks back)
 // The director steps the sim with wishOfUsed(record), and replay decodes the same bytes with the
 // same function, so a replay is bit-identical by construction.
 
 export const SOURCE = Object.freeze({ input: 0, hold: 1, neutral: 2 });
-export const TICK_HEX = 32;
+export const TICK_HEX = 40;
+const SEAT_HEX = TICK_HEX / 2;
 /** Ticks per log chunk. Chunks keep exportState cheap to copy. */
 export const CHUNK_TICKS = 30;
 
@@ -28,8 +31,15 @@ function quant(value, scale) {
   return Math.max(-32767, Math.min(32767, q));
 }
 
-/** A decoded protocol wish (inputCodec.decodeInput) -> a used record. */
-export function usedOf(wish, source = SOURCE.input) {
+function u8(value) {
+  return Number.isInteger(value) ? Math.max(0, Math.min(255, value)) : 0;
+}
+
+/**
+ * A decoded protocol wish (inputCodec.decodeInput) -> a used record. `view` is the director's
+ * clamped { rewind, frac } for this frame.
+ */
+export function usedOf(wish, source = SOURCE.input, view = null) {
   let buttons = 0;
   for (let i = 0; i < BUTTONS.length; i++) if (wish[BUTTONS[i]]) buttons |= 1 << i;
   return {
@@ -40,12 +50,14 @@ export function usedOf(wish, source = SOURCE.input) {
     b: buttons,
     s: Number.isInteger(wish.slot) && wish.slot >= 0 && wish.slot <= 2 ? wish.slot : -1,
     src: source,
+    r: view ? u8(view.rewind) : 0,
+    f: view ? u8(view.frac) : 0,
   };
 }
 
-/** Neutral record: no move, no buttons, aim kept (null) or held. */
+/** Neutral record: no move, no buttons, aim kept (null) or held, no rewind. */
 export function neutralUsed(y = null, p = null, source = SOURCE.neutral) {
-  return { y, p, mx: 0, mz: 0, b: 0, s: -1, src: source };
+  return { y, p, mx: 0, mz: 0, b: 0, s: -1, src: source, r: 0, f: 0 };
 }
 
 /** The wish the sim steps with. Same arithmetic as inputCodec.decodeInput. */
@@ -56,6 +68,8 @@ export function wishOfUsed(u) {
     moveX: u.mx / 127,
     moveZ: u.mz / 127,
     slot: u.s,
+    rewind: u.r || 0,
+    viewFrac: u.f || 0,
   };
   for (let i = 0; i < BUTTONS.length; i++) out[BUTTONS[i]] = (u.b & (1 << i)) !== 0;
   return out;
@@ -78,10 +92,12 @@ function encodeOne(u) {
     + hex(u.mx, 1)
     + hex(u.mz, 1)
     + hex(u.b & 0x7f, 1)
-    + hex(((u.s + 1) & 3) | ((u.src & 3) << 2), 1);
+    + hex(((u.s + 1) & 3) | ((u.src & 3) << 2), 1)
+    + hex(u8(u.r), 1)
+    + hex(u8(u.f), 1);
 }
 
-/** Both seats of one tick -> 32 hex chars. */
+/** Both seats of one tick -> 40 hex chars. */
 export function encodeUsedTick(pair) {
   return encodeOne(pair[0]) + encodeOne(pair[1]);
 }
@@ -95,6 +111,8 @@ function decodeOne(text, at) {
   const mz = signed(text.slice(at + 10, at + 12), 1);
   const b = parseInt(text.slice(at + 12, at + 14), 16);
   const meta = parseInt(text.slice(at + 14, at + 16), 16);
+  const r = parseInt(text.slice(at + 16, at + 18), 16);
+  const f = parseInt(text.slice(at + 18, at + 20), 16);
   if (b & 0x80 || meta > 0x0f || mx < -127 || mz < -127) return null;
   if ((y !== KEEP && y < -32767) || (p !== KEEP && p < -32767)) return null;
   const src = (meta >> 2) & 3;
@@ -107,6 +125,8 @@ function decodeOne(text, at) {
     b,
     s: (meta & 3) - 1,
     src,
+    r,
+    f,
   };
 }
 
@@ -121,12 +141,23 @@ export function decodeUsedLog(chunks) {
     if (typeof chunk !== 'string' || chunk.length % TICK_HEX !== 0 || !HEX_RE.test(chunk)) return null;
     for (let at = 0; at < chunk.length; at += TICK_HEX) {
       const a = decodeOne(chunk, at);
-      const b = decodeOne(chunk, at + TICK_HEX / 2);
+      const b = decodeOne(chunk, at + SEAT_HEX);
       if (!a || !b) return null;
       ticks.push([a, b]);
     }
   }
   return ticks;
+}
+
+/** The pair logged for `tick`, or null. Reads one tick out of its chunk. */
+export function usedTickAt(chunks, tick) {
+  if (!Array.isArray(chunks) || !Number.isInteger(tick) || tick < 0) return null;
+  const chunk = chunks[Math.floor(tick / CHUNK_TICKS)];
+  const at = (tick % CHUNK_TICKS) * TICK_HEX;
+  if (typeof chunk !== 'string' || chunk.length < at + TICK_HEX) return null;
+  const a = decodeOne(chunk, at);
+  const b = decodeOne(chunk, at + SEAT_HEX);
+  return a && b ? [a, b] : null;
 }
 
 /** Append one tick to a chunk list in place. */

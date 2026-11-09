@@ -1,7 +1,9 @@
 // SHOOTER-S1 guard: splitting step() into movePlayer / weaponTick / traceShots must not move a
-// single bit of the PvP sim. The golden ce272de1 is the cross-runtime pin (goja and Chromium run
-// in pvp-sim.test.js); the fuzz hashes below were recorded on the unsplit step() and cover what the
-// golden does not: strafing, sprint, jump, dash, reload, gun swaps, pitch, ammo exhaustion.
+// single bit of the PvP sim. The golden is the cross-runtime pin (goja and Chromium run in
+// pvp-sim.test.js); the fuzz hashes below cover what the golden does not: strafing, sprint, jump,
+// dash, reload, gun swaps, pitch, ammo exhaustion.
+// SHOOTER-S2b (sim 2) moved them on purpose: history ring, rewind, no crit roll. S1 recorded
+// ce272de1 and the sim 1 fuzz hashes on the unsplit step() (sproto-shooter 78edcef).
 import { describe, expect, it } from 'vitest';
 import * as sim from '../src/sim/pvp/sim.js';
 import { DT } from '../src/sim/pvp/rules.js';
@@ -49,20 +51,21 @@ function fuzzMatch(seed, ticks, noise = 0.06) {
   return state;
 }
 
-// Recorded on the unsplit step() (sproto-shooter 78edcef) before the refactor.
+// Sim 2 values (SHOOTER-S2b). Sim 1 was 236/49f3057b, 619/1e2dbb05, 116/27e09c5f,
+// 2700/95e040d0 and 2700/623eab41.
 const FUZZ = Object.freeze([
-  { seed: 1, ticks: 900, noise: 0.06, tick: 236, reason: 'ko', hash: '49f3057b' },
-  { seed: 7, ticks: 900, noise: 0.06, tick: 619, reason: 'ko', hash: '1e2dbb05' },
-  { seed: 2024, ticks: 2700, noise: 0.06, tick: 116, reason: 'ko', hash: '27e09c5f' },
-  { seed: 5, ticks: 2700, noise: 0.5, tick: 2700, reason: 'time', hash: '95e040d0' },
-  { seed: 6, ticks: 2700, noise: 0.35, tick: 2700, reason: 'time', hash: '623eab41' },
+  { seed: 1, ticks: 900, noise: 0.06, tick: 262, reason: 'ko', hash: '6cff9c95' },
+  { seed: 7, ticks: 900, noise: 0.06, tick: 386, reason: 'ko', hash: '46998421' },
+  { seed: 2024, ticks: 2700, noise: 0.06, tick: 116, reason: 'ko', hash: 'f4ef2d21' },
+  { seed: 5, ticks: 2700, noise: 0.5, tick: 2700, reason: 'time', hash: '1b2e6009' },
+  { seed: 6, ticks: 2700, noise: 0.35, tick: 2700, reason: 'time', hash: 'edd01306' },
 ]);
 
-describe('PvP sim split keeps the golden (SHOOTER-S1)', () => {
-  it('keeps golden ce272de1 in node', () => {
+describe('PvP sim split keeps the golden (SHOOTER-S1, sim 2 values)', () => {
+  it('keeps golden 4b3e8828 in node', () => {
     const state = replay(scriptedMatch(7, 180));
-    expect(hashState(state)).toBe('ce272de1');
-    expect(state.tick).toBe(61);
+    expect(hashState(state)).toBe('4b3e8828');
+    expect(state.tick).toBe(65);
     expect(state.reason).toBe('double_ko');
   });
 
