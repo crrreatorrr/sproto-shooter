@@ -16,7 +16,9 @@ import {
   OP, hostileReason, parseJsonBody, validId, versionsMatch, CONTENT, PROTOCOL, SIM_VERSION,
 } from '../../net/protocol.js';
 import { sha256Hex } from '../../core/sha256.js';
-import { createMatch, hashState, step } from './sim.js';
+import {
+  createMatch, hashState, publicStateHash, stateSha256, step,
+} from './sim.js';
 import {
   HASH_EVERY_TICKS, INPUT_LIMITS, LEAD_IN_TICKS, LOADOUT_HASH, READY_MS, REWIND, STALL_MS, STEP_MS,
 } from './rules.js';
@@ -45,6 +47,44 @@ function resolveCombatSeed(combatSeed, spawnSeed, matchId) {
     throw new Error('combatSeed: 32..128 lowercase hex chars');
   }
   return { seed: combatSeed, derived: false };
+}
+
+const HEX_RE = /^[0-9a-f]+$/;
+
+/** Host options are validated, not coerced: a wagered match must not run on a typo. */
+function checkAccounts(accounts) {
+  if (accounts == null) return null;
+  if (!Array.isArray(accounts) || accounts.length !== 2 || !accounts.every(validId) || accounts[0] === accounts[1]) {
+    throw new Error('accounts: two distinct valid account ids, seat 0 first');
+  }
+  return accounts.slice();
+}
+
+function checkBuild(build) {
+  const out = { bundleSha256: null, sourceCommit: null };
+  if (build == null) return out;
+  if (typeof build !== 'object') throw new Error('build: { bundleSha256, sourceCommit }');
+  if (build.bundleSha256 != null) {
+    if (typeof build.bundleSha256 !== 'string' || build.bundleSha256.length !== 64 || !HEX_RE.test(build.bundleSha256)) {
+      throw new Error('build.bundleSha256: 64 lowercase hex chars');
+    }
+    out.bundleSha256 = build.bundleSha256;
+  }
+  if (build.sourceCommit != null) {
+    if (typeof build.sourceCommit !== 'string' || build.sourceCommit.length !== 40 || !HEX_RE.test(build.sourceCommit)) {
+      throw new Error('build.sourceCommit: 40 lowercase hex chars');
+    }
+    out.sourceCommit = build.sourceCommit;
+  }
+  return out;
+}
+
+function checkCeiling(rttCeilingMs) {
+  if (rttCeilingMs == null) return null;
+  if (typeof rttCeilingMs !== 'number' || !Number.isFinite(rttCeilingMs) || rttCeilingMs <= 0) {
+    throw new Error('rttCeilingMs: a positive number of ms');
+  }
+  return rttCeilingMs;
 }
 
 // Fields every snapshot already carries in `players`, and the combat RNG, which stays secret.
@@ -121,6 +161,10 @@ function blankSeat(accountId, sessionId, name) {
     rtts: [],
     rttMs: null,
     interpMs: REWIND.interpMs,
+    // The last input's view (after the continuity clamp), for the backtrack check.
+    viewTick: null,
+    viewBack: null,
+    viewClamped: 0,
     helloAt: 0,
     hellos: 0,
     readyAt: 0,
@@ -175,11 +219,29 @@ export function clampView(wish, frame, cap) {
   return { rewind, frac, claim, clamped: claim > cap };
 }
 
+/**
+ * Clamp a seat's view claim for continuity: viewTick never moves back, and back = frame -
+ * viewTick moves by at most REWIND.maxBackStep from the previous input. A client cannot pick a
+ * rewind per shot; an honest view moves one tick per tick. Returns the clamped viewTick.
+ */
+export function continuousView(seat, frame, viewTick) {
+  if (seat.viewTick == null || seat.viewBack == null) return { viewTick, clamped: false };
+  let back = frame - viewTick;
+  const step = REWIND.maxBackStep;
+  if (back > seat.viewBack + step) back = seat.viewBack + step;
+  if (back < seat.viewBack - step) back = seat.viewBack - step;
+  let v = frame - back;
+  if (v < seat.viewTick) v = seat.viewTick;
+  return { viewTick: v, clamped: v !== viewTick };
+}
+
 export function createDirector({
   seed = 1, spawnSeed, combatSeed, matchId = 'local', leadInTicks = LEAD_IN_TICKS, hosted = false,
+  accounts, build, rttCeilingMs,
 } = {}) {
   const spawn = (spawnSeed != null ? spawnSeed : seed) >>> 0;
   const combat = resolveCombatSeed(combatSeed, spawn, String(matchId));
+  const built = checkBuild(build);
   let director = {
     v: DIRECTOR_STATE_VERSION,
     spawnSeed: spawn,
@@ -188,6 +250,12 @@ export function createDirector({
     combatSeedDerived: combat.derived,
     matchId: String(matchId),
     hosted: !!hosted,
+    // Seat 0, seat 1 account ids the host matched, or null (first HELLO takes seat 0).
+    accounts: checkAccounts(accounts),
+    bundleSha256: built.bundleSha256,
+    sourceCommit: built.sourceCommit,
+    // The host's ceiling on the RTT the rewind cap uses (lobby baseline + margin for wagers).
+    rttCeilingMs: checkCeiling(rttCeilingMs),
     leadInTicks: clampLeadIn(leadInTicks),
     phase: 'lobby',
     seats: [null, null],
@@ -296,7 +364,9 @@ export function createDirector({
   }
 
   function rewindCap(seat) {
-    return rewindCapFor(seat.rttMs, seat.interpMs);
+    const ceiling = director.rttCeilingMs;
+    const rtt = ceiling != null && seat.rttMs != null ? Math.min(seat.rttMs, ceiling) : seat.rttMs;
+    return rewindCapFor(rtt, seat.interpMs);
   }
 
   function snapshotFor(index, now, hits = []) {
@@ -338,8 +408,9 @@ export function createDirector({
       hits: hits.map((hit) => ({ ...hit })),
       ticketsMinted: 0,
     };
+    // Without the RNG: clients never get a checksum of the secret RNG state.
     if (sim.tick % HASH_EVERY_TICKS === 0 || director.phase === 'done' || sim.phase === 'done') {
-      body.hash = hashState(sim);
+      body.hash = publicStateHash(sim);
     }
     return { op: OP.SNAPSHOT, body, to: seatTo(seat) };
   }
@@ -374,6 +445,7 @@ export function createDirector({
       reason,
       tick: cursor(),
       stateHash: director.sim ? hashState(director.sim) : null,
+      stateSha256: director.sim ? stateSha256(director.sim) : null,
       spawnSeed: director.spawnSeed,
       // Revealed now so clients can check sha256(combatSeed) against the commit they got at start.
       combatSeed: director.combatSeed,
@@ -417,6 +489,9 @@ export function createDirector({
     if (body.accountId !== presenceUserId) return reject(from, 'wrong_sender');
     if (!versionsMatch(body)) return reject(from, 'version');
     let index = seatIndex(presenceUserId);
+    if (index < 0 && director.accounts && director.accounts.indexOf(presenceUserId) < 0) {
+      return reject(from, 'not_invited');
+    }
     if (index >= 0 && !allow(director.seats[index], 'helloAt', 'hellos', INPUT_LIMITS.maxHelloPerSecond, now)) {
       return reject(from, 'rate');
     }
@@ -432,7 +507,7 @@ export function createDirector({
     }
     if (index < 0) {
       if (occupied() >= 2) return reject(from, 'match_full');
-      index = director.seats[0] ? 1 : 0;
+      index = director.accounts ? director.accounts.indexOf(presenceUserId) : (director.seats[0] ? 1 : 0);
       director.seats[index] = blankSeat(presenceUserId, sessionId, cleanName(name, presenceUserId));
       allow(director.seats[index], 'helloAt', 'hellos', INPUT_LIMITS.maxHelloPerSecond, now);
       takeInterp(director.seats[index], body);
@@ -445,6 +520,9 @@ export function createDirector({
     seat.connected = true;
     if (typeof name === 'string' && name) seat.name = cleanName(name, seat.name);
     takeInterp(seat, body);
+    // A new session draws from a new view: the continuity check starts over.
+    seat.viewTick = null;
+    seat.viewBack = null;
     const messages = [welcomeTo(index)];
     if (director.phase === 'live' && director.sim) messages.push(snapshotFor(index, now));
     return { ok: true, seat: index, messages };
@@ -459,7 +537,10 @@ export function createDirector({
     if (director.phase === 'done') return reject(presence(presenceUserId, sessionId), 'ended');
     got.seat.ready = true;
     const messages = [welcomeTo(got.index)];
-    if (director.phase === 'lobby' && bothReady()) {
+    if (director.phase === 'lobby' && bothReady() && director.hosted && director.combatSeedDerived) {
+      // A hosted match never goes live on a predictable combat seed.
+      messages.push(...finish('cancel', null, 'no_combat_seed', now));
+    } else if (director.phase === 'lobby' && bothReady()) {
       messages.push(...startLive(now));
       // The other seat's welcome still says lobby; the PHASE above moves it.
     }
@@ -514,7 +595,11 @@ export function createDirector({
     seat.tokens -= 1;
     seat.lastSeq = wish.seq;
     seat.lastInputAt = Math.max(now, seat.lastInputAt);
-    const view = clampView(wish, wish.frame, rewindCap(seat));
+    const kept = continuousView(seat, wish.frame, wish.viewTick);
+    if (kept.clamped) seat.viewClamped += 1;
+    seat.viewTick = kept.viewTick;
+    seat.viewBack = wish.frame - kept.viewTick;
+    const view = clampView({ ...wish, viewTick: kept.viewTick }, wish.frame, rewindCap(seat));
     if (view.clamped) director.clamped[got.index] += 1;
     const used = usedOf(wish, SOURCE.input, view);
     if (late) {
@@ -568,7 +653,10 @@ export function createDirector({
    */
   function rttSample(seat, body, now) {
     if (typeof body.echo !== 'number' || !Number.isFinite(body.echo)) return;
-    if (seat.pongs.indexOf(body.echo) < 0) return;
+    // Each PONG may be echoed once: a replayed old echo would read as a long round trip.
+    const at = seat.pongs.indexOf(body.echo);
+    if (at < 0) return;
+    seat.pongs.splice(at, 1);
     const hold = typeof body.hold === 'number' && Number.isFinite(body.hold) ? body.hold : 0;
     const span = now - body.echo;
     if (hold < 0 || hold > span) return;
@@ -722,6 +810,10 @@ export function createDirector({
       combatSeed: director.combatSeed,
       combatCommit: director.combatCommit,
       matchId: director.matchId,
+      // Seat 0, seat 1 account ids, and the build that ran the match when the host knows it.
+      accounts: director.seats.map((s) => (s ? s.accountId : null)),
+      bundleSha256: director.bundleSha256,
+      sourceCommit: director.sourceCommit,
       protocol: PROTOCOL,
       sim: SIM_VERSION,
       content: CONTENT,
@@ -729,6 +821,7 @@ export function createDirector({
       expect: sim ? {
         tick: sim.tick,
         stateHash: hashState(sim),
+        stateSha256: stateSha256(sim),
         outcome: sim.outcome,
         winner: sim.winner,
         reason: sim.reason,
@@ -755,6 +848,7 @@ export function createDirector({
       interpMs: seat.interpMs,
       rewindCap: rewindCap(seat),
       clamped: director.clamped[index],
+      viewClamped: seat.viewClamped || 0,
     };
   }
 
@@ -775,6 +869,7 @@ export function createDirector({
     joinAttempt(userId) {
       if (!validId(userId)) return { accept: false, reason: 'malformed' };
       if (seatIndex(userId) >= 0) return { accept: true };
+      if (director.accounts && director.accounts.indexOf(userId) < 0) return { accept: false, reason: 'not_invited' };
       if (director.phase === 'done') return { accept: false, reason: 'ended' };
       if (occupied() >= 2) return { accept: false, reason: 'match_full' };
       return { accept: true };
@@ -787,17 +882,24 @@ export function createDirector({
 
 /**
  * The constructor a host (H3, Nakama) must use. It refuses to start without the host's own
- * match seed and match id, so a hosted match never runs on the defaults.
+ * spawn seed, a secret combat seed and the match id, so a hosted match never runs on defaults or
+ * on a derived (predictable) combat seed; and a hosted director that somehow holds a derived seed
+ * cancels instead of going live (`no_combat_seed`). Pass `accounts` (seat order), `build`
+ * ({ bundleSha256, sourceCommit }) and, for wagers, `rttCeilingMs` too.
  */
 export function createHostedDirector(options = {}) {
-  const { seed, matchId } = options;
-  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) {
-    throw new Error('hosted director: seed must be a 32-bit unsigned integer chosen by the host');
+  const { matchId, combatSeed } = options;
+  const spawnSeed = options.spawnSeed != null ? options.spawnSeed : options.seed;
+  if (!Number.isInteger(spawnSeed) || spawnSeed < 0 || spawnSeed > 0xffffffff) {
+    throw new Error('hosted director: spawnSeed must be a 32-bit unsigned integer chosen by the host');
+  }
+  if (typeof combatSeed !== 'string' || !COMBAT_SEED_RE.test(combatSeed)) {
+    throw new Error('hosted director: combatSeed must be a fresh secret of 32..128 lowercase hex chars');
   }
   if (typeof matchId !== 'string' || !matchId || matchId.length > 128) {
     throw new Error('hosted director: matchId must be the Nakama match id');
   }
-  return createDirector({ ...options, hosted: true });
+  return createDirector({ ...options, spawnSeed, hosted: true });
 }
 
 /** Thaw a director from exportState(). */

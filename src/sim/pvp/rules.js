@@ -77,8 +77,17 @@ export const REWIND = Object.freeze({
   interpMaxMs: 150,
   extraTicks: 2,
   rttWindow: 8,
-  maxRttMs: 2000,
+  /** An echo round trip longer than this is not a sample (a held-back echo inflates the cap). */
+  maxRttMs: 1000,
   pongMemory: 4,
+  /** Between consecutive inputs of a seat, frame - viewTick may move by at most this much. */
+  maxBackStep: 2,
+});
+
+/** Limits for a replay record handed to replayJSON from outside. */
+export const REPLAY_LIMITS = Object.freeze({
+  maxTicks: MATCH_TICKS,
+  maxBytes: 512 * 1024,
 });
 
 /** Ticks between the last READY and tick 0, so the first round trip of ticks can carry input. */
@@ -156,7 +165,8 @@ export function contentBody() {
     perks: [],
     crits: false,
     rewind: REWIND,
-    combatSeed: 'commit-reveal',
+    // sha256 commit, reveal in RESULT; the RNG takes 128 bits of sha256(seed).
+    combatSeed: 'commit-reveal-sha256-128',
     stakes: false,
   };
 }

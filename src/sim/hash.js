@@ -40,7 +40,7 @@ export function fnv1a(str) {
  * JSON digits but not hits or hit points. Micro-units (1e-6) keep checkpoints
  * identical in Node, browsers, and goja. `stateHash` itself is unchanged.
  */
-function quantizeForHash(value) {
+export function quantizeForHash(value) {
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) return 0;
     return Math.round(value * 1000000);

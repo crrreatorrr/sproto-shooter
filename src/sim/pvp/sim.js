@@ -6,13 +6,16 @@
 //   interpolated from history at the tick the shooter saw (wish.viewTick + viewFrac/256, at most
 //   REWIND.maxTicks back). invuln comes from the rewound tick, alive from the current one.
 // - Split seed. spawnSeed (public) places the spawns; combatSeed (secret until RESULT) seeds
-//   both seats' RNG. The raw combat seed is not kept in the state.
+//   both seats' RNG with all 128 bits of sfc32 state, taken from sha256(combatSeed). The raw
+//   combat seed is not kept in the state. Snapshots carry publicStateHash (the state without the
+//   RNG); replays check the full hashState and stateSha256.
 // - No crits. The only randomness left is pellet spread.
 import { TUNING } from '../../data/tuning.js';
 import { rangeFalloff } from '../../data/guns.js';
-import { createRng, float } from '../../core/rng.js';
+import { createRng, float, next } from '../../core/rng.js';
+import { sha256Hex } from '../../core/sha256.js';
 import { dirFromYawPitch, deg, yawTo } from '../../core/math.js';
-import { fnv1a, verifyStateHash } from '../hash.js';
+import { quantizeForHash, stableStringify, verifyStateHash } from '../hash.js';
 import { rayCapsule } from './hit.js';
 import {
   DT, LOADOUT, MATCH_TICKS, RESERVE, REWIND, SPAWN_RADIUS, STAGE_ID,
@@ -25,17 +28,28 @@ function q4(n) {
   return Math.round(n * 10000) / 10000;
 }
 
-function rngOf(seed) {
-  return createRng((seed >>> 0) || 1);
+/**
+ * The four 32-bit words of sfc32 state a string combat seed starts from: the first 128 bits of
+ * sha256('sproto-shooter:combat:' + seed). A 32-bit seed (the old FNV-1a) could be brute-forced
+ * from a snapshot hash; 128 bits cannot.
+ */
+export function combatRngWords(combatSeed) {
+  const digest = sha256Hex(`sproto-shooter:combat:${combatSeed}`);
+  const words = [];
+  for (let i = 0; i < 4; i++) words.push(parseInt(digest.slice(i * 8, i * 8 + 8), 16) >>> 0);
+  return words;
 }
 
 /**
- * The 32-bit RNG seed both seats start from. A number is used as is (tests, replay v1); a
- * string (the host's secret hex combat seed) goes through FNV-1a.
+ * The RNG both seats start from. A number is a 32-bit seed (tests, replay v1, the mirrored
+ * golden); a string (the host's secret hex combat seed) fills all 128 bits of sfc32 state.
  */
-export function combatRngSeed(combatSeed) {
-  if (typeof combatSeed === 'string') return parseInt(fnv1a(`sproto-shooter:combat:${combatSeed}`), 16) >>> 0;
-  return (Number(combatSeed) >>> 0);
+function combatRng(combatSeed) {
+  if (typeof combatSeed !== 'string') return createRng((Number(combatSeed) >>> 0) || 1);
+  const [a, b, c, d] = combatRngWords(combatSeed);
+  const r = { a, b, c, d: d || 1 };
+  for (let i = 0; i < 12; i++) next(r);
+  return r;
 }
 
 export function spawnsFor(seed) {
@@ -47,7 +61,7 @@ export function spawnsFor(seed) {
   return [a, b];
 }
 
-function makePlayer(seat, pos, yaw, rngSeed) {
+function makePlayer(seat, pos, yaw, rng) {
   return {
     seat,
     x: pos.x, y: 0, z: pos.z,
@@ -67,7 +81,7 @@ function makePlayer(seat, pos, yaw, rngSeed) {
     fireCd: 0,
     reloadT: 0,
     swapT: 0,
-    rng: rngOf(rngSeed),
+    rng: { ...rng },
   };
 }
 
@@ -87,7 +101,7 @@ function record(state, tick) {
  */
 export function createMatch(spawnSeed, combatSeed = spawnSeed) {
   const n = spawnSeed >>> 0;
-  const rngSeed = combatRngSeed(combatSeed);
+  const rng = combatRng(combatSeed);
   const points = spawnsFor(n);
   const yaw0 = yawTo(points[0], points[1]);
   const yaw1 = yawTo(points[1], points[0]);
@@ -100,8 +114,8 @@ export function createMatch(spawnSeed, combatSeed = spawnSeed) {
     winner: null,
     reason: null,
     players: [
-      makePlayer(0, points[0], yaw0, rngSeed),
-      makePlayer(1, points[1], yaw1, rngSeed),
+      makePlayer(0, points[0], yaw0, rng),
+      makePlayer(1, points[1], yaw1, rng),
     ],
     hist: [[], []],
   };
@@ -492,8 +506,26 @@ export function step(state, wishes, events = null) {
   return state;
 }
 
+/** The full state hash (FNV-1a, 32 bits): replay and RESULT. Includes the combat RNG. */
 export function hashState(state) {
   return verifyStateHash(state);
+}
+
+function withoutRng(state) {
+  return { ...state, players: state.players.map(({ rng: _rng, ...rest }) => rest) };
+}
+
+/**
+ * The hash snapshots send clients: the state without either player's RNG, so a client never
+ * gets a checksum of the secret RNG state to search against.
+ */
+export function publicStateHash(state) {
+  return verifyStateHash(withoutRng(state));
+}
+
+/** SHA-256 of the same canonical, quantized state hashState covers: the settlement hash. */
+export function stateSha256(state) {
+  return sha256Hex(stableStringify(quantizeForHash(state)));
 }
 
 export function snapshotOf(state) {
