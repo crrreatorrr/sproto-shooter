@@ -24,13 +24,20 @@
 // - Rejoin on a new session id sends HELLO (the director rebinds the seat), not RESYNC.
 // - Remote interpolation: render time = estimated server time - delay. Interpolate between the
 //   two snapshots around it, extrapolate up to NET.extrapolateMs when starved, then hold.
+// - Lag compensation (sim 2, SHOOTER-S2b): each input carries viewTick/viewFrac, the render
+//   time of the newest drawn frame (what the shooter saw), so the server can rewind the target.
+//   PINGs echo the last PONG's serverMs and how long it was held, so the director measures this
+//   seat's round trip itself. Spread is cosmetic here; damage comes from the server's hit events
+//   in snapshots (`hits`), and the combat seed revealed in RESULT is checked against the
+//   sha256 commit from WELCOME.
 import { createMockRealtimeServer } from '@metaverse/hub-sdk';
+import { sha256Hex } from '../core/sha256.js';
 import { decodeInput, encodeInput, wishFromCommand } from './inputCodec.js';
 import {
   CONTENT, FREE_MATCH_NAME, OP, PROTOCOL, SIM_VERSION, matchmakerProps,
 } from './protocol.js';
 import { createDirector, restoreDirector } from '../sim/pvp/director.js';
-import { INPUT_LIMITS, STALL_MS, STEP_MS } from '../sim/pvp/rules.js';
+import { INPUT_LIMITS, REWIND, STALL_MS, STEP_MS } from '../sim/pvp/rules.js';
 
 /** Client netcode tuning. Nothing here is part of the wire contract. */
 export const NET = Object.freeze({
@@ -58,7 +65,20 @@ export const NET = Object.freeze({
   interpDelayMs: 100,
   extrapolateMs: 100,
   snapshotBuffer: 24,
+  /** Server-confirmed hit events kept for the HUD. */
+  hitLog: 32,
 });
+
+/**
+ * Render tick -> the viewTick/viewFrac an input carries: the whole tick and 1/256ths of the next.
+ * Never before tick 0.
+ */
+export function viewStamp(renderTick) {
+  if (!Number.isFinite(renderTick) || renderTick <= 0) return { viewTick: 0, viewFrac: 0 };
+  const viewTick = Math.floor(renderTick);
+  const viewFrac = Math.min(REWIND.fracSteps - 1, Math.floor((renderTick - viewTick) * REWIND.fracSteps));
+  return { viewTick, viewFrac };
+}
 
 const PHASE_RANK = Object.freeze({ joining: 0, lobby: 1, live: 2, done: 3 });
 
@@ -210,7 +230,15 @@ export function createPvpClient({
   let slotNow = 0;
   let reconnectAt = 0;
   let names = [null, null];
+  let combatCommit = null;
+  let spawnSeed = null;
   const seenResults = new Set();
+  // Server-confirmed hits ({ tick, shooter, dmg, hits, rewind, at }), newest last.
+  const hitLog = [];
+  // Render tick of the newest sample() (what is on screen); inputs stamp it as viewTick.
+  let viewTick = null;
+  // The newest PONG: its serverMs is echoed in the next PING with how long it was held.
+  let lastPong = null;
 
   // Server clock: offsets (clockTick * STEP_MS - arrival) of the newest server packets.
   const offsets = [];
@@ -234,8 +262,9 @@ export function createPvpClient({
   let pongs = 0;
   const stats = {
     inputTicks: 0, leadRaises: 0, leadDrops: 0, leadCaps: 0, leadTrims: 0, lateFrames: 0, pings: 0,
-    maxLead: NET.leadStart,
+    maxLead: NET.leadStart, hitsConfirmed: 0, damageConfirmed: 0,
   };
+  let server = { rttMs: null, rewindCap: null };
   let look = { yaw: 0, pitch: 0 };
   // Edge buttons and slot picks latched between render frames until an input tick carries them.
   const latch = { jump: false, dash: false, reload: false, slide: false };
@@ -254,6 +283,8 @@ export function createPvpClient({
       protocol: PROTOCOL,
       sim: SIM_VERSION,
       content: CONTENT,
+      // The director's rewind cap counts this client's interpolation delay (sim 2).
+      interpMs: interpDelayMs,
     });
   }
 
@@ -261,7 +292,12 @@ export function createPvpClient({
     if (seat < 0 || link !== 'live' || (!force && now - lastPingAt < NET.pingMs)) return;
     lastPingAt = now;
     stats.pings += 1;
-    send(OP.PING, { t: now });
+    const body = { t: now, interpMs: interpDelayMs };
+    if (lastPong) {
+      body.echo = lastPong.serverMs;
+      body.hold = Math.max(0, now - lastPong.at);
+    }
+    send(OP.PING, body);
   }
 
   /** Phase only moves forward, and never leaves 'done' once a result exists. */
@@ -327,6 +363,8 @@ export function createPvpClient({
     setPhase(body.phase);
     opponent = body.opponent || opponent;
     if (Array.isArray(body.names)) names = body.names.map((n) => (typeof n === 'string' ? n : null));
+    if (typeof body.combatCommit === 'string') combatCommit = body.combatCommit;
+    if (Number.isInteger(body.spawnSeed)) spawnSeed = body.spawnSeed;
     // Resume after the last sequence the seat accepted (a reload starts from 0).
     if (Number.isInteger(body.lastSeq) && body.lastSeq > seq) seq = body.lastSeq;
     link = 'live';
@@ -342,6 +380,7 @@ export function createPvpClient({
     const now = clock();
     const rtt = now - body.t;
     if (!(rtt >= 0) || rtt > NET.rttMaxSampleMs) return;
+    if (typeof body.serverMs === 'number' && Number.isFinite(body.serverMs)) lastPong = { serverMs: body.serverMs, at: now };
     pongs += 1;
     rtts.push(rtt);
     if (rtts.length > NET.rttWindow) rtts.shift();
@@ -381,9 +420,21 @@ export function createPvpClient({
     if (snaps.length > NET.snapshotBuffer) snaps.shift();
     const now = clock();
     clockSample(body.clockTick ?? body.tick, now);
+    if (Array.isArray(body.hits)) {
+      for (const hit of body.hits) {
+        if (!hit || !Number.isInteger(hit.tick) || !Number.isInteger(hit.dmg)) continue;
+        hitLog.push({ ...hit, at: now });
+        if (hit.shooter === seat) {
+          stats.hitsConfirmed += 1;
+          stats.damageConfirmed += hit.dmg;
+        }
+      }
+      while (hitLog.length > NET.hitLog) hitLog.shift();
+    }
     const you = body.you;
     if (you && you.seat === seat) {
       ack = { frame: you.ackFrame, seq: you.ackSeq, buffer: you.buffer, late: you.late };
+      server = { rttMs: you.rttMs ?? null, rewindCap: you.rewindCap ?? null };
       bufferSample(you.buffer, now);
       if (Number.isInteger(you.late) && you.late > lateSeen) {
         const fresh = you.late - lateSeen;
@@ -418,7 +469,11 @@ export function createPvpClient({
   function onResult(body) {
     if (!body || seenResults.has(body.reason + ':' + body.tick + ':' + body.outcome)) return;
     seenResults.add(body.reason + ':' + body.tick + ':' + body.outcome);
-    result = body;
+    // The combat seed is revealed now: it must hash to the commit this client got at start.
+    const combatVerified = typeof body.combatSeed === 'string' && combatCommit != null
+      ? sha256Hex(body.combatSeed) === combatCommit
+      : null;
+    result = { ...body, combatVerified };
     phase = 'done';
     changed();
   }
@@ -500,8 +555,14 @@ export function createPvpClient({
     // During the lead-in the aim point is still before tick 0.
     if (aim < 0) return false;
     const frame = Math.min(INPUT_LIMITS.maxFrame, Math.max(aim, lastFrame + 1));
+    // What the shooter saw: the newest drawn frame's render tick (else the render time now).
+    const view = wish.viewTick != null
+      ? { viewTick: wish.viewTick, viewFrac: wish.viewFrac ?? 0 }
+      : viewStamp(viewTick != null ? viewTick : est - interpDelayMs / STEP_MS);
     // Encode before committing seq, so a bad wish (NaN aim) cannot desync the sequence.
-    const packet = encodeInput({ ...wish, seq: seq + 1, frame, yaw: wish.yaw ?? 0, pitch: wish.pitch ?? 0 });
+    const packet = encodeInput({
+      ...wish, ...view, seq: seq + 1, frame, yaw: wish.yaw ?? 0, pitch: wish.pitch ?? 0,
+    });
     seq += 1;
     if (Number.isInteger(wish.slot) && wish.slot >= 0) slotNow = wish.slot;
     look = { yaw: wish.yaw ?? 0, pitch: wish.pitch ?? 0 };
@@ -577,7 +638,13 @@ export function createPvpClient({
   function sample(now = clock()) {
     const est = estTick(now);
     if (est == null) return sampleSnapshots(snaps, 3);
-    return sampleAt(snaps, est - interpDelayMs / STEP_MS);
+    const renderTick = est - interpDelayMs / STEP_MS;
+    viewTick = renderTick;
+    return sampleAt(snaps, renderTick);
+  }
+
+  function recentHits(now, windowMs = 1000) {
+    return hitLog.filter((hit) => now - hit.at <= windowMs);
   }
 
   return {
@@ -600,10 +667,18 @@ export function createPvpClient({
         seq,
         interpDelayMs,
         ack,
+        viewTick,
+        serverRttMs: server.rttMs,
+        rewindCap: server.rewindCap,
         ...stats,
       };
     },
     get names() { return names; },
+    /** sha256(combatSeed) from WELCOME; RESULT reveals the seed. */
+    get combatCommit() { return combatCommit; },
+    get spawnSeed() { return spawnSeed; },
+    /** Server-confirmed hit events, newest last. */
+    get hits() { return hitLog.slice(); },
     setHoldReconnect(value) { holdReconnect = !!value; },
     ready() {
       readied = true;
@@ -628,6 +703,7 @@ export function createPvpClient({
         rejectReason,
         sample: view,
         graceLeftMs,
+        hits: recentHits(now),
         ticketsMinted: 0,
       };
     },
@@ -647,7 +723,11 @@ export function registerFreeMatch(server, options = {}) {
   server.registerMatch(FREE_MATCH_NAME, {
     init(params) {
       const seed = (params && params.seed) || options.seed || 1;
-      const director = createDirector({ seed, matchId: (params && params.matchId) || 'pending' });
+      // The hub passes a secret combatSeed. The local mock may leave it out (derived, flagged).
+      const combatSeed = (params && params.combatSeed) || options.combatSeed;
+      const director = createDirector({
+        spawnSeed: seed, combatSeed, matchId: (params && params.matchId) || 'pending',
+      });
       const freeze = !!((params && params.freeze) ?? options.freeze);
       return {
         state: {

@@ -1,5 +1,5 @@
-// Finite 16-byte arena input. One seat, one frame, one sequence.
-import { INPUT_LIMITS } from '../sim/pvp/rules.js';
+// Finite 18-byte arena input. One seat, one frame, one sequence, and the tick the shooter saw.
+import { INPUT_LIMITS, REWIND } from '../sim/pvp/rules.js';
 
 export const FRAME_BYTES = INPUT_LIMITS.frameBytes;
 
@@ -62,6 +62,25 @@ function readFrame(frame) {
   return frame;
 }
 
+/**
+ * viewTick (absolute, the interpolated server tick the shooter saw) -> back = frame - viewTick,
+ * clamped to 0..255 and never before tick 0. A wish without viewTick claims no rewind.
+ */
+function readView(wish, frame) {
+  let back = 0;
+  if (wish.viewTick != null) {
+    if (typeof wish.viewTick !== 'number' || !Number.isFinite(wish.viewTick)) fail('nan');
+    back = frame - Math.floor(wish.viewTick);
+  }
+  back = Math.max(0, Math.min(REWIND.maxBack, frame, back));
+  let frac = 0;
+  if (wish.viewFrac != null) {
+    if (typeof wish.viewFrac !== 'number' || !Number.isFinite(wish.viewFrac)) fail('nan');
+    frac = Math.max(0, Math.min(REWIND.fracSteps - 1, Math.floor(wish.viewFrac)));
+  }
+  return { back, frac };
+}
+
 function readSlot(slot) {
   if (slot == null) return -1;
   if (typeof slot !== 'number' || !Number.isFinite(slot)) fail('nan');
@@ -79,6 +98,7 @@ export function encodeInput(wish) {
   const moveZ = quantMove(wish.moveZ ?? 0);
   const slot = readSlot(wish.slot);
   const buttons = buttonMask(wish);
+  const viewState = readView(wish, frame);
   const buf = new Uint8Array(FRAME_BYTES);
   const view = new DataView(buf.buffer);
   view.setUint32(0, seq, true);
@@ -89,6 +109,8 @@ export function encodeInput(wish) {
   view.setInt8(13, moveZ);
   view.setUint8(14, buttons);
   view.setInt8(15, slot);
+  view.setUint8(16, viewState.back);
+  view.setUint8(17, viewState.frac);
   return buf;
 }
 
@@ -104,9 +126,14 @@ export function decodeInput(buf) {
   if (yawQ < -32767 || yawQ > 32767 || pitchQ < -32767 || pitchQ > 32767) fail('malformed');
   const moveX = view.getInt8(12);
   const moveZ = view.getInt8(13);
+  const frame = view.getInt32(4, true);
+  const back = view.getUint8(16);
   const out = {
     seq: view.getUint32(0, true),
-    frame: view.getInt32(4, true),
+    frame,
+    // The tick the shooter saw. A back past tick 0 is clamped, not rejected.
+    viewTick: Math.max(0, frame - back),
+    viewFrac: view.getUint8(17),
     yaw: (yawQ / 32767) * Math.PI,
     pitch: (pitchQ / 32767) * 1.5,
     moveX: moveX / 127,
@@ -119,8 +146,8 @@ export function decodeInput(buf) {
   return out;
 }
 
-/** Campaign command -> arena wish. Slot 3+ and spells are dropped. */
-export function wishFromCommand(cmd, seq, frame, slotNow = 0) {
+/** Campaign command -> arena wish. Slot 3+ and spells are dropped. `view` stamps viewTick/viewFrac. */
+export function wishFromCommand(cmd, seq, frame, slotNow = 0, view = null) {
   let slot = -1;
   if (cmd && Number.isInteger(cmd.slot) && cmd.slot >= 0 && cmd.slot <= 2) slot = cmd.slot;
   else if (cmd && cmd.wheel) {
@@ -144,5 +171,6 @@ export function wishFromCommand(cmd, seq, frame, slotNow = 0) {
     reload: !!pressed.reload,
     slide: !!pressed.slide,
     slot,
+    ...(view ? { viewTick: view.viewTick, viewFrac: view.viewFrac } : {}),
   };
 }

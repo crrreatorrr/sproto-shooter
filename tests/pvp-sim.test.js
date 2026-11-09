@@ -16,9 +16,12 @@ import * as pvp from '../src/sim/pvp/export.js';
 import directorGoldenFixture from './fixtures/director-golden.json';
 import './fixtures/director-golden.js';
 
-const GOLDEN_HASH = 'ce272de1';
-// SHOOTER-S2a: protocol 2 is a deliberate fingerprint bump (protocol 1 was f5949631).
-const FINGERPRINT = '0e584d36';
+// SHOOTER-S2b: sim 2 (lag compensation, split seed, no crits) is a deliberate golden bump from
+// ce272de1 (sim 1, tick 61). The fingerprint went f5949631 (protocol 1) -> 0e584d36 (S2a) ->
+// ec36c8fa (S2b) -> 17d87c54 (S2b review fixes).
+const GOLDEN_HASH = '6545ca0a';
+const GOLDEN_TICK = 65;
+const FINGERPRINT = '17d87c54';
 const DRIVER = path.resolve('tests', 'fixtures', 'director-golden.js');
 const { comment: _comment, ...DIRECTOR_GOLDEN } = directorGoldenFixture;
 
@@ -33,6 +36,10 @@ function directorCore(out) {
     late: out.late,
     rejects: out.rejects,
     replay: out.replay,
+    hits: out.hits,
+    hitDamage: out.hitDamage,
+    combatCommit: out.combatCommit,
+    combatSeed: out.combatSeed,
   };
 }
 
@@ -77,6 +84,9 @@ describe('fixed loadout and spawns', () => {
         spread: expectedGun(gun.type).spread,
         critMult: expectedGun(gun.type).critMult,
       });
+      // Crits are off in PvP (owner decision); the campaign gun keeps its chance.
+      expect(gun.stats.critChance).toBe(0);
+      expect(GUN_TYPES_BY_ID[gun.type].base.critChance).toBeGreaterThan(0);
     }
     expect(LOADOUT[0].infiniteReserve).toBe(true);
     expect(LOADOUT[1].infiniteReserve).toBe(false);
@@ -109,7 +119,7 @@ describe('fixed loadout and spawns', () => {
     expect(state.outcome).toBe('draw');
     expect(state.reason).toBe('double_ko');
     expect(state.winner).toBeNull();
-    expect(state.tick).toBe(61);
+    expect(state.tick).toBe(GOLDEN_TICK);
     expect(state.players[0].hp).toBe(state.players[1].hp);
     expect(state.players[0].shield).toBe(state.players[1].shield);
     expect(state.players[0].alive).toBe(false);
@@ -140,12 +150,16 @@ describe('browser, node, and goja', () => {
     bundlePath = path.join(dir, 'shooter-pvp-sim.js');
     const bytes = fs.readFileSync(bundlePath);
     expect(pin.protocol).toBe(2);
-    expect(pin.sim).toBe(1);
+    expect(pin.sim).toBe(2);
     expect(pin.contentFingerprint).toBe(FINGERPRINT);
-    expect(pin.directorState).toBe(2);
+    expect(pin.directorState).toBe(3);
     expect(pin.replayVersion).toBe(2);
     expect(pin.matchmakerQuery).toContain(`+properties.protocol:2 +properties.content:${FINGERPRINT}`);
-    expect(pin.limits).toMatchObject({ futureFrames: 8, maxFramesPerSecond: 45, maxFramesPerCursor: 9, holdTicks: 3, catchUpTicks: 4, maxHelloPerSecond: 2, maxReadyPerSecond: 2 });
+    expect(pin.limits).toMatchObject({ futureFrames: 8, maxFramesPerSecond: 45, maxFramesPerCursor: 9, holdTicks: 3, catchUpTicks: 4, maxHelloPerSecond: 2, maxReadyPerSecond: 2, frameBytes: 18 });
+    expect(pin.rewind).toMatchObject({ maxTicks: 10, historyTicks: 12, maxBack: 255, fracSteps: 256, interpMs: 100, interpMinMs: 50, interpMaxMs: 150, extraTicks: 2, maxRttMs: 1000, maxBackStep: 2 });
+    expect(pin.replayLimits).toEqual({ maxTicks: 2700, maxBytes: 524288 });
+    expect(pin.crits).toBe(false);
+    expect(pin.combatSeed).toBe('sha256-commit-reveal-128');
     expect(pin.campaignProtocol).toBe(1);
     expect(pin.campaignContentFingerprint).toBe('3c657fb5');
     expect(pin.mintsTickets).toBe(false);
@@ -278,7 +292,7 @@ func main() {
       expect(receipt.reason).toBe('double_ko');
       expect(receipt.winner).toBeNull();
       expect(receipt.stateHash).toBe(GOLDEN_HASH);
-      expect(receipt.tick).toBe(61);
+      expect(receipt.tick).toBe(GOLDEN_TICK);
       expect(receipt.content).toBe(FINGERPRINT);
       expect(receipt.protocol).toBe(2);
       expect(receipt.players[0].hp).toBe(receipt.players[1].hp);

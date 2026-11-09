@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { createDirector, createHostedDirector, restoreDirector } from '../src/sim/pvp/director.js';
 import * as pvp from '../src/sim/pvp/export.js';
 import { encodeInput } from '../src/net/inputCodec.js';
-import { CONTENT, OP, PROTOCOL, matchmakerProps } from '../src/net/protocol.js';
+import { CONTENT, OP, PROTOCOL, SIM_VERSION, matchmakerProps } from '../src/net/protocol.js';
 import {
   CONTENT_FINGERPRINT, HASH_EVERY_TICKS, INPUT_LIMITS, LEAD_IN_TICKS, MATCHMAKER_QUERY,
   PVP_PROTOCOL_VERSION, STALL_MS, STEP_MS,
@@ -23,7 +23,7 @@ const { replayJSON } = pvp;
 const { comment: _comment, ...DIRECTOR_GOLDEN } = goldenFixture;
 
 function hello(id, extra = {}) {
-  return { accountId: id, protocol: PROTOCOL, sim: 1, content: CONTENT, ...extra };
+  return { accountId: id, protocol: PROTOCOL, sim: SIM_VERSION, content: CONTENT, ...extra };
 }
 
 function wish(seq, frame, extra = {}) {
@@ -59,17 +59,19 @@ function usedTicks(director) {
   return decodeUsedLog(director.replayRecord().used);
 }
 
-describe('protocol 2 identity (SHOOTER-S2a)', () => {
+describe('protocol 2 identity (SHOOTER-S2a, sim 2 since SHOOTER-S2b)', () => {
   it('bumps the protocol and fingerprint, and the matchmaker pairs only on both', () => {
     expect(PVP_PROTOCOL_VERSION).toBe(2);
     expect(PROTOCOL).toBe(2);
-    expect(CONTENT_FINGERPRINT).toBe('0e584d36');
+    expect(SIM_VERSION).toBe(2);
+    // S2b (sim 2) is a deliberate fingerprint bump from 0e584d36 (S2a, sim 1).
+    expect(CONTENT_FINGERPRINT).toBe('17d87c54');
     expect(OP.PING).toBe(10);
     expect(OP.PONG).toBe(11);
     const props = matchmakerProps();
     expect(props.query).toBe(MATCHMAKER_QUERY);
-    expect(props.query).toBe('+properties.game:sproto-shooter +properties.mode:free +properties.protocol:2 +properties.content:0e584d36');
-    expect(props.stringProperties).toMatchObject({ protocol: '2', content: '0e584d36', sim: '1' });
+    expect(props.query).toBe('+properties.game:sproto-shooter +properties.mode:free +properties.protocol:2 +properties.content:17d87c54');
+    expect(props.stringProperties).toMatchObject({ protocol: '2', content: '17d87c54', sim: '2' });
     expect(matchmakerProps('deadbeef').query).toContain('+properties.content:deadbeef');
   });
 });
@@ -156,17 +158,19 @@ describe('hold-last substitutes', () => {
     const now = director.liveStart + 5 * STEP_MS;
     expect(send(director, 'ada', wish(1, 5, {
       yaw: -0.5, pitch: 0.25, moveX: -1, moveZ: 1, fire: true, zoom: true, sprint: true, jump: true, dash: true, reload: true, slot: 2,
+      viewTick: 2, viewFrac: 100,
     }), now).ok).toBe(true);
     stepTo(director, 11);
     const ticks = usedTicks(director).map((pair) => pair[0]);
     const real = ticks[5];
-    expect(real).toMatchObject({ src: SOURCE.input, mx: -127, mz: 127, s: 2 });
+    expect(real).toMatchObject({ src: SOURCE.input, mx: -127, mz: 127, s: 2, r: 3, f: 100 });
     expect(real.b).toBe(0b1111111 & ~(1 << 6));
+    // Sim 2: a held tick keeps the input's rewind; neutral ticks claim none.
     for (const tick of [6, 7, 8]) {
-      expect(ticks[tick]).toEqual({ y: real.y, p: real.p, mx: -127, mz: 127, b: 0b111, s: -1, src: SOURCE.hold });
+      expect(ticks[tick]).toEqual({ y: real.y, p: real.p, mx: -127, mz: 127, b: 0b111, s: -1, src: SOURCE.hold, r: 3, f: 100 });
     }
     for (const tick of [9, 10]) {
-      expect(ticks[tick]).toEqual({ y: real.y, p: real.p, mx: 0, mz: 0, b: 0, s: -1, src: SOURCE.neutral });
+      expect(ticks[tick]).toEqual({ y: real.y, p: real.p, mx: 0, mz: 0, b: 0, s: -1, src: SOURCE.neutral, r: 0, f: 0 });
     }
     // Ticks 0-4 had no input either: 3 held, 2 neutral, then the same after tick 5.
     expect(director.seatStats(0)).toMatchObject({ applied: 1, held: 6, neutral: 4, ackFrame: 5 });
@@ -424,12 +428,14 @@ describe('review fixes (SHOOTER-S2a)', () => {
     expect(JSON.parse(replayJSON(JSON.stringify(golden.record))).verified).toBe(true);
   });
 
-  it('createHostedDirector requires an explicit seed and match id', () => {
-    expect(() => createHostedDirector({})).toThrow(/seed/);
-    expect(() => createHostedDirector({ seed: 5 })).toThrow(/matchId/);
-    expect(() => createHostedDirector({ seed: 1.5, matchId: 'm' })).toThrow(/seed/);
-    const director = createHostedDirector({ seed: 5, matchId: 'm-1' });
-    expect(director.exportState()).toMatchObject({ seed: 5, matchId: 'm-1', hosted: true });
+  it('createHostedDirector requires a host spawn seed, a secret combat seed and the match id', () => {
+    const combatSeed = '00112233445566778899aabbccddeeff';
+    expect(() => createHostedDirector({ combatSeed, matchId: 'm' })).toThrow(/spawnSeed/);
+    expect(() => createHostedDirector({ spawnSeed: 5, combatSeed })).toThrow(/matchId/);
+    expect(() => createHostedDirector({ spawnSeed: 1.5, combatSeed, matchId: 'm' })).toThrow(/spawnSeed/);
+    expect(() => createHostedDirector({ spawnSeed: 5, matchId: 'm' })).toThrow(/combatSeed/);
+    const director = createHostedDirector({ spawnSeed: 5, combatSeed, matchId: 'm-1' });
+    expect(director.exportState()).toMatchObject({ spawnSeed: 5, matchId: 'm-1', hosted: true, combatSeedDerived: false });
     expect(pvp.createHostedDirector).toBe(createHostedDirector);
   });
 });
@@ -439,10 +445,10 @@ describe('exportState / importState', () => {
     const director = boot();
     const state = director.exportState();
     expect(JSON.parse(JSON.stringify(state))).toEqual(state);
-    expect(state.v).toBe(2);
+    expect(state.v).toBe(3);
     expect(state.seats[0].queue).toEqual({});
     expect(() => restoreDirector({ ...state, v: 1 })).toThrow(/version/);
-    expect(() => restoreDirector({ v: 2 })).toThrow(/version/);
+    expect(() => restoreDirector({ v: 3 })).toThrow(/version/);
   });
 
   it('a thaw/freeze after every call reproduces the same messages, used log and final hash', () => {
@@ -457,12 +463,12 @@ describe('used-input log and replay v2', () => {
     const golden = directorGolden(pvp, { record: true });
     const record = golden.record;
     expect(record.v).toBe(2);
-    expect(record.used.join('').length).toBe(record.expect.tick * 32);
+    expect(record.used.join('').length).toBe(record.expect.tick * 40);
     const ok = JSON.parse(replayJSON(JSON.stringify(record)));
     expect(ok).toMatchObject({ ok: true, verified: true, mismatch: [], tick: record.expect.tick, stateHash: record.expect.stateHash, ticketsMinted: 0 });
     // Flip one movement byte of one seat on one tick.
     const chunks = record.used.slice();
-    const at = 16 * 32 + 8;
+    const at = 16 * 40 + 8;
     chunks[0] = chunks[0].slice(0, at) + (chunks[0].slice(at, at + 2) === '7f' ? '00' : '7f') + chunks[0].slice(at + 2);
     const bad = JSON.parse(replayJSON(JSON.stringify({ ...record, used: chunks })));
     expect(bad.verified).toBe(false);
@@ -536,10 +542,10 @@ describe('mock match handler', () => {
   it('produces the same messages when the director is frozen to JSON between callbacks', () => {
     const live = drive(false);
     const frozen = drive(true);
-    expect(frozen.frozen).toMatchObject({ v: 2, phase: 'live' });
+    expect(frozen.frozen).toMatchObject({ v: 3, phase: 'live' });
     expect(live.frozen).toBeNull();
     expect(frozen.sent).toEqual(live.sent);
     expect(live.sent.length).toBeGreaterThan(90);
-    expect(live.label).toEqual({ kind: 'sproto_shooter_free', game: 'sproto-shooter', mode: 'free', protocol: 2, content: '0e584d36', stake: 0 });
+    expect(live.label).toEqual({ kind: 'sproto_shooter_free', game: 'sproto-shooter', mode: 'free', protocol: 2, content: '17d87c54', stake: 0 });
   });
 });

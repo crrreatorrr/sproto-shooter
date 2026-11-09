@@ -8,11 +8,11 @@ import { createServer } from 'vite';
 import { createDirector } from '../src/sim/pvp/director.js';
 import { createLoopbackTable, createPvpClient, sampleSnapshots } from '../src/net/client.js';
 import { encodeInput } from '../src/net/inputCodec.js';
-import { CONTENT, OP, PROTOCOL } from '../src/net/protocol.js';
+import { CONTENT, OP, PROTOCOL, SIM_VERSION } from '../src/net/protocol.js';
 import { INPUT_LIMITS, STALL_MS } from '../src/sim/pvp/rules.js';
 
 function hello(id, extra = {}) {
-  return { accountId: id, protocol: PROTOCOL, sim: 1, content: CONTENT, ...extra };
+  return { accountId: id, protocol: PROTOCOL, sim: SIM_VERSION, content: CONTENT, ...extra };
 }
 
 function wish(seq, frame, extra = {}) {

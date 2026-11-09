@@ -67,6 +67,8 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
   // Stubs for S3. Prediction corrections are in metres; rewind checks are per confirmed shot.
   const corrections = [[], []];
   const rewindChecks = { checks: 0, agree: 0 };
+  // S2b detail: what the client claimed, what the director applied, and agreement at the claim.
+  const rewindClaims = { claims: [], applied: [], clamped: 0, unclampedChecks: 0, unclampedAgree: 0 };
 
   function bump(map, key) {
     map[key] = (map[key] || 0) + 1;
@@ -156,6 +158,16 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
       rewindChecks.checks += 1;
       if (agree) rewindChecks.agree += 1;
     },
+    /** S2b detail for one check: claimed and applied rewind (ticks), and agreement had the claim not been clamped. */
+    rewindClaim(claim, applied, agreeUnclamped) {
+      rewindClaims.claims.push(claim);
+      rewindClaims.applied.push(applied);
+      if (applied < claim) rewindClaims.clamped += 1;
+      if (agreeUnclamped != null) {
+        rewindClaims.unclampedChecks += 1;
+        if (agreeUnclamped) rewindClaims.unclampedAgree += 1;
+      }
+    },
 
     report({ director, links = [], endedAt = null, clocks = [], server = null, options = {} } = {}) {
       const ticks = director.sim ? director.sim.tick : 0;
@@ -199,6 +211,8 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
             directorAppliedFraction: used && ticks ? round(used.applied / ticks) : null,
             directorHeld: used ? used.held : null,
             directorNeutral: used ? used.neutral : null,
+            // S2b: inputs whose view claim broke continuity (went back, or moved > 2 ticks).
+            directorViewClamped: used && used.viewClamped != null ? used.viewClamped : null,
             inputsSent: seat.inputsSent,
             inputsDroppedWhileDown: seat.inputsDroppedWhileDown,
             inputsAccepted: seat.inputsAccepted,
@@ -240,10 +254,16 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
               : null,
           };
         }),
-        // Stub until S2b adds viewTick rewind: no checks today.
+        // S2b: the harness checks each applied firing input (tests/net/netsim.js rewindCheck).
         rewind: {
           checks: rewindChecks.checks,
           agreement: rewindChecks.checks ? round(rewindChecks.agree / rewindChecks.checks) : null,
+          claimTicks: summary(rewindClaims.claims),
+          appliedTicks: summary(rewindClaims.applied),
+          clampedFraction: rewindClaims.claims.length ? round(rewindClaims.clamped / rewindClaims.claims.length) : null,
+          unclampedAgreement: rewindClaims.unclampedChecks
+            ? round(rewindClaims.unclampedAgree / rewindClaims.unclampedChecks)
+            : null,
         },
       };
     },

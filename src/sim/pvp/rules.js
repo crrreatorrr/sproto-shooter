@@ -4,7 +4,8 @@ import { GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, QUALITIES_BY_ID } from '../../dat
 import { fnv1a, stableStringify } from '../hash.js';
 
 export const PVP_PROTOCOL_VERSION = 2;
-export const PVP_SIM_VERSION = 1;
+/** Sim 2 (SHOOTER-S2b): history ring + viewTick rewind, split spawn/combat seed, crits off. */
+export const PVP_SIM_VERSION = 2;
 export const MATCH_NAME = 'sproto_shooter_free';
 export const GAME_ID = 'sproto-shooter';
 
@@ -44,11 +45,49 @@ export const INPUT_LIMITS = Object.freeze({
   /** Per seat: HELLO and RESYNC together, and READY, each at most this many per second. */
   maxHelloPerSecond: 2,
   maxReadyPerSecond: 2,
-  frameBytes: 16,
+  frameBytes: 18,
   maxFrame: 1000000,
   maxIdLength: 80,
   maxNameLength: 32,
   maxLeadInTicks: 90,
+});
+
+/**
+ * Lag compensation (sim 2). Each input says which interpolated tick the shooter saw the
+ * opponent at: viewTick = frame - back (back 0..255) plus viewFrac/256. The director clamps the
+ * rewind back = frame - viewTick to the seat's cap,
+ *   min(maxTicks, RTT + interp + extraTicks), rounded up to whole ticks,
+ * where RTT is the director's own PING-echo median and interp the client's announced remote
+ * interpolation delay, clamped to interpMinMs..interpMaxMs (interpMs until announced). An honest
+ * claim is about uplink lead + downlink + interpolation delay + input buffer, i.e. RTT + interp
+ * plus a tick or two, so that is what the cap allows; a client claiming more is cut short. The
+ * sim clamps to maxTicks again, so a forged replay log cannot reach further.
+ * - maxTicks: ABS_MAX, 10 ticks (333 ms). With the 150 ms wagered RTT gate, the most a shooter
+ *   can be favoured.
+ * - historyTicks: the per-player ring of {x, y, z, alive, invuln} in the sim state, maxTicks + 2.
+ * - rttWindow: PING echo samples in the director's per-seat median.
+ */
+export const REWIND = Object.freeze({
+  maxTicks: 10,
+  historyTicks: 12,
+  maxBack: 255,
+  fracSteps: 256,
+  interpMs: 100,
+  interpMinMs: 50,
+  interpMaxMs: 150,
+  extraTicks: 2,
+  rttWindow: 8,
+  /** An echo round trip longer than this is not a sample (a held-back echo inflates the cap). */
+  maxRttMs: 1000,
+  pongMemory: 4,
+  /** Between consecutive inputs of a seat, frame - viewTick may move by at most this much. */
+  maxBackStep: 2,
+});
+
+/** Limits for a replay record handed to replayJSON from outside. */
+export const REPLAY_LIMITS = Object.freeze({
+  maxTicks: MATCH_TICKS,
+  maxBytes: 512 * 1024,
 });
 
 /** Ticks between the last READY and tick 0, so the first round trip of ticks can carry input. */
@@ -75,6 +114,9 @@ export function arenaGun(typeId) {
   stats.spread *= quality.spreadMult;
   stats.adsSpread *= quality.spreadMult;
   stats.elementChance = 0;
+  // Crits are off in PvP (owner decision): a crit makes the Sniper a one-shot, and luck must
+  // not decide a wager. The campaign guns keep theirs.
+  stats.critChance = 0;
   stats.splashRadius = 0;
   stats.splashDamage = 0;
   for (const key of Object.keys(stats)) {
@@ -121,6 +163,10 @@ export function contentBody() {
     readyMs: READY_MS,
     stallMs: STALL_MS,
     perks: [],
+    crits: false,
+    rewind: REWIND,
+    // sha256 commit, reveal in RESULT; the RNG takes 128 bits of sha256(seed).
+    combatSeed: 'commit-reveal-sha256-128',
     stakes: false,
   };
 }
