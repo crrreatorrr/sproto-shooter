@@ -497,3 +497,131 @@ charge pack and point; cage door; lava channels (25 dps and burn); `chargeStop` 
 at (124, −3, 103); the checkpoint that saves is C8 at the depot, 20 m past the exit door.
 **Transition out:** the freight lift goes down 12 m into the S5 vestibule.
 
+### 6.5 S5 Reactor Ring  ·  **[L3]** lockdown room
+
+Footprint 90 × 104 m. A round hall, **outer radius 40 m (80 × 80 m)**, centre C = (45, 0, 45),
+domed at y 16, with an octagonal gantry at y 4 (second height level) and a lift vestibule to the
+south. Three reactors stand at r 26, four bumper pylons with coolant tanks above them at r 15,
+three ore seams in the wall at r 39.5. The core column is the vista: a glowing cylinder with a
+Tinubu face.
+
+```
+ z                         OS2 (ore seam N)                 x45
+ 5                   ..-----[====]-----..
+12              .-'   GR-N    RC2 (gantry)  '-.   [ED] emergency door (NE)
+19   [SP-NW] .'            ( R1 )               '.
+30          /     CT4/PY4          CT1/PY1        \
+38         |  rack        .-~~~~-.          rack   |
+45    OS3 [|  GR-W       ( CORE   )  moat r10  GR-E |] OS1
+52         |  rack        '-~~~~-'          rack   |
+58          \  ( R3 ) CT3/PY3      CT2/PY2  ( R2 ) /
+66           '.          GV3 on the ring main     .'
+73   [SP-SW]   '-.   gantry y4 (octagon r33)   .-'  [SP-SE]
+80                ''--.. CD  WC1 RC1 ..--''
+85                      +--[BD3]--+
+96                      |   C9    |  vestibule, lift from S4
+104                     +---------+
+```
+
+| Id | Shape | Size / r,h | At (x, y, z) | Mat | Purpose |
+|---|---|---|---|---|---|
+| S5-FL | cyl | r 40, h 1 | (45, −1, 45) | metal | Ring floor, top y 0 |
+| S5-WALL1…16 | box | 16 × 16 × 1 | on a circle r 40.5 round C, every 22.5°, yaw to face C | rock | Outer wall. The pieces at 45° (NE), 135° (SE), 225° (SW), 315° (NW) and 180° (S) hold doors |
+| S5-CL | cyl | r 41, h 1 | (45, 16, 45) | rock | Ceiling slab |
+| S5-CORE | cyl | r 4, h 16 | (45, 0, 45) | neon | Core column |
+| S5-MOAT | disc + `hazardZone(lava)` | r 10 (grows to r 14 in part 3) | (45, 0.05, 45) | lava | Lava moat round the core: 25 dps and burn |
+| **R1, R2, R3** | `uw.reactor` | r 3, h 8 | (45, 0, 19), (67.5, 0, 58), (22.5, 0, 58) | metal, neon | Reactors (destructible, see E8). Each has a switch `RS1…3` on its outer side and a charge point `RC1…3` on its inner side |
+| **GM1…6** | `uw.pipe` | 26 × 0.6 × 0.6 | hexagon r 26 round C; vertices (45, 19), (67.5, 32), (67.5, 58), (45, 71), (22.5, 58), (22.5, 32), y 0.6 | metal | Gas ring main through all three reactors. Shot anywhere, it bursts along its whole length |
+| **GV3** | `uw.valve` | — | (45, 1.2, 71) | neon | Ring-main valve: a 6 s jet along segment GM3–GM4 only |
+| **PY1…PY4** | cyl `chargeStop` | r 1, h 6 | (55.6, 0, 34.4), (55.6, 0, 55.6), (34.4, 0, 55.6), (34.4, 0, 34.4) | pillar | Bumper pylons. The Foreman's charge stops on them. Charge points `PC1…4` at each base |
+| S5-DISC1…4 | disc | r 4 | under each pylon, y 0.05 | neon | Drop marks for the coolant tanks |
+| **CT1…CT4** | `uw.coolantTank` | r 2, h 4 | above PY1…PY4, base y 9 | ice | Coolant tanks on ceiling struts. Two clamp targets each (`CL1a`…`CL4b`, 120 HP, at y 13) or one charge point on the strut at gantry height |
+| S5-GAN1…8 | box | 27 × 0.5 × 3 | on a circle r 33 round C, every 45°, y 3.75, yaw to face C | metal | Gantry octagon, top y 4. Segment 1 (north) falls in part 3 |
+| S5-GAN-P | cyl ×16 | r 0.3, h 3.5 | two under each gantry segment | metal | Gantry posts |
+| S5-GR1, GR2 | ramp | 3 × 4 × 8 | (66, 2, 70), (24, 2, 70) | metal | Ramps up to the gantry, south-east and south-west |
+| **OS1, OS2, OS3** | `uw.oreSeam` | 6 × 5 × 2 | (84.5, 0, 45), (45, 0, 5.5), (5.5, 0, 45) | gold, rock | Ore seams in the wall (destructible, 600 HP, `fragile`). Charge points `SC1…3` on the floor in front |
+| **CD1, CD2** | `uw.chargeDispenser` | — | (45, 0, 80), (20, 0, 30) | neon | Charge pack dispensers. One pack each, a new one 8 s after the last was taken |
+| BC1…BC4 | barrel chute | — | (59.5, 0, 9.9), (80.1, 0, 59.5), (30.5, 0, 80.1), (9.9, 0, 30.5) | — | During F1 each drops one barrel every 15 s, in the order fire, shock, goo. At most 6 loose barrels |
+| BR-K1…3 | barrel fire | — | (40, 0, 24), (72, 0, 52), (18, 0, 52) | — | One beside each reactor (E8) |
+| BR-K4…6 | barrel shock | — | (52, 0, 26), (62, 0, 64), (28, 0, 64) | — | |
+| BR-K7, BR-K8 | barrel goo | — | (45, 0, 60), (45, 0, 30) | — | |
+| S5-MR1…6 | `uw.miningRack` | — | (60, 0, 71), (30, 0, 71), (75, 0, 38), (15, 0, 38), (60, 0, 16), (30, 0, 16) | — | Cover at r 30 |
+| S5-CR1…4 | `uw.crateStack` | — | (70, 0, 45), (20, 0, 45), (45, 0, 66), (52, 0, 12) | — | Cover |
+| **SP-SE, SP-SW, SP-NW** | door slab | 4 × 4 × 0.6 | (73.3, 2, 73.3), (16.7, 2, 73.3), (16.7, 2, 16.7) | metal | Spawn points: three service doors |
+| **GR-N, GR-E, GR-S, GR-W** | `uw.grate` | — | (45, 0, 13), (77, 0, 45), (45, 0, 77), (13, 0, 45) | — | Spawn points: floor grates |
+| **SP-PIT** | marker | — | (45, 0, 34), (45, 0, 56) | — | Spawn points: moat edge (Magma Slugs crawl out of the lava) |
+| **BD3** | blast door slab | 4 × 4 × 0.6 | (45, 2, 85) | metal, neon trim | Entry from the vestibule. Open during E8; drops when F1 starts |
+| **ED** | blast door slab | 4 × 4 × 0.6 (yaw 45°) | (73.3, 2, 16.7) | metal, neon trim | Emergency door, the L3 exit. Opens when The Foreman dies |
+| S5-VEST | box shell | room 16 × 5 × 19 | x 37 to 53, z 85 to 104 | rock | Vestibule. The lift lands at (45, 0, 100). Checkpoint C9 at (45, 0, 96) |
+
+**Mechanisms:** `lockdown` L3 (entry BD3, exit ED, encounter F1); 3 reactors, 3 ore seams, 4 tanks
+with 8 clamps (`target`); 14 charge points; 2 dispensers; ring main; 4 barrel chutes; lava moat;
+`chargeStop` pylons; bazooka cache `WC1` at (40, 0, 82), Rocket Crates `RC1` at (50, 0, 82) and
+`RC2` at (45, 4, 12).
+**Lockdown rewards** (at ED when it opens): The Foreman's two guns, ammo crate `AC3` at
+(70, 0, 20), Turbo at (72, 0, 18), checkpoint C10.
+**Transition out:** cutscene card "MELTDOWN", then S6 starts in the emergency tunnel.
+
+### 6.6 S6 Meltdown Escape
+
+Footprint 145 × 190 m, climbing 44 m. `d` is distance along the route. The lava is one
+`risingHazard` whose surface is `y = −6 + 0.36 × t` (t in seconds from the start of the escape).
+
+| Leg | d (m) | From → to (x, y, z) | Space |
+|---|---|---|---|
+| A Emergency tunnel | 0 to 70 | (0, 0, 14) → (70, 6, 14) | 5 m wide, 4 m high, ramp east |
+| B Catwalk hall | 70 to 130 | (70, 6, 14) → (130, 12, 14) | Hall 60 × 24 × 16, lava below. A 3 m wide catwalk of ten 6 m planks that fall 1 s after they are stepped on |
+| C Crusher gallery | 130 to 200 | (133, 12, 14) → (133, 20, 84) | 6 m wide, ramp south. Three stalled crushers that restart as the player nears |
+| D Spiral shaft | 200 to 270 | round (133, ·, 96), y 20 → 28 | 20 × 20 m shaft, four ramp flights of 17.5 m |
+| E Ore incline | 270 to 340 | (123, 28, 106) → (53, 36, 106) | 6 m wide ramp west with three pairs of alcoves |
+| F Last tunnel | 340 to 420 | (50, 36, 109) → (50, 44, 189) | 5 m wide ramp south to the surface door |
+
+```
+ z   x0                    70                         130  133
+ 14  C10 ==A tunnel=(riot)==+== B collapsing catwalk ===+
+ 34                                                     |[CRa]
+ 52        lava rises under everything                  |[CRb]   C crusher gallery
+ 58                                             FW3 =|  |
+ 70                                                  |__|[CRc]
+ 96                                             +--D spiral--+  (Tosser on the top grate)
+106        +<<<<<<<< E ore incline (carts roll down) <<<<<<<<+
+109        |
+130        | GL3 gas line          F last tunnel
+189        +==[SURFACE DOOR]==  exit, y 44
+          x50
+```
+
+| Id | Shape | Size / r,h | At (x, y, z) | Mat | Purpose |
+|---|---|---|---|---|---|
+| S6-A | ramp | 70 × 6 × 5 | (35, 3, 14) | rock | Tunnel A floor, rising east. Walls and ceiling: 3 boxes 70 long |
+| S6-A-D | door slab | 3 × 3 × 0.6 | (30, 4.1, 11.2) | metal | Side door at d 30 (blocker group 1) |
+| S6-B-HALL | box shell | hall 60 × 16 × 24 | x 70 to 130, z 2 to 26, y 0 to 16 | rock | Catwalk hall. No floor: the lava is under it |
+| **S6-B-PL1…10** | `ropeBridge` planks | 6 × 0.5 × 3 each | from (73, 6.3, 14) to (127, 11.7, 14), stepping 0.6 up per plank | metal | Collapsing catwalk. Each plank shakes 1 s then falls. Plank 5 and plank 8 carry mines |
+| MC1, MC2 | proximity mine | — | (100, 9.3, 14), (118, 11.1, 14) | — | On planks 5 and 8 |
+| S6-C | ramp | 6 × 8 × 70 | (133, 16, 49) | metal | Crusher gallery floor, rising south. Walls and ceiling 5 m above the ramp |
+| **CRa, CRb, CRc** | `uw.crusher` | head 6 × 2 × 4 | (133, 14.3, 34), (133, 16.3, 52), (133, 18.4, 70) | metal | Stalled. Each restarts 1.5 s after the player comes within 10 m (period 3 s). Goo jams one for 4 s |
+| S6-C-D | door slab | 0.6 × 3 × 3 | (136.3, 16.5, 40) | metal | Side door at d 156 (blocker group 4) |
+| S6-BY | box shell | passage 3 × 3 × 24 | x 126 to 129, z 58 to 82, floor following the ramp | rock | Bypass round CRc |
+| **FW3** | box `fragileWall` | 3 × 3 × 1 | (127.5, 18.5, 58.5) | concrete | Blocks the bypass. Charge pack `CH3` at (131, 16.6, 54), rockets box beside it. Bazooka, Meteor Bonk or the pack opens it |
+| S6-D-SHAFT | box shell | shaft 20 × 12 × 20 | x 123 to 143, z 86 to 106, y 18 to 30 | rock | Spiral shaft |
+| S6-D-R1…4 | ramp | 17.5 × 2 × 4 | east side, south side, west side, north side of the shaft, each rising 2 m | metal | Four flights, anticlockwise from (141, 20, 88) to (125, 28, 104) |
+| S6-D-GRATE | box, destructible | 4 × 0.5 × 4 | (133, 27.75, 96) | metal | Grate bridge in the shaft centre, 60 HP. The Tosser stands on it |
+| S6-E | ramp | 70 × 8 × 6 | (88, 32, 106) | metal | Ore incline, rising west, with a rail down its centre |
+| S6-E-AL1…6 | box | 3 × 0.5 × 3 | north and south of the ramp at x 105, 85, 65 | metal | Alcoves: step out of the way of a cart or a charge |
+| **OCa, OCb** | `uw.oreCart` | — | (56, 36.5, 106), (58, 36.5, 106) | — | Released at the player on a schedule (below). Shooting a rolling cart's brake stops it; shooting its ore detonates it early |
+| S6-F | ramp | 5 × 8 × 80 | (50, 40, 149) | rock | Last tunnel floor, rising south |
+| **GL3**, **GV3b** | `uw.pipe`, `uw.valve` | 0.6 × 0.6 × 30 | (47.8, 39.5, 145); valve (47.8, 38.6, 128) | metal | Gas line along the west wall, z 130 to 160: the answer to blocker group 7 |
+| S6-F-D | door slab | 0.6 × 3 × 3 | (47.2, 41.6, 150) | metal | Side door at d 381 |
+| **S6-EXIT** | blast door slab | 5 × 4 × 0.6 | (50, 46, 189) | metal, neon trim | Surface door. Open. Crossing it ends the level |
+| BR-X1 | barrel shock | — | (28, 2.4, 15.5) | — | Opposite the side door at d 30 |
+| BR-X2, BR-X3 | barrel fire | — | (59, 5.1, 12.5), (61, 5.2, 15.5) | — | Beside the Riot pair at d 60 |
+| BR-X4 | barrel fire | — | (133, 13.9, 30) | — | Before CRa |
+| BR-X5 | barrel shock | — | (139, 20, 88) | — | Foot of the spiral |
+| BR-X6 | barrel fire | — | (85, 32.4, 103) | — | Middle alcove pair |
+| BR-X7, BR-X8 | barrel fire | — | (49, 39.6, 138), (51, 40.2, 152) | — | In the last tunnel, on the gas line |
+| S6-TURBO | power-up | — | (2, 0, 14) | — | Turbo, at the start |
+
+**Mechanisms:** `risingHazard`; collapsing bridge (10 planks); 3 crushers; `fragileWall` FW3; 2 ore
+carts; gas line GL3; 2 mines; destructible grate.
+**Transition out:** the surface door. End card.
+
