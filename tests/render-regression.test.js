@@ -26,11 +26,11 @@ describe('render structure', () => {
 
     const dragon = structureOf(glbJson('public/assets/models/characters/dragon.glb'));
     expect(dragon.meshopt).toBe(true);
-    expect(dragon.clips.map((clip) => clip.name).sort()).toEqual(['fireball', 'fly']);
+    expect(dragon.clips.map((clip) => clip.name).sort()).toEqual(['fireball', 'fly', 'idle', 'run', 'walk']);
     expect(dragon.skins[0]).toBeGreaterThan(0);
 
     const monster = structureOf(glbJson('public/assets/models/characters/monster.glb'));
-    expect(monster.clips.map((clip) => clip.name).sort()).toEqual(['smash', 'walk']);
+    expect(monster.clips.map((clip) => clip.name).sort()).toEqual(['idle', 'run', 'smash', 'walk']);
     expect(monster.nodes.some((name) => name.includes('LeftFoot'))).toBe(true);
 
     const sniper = structureOf(glbJson('public/assets/models/guns/toy_sniper.glb'));
