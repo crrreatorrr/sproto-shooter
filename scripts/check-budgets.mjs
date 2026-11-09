@@ -25,7 +25,8 @@ export const ASPIRATION = {
 export const MEASURED = {
   staticShipBytes: 23217417,
   publicAssetBytes: 22065058,
-  decodedBytes: 229711358,
+  // +428 KB (0.19%): straight-legged idle / walk / run clips for the shooter cast (no texture change).
+  decodedBytes: 230139382,
   titleShellGzipBytes: 6669,
   criticalTransferBytes: 3761311,
   criticalFirstPartyRequests: 13,
