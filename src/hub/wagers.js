@@ -10,6 +10,7 @@ export const POT = 20;
 export const WIN_NET = 10;
 export const LOSE_NET = -10;
 export const STALL_MS = 10_000;
+export const GUEST_REASON = 'Sign in to wager. Guests cannot stake Tickets.';
 
 export const RULE_TEXT = 'Each signed-in seat stakes 10 Tickets. The pot is 20 and there is no fee. '
   + 'A verified KO or time win pays the pot: the winner nets +10 and the loser nets −10. '
@@ -32,7 +33,7 @@ export function escapeHtml(value) {
 }
 
 /** Flag, guest, and balance. A balance alone never turns the stake on. */
-export function offerFromServer({ version, session, balance } = {}) {
+export function offerFromServer({ version, session, balance, refusal } = {}) {
   const mismatch = !!(version && (version.error === 'version_mismatch' || version.reason === 'version_mismatch'));
   const flag = !!(version && version.wagerEnabled === true && !version.error);
   const knownBalance = finite(balance);
@@ -49,14 +50,16 @@ export function offerFromServer({ version, session, balance } = {}) {
     };
   }
   const status = session?.status || 'offline';
-  const guest = status === 'guest' || session?.guest === true;
+  // The server's wager_guest wins over a Nakama username and over an empty wallet.
+  const serverGuest = String(refusal || '').includes('wager_guest');
+  const guest = serverGuest || status === 'guest' || session?.guest === true;
   const bankable = !!session?.bankable && status !== 'error' && status !== 'offline';
   let reason = '';
   let enabled = false;
   if (!bankable) {
     reason = status === 'error' ? 'Session ended. Refresh to sign in again.' : 'Sign in to wager.';
   } else if (guest) {
-    reason = 'Sign in to wager. Guests cannot stake Tickets.';
+    reason = GUEST_REASON;
   } else if (knownBalance == null) {
     reason = 'Checking your Ticket balance.';
   } else if (knownBalance < STAKE) {
@@ -74,6 +77,40 @@ export function offerFromServer({ version, session, balance } = {}) {
     guest: !!guest,
     mismatch: false,
   };
+}
+
+/**
+ * Ticket used only to hear the server's guest answer. Content is not the build
+ * fingerprint, so the hub rejects it in the matchmaker hook before claimQueue:
+ * a device account gets wager_guest, a signed-in account gets version_mismatch.
+ * It must not be the real queue ticket.
+ */
+export function wagerGuestProbe() {
+  return {
+    query: `+properties.game:${GAME_ID} +properties.mode:wager +properties.protocol:${PROTOCOL} +properties.sim:${SIM_VERSION} +properties.content:probe +properties.stake:${STAKE}`,
+    minCount: 2,
+    maxCount: 2,
+    stringProperties: {
+      game: GAME_ID,
+      mode: 'wager',
+      protocol: String(PROTOCOL),
+      sim: String(SIM_VERSION),
+      content: 'probe',
+      stake: String(STAKE),
+    },
+  };
+}
+
+/** Overlay while the wager socket is down. The match may already be settling. */
+export function reconnectNotice(graceLeftMs = STALL_MS) {
+  const left = Math.max(0, Math.ceil(Math.max(0, Number(graceLeftMs) || 0) / 1000));
+  return `Reconnecting. After both players are Ready, 10 seconds without input forfeits. ${left}s left. This client cannot refund.`;
+}
+
+function liveNotice(balance) {
+  return balance == null
+    ? 'Match is live. The pot is paid only after the server verifies the result.'
+    : `Match is live. Tickets now ${balance}. The pot is paid only after the server verifies the result.`;
 }
 
 /** Matchmaker ticket for the fixed 10-Ticket queue. The stake is not a chosen amount. */
@@ -112,7 +149,7 @@ export function labelIsWager(label) {
 export function refusalText(err) {
   const code = String(err?.code || err?.message || '');
   if (code.includes('stakes_disabled')) return 'Wagers are off.';
-  if (code.includes('wager_guest')) return 'Sign in to wager. Guests cannot stake Tickets.';
+  if (code.includes('wager_guest')) return GUEST_REASON;
   if (code.includes('version_mismatch') || code === 'version') return 'This build is out of date. Refresh.';
   if (code.includes('insufficient')) return 'You need 10 Tickets.';
   if (code.includes('already_in_match')) return 'You are already in a match.';
@@ -410,7 +447,17 @@ export function createWagerFlow(deps = {}) {
     if (version && version.wagerEnabled === true && who.bankable && typeof deps.balance === 'function') {
       try { bal = await deps.balance(); } catch { bal = null; }
     }
-    view.offer = offerFromServer({ version, session: who, balance: bal });
+    let refusal = '';
+    const localGuest = (who.status === 'guest' || who.guest === true);
+    const probing = version && version.wagerEnabled === true && who.bankable && !localGuest
+      && view.phase !== 'queued' && view.phase !== 'live'
+      && typeof deps.readServerRefusal === 'function';
+    if (probing) {
+      try { refusal = String(await deps.readServerRefusal() || ''); } catch (err) {
+        refusal = String(err?.code || err?.message || '');
+      }
+    }
+    view.offer = offerFromServer({ version, session: who, balance: bal, refusal });
     if (!view.offer.shown && (view.phase === 'offer' || view.phase === 'confirm')) view.phase = 'offer';
     if (!who.bankable || who.status === 'error') {
       if (view.ticket && typeof deps.removeMatchmaker === 'function') {
@@ -551,9 +598,7 @@ export function createWagerFlow(deps = {}) {
         view.liveBalance = finite(bal);
       } catch { view.liveBalance = null; }
     }
-    view.notice = view.liveBalance == null
-      ? 'Match is live. The pot is paid only after the server verifies the result.'
-      : `Match is live. Tickets now ${view.liveBalance}. The pot is paid only after the server verifies the result.`;
+    view.notice = liveNotice(view.liveBalance);
     touch();
     return view;
   }
@@ -604,6 +649,61 @@ export function createWagerFlow(deps = {}) {
     else view.notice = 'The server did not pay a winner. Net 0.';
     touch();
     return view;
+  }
+
+  function metricsSettled(metrics) {
+    if (!metrics || metrics.error) return false;
+    if (metrics.wagerClosed === true) return true;
+    return String(metrics.phase || '') === 'done' && String(metrics.outcome || '') !== '';
+  }
+
+  /**
+   * After the socket returns, read the server. shooter.resume always reports stake 0;
+   * that is not "no wager." A settled match (including one whose live row is already
+   * gone) is read from shooter.metrics. A match that is still live stays live.
+   */
+  async function syncAfterReconnect(seat) {
+    if (seat === 0 || seat === 1) view.seat = seat;
+    let matchId = view.matchId;
+    try {
+      const resumed = await call(WAGER_RPC.resume, {});
+      if (resumed && resumed.matchId) {
+        matchId = resumed.matchId;
+        view.matchId = matchId;
+      }
+    } catch (err) {
+      const code = String(err?.code || err?.message || '');
+      if (!matchId) {
+        if (view.phase !== 'live' && !code.includes('match_missing')) {
+          view.notice = 'Still waiting on the server. The saved receipt was not changed.';
+          touch();
+        }
+        return false;
+      }
+    }
+    if (!matchId) return false;
+    try {
+      const metrics = await call(WAGER_RPC.metrics, { matchId });
+      if (!metricsSettled(metrics)) {
+        if (view.phase === 'live') {
+          if (typeof deps.balance === 'function') {
+            try { view.liveBalance = finite(await deps.balance()); } catch { /* keep the last read */ }
+          }
+          view.notice = liveNotice(view.liveBalance);
+          touch();
+        }
+        return false;
+      }
+      const body = metrics && typeof metrics === 'object' ? { ...metrics, matchId: metrics.matchId || matchId } : metrics;
+      await ingestMetrics(body, view.seat);
+      return view.phase === 'receipt' || view.phase === 'pending';
+    } catch {
+      if (view.phase !== 'live') {
+        view.notice = 'Still waiting on the server. The saved receipt was not changed.';
+        touch();
+      }
+      return false;
+    }
   }
 
   async function resumeServer() {
@@ -689,6 +789,7 @@ export function createWagerFlow(deps = {}) {
     noteLocalResult,
     ingestMetrics,
     resumeServer,
+    syncAfterReconnect,
     rematch,
     needsLeaveWarning,
     armLeave,

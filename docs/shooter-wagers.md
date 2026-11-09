@@ -38,6 +38,10 @@ The Ticket number is a fresh `getTicketBalance` after that close. It is not the 
 
 The receipt is stored in `sessionStorage` under `sproto-shooter:wager-receipt`, bound to the player id. A reconnect recalls it and calls `shooter.resume`, then `shooter.metrics`. `shooter.resume` always reports `stake: 0`; the screen does not treat that as "no wager." A pending receipt stays pending if the match is already gone. Another account does not see it.
 
+A live match does the same pair of reads when its socket opens again after a drop. While the socket is down the overlay says Reconnecting, including when the match handle itself never emits close. A closed wager replaces the live line with the receipt. A match that is still live keeps the live line.
+
+A device account can carry a Nakama username and an empty wallet. The stake line shows "Sign in to wager" whenever the server answers `wager_guest`. The empty-wallet line is only for an account the server did not refuse as a guest.
+
 A rematch is a new confirm. One player confirming does not queue the other and does not spend Tickets. A pending receipt blocks a new stake.
 
 A devtools edit of the local result is not written as a receipt and does not call a money RPC.

@@ -12,6 +12,8 @@ import { CONTENT_FINGERPRINT, LOADOUT, PVP_PROTOCOL_VERSION } from '../../sim/pv
 import {
   createLoopbackTable, createMockArena, createPvpClient, freeMatchmakerRequest,
 } from '../../net/client.js';
+import { freeJoinTarget, labelIsFreePlay } from '../../hub/freePlay.js';
+import { mountFreeArena } from './freeArena.js';
 import { realtimeFromSdk } from '@metaverse/hub-sdk';
 
 const PANEL = 'position:relative;min-height:0;height:100%;background:#1a1030;overflow:hidden';
@@ -135,10 +137,23 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
   let mode = null;
   const views = [];
   const cleaners = [];
+  let queueTicket = null;
+  let queueRealtime = null;
+  let queueOff = null;
+  let liveMatch = null;
+  let queueing = false;
 
   function leave() {
     if (closed) return;
     closed = true;
+    const ticket = queueTicket;
+    const rt = queueRealtime;
+    const match = liveMatch;
+    queueTicket = null;
+    liveMatch = null;
+    if (queueOff) { queueOff(); queueOff = null; }
+    if (ticket && rt && !match) rt.removeMatchmaker(ticket).catch(() => {});
+    if (match) match.leave().catch(() => {});
     for (const view of views) view.dispose();
     if (input && input.setLockElement) input.setLockElement(null);
     if (input && input.setRelay) input.setRelay(null);
@@ -287,6 +302,37 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
     cleaners.push(() => { delete window.__pvp; });
   }
 
+  function mountFreeMatch(match) {
+    mode = mountFreeArena({
+      root, match, accountId: (hub && hub.playerId) || '', input, onLeave: leave, views,
+      panelHtml, paint, playSounds, createPvpSfx,
+    });
+  }
+
+  async function openQueuedMatch(realtime, info) {
+    const note = root.querySelector('[data-pvp-note]');
+    const target = freeJoinTarget(info);
+    if (!target) {
+      queueing = false;
+      if (note) note.textContent = 'The server did not return a free match. No Tickets move.';
+      return;
+    }
+    const match = await realtime.joinMatch(target);
+    if (closed) {
+      try { await match.leave(); } catch { /* the screen is already gone */ }
+      return;
+    }
+    if (!labelIsFreePlay(match.label)) {
+      try { await match.leave(); } catch { /* a wager label is not this lobby */ }
+      queueing = false;
+      if (note) note.textContent = 'The server did not start a free match. No Tickets move.';
+      return;
+    }
+    liveMatch = match;
+    queueTicket = null;
+    mountFreeMatch(match);
+  }
+
   async function queueMatch() {
     const note = root.querySelector('[data-pvp-note]');
     const request = freeMatchmakerRequest();
@@ -296,12 +342,29 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
       if (note) note.textContent = 'Offline. Practice is on this machine and records nothing. A free match needs a hub session. No Tickets are staked or paid.';
       return;
     }
+    if (queueing || liveMatch) return;
+    queueing = true;
     try {
+      queueRealtime = realtime;
       await realtime.connect();
-      await realtime.addMatchmaker(request);
-      if (note) note.textContent = 'Waiting for one opponent. Free match, no stake. The hub authoritative match is not live until H3-S; this queue uses the SDK and will sit until that server accepts it.';
+      const matched = new Promise((resolve) => {
+        queueOff = realtime.onMatchmakerMatched((info) => {
+          if (queueOff) queueOff();
+          queueOff = null;
+          resolve(info);
+        });
+      });
+      const added = await realtime.addMatchmaker(request);
+      queueTicket = added && added.ticket ? added.ticket : null;
+      if (note) note.textContent = 'Waiting for one opponent. Free match, no stake.';
+      const info = await matched;
+      if (closed) return;
+      await openQueuedMatch(realtime, info);
     } catch (err) {
-      if (note) note.textContent = `Free match unavailable (${err && err.message ? err.message : 'offline'}). Practice still works. No Tickets move.`;
+      if (queueOff) { queueOff(); queueOff = null; }
+      queueTicket = null;
+      queueing = false;
+      if (note && !closed) note.textContent = `Free match unavailable (${err && err.message ? err.message : 'offline'}). Practice still works. No Tickets move.`;
     }
   }
 
