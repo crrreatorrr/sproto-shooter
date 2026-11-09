@@ -263,12 +263,12 @@ src/data/levels/
 | L04 | `bitbug`, `jetObama`, `balloonMidget`, `flakPod` |
 | L05 | `glowieAgent`, `auditSniper`, `miningRig`, `spotterDrone`, `frostHound` |
 | L06 | `auditVan`, `rocketObama`, `vapeGunship` |
-| L07 | `miniTinubu`, `bombTosser`, `magmaSlug` |
+| L07 | `miniTinubu`, `bombTosser`, `magmaSlug`, `moleMiner` |
 | L08 | `nullifier`, `shieldDrone`, `cabinetMimic` |
 | L09 | `ruinSentinel`, `moonCultist` |
 | L10 | `tinubuImp` |
 
-No level document asked for an enemy beyond this list.
+The level documents asked for one enemy beyond the first draft of this list: `moleMiner` in L07.
 
 ### 5.3 New placeholder enemies (primitive looks)
 
@@ -288,6 +288,7 @@ the level document gives the full stat block.
 | `auditVan` | Armoured Audit Van | L06 | Vehicle | Drives a lane, bullets do 10%, unloads squads, engine block at the back is a weak spot | Bazooka, Meteor Bonk, barrels, the engine | Box body, box cab, 6 wheel cylinders |
 | `rocketObama` | Rocket Obama | L06 | Ranged heavy | Fires one slow rocket you can shoot down or dodge | Shoot the rocket, close in | `obama` model with a cylinder launcher |
 | `vapeGunship` | Vape Blimp Gunship | L06 | Air heavy | Circles, strafes a line, drops Boom Midgets; two engine pods are weak spots | Bazooka at the pods | Big ellipsoid (scaled sphere), 2 cylinder pods, box gondola |
+| `moleMiner` | Mole Miner (COOP_PLAN §6.3a; added by the L07 document) | L07 | Mine layer | Burrows, surfaces behind the fight and lays proximity mines; its helmet lamp is the weak spot while it is above ground | Shoot or Yoink the mines; hit it when it surfaces | Cylinder body, sphere helmet, cone drill |
 | `magmaSlug` | Magma Slug | L07 | Hazard maker | Slow, fire-immune, leaves a burning trail, bursts into a lava pool | Kill at range, goo cools the trail | Three spheres in a row |
 | `nullifier` | Nullifier Agent | L08 | Anti-magic | Projects a 9 m field where spells fizzle and mana does not regenerate | Guns; kill it first | `sahil` model tinted, cylinder backpack, disc field |
 | `shieldDrone` | Shield Drone | L08 | Support (air) | Hovers behind a squad and gives one ally a front shield | Shoot the drone | Sphere body, disc shield |
@@ -535,7 +536,7 @@ moves the content fingerprint (§12).
 | Pick-up | Behaviour | Look (primitives) |
 |---|---|---|
 | **Ammo box** (small) | One ammo type. Walk over it to take it; it stays if you are full. Placed by the level along the route | Box 0.5 m in the ammo's colour with a `neon` stripe |
-| **Ammo crate** (big) | Refills every ammo type you carry to 50% of cap. Three uses. Interact to open | Box 1.2 × 0.8 × 0.8 m, `crate` with a lid box |
+| **Ammo crate** (big) | Refills every ammo type you carry to 50% of cap. Three uses by default; a level may set one use where ammo is meant to be lean (L03, L07). Interact to open | Box 1.2 × 0.8 × 0.8 m, `crate` with a lid box |
 | **Depot crate** | Unlimited. At depots and inside every boss section | Two stacked crates and a `neon` sign |
 | **Rocket Crate** | Rockets to the cap, once | Long box with cone ends |
 | **Enemy drop** | A small pack of one type, magnet pick-up as today, gone after 30 s | Small box |
@@ -569,6 +570,14 @@ moves the content fingerprint (§12).
 | Proximity mine | Placed by the level or by enemies. 0.5 s chime, 3 m blast. Shoot it from range or Yoink it |
 | Ore cart | A cart on a short rail. Shoot the brake and it rolls downhill and explodes on impact |
 | Destructible target | Generators, reactors, engines, armour plates. Has HP and weak spots, no AI |
+
+**Explosive damage scales with tier.** A flat 60 kills a tier-1 Midget and barely scratches a tier-7
+one, so every number in this table is multiplied by the level's tier factor (1.15 per tier), for
+enemies only. Damage to the player does not scale.
+
+**Yoink and explosives.** Yoink holds one object for up to 6 s; a held barrel or bomb keeps its fuse
+running. Casting again throws it at 24 m/s along the aim. A thrown charge pack sticks to what it
+hits and waits to be shot. A thrown mine arms on landing.
 
 ### 7.6 Power-ups
 
@@ -686,7 +695,9 @@ Each need below came out of a level's design. It extends the engine item named; 
 | E3 | Roaming patrols on a route outside any encounter, abstract when far, with orders on events | L09 |
 | E4 | Objectives `ride` (a fight on a moving lift) and a flee with an HP exit and a time exit | L08, L09 |
 | E4 | `ifPosition(n)`: squads that depend on the order the player chose | L09 |
-| E4 | Per-level `startAmmo`, a per-encounter `noAmmoDrop` flag, tutorial input prompts | L01 |
+| E4 | Triggers by distance along a rail; a first wave that waits, leashed and idle, while the player sets up a room | L07 |
+| E11 | Demolition hooks: a planted charge or a burst pipe changes geometry, opens a route or drops an object on a boss | L07 |
+| E4, E17 | Per-level `startAmmo` and ammo-drop overrides, a per-encounter `noAmmoDrop` flag, tutorial input prompts | L01, L07 |
 | E4 | `flight` transitions between sections | L04 |
 | E4 | Lockdown variants: opened by a switch, no exit door, two entry doors, a dome or lid as the door, a spawn door that becomes the exit, a boss-scripted lockdown | L01, L02, L09 |
 | E6 | Hazards: a `slow` zone (quicksand), zones that also hurt enemies, zone sets a script switches on, a hazard that advances along x | L02, L03, L10 |
@@ -703,7 +714,7 @@ Each need below came out of a level's design. It extends the engine item named; 
 | E7, E8 | Damage multipliers by source (bullet, explosive, spell), armour state machines, hitboxes with `onlyWhen` states | L01, L03 |
 | E8 | The Mimic drawn as an ammo crate, with a hum the player can hear | L08 |
 | E10 | The spell clarifications now in §6.2 (Yeet ownership, Decoy targets, Blink through glass, Time Bubble as time dilation); buddy "park" and "command" | L03, L05, L08, L09 |
-| E12 | Per-boss `hpScale`; replacing one action; an arena centre and radius | L02, L03, L09 |
+| E12 | Per-boss `hpScale`; replacing one action (a Wave Mode `summon` becomes scheduled adds); an arena centre and radius; burrow points; parts that take fixed damage from a dropped object | L02, L03, L07, L09 |
 | E12 | Boss states: shielded by linked targets, immune and immobile, absent, perched on a destroyable support, bonded twins with enrage, a held transform | L02, L04, L08, L09, L10 |
 | E12 | A scripted fire-ring radius; arena tiles that drop | L04, L10 |
 | E12 | A mini-boss that is not in the hub's canonical table | L01 |
