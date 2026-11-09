@@ -417,10 +417,133 @@ function writeJson(file, value) {
   fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+function heapOf(sample) {
+  const metrics = sample.metrics || {};
+  const jsHeap = metrics.JSHeapUsedSize;
+  return {
+    jsHeapUsed: typeof jsHeap === 'number' ? jsHeap : null,
+    documents: metrics.Documents ?? null,
+    nodes: metrics.Nodes ?? null,
+    jsEventListeners: metrics.JSEventListeners ?? null,
+  };
+}
+
+/** Wall-clock heap sample of the live title. Not a CI gate. */
+export async function soakDist(dist, { minutes = 20, sampleMs = 30000 } = {}) {
+  const { server, port } = await serve(dist);
+  const origin = `http://127.0.0.1:${port}`;
+  const browser = await launchBrowser();
+  const samples = [];
+  try {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const page = await context.newPage();
+    const client = await page.context().newCDPSession(page);
+    await client.send('Performance.enable');
+    await page.goto(`${origin}/?stats=1&seed=1`, { waitUntil: 'load', timeout: 90000 });
+    await page.waitForSelector('#screen .title h1', { timeout: 30000 });
+    const deadline = Date.now() + minutes * 60 * 1000;
+    while (Date.now() <= deadline) {
+      const metrics = await client.send('Performance.getMetrics');
+      const row = Object.fromEntries((metrics.metrics || []).map((metric) => [metric.name, metric.value]));
+      const perf = await page.evaluate(() => {
+        const mem = performance.memory;
+        return {
+          heap: mem ? mem.usedJSHeapSize : null,
+          pending: window.__sproto?.game?.renderer?.pendingDownloads?.() ?? null,
+        };
+      });
+      samples.push({
+        atMs: Date.now(),
+        ...heapOf({ metrics: row }),
+        performanceMemory: perf.heap,
+        pendingDownloads: perf.pending,
+      });
+      if (Date.now() + sampleMs > deadline) break;
+      await page.waitForTimeout(sampleMs);
+    }
+    await context.close();
+  } finally {
+    await browser.close();
+    await new Promise((resolve) => server.close(resolve));
+  }
+  const heaps = samples.map((sample) => sample.jsHeapUsed).filter((value) => typeof value === 'number');
+  const first = heaps[0] ?? null;
+  const last = heaps[heaps.length - 1] ?? null;
+  const max = heaps.length ? Math.max(...heaps) : null;
+  return {
+    minutes,
+    sampleMs,
+    samples: samples.length,
+    jsHeapUsed: { first, last, max, growthBytes: first != null && last != null ? last - first : null },
+    pendingDownloadsEnd: samples.length ? samples[samples.length - 1].pendingDownloads : null,
+    series: samples,
+  };
+}
+
+/** Cold navigation with the network cut, then the same page once the network is back. */
+export async function netfailDist(dist) {
+  const { server, port } = await serve(dist);
+  const origin = `http://127.0.0.1:${port}`;
+  const browser = await launchBrowser();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const page = await context.newPage();
+    const client = await page.context().newCDPSession(page);
+    await client.send('Network.enable');
+    await client.send('Network.emulateNetworkConditions', {
+      offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0,
+    });
+    let offlineError = null;
+    try {
+      await page.goto(`${origin}/?stats=1&seed=1`, { waitUntil: 'commit', timeout: 15000 });
+    } catch (err) {
+      offlineError = err instanceof Error ? err.message : String(err);
+    }
+    const offlineTitle = await page.locator('#screen .title h1').count();
+    await client.send('Network.emulateNetworkConditions', {
+      offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1,
+    });
+    await page.goto(`${origin}/?stats=1&seed=1`, { waitUntil: 'load', timeout: 90000 });
+    let recovered = false;
+    let recoverError = null;
+    try {
+      await page.waitForSelector('#screen .title h1', { timeout: 30000 });
+      recovered = true;
+    } catch (err) {
+      recoverError = err instanceof Error ? err.message : String(err);
+    }
+    await client.send('Network.emulateNetworkConditions', {
+      offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0,
+    });
+    const titleStillThere = await page.locator('#screen .title h1').count();
+    let reloadFailed = false;
+    try {
+      await page.reload({ waitUntil: 'commit', timeout: 10000 });
+    } catch {
+      reloadFailed = true;
+    }
+    await context.close();
+    return {
+      offlineNavigationError: offlineError,
+      offlineTitleCount: offlineTitle,
+      recovered,
+      recoverError,
+      titleRemainedAfterLaterOffline: titleStillThere === 1,
+      reloadWhileOfflineFailed: reloadFailed,
+    };
+  } finally {
+    await browser.close();
+    await new Promise((resolve) => server.close(resolve));
+  }
+}
+
 async function main() {
   const root = repoRoot();
   const dist = path.join(root, 'dist');
   const check = process.argv.includes('--check');
+  const netfail = process.argv.includes('--netfail');
+  const soakIndex = process.argv.indexOf('--soak-minutes');
+  const soakMinutes = soakIndex === -1 ? 0 : Number(process.argv[soakIndex + 1]);
   const runsIndex = process.argv.indexOf('--runs');
   const runs = runsIndex === -1 ? 3 : Number(process.argv[runsIndex + 1]);
   const outIndex = process.argv.indexOf('--out');
@@ -432,6 +555,25 @@ async function main() {
   if (!fs.existsSync(path.join(dist, 'index.html'))) {
     console.error('dist/index.html missing. Run npm run build first.');
     process.exit(1);
+  }
+  if (netfail || soakMinutes > 0) {
+    const runtime = {
+      schema: 'sproto-shooter.runtime-profile.v1',
+      source: { baselineCommit: BASELINE_COMMIT, generatedFromCommit: gitRev(root) },
+      hardwareTiming: { advisory: true, ciGate: false },
+    };
+    if (netfail) runtime.networkFailure = await netfailDist(dist);
+    if (soakMinutes > 0) runtime.memorySoak = await soakDist(dist, { minutes: soakMinutes });
+    writeJson(out, runtime);
+    console.log(`wrote ${out}`);
+    if (runtime.networkFailure) {
+      console.log(`network failure: offline=${runtime.networkFailure.offlineNavigationError ? 'blocked' : 'unexpected-commit'} recovered=${runtime.networkFailure.recovered}`);
+    }
+    if (runtime.memorySoak) {
+      const heap = runtime.memorySoak.jsHeapUsed;
+      console.log(`soak ${runtime.memorySoak.samples} samples heap first=${heap.first} last=${heap.last} max=${heap.max}`);
+    }
+    return;
   }
   if (check) {
     const fixturePath = path.join(root, 'tests', 'fixtures', 'load-profile.json');

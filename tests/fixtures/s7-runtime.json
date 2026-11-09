@@ -1,0 +1,30 @@
+{
+  "schema": "sproto-shooter.runtime-profile.v1",
+  "source": {
+    "baselineCommit": "8a5676ed24700dafd15a759c1e2fa71b470180b9",
+    "measuredOn": "54a78499ee310cf92b954a714c980d65c020df90",
+    "note": "Dist was built from the game tree at 54a7849. This phase does not change src."
+  },
+  "hardwareTiming": { "advisory": true, "ciGate": false, "gl": "swiftshader" },
+  "networkFailure": {
+    "offlineNavigationError": "net::ERR_INTERNET_DISCONNECTED",
+    "offlineTitleCount": 0,
+    "recovered": true,
+    "titleRemainedAfterLaterOffline": true,
+    "reloadWhileOfflineFailed": true
+  },
+  "memorySoak": {
+    "minutes": 20,
+    "sampleMs": 30000,
+    "samples": 40,
+    "jsHeapUsed": {
+      "first": 8556268,
+      "last": 9905624,
+      "max": 11409012,
+      "growthBytes": 1349356
+    },
+    "performanceMemoryBytes": 18200000,
+    "pendingDownloadsEnd": 0,
+    "nodes": { "first": 698, "last": 643 }
+  }
+}
