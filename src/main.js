@@ -10,6 +10,10 @@ import { CrashPanel } from './ui/crashPanel.js';
 
 const crashPanel = new CrashPanel(document, () => location.reload());
 crashGuard.installGlobal(window);
+// Errors while the tab was hidden (no frames ran) must not count toward a halt once it is back.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') crashGuard.resetStreak();
+});
 crashGuard.onHalt((info) => {
   if (document.pointerLockElement) document.exitPointerLock?.();
   crashPanel.show(info.source === 'boot' ? 'retry' : 'reload');
