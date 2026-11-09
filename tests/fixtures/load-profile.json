@@ -55,8 +55,8 @@
       "models/guns/toy_duckgun.glb",
       "models/characters/sproto_player.glb"
     ],
-    "criticalTransferBytes": 3826638,
-    "titleShellGzipBytes": 9144,
+    "criticalTransferBytes": 3761311,
+    "titleShellGzipBytes": 6669,
     "staticShipBytes": 23217417,
     "criticalTransferGate": 6291456,
     "titleShellGate": 153600
