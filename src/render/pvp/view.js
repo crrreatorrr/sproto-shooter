@@ -1,5 +1,12 @@
 // Free-arena view. Reuses the player model and the city floor. No new art.
+// SHOOTER-S3: the local player is drawn from the client's prediction, and its shots get a
+// cosmetic muzzle flash, tracer and camera recoil at once (fx.shots). Damage is never drawn here.
 import * as THREE from 'three';
+import { TUNING } from '../../data/tuning.js';
+import { dirFromYawPitch } from '../../core/math.js';
+import { chaseCamera } from './aim.js';
+
+export { chaseCamera };
 
 const SEAT_COLOR = [0xff5ec4, 0x4fd1c5];
 
@@ -10,35 +17,22 @@ function asset(path) {
 
 let playerPromise = null;
 
-const CAM_BACK = 11;
-const CAM_UP = 5.5;
-const CAM_AHEAD = 8;
-const CAM_EYE = 1.1;
+/** Cosmetic recoil kick per slot (radians of camera pitch) and how fast it settles. */
+export const RECOIL = Object.freeze({ kick: [0.012, 0.05, 0.08], tauMs: 90 });
+const FLASH_MS = 60;
+const TRACER_MS = 90;
+const TRACER_M = 60;
+const MUZZLE_AHEAD = 0.7;
 
-/**
- * Chase camera from the LOCAL look (the yaw and pitch this client is sending), not the server's
- * echo of it, which arrives a round trip late. Pitch tilts the view; at pitch 0 this is the
- * original level chase camera.
- */
-export function chaseCamera(me, yaw, pitch = 0) {
-  const p = Math.max(-1.5, Math.min(1.5, Number.isFinite(pitch) ? pitch : 0));
-  const y = Number.isFinite(yaw) ? yaw : 0;
-  const cp = Math.cos(p);
-  const dx = -Math.sin(y) * cp;
-  const dy = Math.sin(p);
-  const dz = -Math.cos(y) * cp;
-  return {
-    position: {
-      x: me.x - dx * CAM_BACK,
-      y: Math.max(me.y + 0.3, me.y + CAM_UP - dy * CAM_BACK),
-      z: me.z - dz * CAM_BACK,
-    },
-    target: {
-      x: me.x + dx * CAM_AHEAD,
-      y: me.y + CAM_EYE + dy * CAM_AHEAD,
-      z: me.z + dz * CAM_AHEAD,
-    },
-  };
+/** Camera pitch kick at `now` from recent predicted shots (cosmetic; never sent). */
+export function recoilAt(shots, now) {
+  let kick = 0;
+  for (const shot of shots || []) {
+    const age = now - shot.at;
+    if (age < 0 || age > RECOIL.tauMs * 6) continue;
+    kick += (RECOIL.kick[shot.slot] ?? RECOIL.kick[0]) * Math.exp(-age / RECOIL.tauMs);
+  }
+  return Math.min(0.25, kick);
 }
 
 function loadPlayer() {
@@ -111,6 +105,52 @@ export function createArenaView(canvas) {
     return { group, capsule };
   });
 
+  // Predicted shots: a muzzle flash and a pool of tracer lines.
+  const flash = new THREE.Mesh(
+    new THREE.SphereGeometry(0.18, 8, 6),
+    new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.95 }),
+  );
+  flash.visible = false;
+  scene.add(flash);
+  const tracers = [];
+  for (let i = 0; i < 8; i++) {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+    const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xfff2b0, transparent: true }));
+    line.visible = false;
+    line.frustumCulled = false;
+    scene.add(line);
+    tracers.push(line);
+  }
+
+  function drawShots(shots, now) {
+    flash.visible = false;
+    for (const line of tracers) line.visible = false;
+    if (!shots || !shots.length) return;
+    let used = 0;
+    for (let i = shots.length - 1; i >= 0 && used < tracers.length; i--) {
+      const shot = shots[i];
+      const age = now - shot.at;
+      if (age < 0 || age > TRACER_MS) continue;
+      const dir = dirFromYawPitch(shot.yaw, shot.pitch);
+      const eye = { x: shot.x, y: shot.y + TUNING.eyeHeight, z: shot.z };
+      const muzzle = { x: eye.x + dir.x * MUZZLE_AHEAD, y: eye.y + dir.y * MUZZLE_AHEAD, z: eye.z + dir.z * MUZZLE_AHEAD };
+      let len = TRACER_M;
+      if (dir.y < -1e-6) len = Math.min(len, -eye.y / dir.y);
+      const line = tracers[used++];
+      const pos = line.geometry.attributes.position;
+      pos.setXYZ(0, muzzle.x, muzzle.y, muzzle.z);
+      pos.setXYZ(1, eye.x + dir.x * len, eye.y + dir.y * len, eye.z + dir.z * len);
+      pos.needsUpdate = true;
+      line.material.opacity = 1 - age / TRACER_MS;
+      line.visible = true;
+      if (age <= FLASH_MS && !flash.visible) {
+        flash.position.set(muzzle.x, muzzle.y, muzzle.z);
+        flash.visible = true;
+      }
+    }
+  }
+
   const ready = loadPlayer().then((source) => {
     for (const body of bodies) {
       const model = source.clone(true);
@@ -135,8 +175,11 @@ export function createArenaView(canvas) {
     camera.updateProjectionMatrix();
   }
 
-  /** `look` is the local {yaw, pitch}; without it the camera falls back to the sampled yaw. */
-  function render(sample, seat, look = null) {
+  /**
+   * `look` is the local {yaw, pitch}; without it the camera falls back to the sampled yaw.
+   * `fx` is { shots, now }: the client's predicted shots for the flash, tracers and recoil.
+   */
+  function render(sample, seat, look = null, fx = null) {
     resize();
     const players = sample && sample.players;
     for (let i = 0; i < 2; i++) {
@@ -149,7 +192,9 @@ export function createArenaView(canvas) {
     }
     const me = players && players[seat] ? players[seat] : { x: 0, y: 0, z: 16, yaw: 0, pitch: 0 };
     if (look && players && players[seat]) bodies[seat].group.rotation.y = look.yaw;
-    const cam = look ? chaseCamera(me, look.yaw, look.pitch) : chaseCamera(me, me.yaw, me.pitch || 0);
+    const kick = fx ? recoilAt(fx.shots, fx.now) : 0;
+    const cam = look ? chaseCamera(me, look.yaw, look.pitch + kick) : chaseCamera(me, me.yaw, me.pitch || 0);
+    drawShots(fx && fx.shots, fx ? fx.now : 0);
     camera.position.set(cam.position.x, cam.position.y, cam.position.z);
     camera.lookAt(cam.target.x, cam.target.y, cam.target.z);
     renderer.render(scene, camera);
@@ -159,6 +204,8 @@ export function createArenaView(canvas) {
     renderer.dispose();
     floor.geometry.dispose();
     ring.geometry.dispose();
+    flash.geometry.dispose();
+    for (const line of tracers) line.geometry.dispose();
   }
 
   return { render, dispose, ready };

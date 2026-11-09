@@ -177,7 +177,7 @@ HELLO is the **only** way to rebind a seat to a new session (a reconnect on a ne
 
 ### PING / PONG
 
-`PING` is `{"t": clientTimeMs}`, at most 10 per second per seat (`rate`). Since sim 2 it may also carry `echo` (the `serverMs` of the newest PONG the client got), `hold` (ms the client sat on that PONG) and `interpMs` (the client's current interpolation delay, as in HELLO; S3 will make it adaptive, so the client re-announces it in every PING). `PONG` echoes `t` with the server clock:
+`PING` is `{"t": clientTimeMs}`, at most 10 per second per seat (`rate`). Since sim 2 it may also carry `echo` (the `serverMs` of the newest PONG the client got), `hold` (ms the client sat on that PONG) and `interpMs` (the client's current interpolation delay, as in HELLO). Since S3 the delay is adaptive: the client re-announces it in every PING, and pings early (at most every 100 ms) when it moved by 10 ms or more. `PONG` echoes `t` with the server clock:
 
 ```json
 {"t": 1234.5, "serverMs": 98765, "tick": 41, "clockTick": 41.012, "phase": "live"}
@@ -275,9 +275,11 @@ Rejects, checked in this order:
 
 `REJECT` goes to the sender only and carries `accountId`, `reason`, `lastSeq`, `tick` (the cursor), and for INPUT the rejected `seq` and `frame`, plus `ticketsMinted: 0`. A rejected input does not consume the sequence.
 
-The reference client (`src/net/client.js`) runs a fixed 30 Hz input clock and sends exactly one input per input tick, stamped `frame` = estimated server tick + lead, never below 0 (so during the lead-in it starts sending `lead` ticks before tick 0). The estimate uses the least-delayed recent `clockTick`. The lead starts at the PING round trip in ticks plus one, rises by one (at most once per round trip, at most to that lead plus 2) when a snapshot's `you.late` grows by one or two, ignores larger jumps (a TCP stall: hold-last covers it), drops back into the window on a `frame` reject past `cursor + 8`, and is capped at 12. It never rewinds its sequence. After a reconnect on a new session id it sends HELLO, not RESYNC.
+The reference client (`src/net/client.js`) runs a 30 Hz input clock and sends exactly one input per input tick. The first frame is estimated server tick + lead, never below 0 (so during the lead-in it starts sending `lead` ticks before tick 0); after that frames go up by exactly one per input tick. The estimate uses the least-delayed recent `clockTick`. It never rewinds its sequence. After a reconnect on a new session id it sends HELLO, not RESYNC.
 
-Each input also carries `viewTick`/`viewFrac` from the render time of the newest drawn frame (`estimated server tick - interpDelayMs/STEP_MS` at the last `sample()`), i.e. what the shooter saw. Spread is cosmetic on the client: damage, hitmarkers and kills come from the server's `hits` events and the snapshots.
+Clock trim (S3, Overwatch-style). `lead` is a target. It starts at the PING round trip in ticks plus one, rises by one (at most once per round trip, at most to that lead plus 2) when a snapshot's `you.late` grows by one or two, ignores larger jumps (a TCP stall: hold-last covers it), drops one tick when the median `you.buffer` over 60 snapshots is 3 or more with no late frame (at most every 2 s, never below the round trip in ticks), drops back into the window on a `frame` reject past `cursor + 8`, and is capped at 12. The client does not skip or repeat frames to follow it: it runs its input clock at `1 + clamp(0.05 × error, ±0.05)`, where `error` is `lead - 0.5 - (frame - estimated tick)` in ticks (dead band 0.1). Only an error past 3 ticks (a render stall, a clock jump) resyncs the stamp to estimated tick + lead (`net.clockSnaps`). Tuning is in `NET` and `TIMING` (`src/net/timing.js`); none of it is wire contract.
+
+Each input also carries `viewTick`/`viewFrac` from the render time of the newest drawn frame (`estimated server tick - D/STEP_MS` at the last `sample()`), i.e. what the shooter saw. Since S3 the stamp never moves back and moves at most 2 ticks past the previous input's. Spread is cosmetic on the client: damage, hitmarkers and kills come from the server's `hits` events and the snapshots.
 
 ## Lag compensation (sim 2)
 
@@ -356,7 +358,30 @@ One per tick (30 Hz) per connected seat, plus the spawn snapshot at go-live, one
 - `private`: the rest of this seat's exact sim state; with `players[seat]` it is the whole player (S3 reconciles from it). The combat RNG is never sent.
 - `hash` (FNV-1a over the sim state with floats quantized to micro-units, the same `verifyStateHash` the campaign bundle uses) is present once per second (`tick % 30 === 0`) and on the final snapshot. It is not a receipt the client can submit for Tickets.
 
-Clients render the other seat at estimated server time minus 100 ms, interpolating position and yaw between the two snapshots around it, extrapolating by velocity for at most 100 ms when starved, then holding. The camera uses the client's own yaw and pitch, not the snapshot copy. Health and the result come from the newest snapshot and from `RESULT`; once a result exists the client's phase stays `done`. Interpolation is not restart state.
+Clients render the other seat at estimated server time minus D, interpolating position and yaw between the two snapshots around it, extrapolating by velocity for at most 100 ms when starved, then holding. Since S3, D is adaptive: `D = clamp(snapshot interval + 2 × jitter p95, 50, 150 ms)`, where jitter is each snapshot's lateness behind the least-delayed one over the last 90 snapshots (3 s), and the interval their median gap. D starts at 100 ms (announced in HELLO) and slews toward its target at most 0.2 ms per ms upward and 0.05 ms per ms downward, so the remote clock runs between 0.8× and 1.05× and never jumps. The camera uses the client's own yaw and pitch, not the snapshot copy. Health and the result come from the newest snapshot and from `RESULT`; once a result exists the client's phase stays `done`. Interpolation is not restart state.
+
+## Client prediction and reconciliation (S3)
+
+Client only. The sim, the director, protocol 2, both goldens and content fingerprint `ec36c8fa` are unchanged (asserted in `tests/net/predict.test.js` and `tests/net/baseline.test.js`).
+
+- **Prediction** (`src/net/predict.js`). Each input tick encodes the wish, decodes it back (so the client predicts with exactly what the director will use), keeps it in a ring of 64 by frame, and steps the local player with the sim's own `normalizeWish` + `movePlayer` + `weaponTick` and the sim's per-tick quantization. Body contact (`separate`), damage and shield regen are left to the server. The local player is drawn from the prediction, blended between the last two predicted ticks by the input clock's phase.
+- **Reconciliation.** Each snapshot (tick T, the state after ticks 0..T-1) rebuilds this seat from `players[seat]` + `you.private`, drops the inputs below T, and replays the rest. Frames the client never sent are filled the way the director fills them: the wish at `you.ackFrame` held for 3 ticks (move, aim, held buttons), then neutral (aim only), counting from the ack. The difference between the old and the new prediction for the same frame is one correction sample and is added to a visual offset that decays as `exp(-t/100 ms)`; a correction (or offset) above 2 m snaps.
+- **Cosmetic fire.** When the prediction's `weaponTick` fires (on the first prediction of that frame, never on a replay), the client logs a shot: muzzle flash, tracer, camera recoil and sound play at once, and the ammo counter is the prediction's. Hitmarkers and damage numbers come only from the server's `hits`.
+- **Aim convergence** (`src/render/pvp/aim.js`). The chase camera sits behind the player, so the crosshair ray starts at the camera. The client finds what that ray meets past the player (the drawn opponent's capsule, the floor, the arena wall, or 120 m) and sends the yaw/pitch from the eye to that point. The yaw stays the look yaw; only the pitch converges.
+- **Net graph** (`src/render/pvp/netgraph.js`): dev builds or `?netgraph=1` (`?netgraph=0` hides it in dev). RTT (client and director), jitter p95, server buffer, late %, correction p50/p99 (last 300), D and its target, the input's rewind claim and the cap, starved % (last 300 frames), lead, stamped lead and clock rate.
+
+**Measured on the S0 harness** (15 s, 2 peers, seed 1; firing runs pool seeds 1–4). Correction samples are one per snapshot; "no contact" leaves out the snapshots where the server had the two bodies touching. Starvation counts render frames once the render clock reaches tick 0 (the exact spawn view before it is counted separately; "with start" is the S2b definition).
+
+| Profile | Correction p50 / p99 | p99 no contact | Contact samples | Starved (with start) | Client starved | D | Applied | Late |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| RTT 0 | 4.3 / 13.6 cm | 0 cm | 75% | 0% (0.56%) | 0% | 50 ms | 100% | 0% |
+| RTT 100±30 | 0 / 20.6 cm | **0 cm** | 27% | **0%** (0.89%) | **0%** | 86–88 ms | 100% (S2b 99.78%) | 0% |
+| RTT 150 | 0 / 20.4 cm | **0 cm** | 27% | **0%** (1.11%) | **0%** | 50 ms | 100% | 0% |
+| Stall bursts | 0 / 25.6–30.6 cm | 21.7–30.6 cm | 24% | 4.3–8.5% (S2b 5.1–9.3%) | 6.1–9.4% (S2b 6.4–11.7%) | 89–150 ms | 90.9–92.4% | 7.5–9.1% |
+
+Rewind agreement stays 100% at RTT 0, 100±30 and 150 (no claim clamped; S2b 99.49% / 99.75%), 97.9% under stall bursts. Firing bots now aim from their predicted position, so a firing match ends in 110–140 ticks instead of running the 15 s window.
+
+**Gates.** On: correction p99 < 5 cm without body contact and starvation < 1% (both counts) at RTT 100±30 and 150. **Not met: correction p99 < 5 cm with body contact** (20.6 cm at RTT 100±30). The harness bots walk into each other, and the director separates the bodies with the opponent's input, which the client cannot know ahead. Predicting contact against the newest server copy of the opponent was tried and measured worse (p99 13–54 cm). Closing it needs an owner decision: accept the contact exclusion, or drop or soften player-player separation in PvP (a sim change and a golden bump, outside S3). The strict test stays `it.skip` in `tests/net/baseline.test.js`.
 
 ## Used-input log and replay v2
 
@@ -390,4 +415,6 @@ The in-repo stub is `registerFreeMatch` / `createMockArena` in `src/net/client.j
 
 - **S2b** (sim 2): done, including the ≥ 98% rewind-agreement gate (99.49% at RTT 100±30, 99.75% at RTT 150).
 - **S2c**: binary INPUT batches and per-recipient binary snapshots (JSON is ~29 KB/s down per client on the wire at 30 Hz, measured on the harness; the target is ~6.6 KB/s). Check goja's `broadcastMessage` with binary first.
-- **S3**: prediction and reconciliation from `you.ackFrame` / `you.private`, adaptive interpolation delay (client starvation at RTT 100±30 is ~1.0% with the fixed 100 ms delay, right on the gate), clock-rate adjustment from `you.buffer`, predicted muzzle/tracers with server hitmarkers from `hits`, aim from the camera ray. When the interpolation delay becomes adaptive, keep announcing it in every PING (`interpMs`); the director already clamps it to 50..150 ms for the rewind cap.
+- **S3**: done (client prediction and reconciliation, adaptive delay, clock trim, cosmetic fire, aim convergence, net graph), except the strict correction gate with body contact (above).
+- **Remote muzzle flashes and tracers** need shot counters or firing flags in the snapshot (plan §R.8); the snapshot does not carry them yet. A protocol change, so it belongs with S2c.
+- **S4**: lobby, free vs wagered queue, room codes, rematch, result screen, leaderboard view.
