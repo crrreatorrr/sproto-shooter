@@ -110,12 +110,14 @@ A level document must add up. Every beat gets an estimated time, and the beats s
 
 **Shape of a level**
 
-- 4 to 6 **sections**. Only the current section is loaded (C §3.19). A section lasts 3 to 6 minutes.
+- 4 to 6 **sections** (L09 has 3: its hub is one section with four districts). Only the current section is loaded (C §3.19). A section lasts 3 to 6 minutes.
 - 10 to 13 **beats**: 7 to 9 combat encounters, 2 or 3 traversal or mechanism beats, 1 or 2
   breathers at a depot, 1 finale.
 - Route length 1.0 to 1.6 km. The player walks at 6.5 m/s and sprints at 9.5 m/s; budget **5.5 m/s** average.
 - 3 or 4 **lockdown arenas** (§5.6): semi-large rooms whose doors close until every wave is dead.
-- 8 to 10 checkpoints (never more than 2.5 minutes apart), each with an ammo box; 2 depots (§7.7).
+- 8 to 10 checkpoints, never more than 2.5 minutes apart **outside sealed fights**, each with an
+  ammo box; 2 depots (§7.7). A lockdown restarts from its first wave (§5.6). A boss fight saves at
+  its part boundaries in the campaign, and not at all in a hub-verified boss run.
 - Hidden: 1 Golden Bonk (the old modifier table in C-level-designs §1.4 stays), 1 **Mana Battery**,
   1 secret weapon cache and 3 **Audit Files** (tickets and a line of story each).
 
@@ -134,14 +136,21 @@ A level document must add up. Every beat gets an estimated time, and the beats s
 | Nest: daycare | 25 |
 | Heavy: bigObama | 30 |
 | Vehicle | 40 |
+| New enemies (§5.3): hexWisp, frostHound 5; manaLeech, spotterDrone, shieldDrone, cabinetMimic 6 | as listed |
+| bombTosser, magmaSlug, nullifier 8; rocketObama 9; moonCultist 10 (its portal Midgets counted separately) | as listed |
+| gooGlob 14 (the whole family); tinubuImp 14; flakPod 15; barkBrute 18; ruinSentinel 30 | as listed |
+| auditVan 40 (its passengers counted separately); vapeGunship 60 | as listed |
 | Elite of any type | ×2 |
-| Mini-boss | 150 to 210 |
-| Boss | 240 to 330 |
+| Mini-boss, **adds included** | 150 to 210 |
+| Boss, **adds included** | 240 to 330 |
+| Escape or hold | stated time; its enemies are not summed |
 | Traversal | metres ÷ 5.5 |
 | Switch, puzzle, hold, ride | stated per beat |
 | Depot breather | 45 to 60 |
 
 Combat beats add **30%** on top of the enemy sum for reloads, repositioning and wave delays.
+A boss, mini-boss, hold or escape is one stated block of time: the adds that arrive during it count
+toward the level's enemy total but are not summed again in the time budget.
 A level's total must land within **±2 minutes of its par**. A fast replay should take about 70% of par.
 
 **Pressure rules by level** (how difficulty rises besides tier)
@@ -158,8 +167,11 @@ Flocks (bitbugs) are counted as one unit per 6 against `maxAlive`. Tier still sc
 damage by 1.15 per tier, and world guns scale with tier, so time-to-kill stays near constant and the
 pressure rules carry the difficulty.
 
-**Enemy budget per level** (totals, Normal): L01 120 to 140, L02 and L03 160 to 180, L04 and L05
-150 to 170, L06 180 to 200, L07 190 to 210, L08 200 to 220, L09 220 to 250, L10 230 to 260.
+**Enemy budget per level** (totals, Normal, finale adds included): L01 110 to 140, L02 and L03
+140 to 180, L04 and L05 135 to 170, L06 160 to 200, L07 165 to 210, L08 175 to 220, L09 190 to 250,
+L10 200 to 260. The first drafts of the level documents showed that the top of each range does not
+fit the par once a mini-boss and 1.2 km of route are in, so the ranges were widened downward. When
+the two disagree, **the par wins**: cut enemies, not minutes.
 
 **No two encounters above 0.8 intensity in a row** without a breather (C-level-designs §3 pacing check).
 
@@ -183,7 +195,7 @@ Everything without a model is built from primitives. The kit in `src/data/levels
 **Conventions**
 
 - Metres. `+x` east, `+z` south, `y` up. Yaw is degrees about Y, 0 facing `+z` (as in `kit.js`).
-- Each section has its own local origin at its south-west ground corner. The assembler offsets it.
+- Each section has its own local origin at its **north-west** ground corner, the minimum x and z, so every local coordinate is positive. A terrain's `origin` is its minimum corner too. The assembler offsets sections into the level.
 - A section's footprint is at most 320 × 320 m for built spaces, 700 × 700 m for terrain.
 - At most **600 solids per section** and 2,500 per level. Static solids merge into one mesh per
   material, so draw calls stay low.
@@ -297,11 +309,11 @@ every wave in it is dead. Every level has them. They are the level's set-piece f
 | Size | **Semi-large**: between 40 × 40 m and 80 × 80 m of floor. Not a corridor, not an open field |
 | Shape | At least two height levels (a balcony, a roof, a pit) or at least 8 pieces of cover, and room to circle |
 | Entrances for enemies | At least 3 named spawn points on different sides (doors, vents, roofs, mounds, portals) |
-| Waves | **3 to 5 waves**, 25 to 45 enemies in all, 2 to 3.5 minutes |
+| Waves | **3 to 5 waves**, 25 to 45 enemies in all, 2 to 3.5 minutes. A boss or mini-boss lockdown follows §9 instead: its parts are its waves |
 | Start | The player crosses a threshold 6 m inside the room. One second later the entry door drops behind them and the exit door locks. The door never closes on a player standing in it: it pushes them in |
-| Next wave | `onRemain(2)` of the wave before, or 25 s after it started, whichever comes first |
+| Next wave | `onRemain(2)` of the wave before. As a fallback, 40 s after the wave started if fewer than half of `maxAlive` are alive. A new wave never pushes the room past `maxAlive` or past the level's roles-at-once limit |
 | End | Last enemy dead: both doors open, a checkpoint saves, and a reward appears (ammo crate, mana bloom or health) |
-| No escape | The doors are full-height slabs. Blink, Magic Carpet, jump pads and the jetpack cannot leave: the room has a ceiling or a force-field lid, and Blink fails against a locked door |
+| No escape | The doors are full-height slabs. Blink, Magic Carpet, jump pads and the jetpack cannot leave: the room has a ceiling or a lid (a force field, a dome, a fire curtain) that the player, flyers and spells all respect, and Blink fails against a locked door |
 | No stalling | Every enemy must be able to reach or shoot the player. Flyers stay inside the room's volume. If the last 2 enemies of a wave live more than 12 s, they are marked on the HUD and run at the player |
 | Dying | A checkpoint sits just outside the entry door. Dying restarts the lockdown at wave 1 with the doors open |
 | Tools | Any gun, ammo or spell object the lockdown needs is inside the room |
@@ -357,7 +369,7 @@ Goo Bolt only. What the level bonus used to do is replaced like this:
 | **Decoy** ("Cardboard Sproto") | L05 | 30 | 12 s | A standee that draws fire for 6 s, then pops into confetti (20 damage, 3 m). Snipers and Spotter Drones lock onto it | Perception only |
 | **Yoink** | L07 | 15 | 2 s | Grab a barrel, charge pack, bomb or a small enemy at up to 18 m and hold it; cast again to throw it | Force only |
 | **Blink** ("Tax Evasion") | L08 | 25 | 4 s | Teleport 9 m along your aim. Passes laser grids, glass rails and gaps. 0.3 s invulnerable | Movement only |
-| **Time Bubble** ("Audit Extension") | L09 | 45 | 20 s | A 6 m sphere for 5 s: enemies and enemy projectiles inside move at 30%. Player bullets are unaffected | Never gun stats |
+| **Time Bubble** ("Audit Extension") | L09 | 45 | 20 s | A sphere of 6 m radius for 5 s: enemies inside move, wind up and count their timers at 30%, and enemy projectiles fly at 30%. Player bullets are unaffected | Never gun stats |
 
 **Boss reward spells** stay as B §6: Magic Carpet (L02), Pump It (L04), Vape Cloud (L06), Lock-On (L08),
 Hellfire Breath (L10).
@@ -580,8 +592,11 @@ attacks, the adds that arrive during the part, the arena change, and what ends t
 - The Sproto Duel bosses keep their Duel attacks, powers and arena shifts (B §3). This plan adds
   parts **around** them: an entry part, intermissions and destroyable objects in the arena.
 - Wave bosses used as mini-bosses (`monster`, `dragon`, `sprotoBeast`, `carMonster`, `moleMonster`,
-  `hexAuditor`) keep their Wave Mode data. The campaign wraps them in a part script and a walled
-  arena. Their charge needs walls instead of the circle edge (§10 E12).
+  `hexAuditor`) keep their Wave Mode attacks and their Wave Mode data untouched. The campaign wraps
+  each in a part script that may scale its HP (`hpScale`, so a 4,500 HP Sproto Beast fits 150 s),
+  replace one action (a `summon` becomes a roar) and hook its transitions. Each needs an arena
+  centre and radius instead of the global circle: the charge stops on walls and the Hex teleports
+  about the room, not the world origin (§10 E12).
 
 **Constraint from the hub.** A verified boss run starts in the boss section with the starter machine
 gun and level-1 skills (`docs/shooter-server-contract.md`). So every boss part must be beatable with
