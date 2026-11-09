@@ -13,6 +13,14 @@ const ECONOMIC_KEY = /^(tickets|runCash|cash|guns|resources|godTickets|godMode|i
 const DEAD_SESSION = new Set(['session_closed', 'unauthorized', 'not_game_session', 'session_expired']);
 
 /**
+ * The one hub event this client reports: clearing wave 1 of Wave Mode, which grants the Dragon Scale
+ * Relic (hub-sdk 0.6.4, migration 0042). It pays no Tickets. Every other event, and every Ticket or
+ * Verse earn, stays off the client.
+ */
+export const WAVE_CLEAR_EVENT = 'shooter.wave_clear';
+const CLIENT_EVENTS = new Set([WAVE_CLEAR_EVENT]);
+
+/**
  * Build-time hub page. Relative `/hub/` stays on this origin. An absolute URL
  * must be https, or http on loopback (and in dev). Query tokens are refused.
  * Callers never pass a player-supplied returnUrl.
@@ -293,6 +301,25 @@ export class HubLink {
       return;
     }
     await this.saveCloud(queued.data);
+  }
+
+  /**
+   * Report a Relic event to the hub. Only `shooter.wave_clear` is sent, and only with a hub session;
+   * standalone play and any other event id do nothing. Resolves `{ granted }` when the hub granted a
+   * Relic, `{}` otherwise. Never throws into the game: a failure is logged and resolves `{}`.
+   */
+  async reportEvent(eventId, data, key) {
+    if (!this.bankable || !CLIENT_EVENTS.has(eventId) || typeof this.api.reportEvent !== 'function') return {};
+    const playerId = this.playerId;
+    try {
+      const result = await this.api.reportEvent(eventId, data, key);
+      if (this.playerId !== playerId) return {};
+      return result && typeof result.granted === 'string' ? { granted: result.granted } : {};
+    } catch (err) {
+      this.noteSessionError(err);
+      console.warn(`[hub] ${eventId} report failed: ${errorCode(err)}`);
+      return {};
+    }
   }
 
   /**

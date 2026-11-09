@@ -10,6 +10,7 @@ import { ENEMIES, BOSSES } from '../data/enemies.js';
 import { CAMPAIGN, getLevelData } from '../data/levels/index.js';
 import { unlockLevel, loadProfile, rememberModifier, saveProfile, syncNonEconomicProfile, cloudBody } from '../save/profile.js';
 import { decideHubReturn, hubChipHtml } from '../hub/link.js';
+import { createWaveRelicReporter, relicName } from '../hub/waveRelic.js';
 import { restoreCheckpoint } from '../sim/campaign/campaign.js';
 import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY, zoomLevelsOf, zoomFovFor } from '../data/guns.js';
 import { SKILL_IDS } from '../data/skills.js';
@@ -50,6 +51,10 @@ export class Game {
     this.audio = createAudio(this.bus);
     this.ui = createUI(app.querySelector('#ui'), { input: this.input, bus: this.bus, project: (p) => this.renderer.project(p), game: this });
     this.screen = app.querySelector('#screen');
+    // Dragon Scale Relic: the first wave-1 clear of each Wave Mode run (God Mode counts) is reported to the hub.
+    this.waveRelic = createWaveRelicReporter({ hub: this.hub, onGranted: (id) => this.ui.toast(`Relic: ${relicName(id)}`, 'good') });
+    this.bus.on('modeStart', (ev) => this.waveRelic.modeStart(ev));
+    this.bus.on('waveCleared', (ev) => this.waveRelic.waveCleared(ev, this.state));
     // Menu focus for keyboard and gamepad, and the gamepad itself (polled every frame).
     this.nav = createMenuNav();
     this.padStyle = 'xbox';

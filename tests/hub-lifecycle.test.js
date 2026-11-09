@@ -362,12 +362,12 @@ describe('provenance and ledger boundary', () => {
     const iife = readFileSync(new URL('../vendor/hub-sdk/dist/hub-sdk.iife.js', import.meta.url));
     const hash = createHash('sha256').update(iife).digest('hex');
     const pin = JSON.parse(readFileSync(new URL('../vendor/hub-sdk/SOURCE.pin.json', import.meta.url), 'utf8'));
-    expect(hash).toBe('4ceb36321fc09820c4ef6292b8bd31ebaa198f0a9b90d38bcbd458505222df76');
+    expect(hash).toBe('e7626595184dc132e72ffd707c87149b266c7b3933d40670e55eb2fb0a64eda6');
     expect(pin.iifeSha256).toBe(hash);
-    expect(pin.version).toBe('0.6.3');
+    expect(pin.version).toBe('0.6.4');
     expect(pin.global).toBe('HubSDK');
     const vendor = readFileSync(new URL('../vendor/hub-sdk/VENDOR.md', import.meta.url), 'utf8');
-    expect(vendor).toMatch(/5cc4e48/);
+    expect(vendor).toMatch(/a1281c9/);
     expect(vendor).not.toMatch(/94f10af/);
     expect(vendor).not.toMatch(/metaverse-hub\.patch/);
     expect(existsSync(new URL('../vendor/hub-sdk/metaverse-hub.patch', import.meta.url))).toBe(false);
@@ -376,12 +376,31 @@ describe('provenance and ledger boundary', () => {
   });
 
   it('does not call a hub ledger write from the game, and keeps one init before the title', () => {
-    const files = [
-      'src/hub/config.js', 'src/hub/link.js', 'src/hub/serverKey.js',
-      'src/main.js', 'src/game/Game.js', 'src/ui/ui.js', 'src/save/profile.js',
-    ];
-    const src = files.map((file) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')).join('\n');
-    expect(src).not.toMatch(/earnTickets|tickets\.earn|reportEvent|submitScore|spendTickets|tickets\.spend|tickets\.sell|tickets\.exchange/);
+    const hubFiles = readdirSync(new URL('../src/hub/', import.meta.url)).filter((f) => f.endsWith('.js')).map((f) => `src/hub/${f}`);
+    expect(hubFiles).toEqual(expect.arrayContaining(['src/hub/config.js', 'src/hub/link.js', 'src/hub/serverKey.js', 'src/hub/waveRelic.js']));
+    const files = [...hubFiles, 'src/main.js', 'src/game/Game.js', 'src/ui/ui.js', 'src/save/profile.js'];
+    const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    const src = files.map(read).join('\n');
+    expect(src).not.toMatch(/earnTickets|tickets\.earn|submitScore|spendTickets|tickets\.spend|tickets\.sell|tickets\.exchange|earnVerse|verse\.earn/i);
+
+    // The one hub event the client reports is the Dragon Scale Relic (`shooter.wave_clear`, no Tickets).
+    // Only HubLink calls the SDK's reportEvent, behind an allowlist holding that id alone, and only
+    // waveRelic.js calls HubLink's, with WAVE_CLEAR_EVENT.
+    const link = read('src/hub/link.js');
+    expect(link).toMatch(/export const WAVE_CLEAR_EVENT = 'shooter\.wave_clear';/);
+    expect(link).toMatch(/const CLIENT_EVENTS = new Set\(\[WAVE_CLEAR_EVENT\]\);/);
+    expect(link).toMatch(/if \(!this\.bankable \|\| !CLIENT_EVENTS\.has\(eventId\)/);
+    const calls = [];
+    for (const file of files) {
+      for (const m of read(file).matchAll(/[\w.]*reportEvent\s*\([^)]*\)?/g)) calls.push(`${file}: ${m[0]}`);
+    }
+    expect(calls.sort()).toEqual([
+      'src/hub/link.js: reportEvent(eventId, data, key)',
+      'src/hub/link.js: this.api.reportEvent(eventId, data, key)',
+      'src/hub/waveRelic.js: hub.reportEvent(WAVE_CLEAR_EVENT, data, key)',
+    ]);
+    const eventIds = new Set([...src.matchAll(/'((?:shooter|coop|fighter|arcade|sproto|hpos10i|tickets|verse)\.[a-z_]+)'/g)].map((m) => m[1]));
+    expect([...eventIds]).toEqual(['shooter.wave_clear']);
     const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
     expect(main.indexOf('await connectHub()')).toBeGreaterThan(-1);
     expect(main.indexOf('await connectHub()')).toBeLessThan(main.indexOf('new Game'));
