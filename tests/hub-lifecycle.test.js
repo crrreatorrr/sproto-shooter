@@ -376,12 +376,31 @@ describe('provenance and ledger boundary', () => {
   });
 
   it('does not call a hub ledger write from the game, and keeps one init before the title', () => {
-    const files = [
-      'src/hub/config.js', 'src/hub/link.js', 'src/hub/serverKey.js',
-      'src/main.js', 'src/game/Game.js', 'src/ui/ui.js', 'src/save/profile.js',
-    ];
-    const src = files.map((file) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')).join('\n');
-    expect(src).not.toMatch(/earnTickets|tickets\.earn|reportEvent|submitScore|spendTickets|tickets\.spend|tickets\.sell|tickets\.exchange/);
+    const hubFiles = readdirSync(new URL('../src/hub/', import.meta.url)).filter((f) => f.endsWith('.js')).map((f) => `src/hub/${f}`);
+    expect(hubFiles).toEqual(expect.arrayContaining(['src/hub/config.js', 'src/hub/link.js', 'src/hub/serverKey.js', 'src/hub/waveRelic.js']));
+    const files = [...hubFiles, 'src/main.js', 'src/game/Game.js', 'src/ui/ui.js', 'src/save/profile.js'];
+    const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    const src = files.map(read).join('\n');
+    expect(src).not.toMatch(/earnTickets|tickets\.earn|submitScore|spendTickets|tickets\.spend|tickets\.sell|tickets\.exchange|earnVerse|verse\.earn/i);
+
+    // The one hub event the client reports is the Dragon Scale Relic (`shooter.wave_clear`, no Tickets).
+    // Only HubLink calls the SDK's reportEvent, behind an allowlist holding that id alone, and only
+    // waveRelic.js calls HubLink's, with WAVE_CLEAR_EVENT.
+    const link = read('src/hub/link.js');
+    expect(link).toMatch(/export const WAVE_CLEAR_EVENT = 'shooter\.wave_clear';/);
+    expect(link).toMatch(/const CLIENT_EVENTS = new Set\(\[WAVE_CLEAR_EVENT\]\);/);
+    expect(link).toMatch(/if \(!this\.bankable \|\| !CLIENT_EVENTS\.has\(eventId\)/);
+    const calls = [];
+    for (const file of files) {
+      for (const m of read(file).matchAll(/[\w.]*reportEvent\s*\([^)]*\)?/g)) calls.push(`${file}: ${m[0]}`);
+    }
+    expect(calls.sort()).toEqual([
+      'src/hub/link.js: reportEvent(eventId, data, key)',
+      'src/hub/link.js: this.api.reportEvent(eventId, data, key)',
+      'src/hub/waveRelic.js: hub.reportEvent(WAVE_CLEAR_EVENT, data, key)',
+    ]);
+    const eventIds = new Set([...src.matchAll(/'((?:shooter|coop|fighter|arcade|sproto|hpos10i|tickets|verse)\.[a-z_]+)'/g)].map((m) => m[1]));
+    expect([...eventIds]).toEqual(['shooter.wave_clear']);
     const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
     expect(main.indexOf('await connectHub()')).toBeGreaterThan(-1);
     expect(main.indexOf('await connectHub()')).toBeLessThan(main.indexOf('new Game'));
