@@ -138,27 +138,34 @@ export const wasPressed = (f, name) => !!f.pressed[BUTTON_INDEX[name]];
 export const wasReleased = (f, name) => !!f.released[BUTTON_INDEX[name]];
 
 /**
- * Tap vs hold on one button. `update(pressed, down, nowMs, canHold)` returns 'tap', 'hold' or null.
+ * Tap vs hold on one button: a short press is one action (reload), the same press held longer is
+ * another (pick up). `update(pressed, down, nowMs, canHold)` returns 'tap', 'hold' or null.
  * `pressed` is this frame's press edge and `down` the held state. With nothing to hold for (`canHold`
- * false at the press) the tap fires on the press, with no delay. Otherwise a release before `holdMs`
- * is a tap and reaching `holdMs` is a hold (once). `reset()` drops a press in progress (a menu opened).
+ * false at the press) the tap fires on the press, with no delay; if something comes into reach while
+ * the button is still down, reaching `holdMs` from the press is still a hold. With something in reach
+ * at the press, a release before `holdMs` is a tap and reaching `holdMs` is a hold (once).
+ * `progress(nowMs, canHold)` is how far a hold has got (0..1, for the prompt). `reset()` drops a press
+ * in progress (a menu opened).
  */
 export function createTapHold(holdMs) {
-  let armed = false, start = 0;
+  let armed = false, tapped = false, start = 0;
   return {
     update(pressed, down, nowMs, canHold) {
       if (pressed) {
-        if (!canHold) { armed = false; return 'tap'; }
-        armed = true; start = nowMs;
-        return null;
+        armed = true; start = nowMs; tapped = !canHold;
+        return tapped ? 'tap' : null;
       }
       if (!armed) return null;
-      if (!down) { armed = false; return 'tap'; }
-      if (nowMs - start >= holdMs) { armed = false; return 'hold'; }
+      if (!down) { armed = false; return tapped ? null : 'tap'; }
+      if (canHold && nowMs - start >= holdMs) { armed = false; return 'hold'; }
       return null;
     },
+    progress(nowMs, canHold) {
+      if (!armed || !canHold) return 0;
+      return Math.min(1, Math.max(0, (nowMs - start) / holdMs));
+    },
     reset() { armed = false; },
-    get pending() { return armed; },
+    get pending() { return armed && !tapped; },
   };
 }
 

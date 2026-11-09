@@ -51,7 +51,7 @@ function angErr(yaw, pitch, a) {
  * @param {number} o.yaw
  * @param {number} o.pitch
  * @param {Array<{center:object, head:object, r:number}>} o.targets
- * @param {boolean} o.aiming  LT held
+ * @param {boolean} o.aiming  aim toggle on (R3)
  * @param {number} o.input  0..1, how hard the player is steering (look or move stick)
  * @param {number} o.dt  seconds
  * @param {number} [o.strength]  the player's setting (0 = off)

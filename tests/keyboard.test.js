@@ -23,6 +23,12 @@ describe('keyboard layout', () => {
     }
     for (const a of LATCHED) expect(BIND[a], a).toBeTruthy();
   });
+  it('mirrors the pad: R taps reload / holds pick up, Q picks the next spell, F toggles aim', () => {
+    expect(BIND.spellSelect).toEqual(['KeyQ']);
+    expect(BIND.aimToggle).toEqual(['KeyF']);
+    expect(keyLabel('reload')).toBe('R');
+    expect(keyLabel('spellSelect')).toBe('Q');
+  });
   it('labels keys for prompts and the HUD', () => {
     expect(keyLabel('interact')).toBe('E');
     expect(keyLabel('chainZap')).toBe('Y');

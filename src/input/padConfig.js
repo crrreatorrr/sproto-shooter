@@ -7,26 +7,28 @@ export const PAD_BUTTONS = ['a', 'b', 'x', 'y', 'lb', 'rb', 'lt', 'rt', 'back', 
 
 /**
  * Gameplay bindings (action -> button). Home is never bound: the OS / browser owns it.
- * Why this layout: both thumbs stay on the sticks for the things you do while fighting (fire, aim, dash,
- * Goo Bolt on the four shoulder buttons). The right thumb only leaves the stick for jump, slide, reload
- * and swap, like every console shooter. The D-pad holds the slower spells and the medkit.
+ * Why this layout: fire and spells sit on the triggers (RT fires the gun, LT casts the selected spell,
+ * LB picks the next spell, RB dashes), so both thumbs stay on the sticks while fighting. Aim is a
+ * right-stick click toggle: click once to aim and stay aiming, again with a sniper to zoom closer, again
+ * to stop. The right thumb only leaves the stick for jump, slide, reload / pick up and swap. The D-pad
+ * keeps quick casts for three spells and the medkit.
  */
 export const PAD_BINDINGS = {
   fire: 'rt',
-  aim: 'lt',
+  castSpell: 'lt', // casts the spell LB selected
+  spellSelect: 'lb', // next unlocked spell
+  aim: 'r3', // toggle: aim -> (sniper) zoom 2 -> off
   jump: 'a',
   slide: 'b',
-  reload: 'x', // tap; hold picks up a gun or opens a Weapon Box when one is in reach
+  reload: 'x', // tap reloads; holding the same button longer picks up a gun or opens a Weapon Box
   interact: 'x', // hold (only when something is in reach, so a plain reload never waits)
-  swap: 'y', // next gun; while aiming a two-zoom scope it switches zoom 1 / 2 (like the mouse wheel)
-  dash: 'lb',
-  gooBolt: 'rb',
+  swap: 'y', // next gun
+  dash: 'rb',
   chainZap: 'up',
   swarm: 'right',
   manaShield: 'left',
   medkit: 'down',
-  meteor: 'r3',
-  sprint: 'l3', // toggle; stops when you stop pushing forward
+  sprint: 'l3', // toggle; stops when you stop pushing forward or start aiming
   pause: 'start',
   panel: 'back', // shop between waves, otherwise your guns
 };
@@ -57,7 +59,7 @@ export const PAD = {
   /** Aiming slows the stick a little on top of the field-of-view factor the mouse also gets. */
   adsLookScale: 0.85,
 
-  /** Hold X this long to pick up / open instead of reloading. */
+  /** Hold the reload button this long to pick up / open instead of reloading. */
   interactHoldMs: 300,
   /** Sprint toggle ends when forward stick drops below this. */
   sprintStopBelow: 0.25,
@@ -73,7 +75,7 @@ export const PAD = {
 /**
  * Aim assist, gamepad only (mouse and keyboard never get it).
  * - Slowdown: the stick turns slower while the crosshair is over or near an enemy.
- * - Pull: while aiming (LT) the view drifts gently toward the nearest enemy's head.
+ * - Pull: while aiming (R3 toggle) the view drifts gently toward the nearest enemy's head.
  * The player's "Aim assist" setting (0..1.5, default 1) multiplies `strength`.
  */
 export const AIM_ASSIST = {

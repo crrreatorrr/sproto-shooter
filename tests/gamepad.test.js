@@ -105,6 +105,15 @@ describe('tap / hold and menu repeat', () => {
     const th = createTapHold(300);
     expect(th.update(true, true, 0, false)).toBe('tap');
     expect(th.update(false, true, 400, false)).toBe(null);
+    expect(th.update(false, false, 500, false)).toBe(null); // no second tap on release
+  });
+  it('still picks up when something comes into reach while the button is held', () => {
+    const th = createTapHold(300);
+    expect(th.update(true, true, 0, false)).toBe('tap'); // reloads at once
+    expect(th.update(false, true, 200, true)).toBe(null);
+    expect(th.progress(200, true)).toBeCloseTo(2 / 3);
+    expect(th.update(false, true, 300, true)).toBe('hold');
+    expect(th.progress(350, true)).toBe(0);
   });
   it('splits tap and hold when something is in reach', () => {
     const th = createTapHold(300);
@@ -169,55 +178,81 @@ describe('gameplay layout', () => {
     return { t, play: createPadGameplay() };
   }
 
-  it('binds every action, never Home, and uses RT fire / LT aim', () => {
-    for (const a of ['fire', 'aim', 'jump', 'slide', 'dash', 'reload', 'interact', 'swap', 'gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor', 'medkit', 'sprint', 'pause', 'panel']) {
+  it('binds every action, never Home: RT fire, LT spell, LB next spell, R3 aim, X reload / pick up', () => {
+    for (const a of ['fire', 'aim', 'castSpell', 'spellSelect', 'jump', 'slide', 'dash', 'reload', 'interact', 'swap', 'chainZap', 'swarm', 'manaShield', 'medkit', 'sprint', 'pause', 'panel']) {
       expect(PAD_BUTTONS, a).toContain(PAD_BINDINGS[a]);
     }
     expect(Object.values(PAD_BINDINGS)).not.toContain('home');
     expect(PAD_BINDINGS.fire).toBe('rt');
-    expect(PAD_BINDINGS.aim).toBe('lt');
+    expect(PAD_BINDINGS.castSpell).toBe('lt');
+    expect(PAD_BINDINGS.spellSelect).toBe('lb');
+    expect(PAD_BINDINGS.aim).toBe('r3');
+    expect(PAD_BINDINGS.interact).toBe(PAD_BINDINGS.reload);
     // No two actions share a button, except X (tap reload / hold interact).
     const used = Object.entries(PAD_BINDINGS).filter(([a]) => a !== 'interact').map(([, b]) => b);
     expect(new Set(used).size).toBe(used.length);
   });
-  it('moves, fires and aims from the sticks and triggers', () => {
+  it('moves and fires from the sticks and RT; LT casts the selected spell, LB picks the next', () => {
     const { t, play } = setup();
     const out = play.step(press(t, { axes: [0, -1, 0, 0], values: { rt: 1, lt: 1 } }), ctx());
     expect(out.moveZ).toBeCloseTo(1);
     expect(out.moveX).toBeCloseTo(0);
     expect(out.fire).toBe(true);
-    expect(out.zoom).toBe(true);
+    expect(out.zoom).toBe(false); // LT no longer aims
+    expect(out.castSpell).toBe(true);
+    expect(play.step(press(t, { values: { rt: 1, lt: 1 } }), ctx()).castSpell).toBe(false); // once per pull
+    expect(play.step(press(t, { held: ['lb'] }), ctx()).nextSpell).toBe(true);
   });
   it('sends one press per button press', () => {
     const { t, play } = setup();
-    expect(play.step(press(t, { held: ['a', 'lb', 'rb'] }), ctx()).presses).toEqual(['jump', 'dash', 'gooBolt']);
-    expect(play.step(press(t, { held: ['a', 'lb', 'rb'] }), ctx()).presses).toEqual([]);
-    expect(play.step(press(t, { held: ['up', 'right', 'left', 'down', 'r3', 'b'] }), ctx()).presses)
-      .toEqual(['slide', 'chainZap', 'swarm', 'manaShield', 'medkit', 'meteor']);
+    expect(play.step(press(t, { held: ['a', 'rb'] }), ctx()).presses).toEqual(['jump', 'dash']);
+    expect(play.step(press(t, { held: ['a', 'rb'] }), ctx()).presses).toEqual([]);
+    expect(play.step(press(t, { held: ['up', 'right', 'left', 'down', 'b'] }), ctx()).presses)
+      .toEqual(['slide', 'chainZap', 'swarm', 'manaShield', 'medkit']);
   });
-  it('X reloads at once, and holding it picks up only when something is in reach', () => {
+  it('R3 toggles aim: aim, then (sniper) zoom closer, then off', () => {
+    const { t, play } = setup();
+    const r3 = (c) => { const o = play.step(press(t, { held: ['r3'] }), ctx(c)); press(t, {}); return o; };
+    let o = r3({ aiming: false });
+    expect(o.aimToggle).toBe(true);
+    expect(o.zoom).toBe(true);
+    expect(play.step(press(t, {}), ctx({ aiming: true })).zoom).toBe(true); // stays aiming without holding
+    o = r3({ aiming: true, twoZoom: true, zoomStep: 1 });
+    expect(o.aimToggle).toBe(true);
+    expect(o.zoom).toBe(true); // sniper: zoom 2
+    expect(r3({ aiming: true, twoZoom: true, zoomStep: 2 }).zoom).toBe(false);
+    expect(r3({ aiming: true, twoZoom: false, zoomStep: 1 }).zoom).toBe(false); // one-zoom gun: second click stops
+  });
+  it('X reloads; the same button held longer picks up when something is in reach', () => {
     const { t, play } = setup();
     expect(play.step(press(t, { held: ['x'] }), ctx()).reload).toBe(true);
     press(t, {});
     expect(play.step(press(t, { held: ['x'] }), ctx({ canInteract: true, nowMs: 1000 })).reload).toBe(false);
+    const mid = play.step(press(t, { held: ['x'] }), ctx({ canInteract: true, nowMs: 1000 + PAD.interactHoldMs / 2 }));
+    expect(mid.holdProgress).toBeCloseTo(0.5);
     const held = play.step(press(t, { held: ['x'] }), ctx({ canInteract: true, nowMs: 1000 + PAD.interactHoldMs }));
     expect(held.interact).toBe(true);
     expect(held.reload).toBe(false);
+    press(t, {});
+    play.step(press(t, { held: ['x'] }), ctx({ canInteract: true, nowMs: 2000 }));
+    expect(play.step(press(t, {}), ctx({ canInteract: true, nowMs: 2100 })).reload).toBe(true); // short press: reload
   });
-  it('Y switches gun, or flips a two-level scope while aiming', () => {
+  it('Y always switches gun, even while aiming a sniper', () => {
     const { t, play } = setup();
     expect(play.step(press(t, { held: ['y'] }), ctx()).wheel).toBe(1);
     press(t, {});
-    const z = play.step(press(t, { held: ['y'], values: { lt: 1 } }), ctx({ twoZoom: true }));
-    expect(z.cycleZoom).toBe(true);
-    expect(z.wheel).toBe(0);
+    expect(play.step(press(t, { held: ['y'] }), ctx({ aiming: true, twoZoom: true, zoomStep: 1 })).wheel).toBe(1);
   });
-  it('L3 toggles sprint, which ends when forward is let go or on aiming', () => {
+  it('L3 toggles sprint, which ends when forward is let go or on aiming, and starting it drops aim', () => {
     const { t, play } = setup();
     expect(play.step(press(t, { held: ['l3'], axes: [0, -1, 0, 0] }), ctx()).sprint).toBe(true);
     expect(play.step(press(t, { axes: [0, -1, 0, 0] }), ctx()).sprint).toBe(true);
     expect(play.step(press(t, { axes: [0, 0, 0, 0] }), ctx()).sprint).toBe(false);
     expect(play.step(press(t, { axes: [0, -1, 0, 0] }), ctx()).sprint).toBe(false);
+    const run = play.step(press(t, { held: ['l3'], axes: [0, -1, 0, 0] }), ctx({ aiming: true }));
+    expect(run.sprint).toBe(true);
+    expect(run.dropAim).toBe(true);
+    expect(run.zoom).toBe(false);
   });
   it('right stick looks per second (frame-rate independent), not inverted, scaled by settings and zoom', () => {
     const { t, play } = setup();

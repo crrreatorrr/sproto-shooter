@@ -213,18 +213,21 @@ export function createUI(root, { input, bus, project, game }) {
     st.menu = list[(Math.max(0, i) + dir + list.length) % list.length];
     renderPanel();
   }
-  /** Gamepad hold-X: pick up the gun in reach (through the sim, like G), else open the Weapon Box in reach. */
-  function padInteract() {
+  // A held reload (R or X) reached pick up: the sim picks up the gun in reach; with none, open the Weapon Box.
+  input.on('holdInteract', () => {
     const s = game.state, p = s.players[s.localPlayerId];
-    input.padPress('interact');
-    if (!p.nearGunPickupId && nearBox(s, p)) openMenu('craft');
-  }
+    if (!st.menu && els.screen.hidden && !p.nearGunPickupId && nearBox(s, p)) openMenu('craft');
+  });
   const pad = () => input.device === 'pad';
   const glyph = (b) => padGlyph(b, game.padStyle || 'xbox');
   /** Prompt label for an action on the device in use: '[E]' on keyboard, '[Hold X]' on a pad. */
   function keyTag(kbm, padButton, hold = false) {
-    if (!pad()) return `[${kbm}]`;
-    return `[${hold ? 'Hold ' : ''}${glyph(padButton)}]`;
+    return `[${hold ? 'Hold ' : ''}${pad() ? glyph(padButton) : kbm}]`;
+  }
+  /** Key shown on a spell: the cast button on the selected one (LT / RMB), else its quick-cast key. */
+  function spellKey(id) {
+    if (id === input.spell) return pad() ? glyph(PAD_BINDINGS.castSpell) : 'RMB';
+    return pad() ? (PAD_BINDINGS[id] ? glyph(PAD_BINDINGS[id]) : '') : keyLabel(id);
   }
   function closeMenu() {
     st.menu = null;
@@ -448,7 +451,7 @@ export function createUI(root, { input, bus, project, game }) {
         : cd > 0 ? `<em class="wait">Cooldown ${cd.toFixed(1)} s</em>`
         : p.mana < cost - 0.5 ? '<em class="wait">Not enough mana</em>' : '<em class="ok">READY</em>';
       const viaGod = p.perks[id] && magic < pk.level ? ' <em class="god">via god mode</em>' : '';
-      return `<div class="power ${p.perks[id] ? '' : 'locked'}"><kbd>${pad() ? glyph(PAD_BINDINGS[id]) : keyLabel(id)}</kbd><div><b>${SPELL_ICON[id]} ${sp.name}</b> ${status}${viaGod}
+      return `<div class="power ${p.perks[id] ? '' : 'locked'}"><kbd>${spellKey(id) || '·'}</kbd><div><b>${SPELL_ICON[id]} ${sp.name}</b> ${status}${viaGod}
         <small>${pk.desc} · ${id === 'meteor' ? 'all mana' : sp.mana + ' mana'}${id === 'manaShield' ? ' + drain' : ''} · ${sp.cd}s cooldown</small></div></div>`;
     }).join('');
     const perks = PERKS.filter((k) => !SPELLS[k.id]).map((k) => `<div class="power ${p.perks[k.id] ? '' : 'locked'}"><kbd>${ICON[k.skill]}</kbd><div><b>${k.name}</b> ${p.perks[k.id] ? '<em class="ok">ACTIVE</em>' : `<em class="lock">🔒 LOCKED · needs ${SKILLS[k.skill].name} Lv ${k.level} (you're Lv ${p.skills[k.skill].level})</em>`}<small>${k.desc}</small></div></div>`).join('');
@@ -487,8 +490,8 @@ export function createUI(root, { input, bus, project, game }) {
       const cd = p.spells.cd[id], max = SPELLS[id].cd;
       const cost = id === 'meteor' ? p.maxMana : SPELLS[id].mana;
       const state = !unlocked ? 'locked' : (id === 'manaShield' && p.spells.manaShieldOn) ? 'active' : cd > 0 ? 'cd' : p.mana < cost - 0.5 ? 'nomana' : 'ready';
-      set(el, 'sps' + id, state, (e, v) => { e.className = 'sp ' + v; });
-      text(el.querySelector('.key'), 'spk' + id, pad() ? glyph(PAD_BINDINGS[id]) : keyLabel(id));
+      set(el, 'sps' + id, state + (id === input.spell ? ' sel' : ''), (e, v) => { e.className = 'sp ' + v; });
+      text(el.querySelector('.key'), 'spk' + id, spellKey(id));
       set(el, 'spc' + id, Math.round((cd / max) * 100), (e, v) => { e.querySelector('.cd').style.height = v + '%'; });
     }
     // weapon
@@ -574,11 +577,13 @@ export function createUI(root, { input, bus, project, game }) {
     else if (nearGun) {
       const leg = nearGun.gun && nearGun.gun.quality === 'legendary';
       const full = p.guns.slice(0, p.unlockedSlots).every(Boolean);
-      prompt = `<b>${keyTag(keyLabel('interact'), PAD_BINDINGS.interact, true)}</b> Pick up${leg ? (p.guns[LEGENDARY_SLOT] && full ? ' (swaps your legendary)' : ` → legendary slot${pad() ? '' : ' [L]'}`) : full ? ' (swaps with equipped)' : ''}`;
+      prompt = `<b>${keyTag(keyLabel('reload'), PAD_BINDINGS.interact, true)}</b> Pick up${leg ? (p.guns[LEGENDARY_SLOT] && full ? ' (swaps your legendary)' : ` → legendary slot${pad() ? '' : ' [L]'}`) : full ? ' (swaps with equipped)' : ''}`;
     }
-    else if (box) prompt = `<b>${keyTag(keyLabel('interact'), PAD_BINDINGS.interact, true)}</b> Open Weapon Box${box.craft ? ' (crafting…)' : ''}`;
+    else if (box) prompt = `<b>${keyTag(keyLabel('reload'), PAD_BINDINGS.interact, true)}</b> Open Weapon Box${box.craft ? ' (crafting…)' : ''}`;
     else if (s.wave && s.wave.phase === 'intermission') prompt = pad() ? `<b>${keyTag('B', PAD_BINDINGS.panel)}</b> Shop · Ready` : '<b>[B]</b> Shop · <b>[Enter]</b> Ready';
     html(els.prompt, 'prompt', prompt);
+    const hold = (nearGun || box) && !p.dead ? input.holdProgress : 0;
+    set(els.prompt, 'hold', Math.round(hold * 100), (e, v) => e.style.setProperty('--hold', v + '%'));
     html(els.loot, 'loot', nearGun ? gunCardHtml(nearGun.gun, g) : '');
     set(els.loot, 'lootv', !!nearGun, (e, v) => e.classList.toggle('on', v));
 
@@ -605,5 +610,5 @@ export function createUI(root, { input, bus, project, game }) {
     if (hud) hud.style.visibility = on ? 'hidden' : '';
   }
 
-  return { update, closeMenu, openMenu, openGearPanel, cycleMenu, padInteract, banner, toast, setPvp, get menuOpen() { return !!st.menu; }, get menu() { return st.menu; }, els };
+  return { update, closeMenu, openMenu, openGearPanel, cycleMenu, banner, toast, setPvp, get menuOpen() { return !!st.menu; }, get menu() { return st.menu; }, els };
 }
