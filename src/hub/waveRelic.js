@@ -24,6 +24,7 @@ function newRunId() {
  */
 export function createWaveRelicReporter({ hub, onGranted = () => {}, newId = newRunId }) {
   let run = null;
+  let tail = Promise.resolve();
   return {
     modeStart(ev) {
       run = ev && ev.mode === 'waves' ? { id: newId(), reported: false } : null;
@@ -37,8 +38,7 @@ export function createWaveRelicReporter({ hub, onGranted = () => {}, newId = new
       if (!hub || !hub.bankable || typeof hub.reportEvent !== 'function') return null;
       const data = { wave: 1, godMode: !!(state.tuning && state.tuning.godMode) };
       const key = `${WAVE_CLEAR_EVENT}:1:${run.id}`;
-      return Promise.resolve()
-        .then(() => hub.reportEvent(WAVE_CLEAR_EVENT, data, key))
+      const job = tail.then(() => hub.reportEvent(WAVE_CLEAR_EVENT, data, key))
         .then((result) => {
           if (result && result.granted) onGranted(result.granted);
           return result || {};
@@ -47,6 +47,8 @@ export function createWaveRelicReporter({ hub, onGranted = () => {}, newId = new
           console.warn(`[hub] ${WAVE_CLEAR_EVENT} report failed: ${err && err.message ? err.message : err}`);
           return {};
         });
+      tail = job.then(() => {}, () => {});
+      return job;
     },
   };
 }

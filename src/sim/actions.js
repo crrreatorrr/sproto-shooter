@@ -1,7 +1,7 @@
 // UI/debug actions arrive inside commands; dispatched here. Keeps the sim the only writer of state.
 import { next } from '../core/rng.js';
-import { RES_IDS } from '../data/drops.js';
-import { SKILL_IDS, SPELL_IDS, PERKS_BY_ID, xpToNext } from '../data/skills.js';
+import { SKILL_IDS, xpToNext } from '../data/skills.js';
+import { syncSpellbook } from './spellbook.js';
 import { emit } from './events.js';
 import { createEnemy, createBoss, newRunStats, nextId } from './state.js';
 import { generateGun } from './guns.js';
@@ -73,6 +73,11 @@ export function startMode(state, p, mode, tier = 1, opts = {}) {
     else placeSandboxLegendary(state, p, tier);
     emit(state, 'modeStart', { mode: state.testMode ? 'test' : 'sandbox', tier });
   }
+  if (state.mode !== 'campaign') {
+    if (!p.spellUnlocks) p.spellUnlocks = {};
+    p.spellUnlocks.gooBolt = true;
+    syncSpellbook(state, p);
+  }
 }
 
 /**
@@ -133,9 +138,7 @@ function giveTestLoadout(state, p) {
 /** God mode on: back up to at least GOD_HP (reviving if down) and stocked up on everything. Off: normal damage again. */
 export function setGodMode(state, p, on) {
   state.tuning.godMode = !!on;
-  // every spell while god mode is on; turning it off keeps only what the Magic level has earned
-  for (const id of SPELL_IDS) p.perks[id] = on || p.skills[PERKS_BY_ID[id].skill].level >= PERKS_BY_ID[id].level;
-  if (!p.perks.manaShield) p.spells.manaShieldOn = false;
+  syncSpellbook(state, p);
   if (!on) return;
   if (p.dead || p.downed) respawn(state, p);
   p.hp = Math.max(p.hp, Math.min(GOD_HP, p.maxHp));
@@ -218,11 +221,11 @@ export function debugOp(state, p, op, args) {
       break;
     case 'clearEnemies': state.enemies.length = 0; break;
     case 'giveTickets': p.tickets += args.amount || 100; break;
-    case 'giveResources': for (const k of RES_IDS) p.resources[k] += k === 'bossCore' || k === 'manaCrystal' ? 3 : args.amount || 100; break;
+    case 'giveResources': break;
     case 'giveXp': addXp(state, p, args.skill, args.amount || 100); break;
     case 'levelSkill': {
       const s = p.skills[args.skill];
-      if (s.level < 10) addXp(state, p, args.skill, (xpToNext(args.skill, s.level) - s.xp + 1) / (1 + 0.1 * (state.tier - 1)));
+      if (s && s.level < 10) addXp(state, p, args.skill, (xpToNext(args.skill, s.level) - s.xp + 1) / (1 + 0.1 * (state.tier - 1)));
       break;
     }
     case 'maxSkills': for (const sk of SKILL_IDS) for (let i = 0; i < 10; i++) debugOp(state, p, 'levelSkill', { skill: sk }); break;

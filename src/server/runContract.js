@@ -7,6 +7,7 @@ import {
   bossById, rejectedBossReason, contentFingerprint, findEncounter,
 } from '../data/serverManifest.js';
 import { PROTOCOL_VERSION, LIMITS, validDay, validId, inspectValue } from './protocol.js';
+import { grantSpell } from '../sim/spellbook.js';
 
 export const SOURCE_COMMIT = '0000000000000000000000000000000000000000';
 
@@ -38,11 +39,13 @@ function reject(reason) {
 export function canonicalLoadoutOk(state) {
   const p = state.players[state.localPlayerId];
   if (!p || p.tickets !== 0 || p.unlockedSlots !== 4) return false;
-  const resources = p.resources || {};
-  const names = Object.keys(resources);
-  for (let i = 0; i < names.length; i++) if (resources[names[i]] !== 0) return false;
-  if (p.skills.health.level !== 1 || p.skills.magic.level !== 1) return false;
-  if (!p.perks.gooBolt || !p.perks.craftT1 || p.perks.swarm || p.perks.meteor) return false;
+  if (p.resources) {
+    const names = Object.keys(p.resources);
+    for (let i = 0; i < names.length; i++) if (p.resources[names[i]] !== 0) return false;
+  }
+  if (!p.skills.health || p.skills.health.level !== 1 || !p.skills.gunslinger || p.skills.gunslinger.level !== 1) return false;
+  if (p.skills.magic || p.skills.crafting) return false;
+  if (!p.perks.gooBolt || p.perks.craftT1 || p.perks.swarm || p.perks.meteor) return false;
   const guns = p.guns.filter(Boolean);
   if (guns.length !== 1) return false;
   const g = guns[0];
@@ -68,6 +71,7 @@ export function buildIssuedState(issuance) {
   p.yaw = section.yaw || 0;
   p.pitch = 0;
   state.mode = 'campaign';
+  grantSpell(state, p, 'gooBolt');
   state.tuning = {
     godMode: false, enemyHpMult: 1, enemyDmgMult: 1, unlockAllRecipes: false, infiniteAmmo: false, freezeEnemies: false,
   };

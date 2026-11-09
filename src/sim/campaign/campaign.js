@@ -9,6 +9,7 @@ import { createEnemy, createBoss, createProjectile, nextId } from '../state.js';
 import { generateGun } from '../guns.js';
 import { next } from '../../core/rng.js';
 import { damagePlayer } from '../combat.js';
+import { clearCampaignSpells } from '../spellbook.js';
 
 const snaps = new WeakMap();
 
@@ -30,6 +31,7 @@ export function startCampaign(state, p, levelId) {
     time: 0,
   };
   p.unlockedSlots = 4;
+  clearCampaignSpells(state, p);
   p.jetpack = jet;
   p.campaignSpeed = 1;
   p.pos = { x: first.start[0], y: first.start[1], z: first.start[2] };

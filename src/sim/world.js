@@ -201,7 +201,7 @@ function collect(state, p, k) {
     case 'bigHealth': healPlayer(p, k.amount); p.shield = p.maxShield; break;
     case 'mana': p.mana = Math.min(p.maxMana, p.mana + k.amount); break;
     case 'ammo': p.ammo[k.ammoType] = Math.min(p.ammoCap[k.ammoType], p.ammo[k.ammoType] + k.amount); break;
-    case 'resource': p.resources[k.resId] += k.amount; break;
+    case 'resource': break;
     case 'tickets': p.tickets += k.amount; state.run.ticketsEarned += k.amount; break;
   }
   emit(state, 'pickup', { playerId: p.id, kind: k.kind, amount: k.amount, resId: k.resId, ammoType: k.ammoType, pos: { ...k.pos } });

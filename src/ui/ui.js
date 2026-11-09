@@ -1,14 +1,12 @@
 // DOM UI: HUD, crosshair, damage numbers, banners, loot card, skills, crafting, shop, boss bar, screens.
 // UI never writes game state; it queues actions via input.queueAction().
 import { SKILLS, SKILL_IDS, PERKS, PERKS_BY_ID, SPELLS, SPELL_IDS, xpToNext } from '../data/skills.js';
-import { gunRange, hasInfiniteReserve, QUALITIES_BY_ID, ELEMENTS_BY_ID, GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, PARTS_BY_ID, PARTS_BY_SLOT, SLOTS, WACKY_BY_ID, ELEMENTS, LEGENDARY_SLOT, slotUsable } from '../data/guns.js';
-import { RESOURCES } from '../data/drops.js';
-import { GUN_RECIPES, ITEM_RECIPES, ARCANE_COST, REROLL_COST, SALVAGE_LEVEL, REROLL_LEVEL } from '../data/recipes.js';
+import { gunRange, hasInfiniteReserve, QUALITIES_BY_ID, ELEMENTS_BY_ID, GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, PARTS_BY_ID, SLOTS, WACKY_BY_ID, LEGENDARY_SLOT, slotUsable } from '../data/guns.js';
 import { SHOP } from '../data/shop.js';
 import { WAVES } from '../data/waves.js';
 import { BOSSES } from '../data/enemies.js';
-import { compareGuns, sellValue, salvageYield, dpsOf, REROLLABLE } from '../sim/guns.js';
-import { canAfford, mergeCost, recipeUnlocked, nearBox } from '../sim/economy.js';
+import { compareGuns, sellValue, dpsOf } from '../sim/guns.js';
+import { nearBox } from '../sim/economy.js';
 import { PAD_BINDINGS } from '../input/padConfig.js';
 import { padGlyph } from '../input/gamepad.js';
 import { keyLabel } from '../input/input.js';
@@ -16,7 +14,6 @@ import { keyLabel } from '../input/input.js';
 const $ = (sel, root = document) => root.querySelector(sel);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const fmt = (n, d = 0) => (Math.round(n * 10 ** d) / 10 ** d).toLocaleString();
-const RES_BY_ID = Object.fromEntries(RESOURCES.map((r) => [r.id, r]));
 const SPELL_ICON = { gooBolt: '●', chainZap: 'ϟ', swarm: '✲', manaShield: '◈', meteor: '☄' };
 const TYPE_ICON = { mg: '▬', shotgun: '▮', sniper: '━', bazooka: '◉', raygun: '⚡', bigbullets: '●', duckgun: '🦆' };
 const PANEL_NAMES = { shop: 'Shop', inventory: 'Your guns', skills: 'Skills', stats: 'Stats & powers', craft: 'Weapon Box' };
@@ -173,10 +170,10 @@ export function createUI(root, { input, bus, project, game }) {
   bus.on('purchase', (ev) => toast(`Bought (−${ev.price} Run Cash)`, 'good'));
   bus.on('sold', (ev) => toast(`Sold for ${ev.value} Run Cash`, 'good'));
   bus.on('vend', (ev) => toast({ gun: '🎰 A gun drops out!', resources: `🎰 ${String(ev.detail || '').replace(/tickets/gi, 'Run Cash')}`, jackpot: '🎰 JACKPOT! +60 Run Cash', chicken: '🎰 ...a rubber chicken. Squeak.' }[ev.outcome], 'good'));
-  bus.on('salvage', (ev) => toast('Salvaged: ' + Object.entries(ev.yield).map(([k, v]) => `+${v} ${RES_BY_ID[k].name}`).join(', '), 'good'));
+  bus.on('salvage', () => toast('Crafting is gone', 'bad'));
   bus.on('reroll', () => toast('Stat rerolled!', 'good'));
   bus.on('pickup', (ev) => {
-    if (ev.kind === 'resource' && (ev.resId === 'bossCore' || ev.resId === 'manaCrystal')) feed(`+${ev.amount} ${RES_BY_ID[ev.resId].name}!`, RES_BY_ID[ev.resId].color);
+    if (ev.kind === 'resource') return;
   });
   bus.on('kill', (ev) => { if (ev.elite) feed('Elite down!', '#ffd700'); });
   bus.on('playerDamaged', (ev) => {
@@ -282,8 +279,6 @@ export function createUI(root, { input, bus, project, game }) {
     }
   });
 
-  const costHtml = (cost, res) => Object.entries(cost).map(([k, v]) => `<span class="cost ${(res[k] || 0) >= v ? '' : 'short'}" style="--c:${RES_BY_ID[k].color}">${RES_BY_ID[k].icon}${v}</span>`).join(' ');
-
   function gunCardHtml(g, other, opts = {}) {
     if (!g) return '<div class="gcard empty">Empty slot</div>';
     const q = QUALITIES_BY_ID[g.quality];
@@ -331,55 +326,11 @@ export function createUI(root, { input, bus, project, game }) {
   }
 
   function resBar(p) {
-    return `<div class="resbar"><span class="tk" title="Run Cash, not hub Tickets">Run Cash ${p.tickets}</span>${RESOURCES.map((r) => `<span style="--c:${r.color}" title="${r.name}">${r.icon} ${p.resources[r.id]}</span>`).join('')}</div>`;
+    return `<div class="resbar"><span class="tk" title="Run Cash, not hub Tickets">Run Cash ${p.tickets}</span></div>`;
   }
 
-  function craftHtml(s, p) {
-    const lvl = p.skills.crafting.level;
-    const box = nearBox(s, p);
-    const busy = box && box.craft ? `<div class="busy">Crafting… ${Math.round((box.craft.t / box.craft.duration) * 100)}%</div>` : '';
-    const tabs = ['guns', 'items', 'workshop'].map((t) => `<button class="tab ${st.craftTab === t ? 'on' : ''}" data-act="craftTab" data-v="${t}">${{ guns: 'Guns', items: 'Ammo & Items', workshop: 'Salvage & Reroll' }[t]}</button>`).join('');
-    let content = '';
-    if (st.craftTab === 'guns') {
-      const types = ['mg', 'shotgun', 'sniper', 'bazooka'].map((t) => `<button class="tab sm ${st.craftType === t ? 'on' : ''}" data-act="craftType" data-v="${t}">${TYPE_ICON[t]} ${GUN_TYPES_BY_ID[t].name}</button>`).join('');
-      const recs = GUN_RECIPES.filter((r) => r.gunType === st.craftType);
-      const anyEl = recs.some((r) => r.options.chooseElement && recipeUnlocked(s, p, r));
-      const anyPart = recs.some((r) => r.options.choosePart && recipeUnlocked(s, p, r));
-      const opts = `<div class="opts">
-        ${anyEl ? `<div><b>Element (T3+)</b> ${['random', ...ELEMENTS.map((e) => e.id)].map((id) => `<button class="chip ${(st.choice.element || 'random') === id ? 'on' : ''}" data-act="element" data-v="${id}" ${id !== 'random' ? `style="--c:${ELEMENTS_BY_ID[id].color}"` : ''}>${id === 'random' ? 'Random' : ELEMENTS_BY_ID[id].name}</button>`).join('')}</div>` : ''}
-        ${anyPart ? `<div><b>Part (T4+)</b> <button class="chip ${!st.choice.part ? 'on' : ''}" data-act="part" data-v="random">Random</button>${SLOTS.map((sl) => PARTS_BY_SLOT[sl].map((pt) => `<button class="chip ${st.choice.part && st.choice.part.id === pt.id ? 'on' : ''}" data-act="part" data-slot="${sl}" data-v="${pt.id}">${pt.name}</button>`).join('')).join('')}</div>` : ''}
-        ${anyEl ? `<div><button class="chip ${st.choice.arcane ? 'on' : ''}" data-act="arcane" style="--c:#b07cff">✦ Arcane Infusion (+1 Mana Crystal, T3+): +20% element chance, stronger procs</button></div>` : ''}
-      </div>`;
-      content = `<div class="tabs">${types}</div>${opts}<div class="recipes">${recs.map((r) => {
-        const unlocked = recipeUnlocked(s, p, r);
-        const cost = st.choice.arcane && r.options.arcane ? mergeCost(r.cost, ARCANE_COST) : r.cost;
-        const ok = unlocked && canAfford(p.resources, cost) && box && !box.craft;
-        const q = QUALITIES_BY_ID[r.quality];
-        return `<div class="recipe ${unlocked ? '' : 'locked'}" style="--q:${q.color}">
-          <div class="rt">T${r.tier} · ${q.name}</div>
-          <div class="rc">${costHtml(cost, p.resources)}</div>
-          <div class="rx">+${r.xp} Crafting XP${r.options.chooseElement ? ' · element' : ''}${r.options.choosePart ? ' · part' : ''}${r.options.wacky ? ' · ★wacky' : ''}</div>
-          ${unlocked ? `<button class="btn" data-act="craft" data-v="${r.id}" ${ok ? '' : 'disabled'}>Craft</button>` : `<div class="lk">🔒 Crafting Lv ${r.craftingLevel}</div>`}
-        </div>`;
-      }).join('')}</div>`;
-    } else if (st.craftTab === 'items') {
-      content = `<div class="recipes">${ITEM_RECIPES.map((r) => {
-        const ok = canAfford(p.resources, r.cost) && box && !box.craft;
-        const have = r.ammoType ? `${p.ammo[r.ammoType]}/${p.ammoCap[r.ammoType]}` : `${p.medkits}/3`;
-        return `<div class="recipe"><div class="rt">${r.name}</div><div class="rc">${costHtml(r.cost, p.resources)}</div><div class="rx">Have ${have} · +${r.xp} XP</div><button class="btn" data-act="craft" data-v="${r.id}" ${ok ? '' : 'disabled'}>Craft</button></div>`;
-      }).join('')}</div><p class="hint">Ammo is cheap and gives a little Crafting XP — a steady way to level up.</p>`;
-    } else {
-      const canSalvage = s.tuning.unlockAllRecipes || lvl >= SALVAGE_LEVEL;
-      const canReroll = s.tuning.unlockAllRecipes || lvl >= REROLL_LEVEL;
-      const g = p.guns[st.rerollSlot];
-      content = `<h3>Salvage ${canSalvage ? '' : `<small>🔒 Crafting Lv ${SALVAGE_LEVEL}</small>`}</h3>
-        <div class="slotlist">${p.guns.map((gg, i) => gg ? `<div class="mini" style="--q:${QUALITIES_BY_ID[gg.quality].color}"><b>${i + 1}</b> ${gg.name}<span>${Object.entries(salvageYield(gg)).map(([k, v]) => `${RES_BY_ID[k].icon}${v}`).join(' ')}</span><button class="btn sm" data-act="salvage" data-v="${i}" ${canSalvage ? '' : 'disabled'}>Salvage</button></div>` : '').join('')}</div>
-        <h3>Reroll a stat ${canReroll ? '' : `<small>🔒 Crafting Lv ${REROLL_LEVEL}</small>`} <small>${costHtml(REROLL_COST, p.resources)} (+1 ✦ for Legendary)</small></h3>
-        <div class="tabs">${p.guns.map((gg, i) => gg ? `<button class="tab sm ${st.rerollSlot === i ? 'on' : ''}" data-act="rerollSlot" data-v="${i}">${i + 1}: ${GUN_TYPES_BY_ID[gg.type].short}</button>` : '').join('')}</div>
-        ${g ? `<div class="chips">${REROLLABLE.map((k) => `<button class="chip" data-act="reroll" data-v="${k}" ${canReroll ? '' : 'disabled'}>${k} (${fmt(g.stats[k], 2)})</button>`).join('')}</div>` : ''}`;
-    }
-    return `<h2>🔨 Weapon Box <small>Crafting Lv ${lvl}</small></h2>${resBar(p)}${busy}<div class="tabs">${tabs}</div>${content}
-      <p class="hint">Time doesn't stop while you craft. Between waves the boxes glow, so it's safe then. Crafted guns pop out next to the box.</p>`;
+  function craftHtml() {
+    return `<h2>Crafting is gone</h2><p>Guns are found. Ammo and medkits are picked up or bought with Run Cash.</p>`;
   }
 
   function shopHtml(s, p) {
@@ -397,7 +348,7 @@ export function createUI(root, { input, bus, project, game }) {
     return `<h2>Run Cash Shop ${inter ? `<small>Next wave in ${Math.ceil(s.wave.intermissionT)}s</small>` : ''}</h2><p class="hint">Run Cash is this run's shop money. It is not hub Tickets and cannot be exchanged.</p>${resBar(p)}
       <div class="offers">${offers}</div>
       <div class="cols">
-        <div><h3>Vending Machine</h3><div class="mini vend"><b>🎰 Mystery pull</b><span>gun, resources, jackpot… or a chicken</span><button class="btn sm" data-act="vend" ${p.tickets < SHOP.vendPrice ? 'disabled' : ''}>${SHOP.vendPrice} Run Cash</button></div>
+        <div><h3>Vending Machine</h3><div class="mini vend"><b>🎰 Mystery pull</b><span>gun, ammo, jackpot… or a chicken</span><button class="btn sm" data-act="vend" ${p.tickets < SHOP.vendPrice ? 'disabled' : ''}>${SHOP.vendPrice} Run Cash</button></div>
           <div class="mini"><b>Reroll offers</b><span></span><button class="btn sm" data-act="rerollShop" ${p.tickets < rerollPrice ? 'disabled' : ''}>${rerollPrice} Run Cash</button></div>
           <h3>Supplies</h3>${sups}</div>
         <div><h3>Upgrades</h3>${ups}</div>
@@ -416,7 +367,7 @@ export function createUI(root, { input, bus, project, game }) {
       const sk = p.skills[id], def = SKILLS[id];
       const need = sk.level >= 10 ? 1 : xpToNext(id, sk.level);
       const perks = PERKS.filter((k) => k.skill === id).map((k) => `<div class="perk ${p.perks[k.id] ? 'on' : ''}"><b>Lv${k.level}</b> ${k.name}<small>${k.desc}</small></div>`).join('');
-      const src = { health: 'Kill monsters, take damage, pick up healing, defeat Physical bosses', gunslinger: 'Gun kills, crits & weak spots, defeat Physical bosses', magic: 'Cast spells, spell kills, defeat Magic bosses', crafting: 'Craft guns (any tier) and ammo, salvage, reroll' }[id];
+      const src = { health: 'Kill monsters, take damage, pick up healing, defeat Physical bosses', gunslinger: 'Gun kills, crits and weak spots, defeat Physical bosses' }[id];
       return `<div class="skc" style="--c:${def.color}"><div class="skh">${def.icon} ${def.name} <span>Lv ${sk.level}</span></div>
         <div class="xpb"><b style="width:${sk.level >= 10 ? 100 : (sk.xp / need) * 100}%"></b><span>${sk.level >= 10 ? 'MAX' : `${Math.floor(sk.xp)} / ${need} XP`}</span></div>
         <div class="src">XP from: ${src}</div>${perks}</div>`;
@@ -441,22 +392,22 @@ export function createUI(root, { input, bus, project, game }) {
       ${row('Health', `${Math.ceil(p.hp)} / ${p.maxHp}`)}${row('Shield', `${Math.ceil(p.shield)} / ${p.maxShield}`)}${row('Mana', `${Math.floor(p.mana)} / ${p.maxMana}`)}
       ${row('Damage taken', dr ? `−${dr}%` : 'normal')}${row('Medkits', p.medkits)}${row('Run Cash', p.tickets)}
       ${SKILL_IDS.map((id) => row(`${ICON[id]} ${SKILLS[id].name}`, `Lv ${p.skills[id].level}`)).join('')}${gunRows}${ammo}</div>`;
-    const magic = p.skills.magic.level;
     const spells = SPELL_IDS.map((id) => {
-      const sp = SPELLS[id], pk = PERKS_BY_ID[id];
+      const sp = SPELLS[id];
       const cost = id === 'meteor' ? p.maxMana : sp.mana;
       const cd = p.spells.cd[id];
-      const status = !p.perks[id] ? `<em class="lock">🔒 LOCKED · needs Magic Lv ${pk.level} (you're Lv ${magic})</em>`
+      const earned = !!(p.spellUnlocks && p.spellUnlocks[id]) || (id === 'gooBolt' && s.mode !== 'campaign');
+      const status = !p.perks[id] ? `<em class="lock">🔒 LOCKED · find it in the campaign</em>`
         : id === 'manaShield' && p.spells.manaShieldOn ? '<em class="ok">ON</em>'
         : cd > 0 ? `<em class="wait">Cooldown ${cd.toFixed(1)} s</em>`
         : p.mana < cost - 0.5 ? '<em class="wait">Not enough mana</em>' : '<em class="ok">READY</em>';
-      const viaGod = p.perks[id] && magic < pk.level ? ' <em class="god">via god mode</em>' : '';
+      const viaGod = p.perks[id] && !earned ? ' <em class="god">via god mode</em>' : '';
       return `<div class="power ${p.perks[id] ? '' : 'locked'}"><kbd>${spellKey(id) || '·'}</kbd><div><b>${SPELL_ICON[id]} ${sp.name}</b> ${status}${viaGod}
-        <small>${pk.desc} · ${id === 'meteor' ? 'all mana' : sp.mana + ' mana'}${id === 'manaShield' ? ' + drain' : ''} · ${sp.cd}s cooldown</small></div></div>`;
+        <small>${id === 'meteor' ? 'all mana' : sp.mana + ' mana'}${id === 'manaShield' ? ' + drain' : ''} · ${sp.cd}s cooldown</small></div></div>`;
     }).join('');
     const perks = PERKS.filter((k) => !SPELLS[k.id]).map((k) => `<div class="power ${p.perks[k.id] ? '' : 'locked'}"><kbd>${ICON[k.skill]}</kbd><div><b>${k.name}</b> ${p.perks[k.id] ? '<em class="ok">ACTIVE</em>' : `<em class="lock">🔒 LOCKED · needs ${SKILLS[k.skill].name} Lv ${k.level} (you're Lv ${p.skills[k.skill].level})</em>`}<small>${k.desc}</small></div></div>`).join('');
     return `<div class="stats-screen">${stats}
-      <div class="skc" style="--c:#9b6bff"><div class="skh">🔮 Spells <span>Magic Lv ${magic}</span></div>${spells}<div class="src">Level Magic by casting spells, spell kills and beating Magic bosses.</div></div>
+      <div class="skc" style="--c:#9b6bff"><div class="skh">🔮 Spells</div>${spells}<div class="src">Goo Bolt is free outside the campaign. The rest are found in campaign levels.</div></div>
       <div class="skc" style="--c:#4fd1c5"><div class="skh">✨ Perks</div>${perks}</div>
     </div><div class="hint">${st.menu === 'stats' ? (pad() ? `${glyph('b')} to close` : 'Esc to close') : 'Press 5 to close'} · the game keeps running</div>`;
   }
@@ -513,7 +464,7 @@ export function createUI(root, { input, bus, project, game }) {
 
     // top bar
     text(els.tickets, 'tk', `Run Cash ${p.tickets}`);
-    html(els.resources, 'rs', RESOURCES.map((r) => `<span style="--c:${r.color}" title="${r.name}">${r.icon}${p.resources[r.id]}</span>`).join(''));
+    html(els.resources, 'rs', '');
     let wave = '';
     if (s.mode === 'campaign' && s.level) {
       const lv = s.level;

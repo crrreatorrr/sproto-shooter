@@ -25,9 +25,6 @@ export function createGameState({ seed = 12345, mode = 'sandbox', tier = 1 } = {
     const a = (i / TUNING.spawnPointCount) * Math.PI * 2;
     state.spawnPoints.push({ x: Math.cos(a) * TUNING.spawnRadius, z: Math.sin(a) * TUNING.spawnRadius });
   }
-  for (const b of TUNING.weaponBoxes) {
-    state.weaponBoxes.push({ id: nextId(state), pos: { x: b.x, y: 0, z: b.z }, radius: TUNING.boxRadius, interactRadius: TUNING.boxInteractRadius, glow: false, craft: null });
-  }
   const p = createPlayer(state, mode === 'sandbox' ? 4 : 3);
   state.players[p.id] = p;
   state.localPlayerId = p.id;
@@ -36,7 +33,7 @@ export function createGameState({ seed = 12345, mode = 'sandbox', tier = 1 } = {
 
 export function newRunStats() {
   return { kills: 0, eliteKills: 0, bossKills: 0, damageDealt: 0, damageTaken: 0, bestHit: 0, crits: 0, weakHits: 0,
-    ticketsEarned: 0, gunsFound: 0, crafts: 0, xpGained: { health: 0, gunslinger: 0, magic: 0, crafting: 0 }, time: 0 };
+    ticketsEarned: 0, gunsFound: 0, crafts: 0, xpGained: { health: 0, gunslinger: 0 }, time: 0 };
 }
 
 export function createPlayer(state, slots = 4) {
@@ -58,16 +55,17 @@ export function createPlayer(state, slots = 4) {
     recoil: { pitch: 0, yaw: 0, heat: 0 }, shotCounter: 0,
     ammo: { ...TUNING.startAmmo }, ammoCap: { ...TUNING.ammoCap },
     medkits: 1, medkitT: 0,
-    resources: { scrap: 0, springs: 0, goo: 0, plating: 0, bossCore: 0, manaCrystal: 0 },
     tickets: 0,
-    skills: { health: sk(), gunslinger: sk(), magic: sk(), crafting: sk() },
+    skills: { health: sk(), gunslinger: sk() },
     perks: {},
+    spellUnlocks: state.mode === 'campaign' ? {} : { gooBolt: true },
     spells: { cd: { gooBolt: 0, chainZap: 0, swarm: 0, manaShield: 0, meteor: 0 }, manaShieldOn: false },
     buffs: { killFrenzy: { stacks: 0, t: 0 } },
     lastDamageT: 99, lifestealBudget: 4, xpCaps: { dmg: 0, weak: 0 },
     interactBoxId: null, nearGunPickupId: null,
   };
   for (const perk of PERKS) if (perk.level === 1) p.perks[perk.id] = true;
+  if (p.spellUnlocks.gooBolt) p.perks.gooBolt = true;
   return p;
 }
 const sk = () => ({ level: 1, xp: 0, total: 0 });
