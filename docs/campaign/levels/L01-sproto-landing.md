@@ -44,7 +44,7 @@ Each enemy is taught, tested and twisted:
 | `obama` | E2, behind a barricade | E2 with a midget flank | E7, firing down from a rail; E9, on the toll canopy |
 | `flyingMidget` | E5, on a rooftop | E6 wave 3, indoors with midgets | E8, from two sides of a sealed roof; FIN part 3 |
 | `robotLaser` | E6 wave 1, mall security | E6 wave 2, at the mezzanine rail above midgets | E8 wave 4, crossing a bridge; FIN part 1 |
-| `robotShooter` | E7, guarding a generator across a 40 m deck | E8 wave 4, with Laser Bots | E9, at sniper range on the off-ramp; FIN part 1 |
+| `robotShooter` | E7, guarding a generator across a 40 m deck | E8 wave 4, with Laser Bots | E9, at long range on the off-ramp; FIN part 1 |
 | `bigObama` | E9, alone among stalled cars | — | FIN, as the Gatekeeper |
 
 **Cutscene cards**
