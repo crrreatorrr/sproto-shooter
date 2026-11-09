@@ -169,3 +169,114 @@ Not to scale. North is up. `*n` = checkpoint n, `D1`/`D2` = depots, `@` = Decoy 
    |   crash site: cache C1 (sniper)          START
    +--------------------------------------------------------------------+
 ```
+
+## 6. Sections
+
+**How to read the blockout tables**
+
+- Positions are `(x, y, n)`: `x` metres east and `n` metres **north** of the section's south-west ground corner. PLAN §4 makes `+z` south, so the kit position is `at: [x, y, -n]`.
+- Sizes are `east-west × height × north-south`. A box `y` is its centre and a cylinder or cone `y` is its base, as in `src/data/levels/kit.js`. A sphere `y` is its centre.
+- In the terrain sections (S1, S2) `y` is measured from the ground under the item; the assembler adds the terrain height.
+- `room(x0–x1, n0–n1, y, h)` is shorthand for four wall boxes 1 m thick (split at each listed door, lintel above 2.6 m) and a roof slab 0.5 m thick (§7).
+- A row with several positions is that many copies. `[L]` marks lockdown parts.
+
+### 6.1 S1: Crash Site and Outer Snowfield
+
+Footprint 300 × 520 m, terrain. The player walks north from the pod to the pass. About 106 solids.
+
+```
+  n  x 0         50        100       150       200       250       300
+ 520   #############################|^S2|###########################
+ 500   #############################|RG |###########################   RG  Mining Rig (150,512)
+ 480   #############################|= =|###########################   R1  bazooka rack
+ 460   #############################|R1 |###########################
+ 440   ###                           MP1/P4        :HP3          ###   M mast  H hut  A ice spire
+ 420   ###           AP2             :          :::              ###   P1..P4 sniper perches
+ 400   ###       T     ::: ---------gate--------:                ###
+ 380   ###         T      o::     o  :  o   ::  o        |       ###   | snow wall (east flank)
+ 360   ###      T            =:::    =   ::: =           |       ###   T pines (west flank)
+ 340   ###         T     o       o:: : ::o       o       |       ###
+ 320   ###       T           O      :O:      O                   ###   row A: duel starts here
+ 300   ###                           @*2                         ###   @ Decoy shrine
+ 280   ###                                      K                ###   K sled kennel
+ 260   ###~~~~~~~~~~~~~ ~~~D>~~~~~~~~H~~zz~~~~~~~~~~~~ ~~~~~~~~~~###   ~ creek ice  H bridge  D> drone  zz sleepers
+ 240   ###                                                       ###
+ 220   ###[tun       T    T                                      ###   [tun  ice tunnel (alarm squad)
+ 200   ###              T                                        ###
+ 180   ###         T     T     L:      C*1                       ###   L lookout + alarm 1   C camp
+ 160   ###          T          o::    :f                         ###   f fire barrel
+ 140   ###        T    T         ::  o:     o                    ###
+ 120   ###           T           o::  :  o                       ###
+ 100   ###         T               o:::                          ###
+  80   ###                   =================                   ###   Overlook Ridge, top at y 3
+  60   ###                            c                          ###   c cache C1
+  40   ###                                                       ###
+  20   ###                           P                           ###   P pod (start)
+   0   #############################################################
+```
+
+Sightlines (`:` on the map): ridge slot (150, 77) to the campfire **91 m**, to the lookout **113 m**.
+Boulder row A (150, 320) to P1 the mast deck **125 m**, to P2 the spire ledge **128 m**, to P3 the hut
+roof **135 m**. Post gate (150, 410) to the pass rig **102 m**; pass mouth to the rig **50 m**.
+
+| Id | Shape | Size (m) | Position (x, y, n) | Mat | Purpose |
+|---|---|---|---|---|---|
+| S1-ground | terrain | 300 × 520, cell 4, seed 501, amp 1.2, freq 0.012, 2 octaves | origin (0, 0, 0) | snow | Snowfield. Flat (amp 0) inside n 244–268 and inside the pass |
+| S1-cliffW, S1-cliffE | box | 12 × 14 × 520 | (6, 7, 260), (294, 7, 260) | rock | Side bounds |
+| S1-cliffS | box | 276 × 14 × 8 | (150, 7, 4) | rock | South bound |
+| S1-cliffNW, S1-cliffNE | box | 131 × 14 × 60 | (77.5, 7, 490), (222.5, 7, 490) | rock | North bound. The gap x 143–157 is the pass |
+| S1-pod | cylinder | r 1.6, h 3.2 | (150, 0, 15) | metal | Crashed drop pod. Player start (150, 0, 19) facing north |
+| S1-podFin ×3 | box | 0.5 × 2 × 2.4 | (147.8, 1, 14), (152.2, 1, 14), (150, 1, 12.6) | metal | Dressing |
+| S1-debris ×4 | box | 3 × 1.2 × 0.8 | (143, 0.6, 26), (158, 0.6, 32), (149, 0.6, 40), (144, 0.6, 50) | metal | Crouch cover along the skid line |
+| S1-cacheC1 | box | 2.4 × 1.2 × 1.4 | (156, 0.6, 54) | crate | Cache C1: sniper |
+| S1-ridgeS | ramp | 80 × 3 × 12, high end north | (150, 1.5, 66) | snow | Climb |
+| S1-ridgeTop | box | 80 × 3 × 6 | (150, 1.5, 75) | snow | Firing step, top at y 3 |
+| S1-ridgeLip ×5 | box | 6 × 1.2 × 1 | x 118, 134, 150, 166, 182 at (x, 3.6, 77.5) | snow | Parapet with four 10 m firing slots |
+| S1-ridgeN | ramp | 80 × 3 × 10, high end south | (150, 1.5, 83) | snow | Descent to the field |
+| S1-fieldRock ×6 | prefab `boulderM` | — | (140, 0, 100), (170, 0, 112), (128, 0, 122), (152, 0, 136), (186, 0, 144), (122, 0, 150) | ice | Centre and east approach to the camp |
+| S1-pine ×10 | prefab `pine` | — | (60, 100), (72, 118), (55, 135), (80, 140), (66, 160), (90, 170), (58, 185), (84, 198), (70, 215), (95, 225) | wood | West approach, hidden from the lookout |
+| S1-snowcat | prefab `snowcat` | — | (165, 0, 172), yaw 30 | metal | Camp centre, full cover |
+| S1-fire | barrel (fire) | — | (158, 0, 168) | — | Campfire. 5 Midgets dance round it |
+| S1-tent ×2 | cone, cylinder collider r 1.8 h 2 | r 2.2, h 2.6 | (171, 0, 181), (149, 0, 183) | wood | Tents |
+| S1-campCrate ×2 | prefab `crateStack` | — | (152, 0, 176), (164, 0, 162) | crate | Cover |
+| S1-mound ×2 | sphere | r 1.2 | (150, -0.4, 165), (172, -0.4, 166) | snow | Burrow points for E1-c |
+| S1-lookDeck | box | 5 × 0.5 × 5 | (120, 2.25, 186) | wood | Lookout stand, floor at y 2.5 |
+| S1-lookLeg ×4 | cylinder | r 0.3, h 2 | x 117.8 or 122.2, n 183.8 or 188.2 | wood | Legs |
+| S1-lookStairs | stairs | 1.5 × 2.5 × 4, high end south | (120, 1.25, 190.5) | wood | Climb from the north side |
+| S1-lookRail | box | 5 × 1.2 × 0.5 | (120, 3.1, 183.75) | wood | Parapet facing the ridge |
+| S1-alarm1 | prefab `alarmPole` | — | (122, 2.5, 187.5); cable to S1-relay1 box 1 × 1.5 × 1 at (120, 0.75, 205) | metal | Alarm 1. Box at y 6.5, cable 18 m |
+| S1-tunnel | door slab in a frame | door 4 × 3 × 1; 2 jambs 1 × 4 × 1, lintel 6 × 1 × 1 | (12.5, 1.5, 215) | metal | E1-R comes out here |
+| S1-creekIce | box | 276 × 0.5 × 12 | (150, -0.2, 256) | ice | Creek, top at y 0.05. `slick` zone |
+| S1-bermS ×4 | box | 65, 63, 78, 50 long × 1.2 × 1.5 | x 44.5, 114.5, 193, 263 at (x, 0.6, 249.25) | snow | South bank. Gaps at x 77–83, 146–154, 232–238 |
+| S1-bermN ×4 | box | same four | same x at (x, 0.6, 262.75) | snow | North bank, same gaps |
+| S1-bridge | box | 3 × 0.6 × 18 | (150, 1.5, 256) | wood | Log bridge, top at y 1.8, off the slick ice |
+| S1-bridgeRamp ×2 | ramp | 3 × 1.8 × 5 | (150, 0.9, 244.5) high end north, (150, 0.9, 267.5) high end south | wood | On and off |
+| S1-bridgeRail ×2 | box | 0.5 × 1.2 × 18 | (148.25, 2.4, 256), (151.75, 2.4, 256) | wood | Crouch rails |
+| S1-leanTo | box roof and back wall | 6 × 0.5 × 3 and 6 × 1.6 × 0.5 | (165, 1.85, 265.5), (165, 0.8, 267.25) | wood | Sleepers E2-b |
+| S1-kennel | box with a door | 4 × 1.6 × 2 | (205, 0.8, 285) | wood | Sled kennel, E2-c |
+| S1-shrine | cylinder dais r 3 h 0.5, cylinder obelisk r 0.5 h 3, disc r 5 | — | (150, 0, 300), (150, 0.5, 300), (150, 0.05, 300) | stone, gold, neon | `spellShrine` Decoy. Checkpoint *2 |
+| S1-shrineStone ×4 | cylinder | r 0.6, h 2.5 | (146, 0, 296), (154, 0, 296), (146, 0, 304), (154, 0, 304) | ice | Ring, also cover |
+| S1-practiceLight | prefab `searchlight`, harmless | — | (150, 0, 312), sweeps the 20 m gap to row A | metal | Decoy practice: it buzzes when it holds you |
+| S1-rowA ×3 | prefab `boulderL` | — | (110, 0, 320), (150, 0, 320), (190, 0, 320) | ice | Duel cover, full height |
+| S1-rowB ×4 | prefab `boulderM` | — | (90, 0, 340), (130, 0, 340), (170, 0, 340), (210, 0, 340) | ice | 20 m dash from row A |
+| S1-rowC ×3 | prefab `rockSlab` | — | (110, 0, 360), (150, 0, 360), (190, 0, 360) | rock | Full cover |
+| S1-rowD ×4 | prefab `boulderM` | — | (95, 0, 378), (135, 0, 378), (165, 0, 378), (205, 0, 378) | ice | |
+| S1-rowE ×3 | prefab `snowBerm` | — | (120, 0, 395), (150, 0, 395), (180, 0, 395) | snow | Crouch cover 15 m from the fence |
+| S1-flankPine ×6 | prefab `pine` | — | (50, 330), (58, 350), (46, 368), (60, 385), (52, 400), (66, 410) | wood | West flank to the spire |
+| S1-flankWall | box | 1.5 × 2.2 × 60 | (250, 1.1, 360) | snow | East flank, full cover to the hut |
+| S1-fenceW, S1-fenceE | box | 44 × 2.4 × 0.5 | (122, 1.2, 410), (178, 1.2, 410) | metal | Post fence. Gate gap x 144–156 |
+| S1-mast | cylinder | r 0.6, h 24 | (150, 0, 445) | metal | Radio mast |
+| S1-mastDeck (P1) | box, 4 rail boxes 5 × 1.2 × 0.5 | 5 × 0.5 × 5 | (150, 13.75, 445) | metal | Perch P1, floor y 14 |
+| S1-crowsNest (P4) | box, 4 rail boxes 3 × 1.2 × 0.5 | 3 × 0.5 × 3 | (150, 21.75, 445) | metal | Perch P4, floor y 22. Audit File 1 |
+| S1-mastLift | mover | 1.5 × 0.5 × 1.5 | (152.5, 0, 445), stops at y 0, 14, 22 | metal | `onTrigger` lift. First lift of the level |
+| S1-spire (P2) | cylinder r 4 h 9, cone r 4 h 6 on top | — | (70, 0, 425), (70, 9, 425) | ice | Ice spire |
+| S1-spireLedge | box; ramp 2 × 6 × 12 behind, high end south | 4 × 0.5 × 3 | (70, 5.75, 420); ramp (76, 3, 430) | ice | Perch P2, floor y 6. Secret weapon cache in an alcove at (70, 6, 424) |
+| S1-hut (P3) | box; stairs 1.5 × 4 × 6; roof rail 10 × 1.2 × 0.5 | 10 × 4 × 8 | (225, 2, 432); stairs (231.75, 2, 425); rail (225, 4.6, 428.25) | concrete | Perch P3, roof y 4. Door on the west face (220, 1.3, 433) for E3-R |
+| S1-alarm3 | alarm box on the hut's west wall | — | (219.7, 2, 430); cable up the wall to (219.7, 4, 436) | metal | Alarm 3 |
+| S1-passSlab ×3 | prefab `rockSlab` | — | (146, 0, 470), (154, 0, 482), (146, 0, 494) | rock | Cover in the pass |
+| S1-rigPad | cylinder; 2 sandbag boxes 3 × 1.2 × 0.8 | r 2.2, h 0.6 | (150, 0, 512); bags (146.5, 0.6, 508), (153.5, 0.6, 508) | concrete | Mining Rig E3-d |
+| S1-passGate | door | 14 × 5 × 1 | (150, 2.5, 518.5) | metal | Opens when E3 is cleared. Checkpoint *3 |
+
+**Mechanisms in S1:** `cache` C1; `barrel` (fire) at the camp; `alarm` 1 and 3; `door` S1-tunnel, hut door, S1-passGate; `hazardZone slick` on the creek (x 12–288, n 250–262); `spellShrine`; harmless `searchlight`; `mover` S1-mastLift; `rack` R1 bazooka at (146, 0, 462).
+
+**Transition out:** seamless. The pass gate opens and S2 loads behind it. The first whiteout starts 10 s after the player enters S2.

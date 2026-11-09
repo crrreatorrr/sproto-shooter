@@ -18,6 +18,8 @@ Status: **plan only.** Follows `docs/campaign/PLAN.md` §14. Replaces "L8: Gover
 | Sections | 6: `S1` Lobby and Cubicle Farm, `S2` Security Vault, `S3` Atrium, `S4` Server Floor, `S5` Executive Floor, `SB` The Roof |
 | Lockdown arenas (PLAN §5.6) | 3: **[L1]** Cubicle Farm (S1), **[L2]** Atrium (S3), **[L3]** the roof arena (SB) |
 | Checkpoints, depots | 10 checkpoints, 2 depots (Mail Room in S3, Executive Lounge in S5) |
+| Unlockables | Spell **Blink** (shrine, S2), reward spell **Lock-On** (Glowie), one **Mana Battery** (S1), Golden Bonk *Red Tape* (S5), 3 Audit Files. No new gun type |
+| Loot and ammo | Racks are **Rare**. Drop odds, guaranteed drops and all 42 ammo boxes, 8 crates and 3 depot crates are in §12 |
 | Finale | **Boss: Glowie**, 5 parts, 4 min 45 s, in `SB` / `SB-BOSS`. Reward spell: Lock-On |
 | Pressure rules | `maxAlive` 14, at most 5 threat roles at once, 2 elites per section, 2 hazard kinds overlapping |
 
@@ -51,10 +53,12 @@ horizon as the player climbs.
 
 | Item | Detail |
 |---|---|
-| Guns expected | Carried loadout from L07. World racks (tier 8, common): **MG** at the lobby security desk, **shotgun** in the break room, **sniper** at the atrium kiosk, **bazooka** and a spare **MG** standee inside `SB` |
+| Guns expected | Carried loadout from L07. World racks give **Rare** guns, the L08 base tier (PLAN §7.3): **MG** at the lobby security desk, **shotgun** in the break room, **sniper** at the atrium kiosk, **bazooka** and a spare **MG** standee inside `SB`. Every gun uses finite ammo, the MG included (§12.4) |
 | Spells held on arrival (11) | Goo Bolt, Chain Zap, Yeet, Sproto Swarm, Mana Shield, Decoy, Meteor Bonk, Yoink, Magic Carpet, Pump It, Vape Cloud |
-| New spell | **Blink** ("Tax Evasion"): 25 mana, 4 s cooldown, teleport 9 m along the aim, 0.3 s invulnerable. Shrine in the vault, S2 (58, 0, 43), checkpoint CP3, at about 6 min |
+| Spell unlockable | **Blink** ("Tax Evasion"): 25 mana, 4 s cooldown, teleport 9 m along the aim, 0.3 s invulnerable. Shrine in the vault, S2 (58, 0, 43), checkpoint CP3, at about 6 min. Kept for good, in every mode |
 | Reward spell | **Lock-On**, from Glowie |
+| Mana Battery | Hidden at the back of lift car LB in the lobby, S1 (48, 0.5, 25.5): +10 max mana, +0.5 mana/s |
+| New gun types | None. Guns come from racks, drops, two lockdown chests, the boss and one secret cache (§12.3) |
 | New enemies | `nullifier` (S1-E1, alone), `shieldDrone` (S1-E2 wave 3), `cabinetMimic` (S2-E4, alone) |
 | New mechanisms | Laser grids, alarms with reinforcements here, revolving doors, pneumatic tubes, a fight on a moving lift, sprinkler slick, `nullZone`, the halon purge |
 
@@ -64,7 +68,7 @@ horizon as the player climbs.
 |---|---|---|---|---|
 | 1 | **Through laser grids** | Vault exit grid G5 (always on), straight after the shrine | G7 in front of breaker 2 (S4), the laser-hall grids on a replay | G5: none needed, the player always has Blink there. G7: wait for the 1.5 s off window |
 | 2 | **Across gaps and glass rails** | The 7 m gap in the y 5 bridge (S3), once the null dish NZ-3 is shot | Balcony to balcony, onto the lift from a ring | Walk round the north ring through timed grid G6 (+40 m) |
-| 3 | **Through glass partitions to flank or reach a switch** | Glass offices in S5: get behind a shielded Agent, reach alarm AL4 | AV closet switch SW-5 in the boardroom; Audit File 2 behind G5b | Use the office door; shoot both projectors instead of SW-5 |
+| 3 | **Through glass partitions to flank or reach a switch** | Glass offices in S5: get behind a shielded Agent, reach alarm AL4 | The doorless AV booth beside the boardroom door (switch SW-5); Audit File 2 behind G5b | Use the office door; shoot both projectors instead of SW-5 |
 
 What Blink does **not** do, shown on the shrine's board and proved by a dummy shutter next to it:
 it does not pass walls, closed doors or a locked **lockdown shutter** (the cast fizzles and the mana
@@ -107,7 +111,7 @@ The ride, the hold and the boss are stated times (PLAN §3 "hold, ride: stated p
 | | **Total** | | **1,292 s** | **21 min 32 s** |
 
 Par is 20:00, so the budget is 1:32 over and inside the ±2:00 window. A fast replay at 70% is
-about 15 min. Each alarm that runs out adds 30 to 35 s (§8.12); all four add 2:11.
+about 15 min. Each alarm that runs out adds 30 to 36 s (§8.12); all four add 2:11.
 
 **What makes the numbers fit.** A clear-all level of 217 enemies with Glowie Agents in every room
 costs about 29 minutes by the PLAN §3 table. This level fits because 98 enemies are inside three
@@ -212,7 +216,9 @@ z60 +---------+---------------------------------------+
 | `s1-bar` | box ×5 | 5.3 × 1.2 × 0.5 (×3); 10 × 1.2 × 0.5 (×2) | z 52: x 40, 48, 56; x 29.5, 66.5 | metal | Crouch cover between detectors. Leaves 4 m flank lanes along both walls |
 | `s1-pl` | `office.planter` ×6 | 4 × 1.2 × 1.5 | (28, 0, 47), (68, 0, 47), (40, 0, 44), (56, 0, 44), (30, 0, 35), (66, 0, 35) | stone | Crouch cover |
 | `s1-bench` | box ×4 | 3 × 0.6 × 1 | (44, 0.3, 56.5), (52, 0.3, 56.5), (24, 0.3, 40), (72, 0.3, 42) | wood | Low cover |
-| `s1-secdesk` | box | 5 × 1.2 × 1.5 | (70, 0.6, 37) | wood | Security desk. Rack **`mg-lobby`** at (72, 0, 34.5), MG ammo crate at (74, 0, 37), alarm **AL1** on the wall at (75.8, 1.6, 40) |
+| `s1-secdesk` | box | 5 × 1.2 × 1.5 | (70, 0.6, 37) | wood | Security desk. Rack **`mg-lobby`** at (72, 0, 34.5), bullets box b2 at (74, 0, 37), alarm **AL1** on the wall at (75.8, 1.6, 40) |
+| `s1-cache` | cache: box + padlock target | 2 × 2 × 0.8; padlock 40 HP | (86, 1, 54.5) | metal | **Secret weapon cache**: the gun cabinet in the security office. One Legendary gun |
+| `s1-battery` | pick-up | — | (48, 0.5, 25.5) | neon | **Mana Battery**, at the back of lift car LB. The car stays open after squad C |
 | `s1-cop0` | `office.copier` ×2 | 1 × 1.1 × 0.7 | (22, 0, 31), (74, 0, 31) | metal | Shock barrels beside the lift doors |
 | `s1-esc` | ramp | 4 × 6 × 12 | (10.5, 3, 51.5) | metal | Escalator. Low end z 45.5 (y 0), high end z 57.5 (y 6) |
 | `D-1` | door | 0.5 × 2.8 × 3 | (20, 1.4, 45.5) | metal | Turnstile gate. Opens on SW-1 |
@@ -234,13 +240,13 @@ z60 +---------+---------------------------------------+
 | `SH-1a` | `office.shutter` | 3 × 3.5 × 0.6 | (14.25, 7.75, 45) | metal, neon trim | **[L1] entry.** Threshold line (`disc` strip, neon) at z 39 |
 | `SH-1b` | `office.shutter` | 0.6 × 3.5 × 2.4 | (69.5, 7.75, 34.2) | metal, neon trim | **[L1] exit** to the break room |
 | `s1-break` | box ×2 | 21 × 4.5 × 0.5 | (80.5, 8.25, 22), opening x 75–77.4; (80.5, 8.25, 46) | concrete | Break room, x 70–91, z 22–46 |
-| `s1-break-f` | box; cylinder ×4; box ×3 | 8 × 1 × 1; r 0.7, h 0.8; 1.2 × 2 × 1 | (86, 6.5, 44.5); (76, 6, 28), (82, 6, 28), (76, 6, 38), (82, 6, 38); (90.2, 7, 27), (90.2, 7, 30), (90.2, 7, 33) | wood, metal | Counter, tables, vending machines. Rack **`sg-break`** at (86, 6, 43), shell crate at (84, 6, 43) |
+| `s1-break-f` | box; cylinder ×4; box ×3 | 8 × 1 × 1; r 0.7, h 0.8; 1.2 × 2 × 1 | (86, 6.5, 44.5); (76, 6, 28), (82, 6, 28), (76, 6, 38), (82, 6, 38); (90.2, 7, 27), (90.2, 7, 30), (90.2, 7, 33) | wood, metal | Counter, tables, vending machines. Rack **`sg-break`** at (86, 6, 43), shells box b8 at (84, 6, 43) |
 | `s1-copy` | box; box; `office.copier` ×4 | 0.5 × 4.5 × 20; 0.6 × 2 × 6 | (83.25, 8.25, 11), opening z 9–11.4 = door **D-1B**; (76, 7, 14); copiers at (72, 6, 4), (72, 6, 8), (78, 6, 3), (81, 6, 3) | concrete, metal | Copy room, x 70–83, z 1–21 |
 | `s1-stairB` | stairs | 3 × 5 × 12 | (87.5, 8.5, 11) | concrete | Stair B. Low end z 17 (y 6), high end z 5 (y 11). Exit door to S2 at (87.5, 11, 1.5) |
 
 Mechanisms: `RD-1`, `RD-2` (rotator); `SW-1` reception switch (hold 1.5 s) → `D-1`; alarm `AL1`
-(lobby, 30 s); `lockdown L1` {entry `SH-1a`, exit `SH-1b`, encounter `S1-E2`}; 8 copier barrels
-(shock); door `D-1B` opens with `SH-1b`.
+(lobby, 30 s); `lockdown L1` {entry `SH-1a`, exit `SH-1b`, encounter `S1-E2`}; 12 copier barrels
+(shock: 2 lobby, 6 farm, 4 copy room); door `D-1B` opens with `SH-1b`.
 Transition: the door at the top of stair B. The stairwell is the load tunnel to S2.
 
 ### 6.2 S2: Security Vault (F2)
@@ -293,8 +299,8 @@ z52 +--------+---------------------+---+-----------------------+-------+
 | `s2-cage` | box ×2 | 12 × 2.6 × 0.5; 0.5 × 2.6 × 7 | (10, 1.3, 44); (16, 1.3, 50.5) | glass | Evidence cage, x 4–16, z 44–54. Door gap z 44.25–47 |
 | `s2-cagedesk` | box | 3 × 0.9 × 1.2 | (9, 0.45, 50) | wood | Keycard **KC-1** lies on it |
 | `NZ-2` | target: cylinder | r 0.5, h 3; 150 HP | (20, 0, 34) | neon | **Null pylon.** Field r 12: covers the lockers. Destroy it with guns |
-| `s2-crate` | ammoCrate ×5 | — | (20, 0, 46), (30, 0, 46), (36, 0, 30), (6, 0, 34), (38, 0, 50) | crate | Real crates |
-| `m1`, `m2` | mimic spots | — | (25, 0, 46), (39, 0, 40) | — | m1 sits between two real crates; m2 beside D-V |
+| `s2-crate` | ammoCrate ×2; ammo box ×2 | — | crates c2 (20, 0, 46), c3 (30, 0, 46); boxes b13 (36, 0, 30), b14 (6, 0, 34) | crate | Real ammo inside the null field (§12.4) |
+| `m1`, `m2` | mimic spots | — | (25, 0, 46), (39, 0, 40) | — | m1 sits between the two real crates and looks the same; only its hum gives it away. m2 is beside D-V |
 | `DR-1..3` | disc ×3 | r 0.6 | (20, 0, 30), (20, 0, 50), (36, 0, 38) | metal | Floor drains: burrow points |
 | `D-V` | door | 1 × 3.4 × 3.4 | (44, 1.7, 43) | metal, with a disc r 1.7 on it | Round vault door. Opens on KC-1 |
 | `s2-v-n` | box | 24 × 4.5 × 1 | (58, 2.25, 30.5) | metal | Vault north wall (vault is x 46–70, z 31–54) |
@@ -328,7 +334,7 @@ z16 |  .    pl                    pl    .    |   z16 |R  .               |      
 z20 |  .                                .    |   z20 |R  +=====Y15 bridge=|===(BigO)===+ R  |
 z24 |  .       pl      ___      pl      .    |   z24 |R  .               |            . R  |
 z28 GL .              /   \             .    |   z28 GL  .              Y10            . R  |
-z32 GL .             | FTN |            .    |   z32 GL  +==Y5 bridge= [gap] =Y5 br.==+ R AL-
+z32 GL .             | FTN |            .    |   z32 GL  +==Y5 bridge= [gap] =Y5 br.==+ R  |
 z36 |  .              \___/             .    |   z36 |R  .       (NZ-3 dish under Y10) . R  |
 z40 |  .       pl               pl      .    |   z40 |R  .               |            . R  |
 z44 |  . [esc up, x 16-28]  [LIFT 6x6]  .    |   z44 |R  ld        [LIFT dock, y 10]  T2 R  |
@@ -347,7 +353,7 @@ z76 +-------------+
 | `s3-w-n`, `s3-w-s` | box ×2 | 74 × 21 × 1 | (40, 10.5, 3.5); (40, 10.5, 58.5), opening x 12.5–15.5 for SH-3a | concrete | Hall north and south walls |
 | `s3-w-w`, `s3-w-e` | box ×2 | 1 × 21 × 54 | (3.5, 10.5, 31); (76.5, 10.5, 31) | glass above y 1.2 | Hall side walls: the skyline |
 | `s3-sky` | box | 72 × 0.5 × 54 | (40, 21.25, 31) | glass | Skylight: the lockdown lid. **SP-SKY** = ropes and flyers through four hatches at (22, 20), (58, 20), (22, 42), (58, 42) |
-| `s3-mail` | box ×3 + box + cylinder | walls 0.5 × 4.5; table 6 × 0.9 × 2; r 1, h 3 | room x 4–26, z 59–78; table (18, 0.45, 66); tube arrival (10, 0, 74) | concrete, wood, glass | **Mail Room.** `depot` at (20, 0, 72). Checkpoint CP4 |
+| `s3-mail` | box ×3 + box + cylinder | walls 0.5 × 4.5; table 6 × 0.9 × 2; r 1, h 3 | room x 4–26, z 59–78; table (18, 0.45, 66); tube arrival (10, 0, 74) | concrete, wood, glass | **Mail Room.** `depot` at (20, 0, 72): depot crate D1, health station, spell loadout bench, shop terminal. Checkpoint CP4 |
 | `s3-cafe` | box | 50 × 4.5 × 19 | (51, 2.25, 68.5) | concrete | Closed café block: fills the rest of the south strip |
 | `s3-ringN` | box ×3 (y 5, 10, 15) | 63 × 0.5 × 9 | (35.5, L − 0.25, 8.5) | stone | North ring, x 4–67 (the NE corner is the stair core) |
 | `s3-ringS` | box ×3 | 72 × 0.5 × 9 | (40, L − 0.25, 53.5) | stone | South ring |
@@ -362,7 +368,7 @@ z76 +-------------+
 | `NZ-3` | target: sphere | r 0.7; 120 HP | (40, 8.8, 31), hung under the Y10 bridge | neon | **Null dish.** Field r 10 centred (40, 5, 31): covers the gap and the fountain. Shoot it |
 | `s3-pl` | `office.planter` ×8 | 4 × 1.2 × 1.5 | y 0: (22, 18), (58, 18), (22, 26), (58, 26), (22, 40), (58, 40), (30, 34), (50, 34) | stone | Floor cover (8 pieces) |
 | `s3-bench` | box ×6 | 3 × 0.6 × 1 | y 0.3: (30, 14), (50, 14), (16, 31), (64, 31), (34, 42), (48, 40) | wood | Low cover |
-| `s3-kiosk` | box | 4 × 1.2 × 2 | (30, 0.6, 51) | wood | Security kiosk. Rack **`sn-atrium`** at (30, 0, 53.5), sniper crate at (33, 0, 53.5) |
+| `s3-kiosk` | box | 4 × 1.2 × 2 | (30, 0.6, 51) | wood | Security kiosk. Rack **`sn-atrium`** at (30, 0, 53.5), sniper-rounds box b17 at (33, 0, 53.5) |
 | `s3-esc` | ramp + box | 12 × 5 × 3; 3 × 0.5 × 3 | (22, 2.5, 47.5), low end x 28, high end x 16; landing (14.5, 4.75, 47.5) | metal | Escalator from the floor to the y 5 rings (south-west corner) |
 | `s3-ne` | stairs ×3 + walls | 3 × 5 × 8 each | core x 67–76, z 4–13; flights 0→5, 5→10, 10→15, switchback | concrete | North-east stair core. Enemy route between levels and the player's second way up. Floor door **SP-NE** at (67, 0, 9) |
 | `s3-offN` | box ×3 (y 5, 10, 15) | 40 × 4.5 × 4 | (40, L + 2.25, 6) | concrete | North ring offices. Doors **N-a** (30, L, 8), **N-b** (50, L, 8) |
@@ -456,12 +462,12 @@ z16 |------g   dk  dk  dk  dk  dk              g--------|
 z20 | W2   g      pl   cop cop   pl            g  E2 AL4|
 z24 |------g   o                     o         g--------|
 z28 | W3   g   dk  dk  dk  dk  dk              g   E3   |
-z32 |      g  cop            o                 g        |
+z32 |      g  cop            o [AV SW-5]       g        |
 z36 +------+---------D-5a----------------+-----+--------+
 z40 | LOUNGE   |  sb   BOARDROOM    sb   |  CEO SUITE   |
 z44 | depot D2 D-5b PJ1 [==TABLE==] PJ2  D   desk       |
 z48 |          |                         |      +mirror-+
-z52 |          |      podium    [AV SW-5]|      | *BONK |
+z52 |          |      podium             |      | *BONK |
 z56 +--D-5c----+---------cat-------------+------+-------+
 z60 | stair D up to SB ->   |          g = glass partition   dk = desk
 ```
@@ -473,7 +479,7 @@ z60 | stair D up to SB ->   |          g = glass partition   dk = desk
 | `s5-land` | box ×2 | 0.5 × 4.5 × 8 | (44, 2.25, 4), (56, 2.25, 4) | concrete | Stair C landing, x 44–56, z 0–8. Arrival (51, 0, 3). Checkpoint CP8 |
 | `s5-pool-n` | box | 80 × 4.5 × 0.5 | (44, 2.25, 8) | concrete | North wall of the office pool (pool is x 4–84, z 8–36). Openings: landing door x 48.8–51.2; lift lobby door **XL** x 28.8–31.2; closet door x 62–64.4 |
 | `s5-xl` | `office.liftCar` + box ×2 | lobby x 24–36, z 2–8 | walls (24, 2.25, 5), (36, 2.25, 5) | metal | Executive lift lobby: `door` spawns |
-| `s5-closet` | box ×2 | 0.5 × 4.5 × 6 | (60, 2.25, 5), (66, 2.25, 5) | concrete | Supply closet, x 60–66, z 2–8: shell and MG ammo crates at (62, 0, 4), (64, 0, 4) |
+| `s5-closet` | box ×2 | 0.5 × 4.5 × 6 | (60, 2.25, 5), (66, 2.25, 5) | concrete | Supply closet, x 60–66, z 2–8: shells box b31 at (62, 0, 4), bullets box b32 at (64, 0, 4) |
 | `s5-gW` | box | 0.5 × 4.5 × 28 | (20, 2.25, 22) | glass | Front of the west offices. Door openings z 11.8–14.2, 20.8–23.2, 29.8–32.2 |
 | `s5-gW-div` | box ×2 | 16 × 4.5 × 0.5 | (12, 2.25, 17), (12, 2.25, 26) | glass | Dividers: offices **W1, W2, W3** |
 | `s5-gE` | box | 0.5 × 4.5 × 28 | (68, 2.25, 22) | glass | Front of the east offices, same door openings |
@@ -494,10 +500,10 @@ z60 | stair D up to SB ->   |          g = glass partition   dk = desk
 | `s5-podium` | box | 1.5 × 1.2 × 1 | (44, 0.6, 53) | wood | The elite pair starts here |
 | `s5-br-pil` | cylinder ×2 | r 0.5, h 4.5 | (30, 0, 50), (58, 0, 42) | pillar | Full cover |
 | `PJ-1`, `PJ-2` | target ×2 | box 0.6 cube; 80 HP each | (36, 4.1, 46), (52, 4.1, 46), on the ceiling | neon | Projectors. Together they emit **NZ-5**: the whole boardroom |
-| `s5-av` | box ×2 | 6 × 4.5 × 0.5; 0.5 × 4.5 × 4 | (61, 2.25, 52); (58, 2.25, 54) | glass | AV closet, x 58–64, z 52–56. No door. Switch **SW-5** inside at (62, 1.2, 55): turns NZ-5 off |
+| `s5-av` | box ×3 | 4.5 × 4.5 × 0.5; 0.5 × 4.5 × 3.5 (×2) | (50, 2.25, 32.5); (48, 2.25, 34.25), (52, 2.25, 34.25) | glass | AV booth in the pool, against the boardroom wall, x 48–52, z 32.5–36. No door. Switch **SW-5** inside at (50, 1.2, 35.3): turns NZ-5 off. The booth is outside the field, so a Blink from the pool reaches it |
 | `s5-ceo` | box + box ×2 | desk 4 × 0.9 × 1.5; sofas 3 × 0.8 × 1 | (75, 0.45, 42); (70, 0.4, 52), (74, 0.4, 38) | wood | CEO suite, x 66–84, z 36–56. Empty of enemies |
 | `s5-bath` | box ×2 + fragileWall | 6 × 4.5 × 0.5; 0.5 × 4.5 × 6; mirror 0.5 × 2.6 × 2 | (81, 2.25, 50); (78, 2.25, 53); mirror in it at (78, 1.3, 53) | concrete; mirror = glass | Private bathroom, x 78–84, z 50–56. **Golden Bonk** at (81.5, 0.5, 53.5) behind the mirror |
-| `s5-lounge` | box ×3 | bar 6 × 1.1 × 1; sofas 3 × 0.8 × 1 | (10, 0.55, 38.5); (8, 0.4, 50), (16, 0.4, 50) | wood | Executive lounge, x 4–24, z 36–56. `depot` at (13, 0, 45) |
+| `s5-lounge` | box ×3 | bar 6 × 1.1 × 1; sofas 3 × 0.8 × 1 | (10, 0.55, 38.5); (8, 0.4, 50), (16, 0.4, 50) | wood | Executive lounge, x 4–24, z 36–56. `depot` at (13, 0, 45): depot crate D2, health station, spell loadout bench, shop terminal |
 | `D-5c` | door | 2.4 × 2.8 × 0.5 | (8, 1.4, 56) | metal | Roof stair door. Opens on KC-2 |
 | `s5-stairD` | stairs | 12 × 5 × 3 | (13, 2.5, 59) | concrete | Stair D, x 4–20, z 57–62. Low end x 7 (y 0), high end x 19 (y 5) |
 
@@ -529,10 +535,10 @@ z36 | .      c        mast        c     .   |
 z40 | .        gr          gr           .   |
 z44 |  .         c    c    c    c      .    |
 z48 |   .     A3                A2    .     |
-z52 |     .           [AC]          .       |
+z52 |     .      D3   [AC] BZ       .       |
 z56 |        .                   .          |
 z60 |           ' . . GATE . . '            |
-z64 |      [BZ] rk   hp   mg  [MG]          |
+z64 |                hp   b38 [MG]          |
 z68 |              staging                  |
 z72 |            +--stair D--+       (WT)   |
 z76 |            |  CP10 *   |              |
@@ -544,8 +550,9 @@ z80 +------------+-----------+--------------+
 | `sb-deck` | box | 80 × 1 × 80 | (40, −0.5, 40) | concrete | Roof deck |
 | `sb-parapet` | box ×4 | 80 × 1.2 × 0.5; 0.5 × 1.2 × 80 | edges, y 0.6 | concrete | Parapet. `killPlane` at y −8 outside it |
 | `sb-head` | box ×3 + lid | walls 0.5 × 3 high; lid 12 × 0.5 × 9 | bulkhead x 34–46, z 70–79 | concrete | Stair D head. Arrival (40, 0, 76). Checkpoint CP10. Door north at (40, 0, 70) |
-| `bz-roof` | rack | — | (34, 0, 65) | — | **Bazooka rack.** Rocket crates at (31, 0, 65) and inside the ring at (40, 0, 55) |
-| `mg-roof` | standee | — | (46, 0, 65) | — | Tier-8 MG on a fallen Sproto standee, for a canonical-start run. MG crates at (49, 0, 65) and (40, 0, 13) |
+| `bz-roof` | rack | — | (44, 0, 55), inside the ring | — | **Bazooka rack** (Rare), beside the south AC unit. Rockets boxes b39 at (47, 0, 55), b40 at (40, 0, 15) |
+| `D3` | depot crate | two stacked crates, neon sign | (36, 0, 54), inside the ring | crate | Unlimited ammo for the whole fight (PLAN §7.4, boss sections). Not a full depot: no bench, no shop |
+| `mg-roof` | standee | — | (46, 0, 65) | — | Rare MG on a fallen Sproto standee, for a canonical-start run. Bullets boxes b38 at (49, 0, 65), b41 at (24, 0, 34), b42 at (56, 0, 34) |
 | `sb-hp` | health pick-up ×2 | — | (40, 0, 65), (40, 0, 58) | — | Before and just inside the gate |
 | `SH-Ba` | `office.shutter` | 6 × 4 × 0.6 | (40, 2, 61.5) | metal, neon trim | **[L3] entry gate.** Drops 1 s after the player crosses z 56 (6 m inside the ring) |
 | `sb-ring` | fire ring + lid | r 27.8 → 26.8 → 25.5; lid at y 20 | centre (40, 0, 34) | lava (emissive) | Arena wall (burns) and lockdown lid. There is no exit door: the fight ends the level |
@@ -679,7 +686,7 @@ after the snipers are dead or marked). Hazards: slick floor and the static null 
 (r 10 over the fountain and the bridge gap), overlapping. Anti-stall: snipers that outlive their
 wave by 12 s are marked and walk down the NE stairs. End: SH-3b opens, the lift descends, CP5
 saves, the reward appears at the dock (40, 10, 40): chest, ammo crate c4, Overshield. Weapons: rack
-`sn-atrium` inside the room (why: the two snipers, the null dish, AL-style targets at range). Ammo
+`sn-atrium` inside the room (why: the two snipers and the null dish). Ammo
 inside: b17, b18, b19, b20. Estimate 133 s (2.2 min).
 
 ### 8.6 S3-E6 Freight Lift
@@ -757,8 +764,8 @@ b32, b33 (b33 is in the pool). Estimate 62 s.
 
 Space: 40 × 20 m room with a 16 m table. Objective: `clearAll`; KC-2 appears on the table.
 Approaches: D-5a then left or right of the table. NZ-5 covers the room until both projectors are
-shot or SW-5 is pressed (Blink into the AV closet from the pool side of the glass is not possible
-through NZ-5: the closet is reached from the CEO suite side, through its outer glass wall).
+shot or SW-5 is pressed. SW-5 is in the doorless glass AV booth beside D-5a, on the pool side and
+outside the field: a player who reads the room Blinks into the booth before opening the door.
 
 | Squad | Trigger | Method | From | Enemies | Teaches or tests |
 |---|---|---|---|---|---|
@@ -907,7 +914,7 @@ Total 285 s (4 min 45 s). Adds: 3 + 5 + 8 + 6 + 7 = **29**, never more than 8 al
 | NZ-2 | S2 Evidence Lockers | Pylon at (20, 0, 34), 150 HP | 12 m | Destroying the pylon (guns, a copier-style blast) |
 | NZ-3 | S3 atrium centre: the fountain and the Y5 bridge gap | Dish under the Y10 bridge, 120 HP | 10 m | Shooting the dish. The sniper rack is 25 m from it |
 | NZ-4 | S4 core and the mouths of the cross-aisle | The mainframe | 14 m | Pulling breakers BR-1 and BR-2 |
-| NZ-5 | S5 Boardroom, wall to wall | Projectors PJ-1, PJ-2, 80 HP each | the room | Shooting both projectors, or switch SW-5 in the AV closet |
+| NZ-5 | S5 Boardroom, wall to wall | Projectors PJ-1, PJ-2, 80 HP each | the room | Shooting both projectors, or switch SW-5 in the AV booth outside the door (Blink in) |
 | NZ-B | SB ring, part 4 only | Null Mast, 3 nodes of 90 HP | 30 m | Destroying the three nodes |
 | mobile | Wherever a Nullifier Agent stands (S1-E1, S2-E3, S4-E8, S5-E9, S5-E10, AL4) | The Agent | 9 m | Killing him; a poise break drops it for 1.5 s |
 
@@ -930,8 +937,8 @@ has its ammo inside (§12.4), because the player has guns only there.
 
 ### 11.4 Explosives
 
-Copier barrels (shock, 14 placed: 8 in S1, 3 in S5, and 3 more may be added in S2's checkpoint room
-in tuning). Agent flashbangs can be shot in the air or thrown back. Bazooka rockets in SB for the
+Copier barrels (shock, 15 placed: 12 in S1, 3 in S5; S2's checkpoint room can take 3 more in
+tuning). Agent flashbangs can be shot in the air or thrown back. Bazooka rockets in SB for the
 dishes and the pods. No charge packs, gas lines or mines in this level.
 
 ## 12. Checkpoints, depots, weapons, loot, ammo, power-ups, secrets
@@ -1049,7 +1056,7 @@ Totals: **42 ammo boxes** (23 bullets, 15 shells, 2 sniper rounds, 2 rockets), *
 **3 depot crates**.
 
 **Ammo budget.** Guns and enemies scale together with tier, so the sum is done in tier-1 numbers.
-Enemy HP to remove: scripted enemies 9,290 + elite extra 990 + alarm squads 1,095 + boss bars
+Enemy HP to remove: scripted enemies 9,260 + elite extra 990 + alarm squads 1,095 + boss bars
 3,488 + boss parts 1,070 + emitters and alarm boxes 590 = **about 16,500**. Assume guns do all of
 it (no spells, no copiers, nothing left to the purge or the lift), the MG does 50%, the shotgun
 40%, other guns 10%.

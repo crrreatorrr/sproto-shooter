@@ -747,14 +747,16 @@ Total 250 s (4:10). Bodies are exposed for 180 s and hold 4,326 HP, so the fight
 | Gravity well | S4 Clearing House | **yes** |
 | Kill plane and void rescue | every section | from L02 |
 | Lockdown (PLAN §5.6) | L1 Trading Pit, L2 Clearing House, L3 the Exchange | from L01 |
-| Doors, checkpoints, depots, racks, ammo crates | throughout | from L01 and L02 |
+| Doors, checkpoints, depots (PLAN §7.7), racks, ammo boxes and crates | throughout | from L01 and L02 |
 | Destructible targets | S3 gate pylon, S5 nodes, SB pylons and breakers | used here for the first time in the campaign order unless L01 to L03 add one |
 | Conduit (Chain Zap) | c1 to c4 | from L02 or L03 |
 | Spell shrine, mana bloom | S3 Stream Head | shrine object from L01 |
 | Power-ups | Infinite Fuel (S5 roof, SB part 5): **new**. Overshield (S4 hb5) | |
 | Explosives | none placed. Balloon Midgets and Boom Midgets are the level's chain explosions | |
 
-## 12. Checkpoints, depots, weapons, power-ups, secrets
+## 12. Checkpoints, depots, weapons, loot, ammo, power-ups, secrets
+
+### 12.1 Checkpoints
 
 | CP | Where | When | Time | Gap |
 |---|---|---|---|---|
@@ -771,21 +773,126 @@ Total 250 s (4:10). Bodies are exposed for 180 s and hold 4,326 HP, so the fight
 
 The 2:30 rule holds everywhere outside sealed fights. L2 (2:39 plus the walk in) and the boss (4:10) cannot hold a checkpoint, because PLAN §5.6 restarts a lockdown from wave 1.
 
+### 12.2 Depots, racks, power-ups, secrets
+
 | Kind | Item | Where | Why |
 |---|---|---|---|
-| Depot | Depot A | S3 (8, 0, 60) | mid level, before the flak corridor |
-| Depot | Depot B | S5 vault (123, 0, 74) | before the finale |
-| Rack | Machine gun `mg-pit` | S2 (50, 0, 94) | bitbug flocks in `S2-E3` |
-| Rack | Sniper `sn-mines` | S4 (16, 0, 94) | Balloon Midgets in `S4-E6`, Jet Obamas in `S4-E7` |
-| Rack | Bazooka `bz-duo` | SB (6, 0, 66) | pylons, breakers and the Duo in `SB-BOSS` |
-| Ammo | sniper | S4 (16, 0, 106), b9, (150, 0, 106); S5 (34, 0, 92) | within 30 m of the rack and of each use |
-| Ammo | rockets, bullets | SB (9, 0, 66), (14, 0, 54) | boss |
+| Depot | Depot A: depot crate, health station, spell loadout bench, ticket shop terminal, checkpoint | S3 (8, 0, 60) | mid level, before the flak corridor |
+| Depot | Depot B: the same five things | S5 vault (123, 0, 74) | before the finale |
+| Rack | Machine gun `mg-pit`, Uncommon | S2 (50, 0, 94), inside L1 | bitbug flocks in `S2-E3` |
+| Rack | Sniper `sn-mines`, Uncommon | S4 (16, 0, 94) | Balloon Midgets in `S4-E6`, Jet Obamas in `S4-E7` |
+| Rack | Bazooka `bz-duo`, Uncommon | SB (6, 0, 66) | pylons, breakers and the Duo in `SB-BOSS` |
 | Power-up | Infinite Fuel | S5 roof (60, 17, 80); SB podium in part 5 | node loop; the chase |
 | Power-up | Overshield | S4 hb5 (177, 20, 100) | reward for taking the high block in L2 |
 | Golden Bonk | **Moon Boots** (gravity × 0.6) | S2, inside hollow candle K12 at (222, 29, 80), entered from the top at y 48 | the only red candle on the climb with no wick |
+| Mana Battery | +10 max mana, +0.5 mana/s | S5, ledge under the south rim of the hub island at (60, -9, 114) | fly off the south edge and back under it |
+| Secret weapon cache | **Duck Gun** (Legendary) and two rubber boxes | S4, on top of the Clearing House lid at (177, 30.6, 100) | the lid is solid from above: climb 25 m from b9 or from the exit deck |
 | Audit File 1 | "Block #0 was mined by a midget on a dare." | S1, ledge under h2 at (136, -6, 54) | fly under the second hop |
 | Audit File 2 | "The spread is the fee. The fee is the point." | S3, island behind the south wall at (158, -1, 104) | leave the lane between two candles |
 | Audit File 3 | "Dust: balances too small to move, so they float." | S4, top of b4 at (74, -4, 74) | the lowest block, hidden from the deck by b3 |
+
+No depot has a Weapon Box. Enemies drop ammo, health, mana, tickets and guns only.
+
+### 12.3 Loot table
+
+Tier odds for enemy gun drops in L04 (PLAN §7.3). Base tier for racks and floors: **Uncommon**.
+
+| Common | Uncommon | Rare | Epic | Legendary |
+|---|---|---|---|---|
+| 30% | 45% | 22% | 3% | 0% |
+
+| Guaranteed drop | Source | Where it appears | What |
+|---|---|---|---|
+| 3 rack guns | `mg-pit`, `sn-mines`, `bz-duo` | S2 (50, 0, 94); S4 (16, 0, 94); SB (6, 0, 66) | fixed type, Uncommon |
+| Elite 1 | "Head Trader", elite obama, `S2-E4` | on K14, where it dies | one gun, rolled one tier step up |
+| Elite 2 | "Priority Fee" pod, `S3-E5` | on its island p4 (208, 10, 48) | one gun, one step up |
+| Elite 3 | "Whale", elite jetObama, `S4-E7` | falls to the Clearing House floor | one gun, one step up |
+| Elite 4 | elite Shooter Bot, `S5-E8` | on the Ledger roof | one gun, one step up |
+| L1 chest | Trading Pit cleared | (66, 0, 104) | one gun, Uncommon or better, of a type the player does not carry |
+| L2 chest | Clearing House cleared | (204, 0, 96) | one gun, Uncommon or better, of a type the player does not carry |
+| Boss | the Duo, when the last fighter falls | podium (70, 1, 60) | two guns at Rare, one boss gun (Ray Gun or Big Bullets). This is also the L3 lockdown reward |
+| Secret cache | `s4.duckCache` | (177, 30.6, 100) | Duck Gun, Legendary. First place the type can be found |
+
+13 guaranteed guns. Random gun drops keep today's chances per kill (2% midget types, 4% flyingMidget, 6% obama types, 10% heavies). Proposed for the new types: bitbug 0.5% each, balloonMidget 0, jetObama 6%, flakPod 8%. Expected random guns over the level: about 3.
+
+### 12.4 Ammo boxes, ammo crates, depot crates
+
+Small boxes: bullets 60, shells 12, sniper 8, rockets 3, rubber 16 (PLAN §7.4).
+
+| Section | Type | Position | Rule it serves |
+|---|---|---|---|
+| S1 | bullets | (8, 0, 56) | CP1 |
+| S1 | bullets | (26, 0, 64) | 18 m before `S1-E1` |
+| S1 | bullets | (83, 0, 56) | CP2 |
+| S1 | bullets | (132, 3, 54), west edge of h2 | start of `S1-E2` |
+| S1 | shells | (190, 8, 66) | Mempool deck, close-range fight with squad D |
+| S2 | bullets | (36, 0, 96) | CP3, 11 m before the L1 threshold |
+| S2 | bullets | (50, 0, 106) | inside L1, 12 m from the MG rack |
+| S2 | bullets | (80, 0, 104) | inside L1 |
+| S2 | bullets | (96, 0, 104) | CP4, 16 m before `S2-E4` |
+| S2 | bullets | (200, 42, 104), on K11 | mid climb |
+| S3 | bullets | (40, 0, 60), on the chain | CP5, 14 m before FP1 |
+| S3 | bullets | (100, 2, 66), on R1 | start of the corridor |
+| S3 | sniper | (142, 2, 48), on R2 | sniping FP3 and FP4 |
+| S3 | bullets | (186, -2, 62), on R3 | before FP4 |
+| S3 | bullets | (252, -2, 66) | Stream Mouth, the gate pylon |
+| S4 | bullets | (8, 0, 104) | CP6 |
+| S4 | sniper | (16, 0, 106) | 12 m from the sniper rack; `S4-E6` |
+| S4 | sniper | (96, 2, 96), on b6 | `S4-E6` squad C |
+| S4 | sniper | (130, 6, 104), on b9 | before L2 |
+| S4 | bullets | (142, 0, 96) | CP7, 11 m before the L2 threshold |
+| S4 | bullets | (150, 0, 106) | inside L2 |
+| S4 | bullets | (204, 0, 106) | inside L2 |
+| S4 | sniper | (159, 10, 82), on hb1 | inside L2 |
+| S4 | bullets | (219, 0, 94) | CP8 |
+| S4 | rubber ×2 | (176, 30.6, 101) (178, 30.6, 101) | beside the Duck Gun cache |
+| S5 | bullets | (9, 0, 77) | arrival, 17 m before the plaza |
+| S5 | sniper | (34, 0, 92) | nodes from range |
+| S5 | bullets | (60, 16, 76), Ledger roof | the elite and the nodes |
+| S5 | bullets | (92, 0, 84) | east plaza |
+| S5 | bullets | (118, 0, 84) | CP9, in the vault |
+| SB | bullets | (14, 0, 54) | CP10 |
+| SB | rockets | (9, 0, 66) | 3 m from the bazooka rack |
+| SB | bullets | (62, 0, 44), tile (1,1) | inside L3 |
+| SB | bullets | (78, 0, 76), tile (3,3) | inside L3 |
+| SB | rockets | (78, 0, 44), tile (3,1) | inside L3 |
+
+**36 ammo boxes**: 25 bullets, 6 sniper, 2 rockets, 2 rubber, 1 shells. The three boxes on SB tiles sit on tiles that never drop, clear of the slider rows.
+
+| Crate | Position | Notes |
+|---|---|---|
+| Ammo crate (3 uses, to 50% of cap) | S2 (66, 0, 108) | L1 reward |
+| Ammo crate | S4 (204, 0, 100) | L2 reward |
+| Ammo crate | SB podium (70, 1, 60) | L3 reward, with the boss drop |
+| Depot crate (unlimited) | S3 (8, 0, 60) | Depot A |
+| Depot crate | S5 (123, 0, 74) | Depot B |
+| Depot crate | SB vestibule (18, 0, 60) | top up before the gate |
+| Depot crate | SB centre tile (74, 0, 64.5) | inside the lockdown, so a starter-gun boss run cannot run dry |
+
+**3 ammo crates, 4 depot crates.**
+
+**Where drops land.** There is no floor under most kills in this level, so L04 sets `drops: 'voidSafe'` for ammo, health, mana, tickets and guns:
+a drop falls at 12 m/s onto the first solid below it; if nothing solid is below it, it flies to the nearest walkable surface within 8 m; if there is none, it flies to the player at 14 m/s and is picked up. Inside a lockdown it always ends on the room floor. A drop is never pulled into the gravity well's kill sphere: one that reaches the hole is thrown onto the east floor strip. The 30 s despawn starts when the drop comes to rest.
+
+### 12.5 Ammo budget for bullets
+
+Bullets are the headline ammo: flocks, flak pods and the Duo all eat them, and the machine gun is no longer endless.
+
+**Ask.** The worst case: every kill in the level is made with the machine gun. Bullets fired per enemy at tier-matched damage (10 per bullet at tier 1, 50% hits on the ground and on targets, 40% on flyers):
+bitbug 5, balloonMidget 3, boomMidget 6, midget 8, flyingMidget 8, robotLaser 12, obama 14, manaLeech 14, riotMidget 16, hexAcolyte 18, jetObama 20, flakPod 32, robotShooter 34; elite × 2.5; pylon 20, node 17, breaker 27; the two bosses 2,845 HP ÷ 10 ÷ 0.5 = 569.
+
+**Drops.** Ammo chance per kill: midget, boomMidget 0.4; flyingMidget, riotMidget, manaLeech 0.5; obama, robotLaser, jetObama, hexAcolyte 0.7; flakPod, robotShooter 0.85; bitbug 0.15 each (proposed); balloonMidget 0. A pack is 45 bullets. Assumed: 60% of packs are bullets (smart drops, a player with two or three guns) and 80% are collected, so one expected drop is worth 0.6 × 0.8 × 45 = 21.6 bullets.
+
+| Stretch | Ask (bullets) | Boxes | Crates and depot crates | Expected drops | Supply | Ratio |
+|---|---|---|---|---|---|---|
+| Start → Depot A (E1 104, E2 92, E3 162, E4 107) | 465 | 9 × 60 = 540 | L1 crate, one use: 240 | 20.3 drops × 21.6 = 438 | 1,218 | 2.6 |
+| Depot A → Depot B (E5 226, E6 27, E7 234, E8 260) | 747 | 12 × 60 = 720 | Depot A 480; L2 crate, one use: 240 | 16.4 × 21.6 = 354 | 1,794 | 2.4 |
+| Depot B → end (boss: adds 218, pylons 60, breakers 54, bodies 569) | 901 | 4 × 60 = 240 | Depot B 480; SB centre depot crate, counted once: 480 | 8.4 × 21.6 = 181 | 1,381 | 1.5 |
+| **Level** | **2,113** | 1,500 | 1,920 | 973 | **4,393** | **2.1** |
+
+The bullets a player carries in are not counted. A depot crate is counted as one full carry (480) although it is unlimited; the vestibule crate is not counted at all. Without any depot crate the level still supplies 2,953 bullets, 1.4 times the ask, and the "never stuck" supply drone (PLAN §7.4) covers the rest. In real play the sniper, spells and chain blasts take about a third of the kills, so the true ask is near 1,400.
+
+Sniper rounds: 6 boxes × 8 = 48 placed against 9 balloons and about 10 long shots at pods and Jet Obamas. Rockets: 2 boxes × 3 = 6 plus the depot crates against 5 targets and the Duo.
 
 ## 13. Difficulty
 
@@ -793,8 +900,8 @@ Harder than L03: tier 4 (HP and damage × 1.52 against × 1.32); `maxAlive` 12 f
 
 | Setting | Changes on top of C §3.14 (Easy 0.7 HP / 0.6 damage, Heroic 1.3 / 1.4) |
 |---|---|
-| Easy | Void rescue costs 10%. Flak bursts have 3 shells and drain 10 fuel. L1 wave 4 and L2 wave 4 are removed (27 and 24 enemies stay inside the 25-enemy rule for L1 only, so L2 keeps wave 4 with a normal Jet Obama). E5 has no flock. Boss: the second drop of part 2 is removed; the Midget moves every 16 s |
-| Heroic | Flak pods lead 100% and reach 55 m (elite 65 m). E2 squad B gains an elite flyingMidget. L1 waves 2 and 3 each gain bitbug ×6. L2 wave 3 has two flak pods (second hatch at (152, 0, 126)). E8 squad C arrives on `onKills(5)`. Boss: part 3 has a third breaker on tile (2,4); the Midget moves every 9 s; Liquidation Pits also spawn on raised tiles |
+| Easy | Void rescue costs 10%. Flak bursts have 3 shells and drain 10 fuel. L1 wave 3 has no Boom Midgets (27 enemies). L2 wave 4 is a normal Jet Obama. E5 has no flock. Boss: the second drop of part 2 is removed; the Midget moves every 16 s. Ammo boxes hold 1.5× |
+| Heroic | Flak pods lead 100% and reach 55 m (elite 65 m). E2 squad B gains an elite flyingMidget. L1 waves 2 and 3 each gain bitbug ×6. L2 wave 3 has two flak pods (second hatch at (152, 0, 126)). E8 squad C arrives on `onKills(5)`. Boss: part 3 has a third breaker on tile (2,4); the Midget moves every 9 s; Liquidation Pits also spawn on raised tiles. The L1 and L2 reward crates have one use |
 
 ## 14. Engine needs
 
@@ -814,8 +921,10 @@ Needs that PLAN §10 does not name:
 | 8 | Player state "airborne" exposed to enemy AI, and a fuel-drain effect on the player | `flakPod` |
 | 9 | Pacing estimate rows for `flakPod`, the L03 placeholder enemies, and a flying speed (8 m/s) | The validator in E14 |
 | 10 | `flight` transitions (C §3.19) are not listed under any E id | S2 → S3 |
+| 11 | Void-safe drops (§12.4): a drop lands on a solid, flies to a surface, or flies to the player; drops are exempt from the gravity well's kill sphere | Most kills happen over the void |
+| 12 | Drop-table rows for `bitbug`, `balloonMidget`, `jetObama`, `flakPod` without resources (§12.3, §12.5) | PLAN §7.1 removes resource drops; these types have no table today |
 
-No spell number changes. Mana Shield taking the flak fuel drain is a `flakPod` rule.
+No spell number changes. Mana Shield taking the flak fuel drain is a `flakPod` rule. The machine gun losing `infiniteReserve` is PLAN §7.4's change, not this level's; the ammo budget in §12.5 assumes it.
 
 ## 15. Bot route and tests
 
@@ -840,6 +949,9 @@ No spell number changes. Mana Shield taking the flak fuel drain is a `flakPod` r
 - Gravity well: bends enemy projectiles, never the player's.
 - Boss: parts in order for both kill orders (Obama first, Midget first); rule 2 puts the Midget on the Moon Pad; bars are independent; the fight is won by the autopilot with the starter machine gun (finite ammo) and level-1 skills on 3 seeds; same seed and command log give the same state hash.
 - Void rescue in SB lands on the centre tile.
+- Drops: a kill at any point of any encounter volume leaves a drop the player can reach; none is lost to the kill plane or the well.
+- Ammo: every rack has a box of its type within 30 m; every checkpoint has a box; each lockdown has two boxes inside; the §12.5 ratio is at least 1.5 for each stretch; the starter-gun boss run never has every gun empty for 5 s.
+- Loot: each elite, chest, the boss and the cache give their guaranteed gun; no drop table of this level names a resource.
 
 ## 16. Build tasks
 
@@ -855,7 +967,7 @@ No spell number changes. Mana Shield taking the flak fuel drain is a `flakPod` r
 10. Lockdowns L1 and L2: `lockdown` mechanisms, named spawn points, wave tables, rewards, checkpoints.
 11. `flakPod` data and behaviour (with the E8 engine owner), then the three C §3.12 flyers at their spec numbers.
 12. `SB-BOSS`: part script (five parts, two rules, add schedule, tile drop), on top of the Duel port of the Duo.
-13. Checkpoints, Golden Bonk, three Audit Files, signs, `critPath` neon.
+13. Checkpoints, Golden Bonk, Mana Battery, the Duck Gun cache, three Audit Files, signs, `critPath` neon. Then the 36 ammo boxes, 3 ammo crates, 4 depot crates and the loot rows of §12.
 14. Bot route from §15. Autopilot green in god mode, deterministic for a fixed seed.
 15. Tests from §15. Then a tuning pass from a human playthrough: level data only.
 16. PR notes: the canonical boss entry moves to `SB` / `SB-BOSS` and boss HP changes, so the campaign fingerprint is re-pinned in the batch pin PR (PLAN §12). Wave Mode, Sandbox and PvP pins must not move.

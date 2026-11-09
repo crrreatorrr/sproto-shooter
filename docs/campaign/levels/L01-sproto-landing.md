@@ -1140,8 +1140,8 @@ Weak-spot multipliers are ignored, so the asks are on the high side.
 | Ammo crates (one use each counted, to 50% of cap) | 4 × 150 = 600 | 4 × 20 = 80 |
 | Depot crates (two, to the cap) | 2 × 300 = 600 | 2 × 40 = 80 |
 | **Placed total** | **2,652 = 2.0 ×** | **286 = 6.0 ×** |
-| Enemy drops: about 64 packs expected (E1 has none), smart-split 60 : 40, half picked up | 19 × 45 = 861 | 13 × 8 = 102 |
-| **Total** | **3,513 = 2.6 ×** | **388 = 8.1 ×** |
+| Enemy drops: about 64 packs expected (E1 has none), smart-split 60 : 40, half picked up | 19 × 45 = 855 | 13 × 8 = 104 |
+| **Total** | **3,507 = 2.6 ×** | **390 = 8.1 ×** |
 
 Both pass the 1.5× rule on placed ammo alone. Shells are generous on purpose: L01 teaches the
 shotgun and should not punish missing with it. The tightest stretch for bullets is the finale: it
@@ -1163,4 +1163,94 @@ None. Overshield is first found in L02.
 | Audit File 2 `S2-file-2` | S2 (66, 13.7, 50), on the water tank | `S2-ac-1` (1.2 m), then a double jump | Tickets. *"Memo: the mall bots are leased from Glowie. Do not scratch them."* |
 | Audit File 3 `S4-file-3` | S4 (4, 4, 57), the P1 pocket | Behind `S4-P1-van`, off the critical path | Tickets. *"Parking fine: B. Obama (Big). Vehicle: none. Bays occupied: four."* |
 
-<!-- PART-5 -->
+## 13. Difficulty
+
+**Against the level before.** There is none: L01 sets the floor that L02 raises.
+
+| Rule (PLAN §3) | L01 | L02 for comparison |
+|---|---|---|
+| `maxAlive` | 8, flyers included | 10 |
+| Threat roles at once | 2 | 3 |
+| Elites | None | 1, in the finale |
+| Hazards during fights | None | 1 kind |
+| Enemy types | 6, each met alone first | 3 new on top of these |
+| Enemy total | 139 | 160 to 180 |
+| Lockdowns | 3, at the minimum size of 25 enemies each | 3 or 4 |
+| Finale | Mini-boss, 3 parts, 3.0 min | Boss, 3 to 5 parts, 4 to 5.5 min |
+
+**How it rises inside the level.** Squad size goes 4 → 5 → 6. Sides go from one (E1 squad A) to
+two (E1, E3) to two floors (E6) to all sides and the sky (E8). Roles go from one (E1) to two (E2
+onward). Tools needed go from none (E1) to cover (E2), the shotgun (E3), a spell (E4), aim at
+flyers (E5), movement between floors (E6), flanking a shield (E9), all of them (FIN). Intensity by
+beat is in §4.
+
+**Easy and Heroic**
+
+| Setting | Easy | Normal | Heroic |
+|---|---|---|---|
+| Squad sizes | Fodder −25% a squad, rounded down, never under 2 | As written | Fodder +30% a squad, rounded up |
+| `maxAlive` | 6 | 8 | 10 |
+| Lockdown waves | Next wave on `onRemain(1)` or 30 s | `onRemain(2)` or 25 s | `onRemain(3)` or 20 s |
+| Elites | None | None | One: the E9 squad C Shooter Bot (it drops a gun one tier up) |
+| E4 hold | 20 s | 25 s | 30 s |
+| Generators | 150 HP | 200 HP | 250 HP; a generator cannot be hurt while its Laser Bot guard lives |
+| Gatekeeper HP | 1,280 (×0.8) | 1,600 | 2,000 (×1.25) |
+| Gatekeeper vent | 4.5 s every 10 s | 3.5 s every 12 s | 2.5 s every 12 s |
+| Starting reserve | 72 bullets | 36 bullets | 36 bullets |
+| Ammo boxes | Bullets boxes give 90 | 60 | 60; enemy ammo packs are half as likely |
+| Enemy damage and HP | ×0.75, ×0.9 | ×1 | ×1.25, ×1.15 |
+
+## 14. Engine needs
+
+**Used from PLAN §10**
+
+| Id | What L01 needs from it |
+|---|---|
+| E1 | All of it: solids for the player, enemies and shots; step-up; the void rescue volume in S5 |
+| E2 | Hitscan stopped by solids and by `glass`; line of sight; alert states for the `placed` squads in E1, E2, E5, E7, E9 |
+| E3 | Nav grid on four parking decks joined by ramps; a nav link for the catwalk `drop`; flyers steering inside the mall atrium and under the roof lid |
+| E4 | Sections S1 to S6, squads with all the §5.5 triggers used here, objectives `clearAll`, `hold`, `destroy`, `reach`, and three lockdowns |
+| E5 | `sphere`, `cone`, `disc`; materials `concrete`, `wood`, `glass`, `neon`, `gold`, `toxic`; prefab instancing |
+| E6 | Door, switch, barrel, mover (lift, bridge), depot, destructible target, hold zone, rotator, void rescue |
+| E7 | `midget`, `flyingMidget`, `obama`, `bigObama` on the archetype runner with collision and cover; `robotLaser` and `robotShooter` moved from Wave Mode behaviour to the same runner |
+| E10 | Spell shrine, the Goo Bolt rework (puddle, jam), `gooGear`, mana bloom |
+| E11 | Barrels with real damage and elements |
+| E12 | A part script for the Gatekeeper: parts, `onBossHp` and `onPartDestroyed` adds, the kneel, the vent schedule |
+| E13 | Checkpoints, depots, objective marker, boss bar with part pips, cutscene cards, carry-over to L02 |
+| E14 | Validator, pacing estimate, map export, autopilot bot |
+| E15 | L01 has no canonical boss, so its data moves no pin. The Goo Bolt rework (E10) and finite machine-gun ammo (E17) do, as PLAN §12 says |
+| E16 | Depots without a Weapon Box; no resource drops; no Magic levels |
+| E17 | Tier odds, lockdown chests, the mini-boss and cache drops, gun-type unlocks, ammo boxes and crates, smart drops, the supply drone |
+
+Not used: E8 (no placeholder enemies), E9 (no jetpack).
+
+**Needed and not in PLAN §10**
+
+| # | Need | Why |
+|---|---|---|
+| 1 | **Input prompts**: a trigger volume or event that shows a one-line hint ("Jump", "Slide", "AMMO BOX", "LOW AMMO") | The movement course, the ammo lesson, the shrine. E13 lists toasts and markers but not prompts |
+| 2 | **Per-level starting ammo** (`startAmmo: { bullets: 36 }`) and a **per-encounter `noAmmoDrop` flag** | The ammo lesson in E1 |
+| 3 | **Squads that share a wave** in a lockdown, with a delay inside the wave | E6 and E8 use two spawn points a wave |
+| 4 | **A spawn door that is also the lockdown exit** (`S4-L2-out` opens for wave 4's enemies and stays shut for the player) | E8 |
+| 5 | **Mover started by a wave** (`startOn: 'S4-E8.wave3'`) | The bridge |
+| 6 | **A lockdown driven by a boss part script** instead of waves | FIN |
+| 7 | **A mini-boss entry that is not a canonical boss**: its own boss bar and drops, outside `CANONICAL_BOSSES` | `gatekeeper` |
+| 8 | **A hitbox zone with `onlyWhen: 'venting'`** and a damage multiplier for a whole part (the overclock field) | FIN part 3. `onlyWhen: 'stunned'` already exists |
+| 9 | **Void rescue with no penalty** (`penalty: 0`) | S5. C §3.9 takes 25% of max health |
+| 10 | **A one-way lid**: enemies using the `air` method pass in through a lockdown's lid | E8, FIN |
+
+**Where this document and PLAN.md disagree**
+
+| # | PLAN | Problem | What this document does |
+|---|---|---|---|
+| 1 | §4: local origin at the south-west corner, `+z` south | Every z in a section would be negative | Uses the north-west corner |
+| 2 | §6.2: "a new profile has Goo Bolt only"; and L01 teaches Goo Bolt at a shrine | Both cannot be the player's first Goo Bolt | Works either way: nothing before the shrine needs a spell, and the shrine still refills, saves and starts E4 |
+| 3 | §5.6: 25 to 45 enemies and at least 2 min a lockdown; §3: L01 has 120 to 140 enemies and `maxAlive` 8 | Three lockdowns take 75 of 139 enemies and 7.5 of 19 minutes | Each lockdown sits at the 25-enemy floor. The other six encounters are 8 to 12 enemies each |
+| 4 | §5.6: next wave on `onRemain(2)`; §3: two roles at once on L01 | Two stragglers of one wave can overlap the next wave's two roles | Accepts up to two stragglers of a third role. Waves are ordered so they are usually the same role |
+| 5 | §5.6: `onRemain(2)` | A wave of one or two enemies starts the next wave at once, so a single heavy cannot be taught alone inside a lockdown | The Shooter Bot is taught in E7, the Big Obama in E9, both outside lockdowns |
+| 6 | §5.6: dying restarts a lockdown at wave 1; §3: checkpoints at most 2.5 min apart; §9: a mini-boss lasts 2.5 to 3.5 min | The 3-minute finale has no checkpoint inside it | Left as it is. A checkpoint after part 1 would fix it if the playtest asks |
+| 7 | §3: seconds table | No row for destructible targets, and no rule for a hold | Generators are counted as stated mechanism time; the hold is counted as running during its fight |
+| 8 | §7.3: "Sniper: first found in L02" | The first brief for this level allowed a sniper rack near the end | No sniper in L01 |
+| 9 | §7.4: start with 240 bullets (`TUNING.startAmmo`) | The ammo lesson needs a short reserve | L01 starts with 36 in reserve (need 2 above) |
+
+<!-- PART-6 -->
