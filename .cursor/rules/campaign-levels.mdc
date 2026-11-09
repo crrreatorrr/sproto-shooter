@@ -1,5 +1,7 @@
 ---
 description: Sproto Shooter campaign (levels, level engine, Sproto Duel bosses). Use when working on campaign levels, collision/nav, mechanisms, jetpack, enemies, bosses or sections.
+# Planned, not yet created: src/sim/mechanisms, src/sim/movement, src/sim/ai, src/sim/duelBoss,
+# src/sim/rewardSpells.js, src/render/cinematic (see docs/codex/C-*.md). Kept so the rule fires once they exist.
 globs: src/data/levels/**,src/sim/level/**,src/sim/campaign/**,src/sim/mechanisms/**,src/sim/movement/**,src/sim/ai/**,src/sim/duelBoss/**,src/sim/rewardSpells.js,src/data/duelBosses.js,src/render/level/**,src/render/cinematic/**,tests/levels/**
 alwaysApply: false
 ---
@@ -19,8 +21,9 @@ Ground rules: `CODEX_PLAN.md`.
 4. **Static level data lives outside `state`** (`getLevelRuntime(level, section)`); only dynamic data goes in `state.level`.
 5. **Load timing never touches the sim.** Section transitions wait for the `transitionDone` command.
    Only the current section (+ the next preloading) is ever in memory.
-6. **Sproto Duel bosses use the same attacks.** Copy from `~/games/sproto-duel` (`src/campaign/levels.ts`, `src/config.ts`);
-   Duel wins over the plan. Only `DUEL_DMG_K` and `DUEL_HP_K` convert. Keep the parity fixture test green.
+6. **Sproto Duel bosses use the same attacks.** Copy from the sproto-duel repo (`src/campaign/levels.ts`, `src/config.ts`);
+   Duel wins over the plan. Only `DUEL_DMG_K` and `DUEL_HP_K` convert. Those constants and the parity fixture test are
+   specified in `docs/codex/C-bosses-sproto-duel.md` and are not in the code yet; add them with the first Duel-boss PR.
 7. **Every new sim event** goes in `src/game/eventCoverage.js`.
 8. **File ownership:** a level PR touches only its level files/tests/cards; engine changes are separate PRs.
 9. **Fairness:** no spawns within 15 m or in view (except `placed`); lethal hazards telegraph ≥ 0.8 s; sniper lasers ≥ 1.2 s.
