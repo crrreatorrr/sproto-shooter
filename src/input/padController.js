@@ -4,7 +4,7 @@
 import { createPadTracker, createRepeater, menuDirection, padStyleFromId, wasPressed } from './gamepad.js';
 import { createPadGameplay } from './padGameplay.js';
 import { aimAssist, assistTargets } from './aimAssist.js';
-import { PAD_MENU } from '../data/gamepad.js';
+import { PAD_MENU } from './padConfig.js';
 import { eyePos } from '../sim/collision.js';
 import { nearBox } from '../sim/economy.js';
 import { gunRange } from '../data/guns.js';

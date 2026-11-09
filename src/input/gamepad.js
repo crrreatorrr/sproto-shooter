@@ -1,7 +1,7 @@
 // Gamepad reading with pure, testable mapping logic: deadzones, response curve, edge detection,
 // latch-on-connect, tap/hold, menu auto-repeat and spatial menu focus. No DOM here: the caller passes
 // `navigator.getGamepads()` (or fakes in tests). Glyph and style helpers follow sproto-duel's Gamepad.ts.
-import { PAD, PAD_BUTTONS } from '../data/gamepad.js';
+import { PAD, PAD_BUTTONS } from './padConfig.js';
 
 export { PAD_BUTTONS };
 export const BUTTON_INDEX = Object.fromEntries(PAD_BUTTONS.map((b, i) => [b, i]));

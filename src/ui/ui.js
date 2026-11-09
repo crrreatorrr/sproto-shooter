@@ -9,7 +9,7 @@ import { WAVES } from '../data/waves.js';
 import { BOSSES } from '../data/enemies.js';
 import { compareGuns, sellValue, salvageYield, dpsOf, REROLLABLE } from '../sim/guns.js';
 import { canAfford, mergeCost, recipeUnlocked, nearBox } from '../sim/economy.js';
-import { PAD_BINDINGS } from '../data/gamepad.js';
+import { PAD_BINDINGS } from '../input/padConfig.js';
 import { padGlyph } from '../input/gamepad.js';
 import { keyLabel } from '../input/input.js';
 

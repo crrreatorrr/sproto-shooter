@@ -2,16 +2,16 @@
 
 A wacky first-person loot shooter built with Three.js, inspired by Borderlands. You fight waves of Sproto Duel characters (midget swarms and bitcoin-shooting Obamas) across Sproto Duel's stages, grab procedurally generated guns, craft better ones at Weapon Boxes, and level four skills just by playing.
 
-This is the **mechanics sandbox** stage. Characters, stages and boss portraits are reused from [sproto-duel](https://github.com/crrreatorrr/sproto-duel) (`public/assets/`). All four guns (machine gun, shotgun, sniper, bazooka) use toy gun models (`public/assets/models/guns/`). Campaign progress is saved in the browser. There is no multiplayer yet (see `PLAN.md` §9).
+This is the **mechanics sandbox** stage. Characters, stages and boss portraits are reused from [sproto-duel](https://github.com/crrreatorrr/sproto-duel) (`public/assets/`). All four guns (machine gun, shotgun, sniper, bazooka) use toy gun models (`public/assets/models/guns/`). Campaign progress is saved in the browser. **Free 1v1** (title screen) is the first multiplayer mode: two equal fighters, fixed guns and ammo, no loot, no perks and no Tickets. Its lobby offers offline practice against a bot, a local two-client mock, and a free match queued on the hub. The hub does not host a Shooter PvP match yet, so the queue cannot start a match there. `docs/shooter-pvp-protocol.md` is the server contract.
 
-A visit from the metaverse hub arrives as `/#t=<ticket>`. The client redeems it with `@metaverse/hub-sdk` (game id `sproto-shooter`), shows the hub ticket balance on the title screen, and Return to Hub leaves through `/#from=sproto-shooter`. Opened on its own, the game still runs and the chip stays `--`. Run tickets (the loot currency) are a different number from hub tickets. The plaza gate for this id is a separate change in metaverse-hub (SDK 0.6.2, migration `0038_sproto_shooter`, the fifth ring, The Range). Until that lands, the hub cannot mint a ticket for this game.
+A visit from the metaverse hub arrives as `/#t=<ticket>`. The client redeems it with `@metaverse/hub-sdk` (game id `sproto-shooter`), shows the hub ticket balance on the title screen, and Return to Hub leaves through `/#from=sproto-shooter`. Opened on its own, the game still runs and the chip stays `--`. Run tickets (the loot currency) are a different number from hub tickets. The hub registers this id (migration `0039_sproto_shooter_coop`; `0038` was never used) and opens it from the fifth plaza ring, The Range. The hub also has the server side of verified boss-clear receipts (`shooter.run.issue` / `shooter.run.submit`, migration `0040_shooter_boss_receipt`, `docs/shooter-server-contract.md`). This client does not call those RPCs yet, so it banks no hub Tickets.
 
 ## Run it
 
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 30 unit/sim tests (Vitest)
+npm test           # Vitest: unit, sim, golden, goja and browser tests (156 in 23 files on 2026-11-08; needs Go and Playwright Chromium)
 npm run build      # static build in dist/
 ```
 
@@ -30,7 +30,7 @@ Hub (same shape as the other games):
 | Area | Details |
 |---|---|
 | Arena & stages | 90 m circle, 16 spawn points, 2 Weapon Boxes. Sproto Duel stages wrap it: wave 1 Los Angeles, wave 2 Ashen Caldera, wave 3 The Void, sandbox Aurora Glacier (sky, floor, stone, pillar and prop models) |
-| Modes | **Wave Mode**: 3 waves (20 / 33 / 50 enemies, mostly midget swarms), the Jade Dragon ends wave 1, the Blue Monster wave 2, Mega Tinubu + Hex Sahil together end wave 3, 15 s shop break between waves, victory leads to the next tier (1–10). **Sandbox**: spawn anything from the debug panel. **Boss Fight** (`?mode=boss&boss=monster`; also `dragon`, `sprotoBeast`, `megaSproto`, `hexAuditor`): pick any boss from the title screen and fight it alone with real damage and one of every gun. **Test Range** (`?mode=test`): the sandbox with every gun type in slots 1–4, infinite ammo, god mode and target dummies; starting Wave Mode afterwards resets you to the starting gun |
+| Modes | **Campaign**: The Great Sproto Audit, ten levels built on the arena engine (`src/data/levels/`). **Free 1v1**: see above. **Wave Mode**: 3 waves (20 / 33 / 50 enemies, mostly midget swarms), the Jade Dragon ends wave 1, the Blue Monster wave 2, Mega Tinubu + Hex Sahil together end wave 3, 15 s shop break between waves, victory leads to the next tier (1–10). **Sandbox**: spawn anything from the debug panel. **Boss Fight** (`?mode=boss&boss=monster`; also `dragon`, `sprotoBeast`, `megaSproto`, `hexAuditor`): pick any boss from the title screen and fight it alone with real damage and one of every gun. **Test Range** (`?mode=test`): the sandbox with every gun type in slots 1–4, infinite ammo, god mode and target dummies; starting Wave Mode afterwards resets you to the starting gun |
 | Guns | 4 types with drop rarity: Machine Gun (common ~60%), Shotgun (rare ~17%), Sniper (rare ~17%), Bazooka (very rare ~6%). Separate quality roll Common→Legendary, 4 manufacturers, 12 parts, 3 elements (Fire burn, Shock chain, Goo slow). Legendaries get a wacky perk: rubber-duck bullets, yeet reload, every-10th mega bullet, mini Sproto buddies, confetti kills, big-head mode Range: shotgun pellets do full damage to 7 m and can't hit past 16 m, the machine gun falls off past 30 m (max 75 m), the sniper reaches the whole arena; long barrels +20%, short −15% |
 | Enemies | **Midget**: fast melee runner that never shoots and comes in big swarms. **Bitcoin Obama**: keeps distance, strafes and fires 3-round bitcoin bursts (about 1 shot/s, 4.5° spread, 30 m/s, so you can dodge; your MG does 10 shots/s). **Flying Midget** (Midget stage 3 + propeller beanie, from wave 2): fast and erratic, circles you 3–6 m up and peppers you with tiny 2-damage pellets; 30 HP but hard to hit. **Big Bitcoin Obama**: heavy with a front shield, ground pound and a sloppy 6-round hose; hit the back battery. Models use Sproto Duel's stage 1/2/3 versions: elites and tier 4+ step up a stage. Elites wear a crown, have ×2.5 HP and drop double. Headshots = **BONK** |
 | Bosses | Each phase swaps to the next Sproto Duel stage model. **Mega Tinubu** (Physical, 3 phases): bitcoin volleys, charge (stuns itself on the wall, exposing a belly weak spot), jump-over shockwaves, summons midget swarms. **Hex Sahil** (Magic, 3 phases): floating caster with bullet-hell orbs, homing tax bolts, teleports, an orbiting weak spot and a mana-draining aura |
@@ -96,7 +96,7 @@ Any standard-mapping pad (Xbox, PlayStation, Switch Pro and most others) works w
 
 Why this layout: both thumbs stay on the sticks for what you do mid-fight (fire, aim, dash, Goo Bolt on the shoulders), like other console shooters. Jump, slide and reload sit on the face buttons. The slower spells and the medkit sit on the D-pad, so the D-pad does not move you in play (the left stick does); it still moves the menu focus. Meteor Bonk needs full mana, so it lives on a stick click. Sprint is an L3 toggle that ends when you stop pushing forward or start aiming.
 
-Look speed has a response curve (fine aim near the centre) and ramps up a little when the stick is held at the edge. Aim assist is controller only: the stick slows down near an enemy, and while aiming (LT) the view drifts gently toward the head. Mouse and keyboard never get it. Its numbers are in `src/data/gamepad.js`; the pause screen has *Controller look speed* and *Controller aim assist* (0 turns it off).
+Look speed has a response curve (fine aim near the centre) and ramps up a little when the stick is held at the edge. Aim assist is controller only: the stick slows down near an enemy, and while aiming (LT) the view drifts gently toward the head. Mouse and keyboard never get it. Its numbers are in `src/input/padConfig.js`; the pause screen has *Controller look speed* and *Controller aim assist* (0 turns it off).
 
 A button held while the page loads (the hub's A press) is ignored until it is released. Unplugging the controller pauses the game. Return to Hub is on the title and pause screens (it asks again during a run). Browsers do not let a controller press capture the mouse or (in most browsers) start audio, so sound may wait for the first click or key press. Free 1v1 practice: Menu moves the focus to Ready / Leave, B goes back to playing.
 
@@ -104,15 +104,25 @@ A button held while the page loads (the hub's A press) is ignored until it is re
 
 ```
 src/
-  core/    rng (seeded sfc32), math, eventBus
-  data/    all balance: guns, enemies+bosses, drops, recipes, skills, waves, shop, tuning; stages.js maps stages and character models
-  sim/     pure deterministic simulation (no three.js/DOM): simulate() runs every system at 60 Hz
-  input/   keyboard/mouse + pointer lock and the gamepad (gamepad.js, padGameplay.js, aimAssist.js) -> Command objects
-  render/  Three.js views, viewmodel, VFX (reads state only); assets.js loads the Sproto Duel GLBs (meshopt) and stage textures
-  ui/      DOM HUD + menus (queues actions, never writes state)
-  audio/   WebAudio synth SFX
-  game/    Game: loop, hitstop, screens, lil-gui debug panel
-tests/     Vitest: architecture rules, RNG, gun generator, collision, damage, drops, XP, crafting, waves, determinism, full autopilot run
+  core/      rng (seeded sfc32), math, eventBus
+  data/      all balance: guns, enemies+bosses, drops, recipes, skills, waves, shop, tuning; stages.js maps stages and character models;
+             levels/ holds the campaign levels; serverManifest.js is the campaign content fingerprint
+  sim/       pure deterministic simulation (no three.js/DOM): simulate() runs every system at 60 Hz
+    campaign/, level/   campaign director and compiled level runtime
+    pvp/     Free 1v1 arena: sim, director, rules, practice bot, export (pinned; bundled as shooter-pvp-sim.js)
+  server/    campaign run contract and verifier the hub runs (pinned; bundled as shooter-sim.js)
+  net/       Free 1v1 client, input codec and wire protocol (inputCodec.js and protocol.js are pinned)
+  hub/       hub link: ticket redeem, balance chip, Return to Hub, cloud save
+  save/      campaign meta and local settings (game layer only)
+  input/     keyboard/mouse + pointer lock and the gamepad (gamepad.js, padGameplay.js, padController.js, aimAssist.js) -> Command objects
+  render/    Three.js views, viewmodel, VFX (reads state only); assets.js loads the Sproto Duel GLBs (meshopt) and stage textures;
+             level/ draws campaign sections, pvp/ is the Free 1v1 lobby and arena view
+  ui/        DOM HUD + menus (queues actions, never writes state)
+  audio/     WebAudio synth SFX
+  game/      Game: loop, hitstop, screens, lil-gui debug panel
+tests/       Vitest: architecture rules, sim and determinism, campaign levels, boss and PvP goldens, goja and browser parity, hub link, assets, performance
 ```
+
+`AGENTS.md` lists the pinned paths and what a change to them needs.
 
 `PLAN.md` is the full architecture and milestone plan, with every balance number.

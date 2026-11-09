@@ -3,7 +3,7 @@
 // keeps working exactly as before and native <select> / range keys never fight the arrows.
 // Spatial picking is pure and tested: pickSpatial in src/input/gamepad.js.
 import { pickSpatial } from '../input/gamepad.js';
-import { PAD } from '../data/gamepad.js';
+import { PAD } from '../input/padConfig.js';
 
 const SELECTOR = 'button, select, input[type="range"], input[type="checkbox"]';
 const CLS = 'nav-focus';

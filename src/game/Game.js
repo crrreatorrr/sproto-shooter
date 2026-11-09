@@ -20,7 +20,7 @@ import { createFeel, wireHitstop } from './feel.js';
 import { createPadController } from '../input/padController.js';
 import { NAV_KEYS, keyLabel } from '../input/input.js';
 import { padGlyph } from '../input/gamepad.js';
-import { PAD_BINDINGS } from '../data/gamepad.js';
+import { PAD_BINDINGS } from '../input/padConfig.js';
 import { createMenuNav } from '../ui/menuNav.js';
 
 const MAX_FRAME = 0.25, MAX_TICKS = 5;

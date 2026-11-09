@@ -1,7 +1,7 @@
 // Gamepad aim assist: look slowdown near enemies and a light pull toward the head while aiming.
 // Pure: reads sim state, never writes it. It only bends the yaw/pitch the pad feeds into the Command,
 // so the sim, its hit tests and the run log see an ordinary aim. Keyboard and mouse never call this.
-import { AIM_ASSIST } from '../data/gamepad.js';
+import { AIM_ASSIST } from './padConfig.js';
 import { worldHitboxes } from '../sim/collision.js';
 import { angleWrap, deg } from '../core/math.js';
 

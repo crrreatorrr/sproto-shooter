@@ -7,7 +7,7 @@ import {
 } from '../src/input/gamepad.js';
 import { createPadGameplay } from '../src/input/padGameplay.js';
 import { aimAssist, assistTargets, lookAngles } from '../src/input/aimAssist.js';
-import { AIM_ASSIST, PAD, PAD_BINDINGS, PAD_BUTTONS } from '../src/data/gamepad.js';
+import { AIM_ASSIST, PAD, PAD_BINDINGS, PAD_BUTTONS } from '../src/input/padConfig.js';
 
 /** A fake standard-mapping pad. `held` lists button names; `axes` is [lx, ly, rx, ry]. */
 function fakePad({ index = 0, id = 'Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e)', held = [], axes = [0, 0, 0, 0], values = {}, mapping = 'standard' } = {}) {

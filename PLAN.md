@@ -44,7 +44,7 @@
 | Pause | Esc | — | The browser drops pointer lock on Esc, and we show the pause overlay |
 | Menus | Arrows, W / S | A / D across a row | Enter or Space confirms, Esc goes back |
 
-Controller bindings and aim assist: README.md (Controls) and `src/data/gamepad.js`.
+Controller bindings and aim assist: README.md (Controls) and `src/input/padConfig.js`.
 
 ---
 

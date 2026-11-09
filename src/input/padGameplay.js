@@ -1,7 +1,7 @@
 // Gamepad -> gameplay intent for one frame. Pure (no DOM, no sim writes), so tests drive it with fake
 // tracker frames. src/input/padController.js feeds the result into input.js, which builds the same
-// Command the keyboard and mouse build. Layout and reasons: PAD_BINDINGS in src/data/gamepad.js.
-import { PAD, PAD_BINDINGS } from '../data/gamepad.js';
+// Command the keyboard and mouse build. Layout and reasons: PAD_BINDINGS in src/input/padConfig.js.
+import { PAD, PAD_BINDINGS } from './padConfig.js';
 import { createTapHold, curveStick, isDown, wasPressed } from './gamepad.js';
 
 /** Latched (one-tick) actions a single press sends, in the order they are checked. */
