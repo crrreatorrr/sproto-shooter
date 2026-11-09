@@ -1,7 +1,7 @@
 // Fixed-step free arena. Two equal fighters, no loot, no client winner.
 //
 // Sim 2 (SHOOTER-S2b):
-// - Lag compensation. The state keeps an 8-tick history ring of {x, y, z, alive, invuln} per
+// - Lag compensation. The state keeps a 12-tick history ring (REWIND.historyTicks) of {x, y, z, alive, invuln} per
 //   player. A shot is traced from the shooter's current position against the target's capsule
 //   interpolated from history at the tick the shooter saw (wish.viewTick + viewFrac/256, at most
 //   REWIND.maxTicks back). invuln comes from the rewound tick, alive from the current one.

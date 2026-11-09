@@ -51,19 +51,27 @@ export const INPUT_LIMITS = Object.freeze({
 /**
  * Lag compensation (sim 2). Each input says which interpolated tick the shooter saw the
  * opponent at: viewTick = frame - back (back 0..255) plus viewFrac/256. The director clamps the
- * rewind back = frame - viewTick to min(maxTicks, its own per-seat estimate of
- * RTT/2 + interpMs + one tick), so a client claiming more is cut short. The sim clamps to
- * maxTicks again, so a forged replay log cannot reach further.
- * - historyTicks: the per-player ring of {x, y, z, alive, invuln} kept inside the sim state.
- * - interpMs: the reference client's remote interpolation delay (src/net/client.js NET).
+ * rewind back = frame - viewTick to the seat's cap,
+ *   min(maxTicks, RTT + interp + extraTicks), rounded up to whole ticks,
+ * where RTT is the director's own PING-echo median and interp the client's announced remote
+ * interpolation delay, clamped to interpMinMs..interpMaxMs (interpMs until announced). An honest
+ * claim is about uplink lead + downlink + interpolation delay + input buffer, i.e. RTT + interp
+ * plus a tick or two, so that is what the cap allows; a client claiming more is cut short. The
+ * sim clamps to maxTicks again, so a forged replay log cannot reach further.
+ * - maxTicks: ABS_MAX, 10 ticks (333 ms). With the 150 ms wagered RTT gate, the most a shooter
+ *   can be favoured.
+ * - historyTicks: the per-player ring of {x, y, z, alive, invuln} in the sim state, maxTicks + 2.
  * - rttWindow: PING echo samples in the director's per-seat median.
  */
 export const REWIND = Object.freeze({
-  maxTicks: 6,
-  historyTicks: 8,
+  maxTicks: 10,
+  historyTicks: 12,
   maxBack: 255,
   fracSteps: 256,
   interpMs: 100,
+  interpMinMs: 50,
+  interpMaxMs: 150,
+  extraTicks: 2,
   rttWindow: 8,
   maxRttMs: 2000,
   pongMemory: 4,

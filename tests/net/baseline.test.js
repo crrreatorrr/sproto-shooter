@@ -5,8 +5,7 @@
 // When a PR fixes one, update that block and turn on (it.skip -> it) the pending test it names.
 //   S1  client 30 Hz input clock + adaptive input lead + one send per tick   (done: on below)
 //   S2a director v2: rejoin via HELLO, lead-in, late-accept-discard, hold-last, frame caps (done)
-//   S2b viewTick rewind (sim 2): the harness now scores rewind agreement (done: measured below;
-//       the >= 98% gate stays pending, see the note on it)
+//   S2b viewTick rewind (sim 2): the harness scores rewind agreement; the >= 98% gate is on (done)
 //   S3  prediction, adaptive interpolation -> correction p99, rewind, starvation
 //
 // Before S1 (protocol 1, inputs stamped with the last snapshot tick): RTT 0 applied real input on
@@ -69,12 +68,12 @@ function measure(name, extra = {}) {
 const rejoin = () => measure('rejoin', { profile: PROFILES.rtt0, disconnects: [DROP] });
 
 describe('pins the harness must never move', () => {
-  it('keeps the PvP golden 4b3e8828 and both fingerprints', () => {
+  it('keeps the PvP golden 6545ca0a and both fingerprints', () => {
     const state = replay(scriptedMatch(7, 180));
     // Sim 2 (SHOOTER-S2b) is a deliberate golden bump from ce272de1 (sim 1).
-    expect(hashState(state)).toBe('4b3e8828');
-    // Fingerprints: f5949631 (protocol 1) -> 0e584d36 (S2a) -> accf6cd7 (S2b, sim 2).
-    expect(CONTENT_FINGERPRINT).toBe('accf6cd7');
+    expect(hashState(state)).toBe('6545ca0a');
+    // Fingerprints: f5949631 (protocol 1) -> 0e584d36 (S2a) -> ec36c8fa (S2b, sim 2).
+    expect(CONTENT_FINGERPRINT).toBe('ec36c8fa');
     expect(contentFingerprint(1)).toBe('3c657fb5');
   });
 });
@@ -147,33 +146,31 @@ describe('baseline: documents current behaviour (S1 client, director v2)', () =>
   });
 
   // SHOOTER-S2b. The rewind itself is exact: scored at the client's full claim, every check
-  // agrees. What moves agreement is the director's clamp, min(6 ticks, RTT/2 + 100 ms + 1 tick).
-  // With the S1 input lead (about one full RTT plus a tick: the client clock trails the server by
-  // the downlink) plus the 100 ms interpolation delay, an honest claim at RTT 100±30 is 8-9
-  // ticks, so ~97% of checks are clamped to 6 and agreement is ~70%. Measured 2026-11-09:
-  //   rtt0       claim p50 5, applied 5, agreement 0.9974 (the first second has no RTT sample: cap 4)
-  //   rtt100j30  claim p50 8, applied 6, agreement 0.6954, unclamped 1.0
-  //   rtt150     claim p50 9, applied 6, agreement 0.4343, unclamped 1.0
-  // A cap of min(9, RTT + 100 ms + 2 ticks) with an 11-tick ring measured 0.9949 / 0.9975 at
-  // rtt100j30 / rtt150: an owner decision for S3 (a wider rewind window is a wider backtrack).
-  it('S2b rewind: exact at the claim, clamped by the per-seat cap', () => {
+  // agrees. The director's cap is min(10 ticks, its own RTT + the client's announced
+  // interpolation delay + 2 ticks) (review decision: an honest claim is about uplink lead +
+  // downlink + interpolation delay + input buffer, i.e. RTT + D + a tick or two; the first draft's
+  // min(6, RTT/2 + D + 1) clipped 97% of claims at RTT 100 and scored 69.5%).
+  it('S2b rewind: exact at the claim, and the per-seat cap covers honest claims', () => {
     const zero = measure('rtt0', { fire: true });
     expect(zero.rewind.checks).toBeGreaterThan(300);
-    expect(zero.rewind.agreement).toBeGreaterThanOrEqual(0.99);
+    expect(zero.rewind.agreement).toBeGreaterThanOrEqual(TARGETS.rewindAgreement);
     expect(zero.rewind.unclampedAgreement).toBe(1);
+    for (const name of ['rtt100j30', 'rtt150']) {
+      const report = measure(name, { fire: true });
+      expect(report.rewind.checks).toBeGreaterThan(300);
+      expect(report.rewind.unclampedAgreement).toBe(1);
+      // Only the first second (no RTT sample yet: cap 5) clamps.
+      expect(report.rewind.clampedFraction).toBeLessThan(0.05);
+      expect(report.rewind.appliedTicks.max).toBeLessThanOrEqual(10);
+    }
     const mid = measure('rtt100j30', { fire: true });
-    expect(mid.rewind.checks).toBeGreaterThan(300);
-    expect(mid.rewind.unclampedAgreement).toBe(1);
     expect(mid.rewind.claimTicks.p50).toBe(8);
-    expect(mid.rewind.appliedTicks.max).toBe(6);
-    expect(mid.rewind.clampedFraction).toBeGreaterThan(0.9);
-    expect(mid.rewind.agreement).toBeGreaterThan(0.6);
-    expect(mid.rewind.agreement).toBeLessThan(TARGETS.rewindAgreement);
     for (const peer of mid.peers) {
-      // The director's own PING-echo RTT, and the cap it gives.
+      // The director's own PING-echo RTT, and the cap it gives with the announced 100 ms delay.
       expect(peer.net.serverRttMs).toBeGreaterThan(90);
       expect(peer.net.serverRttMs).toBeLessThan(140);
-      expect(peer.net.rewindCap).toBe(6);
+      expect(peer.net.rewindCap).toBeGreaterThanOrEqual(8);
+      expect(peer.net.rewindCap).toBeLessThanOrEqual(10);
     }
   });
 });
@@ -250,10 +247,16 @@ describe('§R.8 targets (pending: later PRs turn these on)', () => {
     }
   });
 
-  // S2b measured 0.6954 here (see 'S2b rewind' above): the clamp, not the rewind, decides it.
-  // Turning this on needs a smaller claim (S3: adaptive delay, tighter lead) or a wider cap.
-  it.skip('S2b/S3: RTT 100±30 ms rewind hit agreement >= 98%', () => {
+  // On since SHOOTER-S2b's cap fix (min(10, RTT + D + 2 ticks)). RTT 150 is measured too: the
+  // wagered RTT gate.
+  it('S2b: RTT 100±30 ms rewind hit agreement >= 98%', () => {
     const report = measure('rtt100j30', { fire: true });
+    expect(report.rewind.checks).toBeGreaterThan(0);
+    expect(report.rewind.agreement).toBeGreaterThanOrEqual(TARGETS.rewindAgreement);
+  });
+
+  it('S2b: RTT 150 ms rewind hit agreement >= 98%', () => {
+    const report = measure('rtt150', { fire: true });
     expect(report.rewind.checks).toBeGreaterThan(0);
     expect(report.rewind.agreement).toBeGreaterThanOrEqual(TARGETS.rewindAgreement);
   });

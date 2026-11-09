@@ -339,7 +339,7 @@ export function runScenario(options = {}) {
   const { state } = handler.init({ seed: matchSeed, clock: () => scheduler.now });
   const director = state.director;
   metrics.watchDirector(director);
-  // Rewind check: every tick's positions (copied out of the sim's 8-tick ring after each loop),
+  // Rewind check: every tick's positions (copied out of the sim's history ring after each loop),
   // and what each client drew when it sent each frame.
   const history = new Map();
   // Its own stream, so the link and render streams stay what S0-S2a measured.

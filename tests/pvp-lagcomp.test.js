@@ -24,6 +24,7 @@ import { CONTENT, OP, PROTOCOL, SIM_VERSION } from '../src/net/protocol.js';
 import { createLoopbackTable, createPvpClient, viewStamp } from '../src/net/client.js';
 
 const { replayJSON } = pvp;
+const H = REWIND.historyTicks;
 const SEED = '00112233445566778899aabbccddeeff';
 
 function hello(id) {
@@ -83,7 +84,7 @@ describe('sha256 (pure JS, for the seed commitment)', () => {
 });
 
 describe('history ring (inside the sim state)', () => {
-  it('keeps the last 8 ticks of {x, y, z, alive, invuln} per player, as plain JSON', () => {
+  it('keeps the last REWIND.historyTicks ticks of {x, y, z, alive, invuln} per player, as plain JSON', () => {
     const state = createMatch(7, 7);
     expect(state.hist).toHaveLength(2);
     expect(state.hist[0]).toHaveLength(REWIND.historyTicks);
@@ -93,12 +94,12 @@ describe('history ring (inside the sim state)', () => {
       step(state, [{ ...idle(state.players[0]), moveX: 1, jump: i === 3, dash: i === 5 }, { ...idle(state.players[1]), moveZ: 1 }]);
       seen.push(state.players.map((p) => ({ t: state.tick, x: p.x, y: p.y, z: p.z, alive: p.alive, invuln: p.invuln })));
     }
-    for (let tick = 13; tick <= 20; tick++) {
+    for (let tick = 21 - H; tick <= 20; tick++) {
       for (let seat = 0; seat < 2; seat++) {
-        expect(state.hist[seat][tick % 8]).toEqual(seen[tick - 1][seat]);
+        expect(state.hist[seat][tick % H]).toEqual(seen[tick - 1][seat]);
       }
     }
-    expect(historyAt(state, 0, 12)).toBeNull();
+    expect(historyAt(state, 0, 20 - H)).toBeNull();
     expect(JSON.parse(JSON.stringify(state))).toEqual(state);
     // The ring is part of the hash, so a replay must reproduce it.
     const tampered = JSON.parse(JSON.stringify(state));
@@ -107,7 +108,9 @@ describe('history ring (inside the sim state)', () => {
   });
 
   it('is long enough for the deepest rewind: frame - maxTicks .. frame + 1', () => {
-    expect(REWIND.historyTicks).toBeGreaterThanOrEqual(REWIND.maxTicks + 2);
+    // Coordinator decision (S2b review): ABS_MAX 10 ticks (333 ms), ring ABS_MAX + 2.
+    expect(REWIND.maxTicks).toBe(10);
+    expect(REWIND.historyTicks).toBe(REWIND.maxTicks + 2);
   });
 
   it('never holds the combat seed itself', () => {
@@ -121,8 +124,8 @@ describe('rewound capsule', () => {
     const state = createMatch(11, 11);
     for (let i = 0; i < 12; i++) step(state, [{ ...idle(state.players[0]), moveX: 1, sprint: true }, idle(state.players[1])]);
     const frame = state.tick - 1; // after the step, history holds frame + 1 = state.tick too
-    const a = state.hist[0][(frame - 3) % 8];
-    const b = state.hist[0][(frame - 2) % 8];
+    const a = state.hist[0][(frame - 3) % H];
+    const b = state.hist[0][(frame - 2) % H];
     const mid = rewoundTarget(state, 0, frame, 3, 128);
     expect(mid.x).toBeCloseTo((a.x + b.x) / 2, 4);
     expect(mid.z).toBeCloseTo((a.z + b.z) / 2, 4);
@@ -131,7 +134,7 @@ describe('rewound capsule', () => {
     expect([exact.x, exact.z]).toEqual([a.x, a.z]);
     // Rewind 0, frac 0 is the start of the frame: history tick `frame`.
     const now = rewoundTarget(state, 0, frame, 0, 0);
-    expect(now.x).toBe(state.hist[0][frame % 8].x);
+    expect(now.x).toBe(state.hist[0][frame % H].x);
   });
 
   it('clamps a claim to REWIND.maxTicks in the sim too, so a forged replay log cannot reach further', () => {
@@ -178,7 +181,7 @@ describe('alive and invuln rules', () => {
 
   it('takes invuln from the rewound tick: invulnerable then blocks the shot, invulnerable now does not', () => {
     const blocked = aimed();
-    blocked.state.hist[1][(blocked.frame - 2) % 8].invuln = 0.1;
+    blocked.state.hist[1][(blocked.frame - 2) % H].invuln = 0.1;
     const events = [];
     step(blocked.state, [blocked.wish, idle(blocked.target)], events);
     expect(events[0]).toMatchObject({ hits: 1, dmg: 0 });
@@ -263,12 +266,20 @@ function pvpRngNext(r) {
 }
 
 describe('director rewind clamp', () => {
-  it('caps a seat at min(6, RTT/2 + interpolation delay + 1 tick), rounded up', () => {
-    expect(rewindCapFor(null)).toBe(4);
-    expect(rewindCapFor(0)).toBe(4);
-    expect(rewindCapFor(40)).toBe(5);
-    expect(rewindCapFor(100)).toBe(6);
-    expect(rewindCapFor(5000)).toBe(REWIND.maxTicks);
+  it('caps a seat at min(10, RTT + announced interpolation delay (50..150 ms) + 2 ticks), rounded up', () => {
+    // No RTT sample and no announcement: 0 + 100 ms + 2 ticks = 5 ticks.
+    expect(rewindCapFor(null)).toBe(5);
+    expect(rewindCapFor(0, 100)).toBe(5);
+    expect(rewindCapFor(40, 100)).toBe(7);
+    expect(rewindCapFor(100, 100)).toBe(8);
+    expect(rewindCapFor(120, 100)).toBe(9);
+    expect(rewindCapFor(100, 150)).toBe(10);
+    // The announced delay is clamped to 50..150 ms on the server.
+    expect(rewindCapFor(100, 20)).toBe(rewindCapFor(100, 50));
+    expect(rewindCapFor(100, 20)).toBe(7);
+    expect(rewindCapFor(100, 9999)).toBe(rewindCapFor(100, 150));
+    expect(rewindCapFor(5000, 100)).toBe(REWIND.maxTicks);
+    expect(rewindCapFor(-50, NaN)).toBe(5);
     expect(clampView({ viewTick: 95, viewFrac: 40 }, 100, 6)).toEqual({ rewind: 5, frac: 40, claim: 5, clamped: false });
     expect(clampView({ viewTick: 100 - 255, viewFrac: 40 }, 100, 6)).toEqual({ rewind: 6, frac: 0, claim: 255, clamped: true });
     expect(clampView({ viewTick: 104, viewFrac: 40 }, 100, 6)).toEqual({ rewind: 0, frac: 0, claim: -4, clamped: false });
@@ -278,18 +289,18 @@ describe('director rewind clamp', () => {
     const { director } = boot();
     stepTo(director, 20);
     const now = director.liveStart + 20 * STEP_MS;
-    // No RTT sample yet: the cap is RTT 0 + 100 ms + 1 tick = 4 ticks.
+    // No RTT sample yet: the cap is RTT 0 + 100 ms + 2 ticks = 5 ticks.
     expect(send(director, 'ada', { seq: 1, frame: 21, yaw: 0, viewTick: 21 - 255, viewFrac: 200, fire: true }, now).ok).toBe(true);
     expect(send(director, 'bea', { seq: 1, frame: 21, yaw: 0, viewTick: 18, viewFrac: 77 }, now).ok).toBe(true);
     stepTo(director, 22);
     const pair = director.usedAt(21);
-    expect(pair[0]).toMatchObject({ src: SOURCE.input, r: 4, f: 0 });
+    expect(pair[0]).toMatchObject({ src: SOURCE.input, r: 5, f: 0 });
     expect(pair[1]).toMatchObject({ src: SOURCE.input, r: 3, f: 77 });
-    expect(director.seatStats(0)).toMatchObject({ rewindCap: 4, clamped: 1, rttMs: null });
+    expect(director.seatStats(0)).toMatchObject({ rewindCap: 5, clamped: 1, rttMs: null });
     expect(director.seatStats(1)).toMatchObject({ clamped: 0 });
   });
 
-  it('measures RTT itself from PING echoes of its own PONGs, and widens the cap to at most 6', () => {
+  it('measures RTT itself from PING echoes of its own PONGs, takes the announced delay, and caps at 10', () => {
     const { director } = boot();
     const ping = (body, now) => director.handle({ userId: 'ada', sessionId: 'sa' }, OP.PING, JSON.stringify(body), now);
     let t = 0;
@@ -301,16 +312,30 @@ describe('director rewind clamp', () => {
       const out = ping({ t, echo: serverMs, hold: 900 }, serverMs + 1000);
       serverMs = out.messages[0].body.serverMs;
     }
-    expect(director.seatStats(0)).toMatchObject({ rttMs: 100, rewindCap: 6 });
+    expect(director.seatStats(0)).toMatchObject({ rttMs: 100, interpMs: 100, rewindCap: 8 });
     // An echo of a serverMs this seat was never sent, or a hold longer than the gap, is ignored.
     ping({ t: 1, echo: 12345, hold: 0 }, serverMs + 50);
     ping({ t: 2, echo: serverMs, hold: 99999 }, serverMs + 60);
     expect(director.seatStats(0).rttMs).toBe(100);
     // Bea never echoed: her cap stays at the RTT-0 estimate.
-    expect(director.seatStats(1)).toMatchObject({ rttMs: null, rewindCap: 4 });
+    expect(director.seatStats(1)).toMatchObject({ rttMs: null, rewindCap: 5 });
+    // The client announces its interpolation delay in PING (and HELLO); the server clamps it.
+    ping({ t: 3, interpMs: 150 }, serverMs + 700);
+    expect(director.seatStats(0)).toMatchObject({ interpMs: 150, rewindCap: 10 });
+    ping({ t: 4, interpMs: 10 }, serverMs + 800);
+    expect(director.seatStats(0)).toMatchObject({ interpMs: 50, rewindCap: 7 });
+    ping({ t: 5, interpMs: 'x' }, serverMs + 900);
+    expect(director.seatStats(0).interpMs).toBe(50);
+    ping({ t: 6, interpMs: 100 }, serverMs + 950);
     // The snapshot tells each seat its own estimate and cap.
     const snap = director.advance(director.liveStart + STEP_MS).messages.find((m) => m.op === OP.SNAPSHOT && m.to.userId === 'ada');
-    expect(snap.body.you).toMatchObject({ rttMs: 100, rewindCap: 6 });
+    expect(snap.body.you).toMatchObject({ rttMs: 100, interpMs: 100, rewindCap: 8 });
+  });
+
+  it('takes the interpolation delay from HELLO too', () => {
+    const director = createDirector({ spawnSeed: 1, combatSeed: SEED, matchId: 'h', leadInTicks: 0 });
+    director.hello({ presenceUserId: 'ada', sessionId: 'sa', body: { ...hello('ada'), interpMs: 140 }, now: 0 });
+    expect(director.seatStats(0)).toMatchObject({ interpMs: 140, rewindCap: 7 });
   });
 });
 
@@ -515,12 +540,13 @@ describe('client view stamps, PING echoes and hit events', () => {
   it('echoes the newest PONG serverMs and its hold time in the next PING', () => {
     const r = rig();
     r.deliver(OP.WELCOME, { accountId: 'ada', seat: 0, phase: 'lobby', tick: 0, lastSeq: 0 });
-    expect(r.pings()[0]).toEqual({ t: 0 });
+    expect(r.pings()[0]).toEqual({ t: 0, interpMs: 100 });
     r.now = 80;
     r.deliver(OP.PONG, { t: 0, serverMs: 5000, tick: 0, clockTick: 0, phase: 'lobby' });
     r.now = 600;
     r.client.update(r.now, () => null);
-    expect(r.pings()[1]).toEqual({ t: 600, echo: 5000, hold: 520 });
+    expect(r.pings()[1]).toEqual({ t: 600, interpMs: 100, echo: 5000, hold: 520 });
+    expect(r.sent.find((m) => m.op === OP.HELLO).data).toMatchObject({ interpMs: 100 });
   });
 
   it('keeps server-confirmed hits from snapshots for the HUD and counts its own damage', () => {

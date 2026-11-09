@@ -266,6 +266,8 @@ export function createPvpClient({
       protocol: PROTOCOL,
       sim: SIM_VERSION,
       content: CONTENT,
+      // The director's rewind cap counts this client's interpolation delay (sim 2).
+      interpMs: interpDelayMs,
     });
   }
 
@@ -273,7 +275,7 @@ export function createPvpClient({
     if (seat < 0 || link !== 'live' || now - lastPingAt < NET.pingMs) return;
     lastPingAt = now;
     stats.pings += 1;
-    const body = { t: now };
+    const body = { t: now, interpMs: interpDelayMs };
     if (lastPong) {
       body.echo = lastPong.serverMs;
       body.hold = Math.max(0, now - lastPong.at);

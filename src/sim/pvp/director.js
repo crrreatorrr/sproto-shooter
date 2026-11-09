@@ -95,6 +95,7 @@ function blankSeat(accountId, sessionId, name) {
     pongs: [],
     rtts: [],
     rttMs: null,
+    interpMs: REWIND.interpMs,
     ackFrame: -1,
     ackSeq: 0,
     applied: 0,
@@ -114,14 +115,21 @@ function median(values) {
   return sorted[Math.floor((sorted.length - 1) / 2)];
 }
 
+/** A client's announced interpolation delay, clamped to REWIND.interpMinMs..interpMaxMs. */
+export function clampInterp(interpMs) {
+  if (typeof interpMs !== 'number' || !Number.isFinite(interpMs)) return REWIND.interpMs;
+  return Math.max(REWIND.interpMinMs, Math.min(REWIND.interpMaxMs, interpMs));
+}
+
 /**
- * The most this seat may rewind, in ticks: min(REWIND.maxTicks, RTT/2 + the reference client's
- * interpolation delay + one tick), rounded up. RTT is the director's own PING-echo median; with
- * no sample yet it counts as 0.
+ * The most this seat may rewind, in ticks: min(REWIND.maxTicks, RTT + interp + 2 ticks), rounded
+ * up. RTT is the director's own PING-echo median (0 with no sample yet); interp is the client's
+ * announced interpolation delay, clamped to 50..150 ms (100 until announced).
  */
-export function rewindCapFor(rttMs) {
+export function rewindCapFor(rttMs, interpMs = REWIND.interpMs) {
   const rtt = Number.isFinite(rttMs) && rttMs > 0 ? rttMs : 0;
-  const ticks = Math.ceil((rtt / 2 + REWIND.interpMs + STEP_MS) / STEP_MS - 1e-9);
+  const ms = rtt + clampInterp(interpMs) + REWIND.extraTicks * STEP_MS;
+  const ticks = Math.ceil(ms / STEP_MS - 1e-9);
   return Math.max(0, Math.min(REWIND.maxTicks, ticks));
 }
 
@@ -258,7 +266,7 @@ export function createDirector({
   }
 
   function rewindCap(seat) {
-    return rewindCapFor(seat.rttMs);
+    return rewindCapFor(seat.rttMs, seat.interpMs);
   }
 
   function snapshotFor(index, now, hits = []) {
@@ -290,6 +298,7 @@ export function createDirector({
         held: seat.held,
         neutral: seat.neutral,
         rttMs: seat.rttMs,
+        interpMs: seat.interpMs,
         rewindCap: rewindCap(seat),
         // The rest of this seat's exact sim state: players[seat] plus these fields.
         private: privateOf(sim.players[index]),
@@ -388,6 +397,7 @@ export function createDirector({
       seat.connected = true;
       if (typeof name === 'string' && name) seat.name = cleanName(name, seat.name);
     }
+    takeInterp(director.seats[index], body);
     const messages = welcomeAll();
     if (director.phase === 'live' && director.sim) messages.push(snapshotFor(index, now));
     return { ok: true, seat: index, messages };
@@ -479,6 +489,7 @@ export function createDirector({
     }
     if (seat.pings >= INPUT_LIMITS.maxPingsPerSecond) return reject(from, 'rate');
     seat.pings += 1;
+    takeInterp(seat, body);
     rttSample(seat, body, now);
     seat.pongs.push(now);
     if (seat.pongs.length > REWIND.pongMemory) seat.pongs.shift();
@@ -491,6 +502,13 @@ export function createDirector({
         to: from,
       }],
     };
+  }
+
+  /** HELLO and PING may announce the client's interpolation delay (ms); it is clamped. */
+  function takeInterp(seat, body) {
+    if (body && typeof body.interpMs === 'number' && Number.isFinite(body.interpMs)) {
+      seat.interpMs = clampInterp(body.interpMs);
+    }
   }
 
   /**
@@ -681,6 +699,7 @@ export function createDirector({
       neutral: seat.neutral,
       late: seat.late,
       rttMs: seat.rttMs,
+      interpMs: seat.interpMs,
       rewindCap: rewindCap(seat),
       clamped: director.clamped[index],
     };

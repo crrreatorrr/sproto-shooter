@@ -2,7 +2,7 @@
   "comment": "SHOOTER-S2b director golden (sim 2): tests/fixtures/director-golden.js against the protocol 2 director with lag compensation, the split seed and hit events. Node, goja and Chromium must all report this. (S2a, sim 1: tick 892, stateHash e421cba8.)",
   "phase": "done",
   "tick": 892,
-  "stateHash": "758673ea",
+  "stateHash": "078282e5",
   "outcome": "forfeit",
   "winner": 0,
   "reason": "stall",
@@ -14,7 +14,7 @@
   "replay": {
     "verified": true,
     "tick": 892,
-    "stateHash": "758673ea"
+    "stateHash": "078282e5"
   },
   "hits": 6,
   "hitDamage": 54000,
