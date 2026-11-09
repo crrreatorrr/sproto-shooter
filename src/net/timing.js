@@ -1,12 +1,18 @@
 // Client timing for the arena (SHOOTER-S3). Pure: no DOM, no clock of its own.
 //
-// - Adaptive remote interpolation delay. D = clamp(snapshot interval + 2 x jitter p95, 50, 150 ms).
-//   Jitter is the lateness of each snapshot behind the least-delayed one in the client's clock
-//   window (what a jitter buffer has to absorb). D slews toward its target, faster up than
-//   down, so the remote player's clock never jumps.
+// - Adaptive remote interpolation delay. D = clamp(snapshot interval + 2 x jitter p95, 50, 150 ms),
+//   and at least one tick plus the p95 lateness of the first tick each snapshot makes drawable.
+//   Jitter is how late each snapshot's tick arrives on the client's estimated server clock (the
+//   least-delayed packet in its window): network jitter plus the server loop running behind.
+//   A late loop callback steps two ticks and sends one snapshot; the second term covers the
+//   tick it skipped. D slews toward its target, faster up than down, so the remote player's
+//   clock never jumps.
 // - Input clock trim. The client keeps a target input lead in ticks; instead of skipping or
 //   repeating frames it runs its 30 Hz input clock up to 5% fast or slow until the stamped lead
-//   reaches it (Overwatch-style). Only an error past `resyncTicks` snaps.
+//   reaches it (Overwatch-style). Only big errors resync: see resyncTicks, lateResyncTicks and
+//   holdTicks.
+
+import { STEP_MS } from '../sim/pvp/rules.js';
 
 /** Tuning. Nothing here is part of the wire contract. */
 export const TIMING = Object.freeze({
@@ -26,6 +32,16 @@ export const TIMING = Object.freeze({
   rateDeadbandTicks: 0.1,
   /** Lead errors past this many ticks resync the frame stamp instead of trimming. */
   resyncTicks: 3,
+  /**
+   * While the server reports late frames, a stamped lead this far under the target jumps up at
+   * once: each late frame is input lost already, so one skipped frame costs less than trimming.
+   */
+  lateResyncTicks: 1.5,
+  /**
+   * A stamped lead this far over the target (a big drop: an RTT spike's raises capped, a deep
+   * server buffer trimmed) repeats the previous frame each tick until the trim can take the rest.
+   */
+  holdTicks: 1.5,
 });
 
 export function percentile(values, p) {
@@ -39,36 +55,48 @@ export function median(values) {
   return percentile(values, 50);
 }
 
-/** D for a snapshot interval and a jitter p95, both in ms. */
-export function interpTarget(intervalMs, jitterP95Ms) {
-  const d = intervalMs + 2 * jitterP95Ms;
+/**
+ * D for a snapshot interval and a jitter p95, both in ms; `stepLateP95Ms`, the p95 lateness of
+ * the first newly drawable tick per snapshot, sets a floor of one tick more than it.
+ */
+export function interpTarget(intervalMs, jitterP95Ms, stepLateP95Ms = null) {
+  let d = intervalMs + 2 * jitterP95Ms;
+  if (Number.isFinite(stepLateP95Ms)) d = Math.max(d, STEP_MS + stepLateP95Ms);
   if (!Number.isFinite(d)) return TIMING.interpMaxMs;
   return Math.max(TIMING.interpMinMs, Math.min(TIMING.interpMaxMs, d));
 }
 
 /**
- * The adaptive delay. observe(lateMs, gapMs) once per snapshot: its lateness behind the
- * least-delayed packet and the time since the previous one. step(dtMs) once per render frame.
+ * The adaptive delay. observe(lateMs, gapMs, stepLateMs) once per snapshot: its lateness behind
+ * the least-delayed packet, the time since the previous one, and (optional) the lateness of the
+ * first tick it makes drawable. step(dtMs) once per render frame.
  */
 export function createInterpDelay({ initialMs = 100, window = TIMING.interpWindow } = {}) {
   const lates = [];
   const gaps = [];
+  const stepLates = [];
   let value = Math.max(TIMING.interpMinMs, Math.min(TIMING.interpMaxMs, initialMs));
   let target = value;
   let jitter = null;
   let interval = null;
+  let stepLate = null;
 
   function refresh() {
     jitter = percentile(lates, 95);
     interval = gaps.length ? median(gaps) : null;
-    target = interpTarget(interval ?? 1000 / 30, jitter ?? 0);
+    stepLate = percentile(stepLates, 95);
+    target = interpTarget(interval ?? STEP_MS, jitter ?? 0, stepLate);
   }
 
   return {
-    observe(lateMs, gapMs) {
+    observe(lateMs, gapMs, stepLateMs = null) {
       if (Number.isFinite(lateMs)) {
         lates.push(Math.max(0, lateMs));
         if (lates.length > window) lates.shift();
+      }
+      if (Number.isFinite(stepLateMs)) {
+        stepLates.push(Math.max(0, stepLateMs));
+        if (stepLates.length > window) stepLates.shift();
       }
       if (Number.isFinite(gapMs) && gapMs > 0) {
         gaps.push(gapMs);
@@ -85,6 +113,7 @@ export function createInterpDelay({ initialMs = 100, window = TIMING.interpWindo
     get valueMs() { return value; },
     get targetMs() { return target; },
     get jitterP95Ms() { return jitter; },
+    get stepLateP95Ms() { return stepLate; },
     get intervalMs() { return interval; },
   };
 }

@@ -5,14 +5,23 @@
 //   when it was sent (negative during the live-start lead-in). Each gives an offset
 //   `clockTick * STEP_MS - arrival`; the estimate uses the largest of the last few, i.e. the
 //   least-delayed packet.
-// - Round trip: PING/PONG every NET.pingMs, median of the last NET.rttWindow samples.
+// - Round trip: PING/PONG every NET.pingMs (and once more right after the first PONG), median of
+//   the last NET.rttWindow samples; a sample over NET.rttMaxSampleMs is ignored.
 // - Input clock: a fixed 30 Hz accumulator, not the render loop. Each input tick builds one wish
 //   and sends exactly one INPUT stamped frame = estimated server tick + lead (never below 0, so
 //   nothing is sent until the lead-in has a tick to aim at).
-// - Lead adapts: it starts at the round trip in ticks plus one; the director accepts and
-//   discards late frames and counts them in the snapshot (`you.late`), and a new late count
-//   raises the lead by one at most once per round trip; a `frame` reject past the director's
-//   futureFrames window lowers it; a long clean run probes one tick lower. Capped at NET.leadMax.
+// - Lead adapts (one owner: the target lead `lead`; SHOOTER-S3 reaches it with the clock trim
+//   below, never by moving frames). It starts at the round trip in ticks plus one; the director
+//   accepts and discards late frames and counts them in the snapshot (`you.late`), and a new late
+//   count raises the target by one at most once per round trip, up to the round-trip lead +
+//   NET.leadJitterTicks; whenever the measured RTT falls, the target is capped at that same
+//   ceiling (an RTT spike's raises come back down within ~2 s); when the snapshot's `you.buffer`
+//   (frames queued ahead at the server) stays above NET.bufferTarget for NET.bufferTrimMs, the
+//   target drops by the excess the trim is not already draining (never below the round trip in
+//   ticks); a `frame` reject past the director's futureFrames window lowers it, at most
+//   once per round trip. Capped at NET.leadMax.
+// - A hidden tab gets no animation frames: no update(), so no inputs and no PINGs. The director
+//   forfeits a seat after STALL_MS (10 s) without input.
 // - Sequence numbers only increase. Protocol 2 allows gaps, so a reject never rewinds them.
 // - Rejoin on a new session id sends HELLO (the director rebinds the seat), not RESYNC.
 // - Remote interpolation: render time = estimated server time - delay. Interpolate between the
@@ -30,14 +39,22 @@
 //   prediction at once; hitmarkers and damage numbers only from the server's `hits`.
 // - Adaptive delay (SHOOTER-S3): D = clamp(snapshot interval + 2 x jitter p95, 50, 150 ms),
 //   slewed smoothly (src/net/timing.js) and announced in every PING for the rewind cap.
-// - Clock trim (SHOOTER-S3): frames go up by exactly one per input tick. The target lead (RTT
-//   lead, raised by jitter-late frames, lowered when the server buffer runs deep) is reached by
-//   running the input clock up to 5% fast or slow; only an error past TIMING.resyncTicks snaps.
+// - Clock trim (SHOOTER-S3): frames go up by exactly one per input tick. The stamped lead
+//   (frame - estimated tick) follows the target lead by running the input clock up to 5% fast or
+//   slow. Only big errors resync: more than TIMING.holdTicks over the target (a big drop: an RTT
+//   spike's raises capped, a deep buffer trimmed) repeats the previous frame each tick until the
+//   trim can take the rest; under it, frames jump forward to the target when the server reports
+//   late frames (past TIMING.lateResyncTicks) or the input clock dropped a render stall's backlog
+//   (past TIMING.resyncTicks). A clock-estimate step of a tick or more (the downlink changing)
+//   moves the target with it, and the RTT rising well past the target lifts it at once.
+// - View continuity: frame - viewTick moves by at most NET.viewStepTicks (the director's
+//   REWIND.maxBackStep) between inputs and viewTick never moves back, so an honest client is
+//   never clamped (`viewClamped`).
 import { createMockRealtimeServer } from '@metaverse/hub-sdk';
 import { sha256Hex } from '../core/sha256.js';
 import { createPredictor, playerFromSnapshot } from './predict.js';
 import {
-  TIMING, clockRate, createInterpDelay, median, percentile,
+  TIMING, clockRate, createInterpDelay, percentile,
 } from './timing.js';
 import { decodeInput, encodeInput, wishFromCommand } from './inputCodec.js';
 import {
@@ -52,25 +69,31 @@ export const NET = Object.freeze({
   leadStart: 2,
   leadMin: 1,
   leadMax: 12,
-  /**
-   * Server buffer depth (you.buffer, frames queued at the cursor): when its median over
-   * bufferWindow snapshots is at least bufferHigh with no late frame, the target lead drops one
-   * tick (at most once per bufferProbeMs), never below the round trip in ticks.
-   */
-  bufferHigh: 3,
-  bufferWindow: 60,
-  bufferProbeMs: 2000,
   /** Clock samples kept for the estimate (30 Hz snapshots, so 1 s). */
   clockWindow: 30,
   /** Most input ticks one update() may send after a slow render frame. */
   maxTicksPerUpdate: 4,
   pingMs: 500,
-  rttWindow: 8,
+  rttWindow: 5,
+  /** A round trip longer than this is not a sample (a PONG held up by a long stall). */
+  rttMaxSampleMs: 2000,
+  /** Unanswered PINGs remembered; a PONG must answer one of them, once. */
+  pingsOutMax: 8,
   /** A late count rising by at most this much per snapshot is jitter (more is a stall burst). */
   lateJitterFrames: 2,
-  /** Late frames may raise the lead to the round-trip lead plus this many ticks, no further. */
+  /** Late frames may raise the lead to the round-trip lead plus this many ticks, no further; and
+   * whenever the RTT falls, the lead is capped there. */
   leadJitterTicks: 2,
-  /** Most an input's claimed view tick may move past the previous input's (it never moves back). */
+  /**
+   * Trim the target lead when `you.buffer` stays above bufferTarget for bufferTrimMs, by the
+   * excess the clock trim is not already draining.
+   */
+  bufferTarget: 2,
+  bufferTrimMs: 1000,
+  /**
+   * Most frame - viewTick may move between consecutive inputs, and most the claimed view may
+   * step forward when frames go up by one (the director clamps at REWIND.maxBackStep).
+   */
   viewStepTicks: 2,
   /** Initial remote interpolation delay; adaptive from the first snapshots (SHOOTER-S3). */
   interpDelayMs: 100,
@@ -264,9 +287,13 @@ export function createPvpClient({
   // Server clock: offsets (clockTick * STEP_MS - arrival) of the newest server packets.
   const offsets = [];
   let clockOffset = null;
+  // The clock offset the target lead is measured against (see clockSample).
+  let offsetAnchor = null;
   // PING round trips.
   const rtts = [];
   let rttMs = null;
+  // Send times of the PINGs not answered yet.
+  const pingsOut = [];
   let lastPingAt = -Infinity;
   // Input clock and lead.
   let inputAcc = 0;
@@ -278,11 +305,17 @@ export function createPvpClient({
   let lateSeen = 0;
   let leadRaisedAt = -Infinity;
   let ack = null;
+  let leadLoweredAt = -Infinity;
+  // When a snapshot last reported fresh late frames, and whether the input clock just dropped a
+  // render stall's backlog: the two cases where frames may jump forward (see planFrame).
+  let lateAt = -Infinity;
+  let ticksDropped = false;
   let rate = 1;
   let leadNow = null;
-  const buffers = [];
-  let lateInWindow = false;
-  let bufferProbeAt = -Infinity;
+  // Server buffer (you.buffer) while it stays above NET.bufferTarget: its minimum, and since when.
+  let bufferMin = Infinity;
+  let bufferSince = null;
+  let pongs = 0;
   // Remote interpolation delay (adaptive) and when sample() last ran.
   const interp = createInterpDelay({ initialMs: interpDelayMs });
   let sampledAt = null;
@@ -295,14 +328,16 @@ export function createPvpClient({
   const corrections = [];
   const frameModes = [];
   const stats = {
-    inputTicks: 0, leadRaises: 0, leadDrops: 0, lateFrames: 0, pings: 0, maxLead: NET.leadStart,
-    hitsConfirmed: 0, damageConfirmed: 0,
-    clockSnaps: 0, clockRateMin: 1, clockRateMax: 1, corrections: 0, snaps: 0, shots: 0,
-    contactCorrections: 0,
+    inputTicks: 0, leadRaises: 0, leadLifts: 0, leadDrops: 0, leadCaps: 0, leadTrims: 0, lateFrames: 0, pings: 0,
+    maxLead: NET.leadStart, hitsConfirmed: 0, damageConfirmed: 0,
+    clockSnaps: 0, clockHolds: 0, clockSteps: 0, clockRateMin: 1, clockRateMax: 1, corrections: 0, snaps: 0, shots: 0,
+    contactCorrections: 0, viewHeld: 0,
   };
   let wasTouching = false;
-  // The render tick the previous input claimed (viewTick + viewFrac/256).
+  // The render tick the previous input claimed (viewTick + viewFrac/256), and that input's
+  // frame - viewTick (the director keeps both continuous).
   let lastViewStamp = null;
+  let lastViewBack = null;
   let server = { rttMs: null, rewindCap: null };
   let look = { yaw: 0, pitch: 0 };
   // Edge buttons and slot picks latched between render frames until an input tick carries them.
@@ -331,12 +366,12 @@ export function createPvpClient({
     return adaptiveInterp ? interp.valueMs : interpDelayMs;
   }
 
-  function maybePing(now = clock()) {
+  function maybePing(now = clock(), force = false) {
     if (seat < 0 || link !== 'live') return;
     const since = now - lastPingAt;
     // The adaptive delay is re-announced early when it moved, so the rewind cap follows it.
     const moved = Math.abs(Math.round(currentInterp()) - announcedInterp) >= NET.interpAnnounceMs;
-    if (since < NET.pingMs && !(moved && since >= NET.pingMinMs)) return;
+    if (!force && since < NET.pingMs && !(moved && since >= NET.pingMinMs)) return;
     lastPingAt = now;
     stats.pings += 1;
     announcedInterp = Math.round(currentInterp());
@@ -345,6 +380,8 @@ export function createPvpClient({
       body.echo = lastPong.serverMs;
       body.hold = Math.max(0, now - lastPong.at);
     }
+    pingsOut.push(now);
+    if (pingsOut.length > NET.pingsOutMax) pingsOut.shift();
     send(OP.PING, body);
   }
 
@@ -366,12 +403,27 @@ export function createPvpClient({
     offsets.push(offset);
     if (offsets.length > NET.clockWindow) offsets.shift();
     clockOffset = Math.max(...offsets);
+    // The estimate moving a tick or more from where the frames were last anchored is the
+    // downlink changing (an RTT spike starting or ending), not the frames arriving any earlier
+    // or later at the server: move the target lead with it, so the clock trim does not chase
+    // the estimate the wrong way. Jitter moves the window's best sample by less than a tick.
+    if (lastFrame < 0 || offsetAnchor == null) offsetAnchor = clockOffset;
+    else if (Math.abs(clockOffset - offsetAnchor) >= STEP_MS) {
+      const shift = Math.trunc((clockOffset - offsetAnchor) / STEP_MS);
+      offsetAnchor += shift * STEP_MS;
+      lead = Math.max(NET.leadMin, Math.min(NET.leadMax, lead - shift));
+      stats.clockSteps += 1;
+    }
     return clockOffset - offset;
   }
 
-  /** The lowest target lead the buffer probe may reach: the round trip in ticks. */
+  /**
+   * The lowest target lead the buffer trim may reach: the shortest recent round trip in ticks
+   * (not the median, which lags behind the end of an RTT spike while the buffer already shows it).
+   */
   function leadFloor() {
-    return Math.max(NET.leadMin, rttMs == null ? NET.leadMin : Math.ceil(rttMs / STEP_MS));
+    if (!rtts.length) return NET.leadMin;
+    return Math.max(NET.leadMin, Math.ceil(Math.min(...rtts) / STEP_MS));
   }
 
   /**
@@ -399,24 +451,6 @@ export function createPvpClient({
   }
 
   /**
-   * A deep server buffer with no late frame means the inputs arrive earlier than they need to:
-   * lower the target lead one tick (the clock trim then drains it without repeating a frame).
-   */
-  function bufferProbe(buffer, now) {
-    if (!Number.isInteger(buffer)) return;
-    buffers.push(buffer);
-    if (buffers.length < NET.bufferWindow) return;
-    if (buffers.length > NET.bufferWindow) buffers.shift();
-    if (lateInWindow || now - bufferProbeAt < NET.bufferProbeMs) return;
-    if (median(buffers) >= NET.bufferHigh && lead > leadFloor()) {
-      lead -= 1;
-      stats.leadDrops += 1;
-      bufferProbeAt = now;
-      buffers.length = 0;
-    }
-  }
-
-  /**
    * At live start, lift the lead to the PING round trip in ticks plus one tick of jitter margin
    * when a round trip was measured, so the first inputs are not late. With no sample it stays at
    * NET.leadStart and the late count finds it.
@@ -429,6 +463,21 @@ export function createPvpClient({
     if (rttMs == null || lastFrame >= 0) return;
     lead = Math.max(lead, leadForRtt());
     stats.maxLead = Math.max(stats.maxLead, lead);
+  }
+
+  function leadCeiling() {
+    return Math.min(NET.leadMax, leadForRtt() + NET.leadJitterTicks);
+  }
+
+  /**
+   * Lower the target lead to `want`. Frames already sent stay where they are: the clock trim
+   * (or, past TIMING.holdTicks, repeating the previous frame) brings the stamped lead down.
+   */
+  function lowerLead(want) {
+    if (want >= lead) return false;
+    lead = want;
+    stats.leadDrops += 1;
+    return true;
   }
 
   function estTick(now) {
@@ -460,14 +509,56 @@ export function createPvpClient({
   function onPong(body) {
     if (!body || typeof body.t !== 'number') return;
     const now = clock();
+    // Only the answer to a PING still outstanding counts, once: a repeated or stale PONG would
+    // read as a long round trip (and lift the lead).
+    const out = pingsOut.indexOf(body.t);
+    if (out < 0) return;
+    pingsOut.splice(out, 1);
     const rtt = now - body.t;
-    if (!(rtt >= 0)) return;
+    if (!(rtt >= 0) || rtt > NET.rttMaxSampleMs) return;
     if (typeof body.serverMs === 'number' && Number.isFinite(body.serverMs)) lastPong = { serverMs: body.serverMs, at: now };
+    pongs += 1;
     rtts.push(rtt);
     if (rtts.length > NET.rttWindow) rtts.shift();
+    const before = rttMs;
     const sorted = [...rtts].sort((a, b) => a - b);
     rttMs = sorted[Math.floor((sorted.length - 1) / 2)];
+    // The RTT fell: a spike's raises may not outlive it.
+    if (before != null && rttMs < before && lastFrame >= 0) {
+      if (lowerLead(Math.max(NET.leadMin, leadCeiling()))) stats.leadCaps += 1;
+    }
+    // The RTT rose by more than a tick past what the target covers (an RTT spike): lift the
+    // target to the round-trip lead at once instead of one late-frame raise per round trip.
+    if (before != null && rttMs > before && lastFrame >= 0 && leadForRtt() > lead + 1) {
+      lead = leadForRtt();
+      stats.leadLifts += 1;
+      stats.maxLead = Math.max(stats.maxLead, lead);
+    }
     if (body.phase === 'live' && !result) clockSample(body.clockTick, now);
+    // A second PING right away gives the server its first round trip one RTT sooner.
+    if (pongs === 1) maybePing(now, true);
+  }
+
+  /**
+   * you.buffer above NET.bufferTarget for a whole NET.bufferTrimMs (a dip to the target restarts
+   * the window): lower the target lead by the smallest excess seen, less what the clock trim is
+   * still draining (stamped lead above the target), never below the round trip in ticks.
+   */
+  function bufferSample(depth, now) {
+    if (!Number.isInteger(depth) || lastFrame < 0) return;
+    if (depth <= NET.bufferTarget) {
+      bufferMin = Infinity;
+      bufferSince = null;
+      return;
+    }
+    if (bufferSince == null) bufferSince = now;
+    bufferMin = Math.min(bufferMin, depth);
+    if (now - bufferSince < NET.bufferTrimMs) return;
+    const draining = leadNow == null ? 0 : Math.max(0, leadNow - (lead - 0.5));
+    const excess = Math.round(bufferMin - NET.bufferTarget - draining);
+    bufferMin = Infinity;
+    bufferSince = null;
+    if (excess > 0 && lowerLead(Math.max(leadFloor(), lead - excess))) stats.leadTrims += 1;
   }
 
   function onSnapshot(body) {
@@ -479,7 +570,16 @@ export function createPvpClient({
     if (snaps.length > NET.snapshotBuffer) snaps.shift();
     const now = clock();
     const late = clockSample(body.clockTick ?? body.tick, now);
-    if (late != null && body.phase !== 'done') interp.observe(late, lastSnapAt == null ? null : now - lastSnapAt);
+    if (late != null && body.phase !== 'done') {
+      // Jitter is how late the snapshot's tick arrives on the estimated server clock: network
+      // jitter plus the server loop running behind its ticks (clockTick is stamped when the
+      // snapshot is sent, so `late` alone misses the loop). A late loop callback steps two ticks
+      // and sends one snapshot, so the first tick this one makes drawable is tracked too.
+      const dataLate = Number.isInteger(body.tick) ? clockOffset + now - body.tick * STEP_MS : late;
+      const first = latest && Number.isInteger(latest.tick) && latest.tick < body.tick ? latest.tick + 1 : null;
+      const stepLate = first == null ? null : clockOffset + now - first * STEP_MS;
+      interp.observe(Math.max(late, dataLate), lastSnapAt == null ? null : now - lastSnapAt, stepLate);
+    }
     lastSnapAt = now;
     if (Array.isArray(body.hits)) {
       for (const hit of body.hits) {
@@ -497,26 +597,23 @@ export function createPvpClient({
       ack = { frame: you.ackFrame, seq: you.ackSeq, buffer: you.buffer, late: you.late };
       server = { rttMs: you.rttMs ?? null, rewindCap: you.rewindCap ?? null, interpMs: you.interpMs ?? null };
       reconcile(body, you, now);
+      bufferSample(you.buffer, now);
       if (Number.isInteger(you.late) && you.late > lateSeen) {
         const fresh = you.late - lateSeen;
         stats.lateFrames += fresh;
         lateSeen = you.late;
-        lateInWindow = true;
-        buffers.length = 0;
+        lateAt = now;
         // A frame or two late is jitter: raise by one, at most once per round trip (frames sent
         // before the raise cannot benefit). A larger run is a TCP stall; the director's hold-last
         // covers it, and a bigger lead would only add input delay.
-        const ceiling = Math.min(NET.leadMax, leadForRtt() + NET.leadJitterTicks);
+        const ceiling = leadCeiling();
         if (fresh <= NET.lateJitterFrames && now - leadRaisedAt >= (rttMs ?? 0) + STEP_MS && lead < ceiling) {
           lead += 1;
           leadRaisedAt = now;
           stats.leadRaises += 1;
           stats.maxLead = Math.max(stats.maxLead, lead);
         }
-      } else if (buffers.length === 0) {
-        lateInWindow = false;
       }
-      bufferProbe(you.buffer, now);
     }
     if (body.outcome && body.phase === 'done' && !result) {
       result = {
@@ -552,12 +649,11 @@ export function createPvpClient({
     if (Number.isInteger(body.lastSeq) && body.lastSeq > seq) seq = body.lastSeq;
     if (body.reason === 'frame' && Number.isInteger(body.frame) && Number.isInteger(body.tick)
       && body.frame > body.tick + INPUT_LIMITS.futureFrames) {
+      // Every frame already in flight was stamped with the same excess: one drop per round trip.
       const over = body.frame - body.tick - Math.floor(INPUT_LIMITS.futureFrames / 2);
-      const want = Math.max(NET.leadMin, lead - over);
-      if (want < lead) {
-        lastFrame -= lead - want;
-        lead = want;
-        stats.leadDrops += 1;
+      const now = clock();
+      if (now - leadLoweredAt >= (rttMs ?? 0) + STEP_MS && lowerLead(Math.max(NET.leadMin, lead - over))) {
+        leadLoweredAt = now;
       }
     }
     changed();
@@ -615,20 +711,51 @@ export function createPvpClient({
   /**
    * The frame the next input tick stamps at time `at`, or null (not live, no clock, or still
    * before tick 0 in the lead-in). The first frame is estimated tick + lead; after that frames
-   * go up by exactly one per tick. Only a stamped lead off its target by more than
-   * TIMING.resyncTicks (a render stall, a clock jump) snaps back to estimated tick + lead.
+   * go up by exactly one per tick and the clock trim moves the stamped lead. Behind the target
+   * (late frames reported, or a dropped backlog) the frame jumps forward to estimated tick +
+   * lead; more than TIMING.holdTicks ahead of it the previous frame is repeated (the director
+   * replaces it) until the trim can take over. Never moving a frame back keeps frame - viewTick
+   * within NET.viewStepTicks per input.
    */
   function planFrame(at) {
     if (!live()) return null;
     const est = estTick(at);
     if (est == null) return null;
     const aim = Math.floor(est) + lead;
-    if (lastFrame < 0) return aim < 0 ? null : { frame: Math.min(INPUT_LIMITS.maxFrame, aim), est, snap: false };
+    if (lastFrame < 0) return aim < 0 ? null : { frame: Math.min(INPUT_LIMITS.maxFrame, aim), est, snap: false, hold: false };
     const next = lastFrame + 1;
-    if (Math.abs(lead - 0.5 - (next - est)) > TIMING.resyncTicks) {
-      return { frame: Math.min(INPUT_LIMITS.maxFrame, Math.max(0, aim)), est, snap: true };
+    const error = lead - 0.5 - (next - est);
+    // Behind: jump only when frames are really falling short: a dropped backlog (past
+    // resyncTicks), or late frames in the last round trip (past lateResyncTicks: those frames
+    // are lost anyway). Otherwise the trim takes it.
+    const lateNow = at - lateAt <= (rttMs ?? 0) + 2 * STEP_MS;
+    if ((ticksDropped && error > TIMING.resyncTicks) || (lateNow && error > TIMING.lateResyncTicks)) {
+      return { frame: Math.min(INPUT_LIMITS.maxFrame, Math.max(next, aim)), est, snap: true, hold: false };
     }
-    return { frame: Math.min(INPUT_LIMITS.maxFrame, next), est, snap: false };
+    if (error < -TIMING.holdTicks) return { frame: lastFrame, est, snap: false, hold: true };
+    return { frame: Math.min(INPUT_LIMITS.maxFrame, next), est, snap: false, hold: false };
+  }
+
+  /**
+   * The render tick an input claims for `frame`: what the shooter saw (`want`), kept continuous
+   * the way the director checks it. viewTick never moves back; frame - viewTick moves by at most
+   * NET.viewStepTicks from the previous input; and while that allows it, the claim steps forward
+   * by at most NET.viewStepTicks (a clock-window jump in the render time cannot leap). Returns a
+   * fractional render tick.
+   */
+  function continuousSeen(frame, want) {
+    if (lastViewStamp == null || lastViewBack == null) return want;
+    const step = NET.viewStepTicks;
+    const lastTick = Math.floor(lastViewStamp);
+    // Whole view ticks the director accepts: frame - back within step of the last back, and
+    // never below the last view tick.
+    const lo = Math.max(lastTick, frame - lastViewBack - step);
+    const hi = frame - lastViewBack + step;
+    let seen = Math.max(lastViewStamp, Math.min(lastViewStamp + step, want));
+    if (Math.floor(seen) < lo) seen = lo;
+    else if (Math.floor(seen) > hi) seen = hi + (REWIND.fracSteps - 1) / REWIND.fracSteps;
+    if (seen !== want) stats.viewHeld += 1;
+    return seen;
   }
 
   /**
@@ -640,11 +767,8 @@ export function createPvpClient({
     if (!plan) return false;
     const { frame, est } = plan;
     // What the shooter saw: the newest drawn frame's render tick (else the render time now),
-    // never earlier than the previous input's and at most NET.viewStepTicks later (the adaptive
-    // delay and the clock estimate move it smoothly; this keeps a clock-window jump from
-    // stamping a step back or a leap).
-    let seen = viewTick != null ? viewTick : est - currentInterp() / STEP_MS;
-    if (lastViewStamp != null) seen = Math.max(lastViewStamp, Math.min(lastViewStamp + NET.viewStepTicks, seen));
+    // kept continuous (see continuousSeen).
+    const seen = continuousSeen(frame, viewTick != null ? viewTick : est - currentInterp() / STEP_MS);
     const view = wish.viewTick != null
       ? { viewTick: wish.viewTick, viewFrac: wish.viewFrac ?? 0 }
       : viewStamp(seen);
@@ -656,7 +780,13 @@ export function createPvpClient({
     if (Number.isInteger(wish.slot) && wish.slot >= 0) slotNow = wish.slot;
     look = { yaw: wish.yaw ?? 0, pitch: wish.pitch ?? 0 };
     if (plan.snap) stats.clockSnaps += 1;
-    if (wish.viewTick == null && Number.isFinite(seen)) lastViewStamp = seen;
+    if (plan.hold) stats.clockHolds += 1;
+    ticksDropped = false;
+    const sentView = view.viewTick + view.viewFrac / REWIND.fracSteps;
+    if (Number.isFinite(sentView)) {
+      lastViewStamp = wish.viewTick != null ? sentView : Math.max(sentView, seen);
+      lastViewBack = frame - view.viewTick;
+    }
     lastFrame = frame;
     stats.inputTicks += 1;
     // Trim the input clock toward the target lead (half a tick under it, as floor(est) + lead was).
@@ -700,7 +830,10 @@ export function createPvpClient({
       inputAcc += Math.max(0, now - inputLast) * rate;
       inputLast = now;
     }
-    if (inputAcc > NET.maxTicksPerUpdate * STEP_MS) inputAcc = NET.maxTicksPerUpdate * STEP_MS;
+    if (inputAcc > NET.maxTicksPerUpdate * STEP_MS) {
+      inputAcc = NET.maxTicksPerUpdate * STEP_MS;
+      ticksDropped = true;
+    }
     let sent = 0;
     while (inputAcc >= STEP_MS - 1e-6) {
       inputAcc -= STEP_MS;
@@ -827,6 +960,7 @@ export function createPvpClient({
       return {
         lead,
         rttMs,
+        rttSamples: [...rtts],
         estTick: estTick(clock()),
         lastFrame,
         seq,

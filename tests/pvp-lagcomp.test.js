@@ -9,14 +9,15 @@ import { yawTo } from '../src/core/math.js';
 import { contentFingerprint } from '../src/data/serverManifest.js';
 import { TUNING } from '../src/data/tuning.js';
 import {
-  clampView, combatCommitOf, createDirector, rewindCapFor,
+  clampView, combatCommitOf, createDirector, createHostedDirector, rewindCapFor,
 } from '../src/sim/pvp/director.js';
 import * as pvp from '../src/sim/pvp/export.js';
 import {
-  createMatch, hashState, historyAt, rewoundTarget, step, traceShots, weaponTick, normalizeWish,
+  combatRngWords, createMatch, hashState, historyAt, publicStateHash, rewoundTarget, stateSha256, step,
+  traceShots, weaponTick, normalizeWish,
 } from '../src/sim/pvp/sim.js';
 import {
-  DT, INPUT_LIMITS, LOADOUT, PVP_SIM_VERSION, REWIND, STEP_MS,
+  DT, INPUT_LIMITS, LOADOUT, MATCH_TICKS, PVP_SIM_VERSION, REPLAY_LIMITS, REWIND, STALL_MS, STEP_MS,
 } from '../src/sim/pvp/rules.js';
 import { SOURCE, decodeUsedLog } from '../src/sim/pvp/used.js';
 import { decodeInput, encodeInput } from '../src/net/inputCodec.js';
@@ -403,26 +404,28 @@ describe('split combat seed', () => {
   });
 });
 
-describe('replay v2 reproduces the rewind', () => {
-  function session() {
-    const { director } = boot({ spawnSeed: 90, combatSeed: SEED });
-    let seq = 0;
-    // ada fires the sniper at where she saw bea three ticks before each frame; bea strafes.
-    send(director, 'ada', { seq: ++seq, frame: 0, yaw: 0, slot: 2 }, 0);
-    let seqB = 0;
-    for (let frame = 1; frame < 150 && director.phase === 'live'; frame++) {
-      const now = director.liveStart + frame * STEP_MS;
-      const sim = director.sim;
-      const seen = historyAt(sim, 1, Math.max(0, frame - 3)) || sim.players[1];
-      send(director, 'ada', {
-        seq: ++seq, frame, yaw: yawTo(sim.players[0], seen), pitch: 0, fire: frame % 30 === 0, zoom: true,
-        viewTick: frame - 3, viewFrac: 0,
-      }, now);
-      send(director, 'bea', { seq: ++seqB, frame, yaw: sim.players[1].yaw, moveX: (frame >> 4) & 1 ? 1 : -1 }, now);
-      director.advance(now);
-    }
-    return director;
+/** ada snipes where she saw bea three ticks back; bea strafes. */
+function session() {
+  const { director } = boot({ spawnSeed: 90, combatSeed: SEED });
+  let seq = 0;
+  // ada fires the sniper at where she saw bea three ticks before each frame; bea strafes.
+  send(director, 'ada', { seq: ++seq, frame: 0, yaw: 0, slot: 2 }, 0);
+  let seqB = 0;
+  for (let frame = 1; frame < 150 && director.phase === 'live'; frame++) {
+    const now = director.liveStart + frame * STEP_MS;
+    const sim = director.sim;
+    const seen = historyAt(sim, 1, Math.max(0, frame - 3)) || sim.players[1];
+    send(director, 'ada', {
+      seq: ++seq, frame, yaw: yawTo(sim.players[0], seen), pitch: 0, fire: frame % 30 === 0, zoom: true,
+      viewTick: frame - 3, viewFrac: 0,
+    }, now);
+    send(director, 'bea', { seq: ++seqB, frame, yaw: sim.players[1].yaw, moveX: (frame >> 4) & 1 ? 1 : -1 }, now);
+    director.advance(now);
   }
+  return director;
+}
+
+describe('replay v2 reproduces the rewind', () => {
 
   it('verifies the logged rewinds, and a flipped rewind byte no longer matches', () => {
     const director = session();
@@ -543,9 +546,13 @@ describe('client view stamps, PING echoes and hit events', () => {
     expect(r.pings()[0]).toEqual({ t: 0, interpMs: 100 });
     r.now = 80;
     r.deliver(OP.PONG, { t: 0, serverMs: 5000, tick: 0, clockTick: 0, phase: 'lobby' });
+    // The first PONG is echoed at once (S2a: second PING right after the first PONG).
+    expect(r.pings()[1]).toEqual({ t: 80, interpMs: 100, echo: 5000, hold: 0 });
+    r.now = 160;
+    r.deliver(OP.PONG, { t: 80, serverMs: 5080, tick: 0, clockTick: 0, phase: 'lobby' });
     r.now = 600;
     r.client.update(r.now, () => null);
-    expect(r.pings()[1]).toEqual({ t: 600, interpMs: 100, echo: 5000, hold: 520 });
+    expect(r.pings()[2]).toEqual({ t: 600, interpMs: 100, echo: 5080, hold: 440 });
     expect(r.sent.find((m) => m.op === OP.HELLO).data).toMatchObject({ interpMs: 100 });
   });
 
@@ -561,6 +568,259 @@ describe('client view stamps, PING echoes and hit events', () => {
     expect(r.client.net).toMatchObject({ hitsConfirmed: 1, damageConfirmed: 18000, serverRttMs: 90, rewindCap: 6 });
     expect(r.client.viewState(r.now).hits).toHaveLength(2);
     expect(r.client.viewState(r.now + 5000).hits).toHaveLength(0);
+  });
+});
+
+describe('review fixes (SHOOTER-S2b)', () => {
+  const ping = (director, who, body, now) => director.handle(
+    { userId: who, sessionId: who === 'ada' ? 'sa' : 'sb' }, OP.PING, JSON.stringify(body), now,
+  );
+  /** Give `who` a measured RTT of `rtt` ms and announce `interpMs`, with echo pairs. */
+  function measured(director, who, rtt, interpMs = 100, at = 1000) {
+    let serverMs = ping(director, who, { t: 0, interpMs }, at).messages[0].body.serverMs;
+    for (let i = 1; i <= 3; i++) {
+      const now = serverMs + 500;
+      serverMs = ping(director, who, { t: i, echo: serverMs, hold: 500 - rtt, interpMs }, now).messages[0].body.serverMs;
+    }
+    return serverMs;
+  }
+
+  describe('(a) rewind backtrack', () => {
+    it('keeps viewTick non-decreasing and frame - viewTick within 2 ticks of the previous input', () => {
+      const { director } = boot();
+      measured(director, 'ada', 100, 150);
+      expect(director.seatStats(0).rewindCap).toBe(10);
+      stepTo(director, 30);
+      const now = director.liveStart + 30 * STEP_MS;
+      // Claimed backs 3, 3, 9, 9, 0 on consecutive frames: a client picking its rewind per shot.
+      const claims = [3, 3, 9, 9, 0];
+      claims.forEach((back, i) => {
+        const frame = 30 + i;
+        expect(send(director, 'ada', { seq: i + 1, frame, yaw: 0, fire: true, viewTick: frame - back }, now).ok).toBe(true);
+      });
+      stepTo(director, 36);
+      const applied = claims.map((_, i) => director.usedAt(30 + i)[0].r);
+      // 9 jumps back past the last view (non-decreasing) and by more than 2; 0 jumps forward by 5.
+      expect(applied).toEqual([3, 3, 4, 5, 3]);
+      expect(director.seatStats(0).viewClamped).toBe(3);
+      expect(director.seatStats(1).viewClamped).toBe(0);
+    });
+
+    it('starts the view check over after a rebind', () => {
+      const { director } = boot();
+      measured(director, 'ada', 100, 150);
+      stepTo(director, 30);
+      const now = director.liveStart + 30 * STEP_MS;
+      send(director, 'ada', { seq: 1, frame: 30, yaw: 0, viewTick: 29 }, now);
+      director.disconnect('ada', 'sa');
+      director.hello({ presenceUserId: 'ada', sessionId: 'sa2', body: hello('ada'), now: now + 1500 });
+      director.input({ presenceUserId: 'ada', sessionId: 'sa2', packet: encodeInput({ seq: 2, frame: 31, yaw: 0, viewTick: 23 }), now: now + 1500 });
+      stepTo(director, 32);
+      expect(director.usedAt(31)[0].r).toBe(8);
+      expect(director.seatStats(0).viewClamped).toBe(0);
+    });
+
+    it('uses each PONG echo once, and refuses echo samples over 1000 ms', () => {
+      expect(REWIND.maxRttMs).toBe(1000);
+      const { director } = boot();
+      const s0 = ping(director, 'ada', { t: 0 }, 1000).messages[0].body.serverMs;
+      ping(director, 'ada', { t: 1, echo: s0, hold: 400 }, s0 + 500);
+      expect(director.exportState().seats[0].rtts).toEqual([100]);
+      // The same echo again (a client replaying an old PONG to inflate its RTT) is ignored.
+      ping(director, 'ada', { t: 2, echo: s0, hold: 0 }, s0 + 900);
+      expect(director.exportState().seats[0].rtts).toEqual([100]);
+      // A fresh echo held back 1500 ms with hold 0 claims a 1.5 s round trip: refused.
+      const s1 = ping(director, 'ada', { t: 3 }, s0 + 1000).messages[0].body.serverMs;
+      ping(director, 'ada', { t: 4, echo: s1, hold: 0 }, s1 + 1500);
+      expect(director.exportState().seats[0].rtts).toEqual([100]);
+    });
+
+    it('caps the RTT the rewind uses at the host\'s rttCeilingMs', () => {
+      const director = createDirector({ spawnSeed: 3, combatSeed: SEED, matchId: 'w', leadInTicks: 0, rttCeilingMs: 60 });
+      director.hello({ presenceUserId: 'ada', sessionId: 'sa', body: hello('ada'), now: 0 });
+      measured(director, 'ada', 300);
+      expect(director.seatStats(0)).toMatchObject({ rttMs: 300, rewindCap: rewindCapFor(60, 100) });
+      expect(rewindCapFor(60, 100)).toBeLessThan(rewindCapFor(300, 100));
+      expect(director.exportState().rttCeilingMs).toBe(60);
+      expect(() => createDirector({ spawnSeed: 3, combatSeed: SEED, rttCeilingMs: -1 })).toThrow(/rttCeilingMs/);
+      expect(() => createHostedDirector({ spawnSeed: 3, combatSeed: SEED, matchId: 'w', rttCeilingMs: 'x' })).toThrow(/rttCeilingMs/);
+    });
+  });
+
+  describe('(b) combat RNG and snapshot hashes', () => {
+    it('seeds the combat RNG with 128 bits of sha256(combatSeed)', () => {
+      const digest = createHash('sha256').update(`sproto-shooter:combat:${SEED}`, 'utf8').digest('hex');
+      const words = [0, 1, 2, 3].map((i) => parseInt(digest.slice(i * 8, i * 8 + 8), 16) >>> 0);
+      expect(combatRngWords(SEED)).toEqual(words);
+      // Seeds that agree in their first 32 bits of digest still start different RNGs.
+      const a = createMatch(42, SEED);
+      const b = createMatch(42, 'ffeeddccbbaa99887766554433221100');
+      expect(a.players[0].rng).not.toEqual(b.players[0].rng);
+      expect(Object.keys(a.players[0].rng).sort()).toEqual(['a', 'b', 'c', 'd']);
+    });
+
+    it('sends clients a state hash without the RNG; replay keeps the full hash and a SHA-256', () => {
+      const { director } = boot();
+      stepTo(director, 29);
+      const out = director.advance(director.liveStart + 30 * STEP_MS).messages.filter((m) => m.op === OP.SNAPSHOT);
+      const sim = director.sim;
+      expect(out[0].body.hash).toBe(publicStateHash(sim));
+      expect(publicStateHash(sim)).not.toBe(hashState(sim));
+      // The public hash does not move when only the RNG does.
+      const copy = JSON.parse(JSON.stringify(sim));
+      copy.players[0].rng.a ^= 1;
+      expect(publicStateHash(copy)).toBe(publicStateHash(sim));
+      expect(hashState(copy)).not.toBe(hashState(sim));
+      const record = director.replayRecord();
+      expect(record.expect.stateHash).toBe(hashState(sim));
+      expect(record.expect.stateSha256).toBe(stateSha256(sim));
+      expect(stateSha256(sim)).toMatch(/^[0-9a-f]{64}$/);
+    });
+  });
+
+  describe('(c) replay v2 verdicts', () => {
+    function stalled({ accounts, build } = {}) {
+      const director = createDirector({
+        spawnSeed: 90, combatSeed: SEED, matchId: 'v', leadInTicks: 0, accounts, build,
+      });
+      director.hello({ presenceUserId: 'bea', sessionId: 'sb', body: hello('bea'), now: 0 });
+      director.hello({ presenceUserId: 'ada', sessionId: 'sa', body: hello('ada'), now: 0 });
+      director.ready({ presenceUserId: 'ada', sessionId: 'sa', now: 0 });
+      director.ready({ presenceUserId: 'bea', sessionId: 'sb', now: 0 });
+      // Only bea plays; ada goes quiet, so ada forfeits on stall.
+      let seq = 0;
+      for (let frame = 0; director.phase === 'live' && frame < 400; frame++) {
+        const now = director.liveStart + frame * STEP_MS;
+        send(director, 'bea', { seq: ++seq, frame, yaw: 0, moveX: 1 }, now);
+        director.advance(now);
+      }
+      director.advance(director.liveStart + STALL_MS + 2000);
+      return director;
+    }
+
+    it('records seat -> account ids, the build when known, and a SHA-256 state hash', () => {
+      const build = { bundleSha256: 'ab'.repeat(32), sourceCommit: 'cd'.repeat(20) };
+      const director = stalled({ accounts: ['ada', 'bea'], build });
+      // With `accounts`, seats follow that order whoever says HELLO first.
+      expect(director.seatOf('ada')).toBe(0);
+      expect(director.seatOf('bea')).toBe(1);
+      const record = director.replayRecord();
+      expect(record).toMatchObject({ accounts: ['ada', 'bea'], bundleSha256: build.bundleSha256, sourceCommit: build.sourceCommit });
+      expect(record.result).toMatchObject({ outcome: 'forfeit', winner: 1, reason: 'stall', stateSha256: record.expect.stateSha256 });
+      // Without `accounts`, the record names whoever holds each seat; others cannot join one.
+      const open = stalled().replayRecord();
+      expect(open.accounts).toEqual(['bea', 'ada']);
+      expect(open.bundleSha256).toBeNull();
+      const invited = createDirector({ spawnSeed: 1, combatSeed: SEED, matchId: 'i', accounts: ['ada', 'bea'] });
+      expect(invited.joinAttempt('cat')).toEqual({ accept: false, reason: 'not_invited' });
+      expect(invited.hello({ presenceUserId: 'cat', sessionId: 'sc', body: hello('cat'), now: 0 }).reason).toBe('not_invited');
+      expect(() => createDirector({ accounts: ['ada', 'ada'] })).toThrow(/accounts/);
+    });
+
+    it('checks the result against the replay and returns a structured verdict', () => {
+      const record = stalled({ accounts: ['ada', 'bea'] }).replayRecord();
+      const ok = JSON.parse(replayJSON(JSON.stringify(record)));
+      expect(ok.verified).toBe(true);
+      expect(ok.verdict).toMatchObject({
+        replay: true,
+        result: true,
+        outcome: 'forfeit',
+        winner: 1,
+        reason: 'stall',
+        provable: false,
+        accounts: ['ada', 'bea'],
+        policy: 'settle_director',
+      });
+      expect(ok.verdict.evidence.trailingNonInput[0]).toBeGreaterThanOrEqual(ok.verdict.evidence.stallTicks);
+      expect(ok.stateSha256).toBe(record.expect.stateSha256);
+      // Each result field is checked against the replay.
+      for (const [key, value] of [
+        ['tick', record.result.tick + 1], ['stateHash', '00000000'], ['stateSha256', '0'.repeat(64)],
+        ['spawnSeed', 91], ['combatSeed', 'ffeeddccbbaa99887766554433221100'], ['combatCommit', sha256Hex('x')],
+        ['reason', 'ko'],
+      ]) {
+        const bad = JSON.parse(replayJSON(JSON.stringify({ ...record, result: { ...record.result, [key]: value } })));
+        expect(bad.verified, key).toBe(false);
+        expect(bad.mismatch, key).toContain(`result.${key}`);
+        expect(bad.verdict).toMatchObject({ result: false, policy: 'refuse' });
+      }
+      // A stall forfeit is the director's word, not the log's: flipping the winner cannot be
+      // refuted by replay, but the log shows the new "loser" kept playing, so it goes to review.
+      const flipped = JSON.parse(replayJSON(JSON.stringify({ ...record, result: { ...record.result, winner: 0 } })));
+      expect(flipped.verdict).toMatchObject({ provable: false, policy: 'review' });
+      expect(flipped.verdict.evidence.consistent).toBe(false);
+      const missing = JSON.parse(replayJSON(JSON.stringify({ ...record, result: null })));
+      expect(missing.verdict).toMatchObject({ result: null, policy: 'refuse' });
+    });
+
+    it('marks sim outcomes provable and director outcomes not, with a policy for each', () => {
+      // A KO decided by the sim: provable, settle.
+      const ko = session();
+      while (ko.phase === 'live') ko.advance(ko.liveStart + (ko.sim.tick + 1) * STEP_MS);
+      const koOut = JSON.parse(replayJSON(JSON.stringify(ko.replayRecord())));
+      expect(koOut.verified).toBe(true);
+      expect(['ko', 'time', 'draw']).toContain(koOut.verdict.outcome);
+      // both_stall and cancel refund.
+      const quiet = createDirector({ spawnSeed: 2, combatSeed: SEED, matchId: 'q', leadInTicks: 0 });
+      quiet.hello({ presenceUserId: 'ada', sessionId: 'sa', body: hello('ada'), now: 0 });
+      quiet.hello({ presenceUserId: 'bea', sessionId: 'sb', body: hello('bea'), now: 0 });
+      quiet.ready({ presenceUserId: 'ada', sessionId: 'sa', now: 0 });
+      quiet.ready({ presenceUserId: 'bea', sessionId: 'sb', now: 0 });
+      quiet.advance(quiet.liveStart + STALL_MS + 100);
+      const both = JSON.parse(replayJSON(JSON.stringify(quiet.replayRecord())));
+      expect(both.verdict).toMatchObject({ outcome: 'draw', reason: 'both_stall', provable: false, policy: 'refund' });
+      const lobby = createDirector({ spawnSeed: 2, combatSeed: SEED, matchId: 'c' });
+      lobby.hello({ presenceUserId: 'ada', sessionId: 'sa', body: hello('ada'), now: 0 });
+      lobby.advance(60000);
+      const cancel = JSON.parse(replayJSON(JSON.stringify(lobby.replayRecord())));
+      expect(cancel.verdict).toMatchObject({ outcome: 'cancel', provable: false, policy: 'refund' });
+    });
+  });
+
+  describe('(d) replay input checks', () => {
+    it('refuses non-finite numbers by value, not by the text "Infinity"', () => {
+      const director = createDirector({ spawnSeed: 3, combatSeed: SEED, matchId: 'Infinity', leadInTicks: 0 });
+      director.hello({ presenceUserId: 'ada', sessionId: 'sa', body: hello('ada'), now: 0 });
+      director.hello({ presenceUserId: 'bea', sessionId: 'sb', body: hello('bea'), now: 0 });
+      director.ready({ presenceUserId: 'ada', sessionId: 'sa', now: 0 });
+      director.ready({ presenceUserId: 'bea', sessionId: 'sb', now: 0 });
+      stepTo(director, 10);
+      const record = director.replayRecord();
+      expect(JSON.parse(replayJSON(JSON.stringify(record))).verified).toBe(true);
+      expect(JSON.parse(replayJSON({ ...record, spawnSeed: NaN }))).toMatchObject({ ok: false, reason: 'nan' });
+      expect(JSON.parse(replayJSON({ ...record, expect: { ...record.expect, tick: Infinity } }))).toMatchObject({ ok: false, reason: 'nan' });
+      expect(JSON.parse(replayJSON(JSON.stringify(record).replace('"spawnSeed":3', '"spawnSeed":1e999')))).toMatchObject({ ok: false, reason: 'nan' });
+      expect(JSON.parse(replayJSON('{"v":2,"spawnSeed":NaN}'))).toMatchObject({ ok: false, reason: 'malformed' });
+    });
+
+    it('caps the length of an externally supplied record', () => {
+      expect(REPLAY_LIMITS.maxTicks).toBeGreaterThanOrEqual(MATCH_TICKS);
+      const director = createDirector({ spawnSeed: 3, combatSeed: SEED, matchId: 'L', leadInTicks: 0 });
+      const record = { ...director.replayRecord(), expect: { tick: 0 } };
+      const tick = '0'.repeat(40);
+      const chunk = tick.repeat(30);
+      const long = Array.from({ length: Math.ceil((REPLAY_LIMITS.maxTicks + 1) / 30) }, () => chunk);
+      expect(JSON.parse(replayJSON(JSON.stringify({ ...record, used: long })))).toMatchObject({ ok: false, reason: 'too_long' });
+      expect(JSON.parse(replayJSON('x'.repeat(REPLAY_LIMITS.maxBytes + 1)))).toMatchObject({ ok: false, reason: 'too_long' });
+      const v1 = { seed: 1, inputs: Array.from({ length: REPLAY_LIMITS.maxTicks + 1 }, () => [{}, {}]) };
+      expect(JSON.parse(replayJSON(v1))).toMatchObject({ ok: false, reason: 'too_long' });
+    });
+  });
+
+  describe('hosted matches', () => {
+    it('refuse to go live on a derived combat seed', () => {
+      const director = createHostedDirector({ spawnSeed: 3, combatSeed: SEED, matchId: 'h' });
+      const state = director.exportState();
+      state.combatSeedDerived = true;
+      director.importState(state);
+      director.hello({ presenceUserId: 'ada', sessionId: 'sa', body: hello('ada'), now: 0 });
+      director.hello({ presenceUserId: 'bea', sessionId: 'sb', body: hello('bea'), now: 0 });
+      director.ready({ presenceUserId: 'ada', sessionId: 'sa', now: 0 });
+      const out = director.ready({ presenceUserId: 'bea', sessionId: 'sb', now: 0 });
+      expect(director.phase).toBe('done');
+      expect(director.result).toMatchObject({ outcome: 'cancel', reason: 'no_combat_seed' });
+      expect(out.messages.some((m) => m.op === OP.RESULT)).toBe(true);
+    });
   });
 });
 

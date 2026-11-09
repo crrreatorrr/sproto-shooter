@@ -2,7 +2,7 @@
 // rate caps, catch-up cap, lead-in, rejoin via HELLO, PING/PONG, per-recipient messages,
 // exportState/importState, and the used-input log that replayJSON v2 verifies.
 import { describe, expect, it } from 'vitest';
-import { createDirector, restoreDirector } from '../src/sim/pvp/director.js';
+import { createDirector, createHostedDirector, restoreDirector } from '../src/sim/pvp/director.js';
 import * as pvp from '../src/sim/pvp/export.js';
 import { encodeInput } from '../src/net/inputCodec.js';
 import { CONTENT, OP, PROTOCOL, SIM_VERSION, matchmakerProps } from '../src/net/protocol.js';
@@ -10,7 +10,9 @@ import {
   CONTENT_FINGERPRINT, HASH_EVERY_TICKS, INPUT_LIMITS, LEAD_IN_TICKS, MATCHMAKER_QUERY,
   PVP_PROTOCOL_VERSION, STALL_MS, STEP_MS,
 } from '../src/sim/pvp/rules.js';
-import { SOURCE, decodeUsedLog } from '../src/sim/pvp/used.js';
+import {
+  SOURCE, appendUsedTick, decodeUsedLog, neutralUsed, wishOfUsed,
+} from '../src/sim/pvp/used.js';
 import { createLoopbackTable, registerFreeMatch } from '../src/net/client.js';
 import './fixtures/director-golden.js';
 import goldenFixture from './fixtures/director-golden.json';
@@ -63,13 +65,13 @@ describe('protocol 2 identity (SHOOTER-S2a, sim 2 since SHOOTER-S2b)', () => {
     expect(PROTOCOL).toBe(2);
     expect(SIM_VERSION).toBe(2);
     // S2b (sim 2) is a deliberate fingerprint bump from 0e584d36 (S2a, sim 1).
-    expect(CONTENT_FINGERPRINT).toBe('ec36c8fa');
+    expect(CONTENT_FINGERPRINT).toBe('17d87c54');
     expect(OP.PING).toBe(10);
     expect(OP.PONG).toBe(11);
     const props = matchmakerProps();
     expect(props.query).toBe(MATCHMAKER_QUERY);
-    expect(props.query).toBe('+properties.game:sproto-shooter +properties.mode:free +properties.protocol:2 +properties.content:ec36c8fa');
-    expect(props.stringProperties).toMatchObject({ protocol: '2', content: 'ec36c8fa', sim: '2' });
+    expect(props.query).toBe('+properties.game:sproto-shooter +properties.mode:free +properties.protocol:2 +properties.content:17d87c54');
+    expect(props.stringProperties).toMatchObject({ protocol: '2', content: '17d87c54', sim: '2' });
     expect(matchmakerProps('deadbeef').query).toContain('+properties.content:deadbeef');
   });
 });
@@ -178,21 +180,25 @@ describe('hold-last substitutes', () => {
 });
 
 describe('frame rate caps', () => {
-  it('allows 6 queued frames per server clock tick, but late frames do not count toward it', () => {
+  it('allows futureFrames + 1 (9) queued frames per server clock tick, but late frames do not count toward it', () => {
+    expect(INPUT_LIMITS.maxFramesPerCursor).toBeGreaterThanOrEqual(INPUT_LIMITS.futureFrames + 1);
+    expect(INPUT_LIMITS.maxFramesPerCursor).toBe(9);
     const director = boot({ leadInTicks: 0 });
     stepTo(director, 20);
     const now = director.liveStart + 20 * STEP_MS;
     let seq = 0;
-    // A TCP burst: 10 late frames and 6 fresh ones arrive in one server tick. All pass.
-    for (let frame = 10; frame < 26; frame++) {
+    // A TCP burst at lead 8: 10 late frames and the whole window (cursor..cursor+8) arrive in one
+    // server tick. All pass.
+    for (let frame = 10; frame < 29; frame++) {
       seq += 1;
       const got = send(director, 'ada', wish(seq, frame), now);
       expect(got.ok, `frame ${frame}`).toBe(true);
     }
-    expect(director.seatStats(0)).toMatchObject({ late: 10, buffer: 6 });
-    expect(send(director, 'ada', wish(seq + 1, 26), now).reason).toBe('rate');
+    expect(director.seatStats(0)).toMatchObject({ late: 10, buffer: 9 });
+    // A tenth fresh frame in the same tick (a resend of frame 28) is over the cap.
+    expect(send(director, 'ada', wish(seq + 1, 28), now).reason).toBe('rate');
     // The next server tick has room again.
-    expect(send(director, 'ada', wish(seq + 2, 26), now + STEP_MS).ok).toBe(true);
+    expect(send(director, 'ada', wish(seq + 2, 28), now + STEP_MS).ok).toBe(true);
   });
 
   it('counts every frame against a 45/s token bucket, so a burst after a quiet stall passes and spam does not', () => {
@@ -320,6 +326,8 @@ describe('rejoin', () => {
     expect(back.seat).toBe(1);
     const mine = back.messages.filter((m) => m.to.sessionId === 'sb2');
     expect(mine.map((m) => m.op)).toEqual([OP.WELCOME, OP.SNAPSHOT]);
+    // A rebind answers only the rebinding seat: the other seat gets nothing.
+    expect(back.messages.every((m) => m.to && m.to.sessionId === 'sb2')).toBe(true);
     expect(mine[0].body).toMatchObject({ seat: 1, phase: 'live', lastSeq: 4 });
     // The old session is gone; the new one plays on with the next sequence number.
     expect(send(director, 'bea', wish(5, 31), now, 'sb').reason).toBe('wrong_sender');
@@ -341,6 +349,94 @@ describe('rejoin', () => {
     expect(director.phase).toBe('lobby');
     director.ready({ presenceUserId: 'ada', sessionId: 'sa2', now: 20 });
     expect(director.phase).toBe('live');
+  });
+});
+
+describe('review fixes (SHOOTER-S2a)', () => {
+  it('rate-limits HELLO + RESYNC to 2/s and READY to 2/s per seat', () => {
+    const director = boot({ leadInTicks: 0 });
+    // More than a second after boot's HELLO and READY.
+    const now = director.liveStart + 40 * STEP_MS;
+    const ada = { userId: 'ada', sessionId: 'sa' };
+    expect(director.handle(ada, OP.HELLO, JSON.stringify(hello('ada')), now).ok).toBe(true);
+    expect(director.handle(ada, OP.RESYNC, '{}', now + 10).ok).toBe(true);
+    const third = director.handle(ada, OP.HELLO, JSON.stringify(hello('ada')), now + 20);
+    expect(third).toMatchObject({ ok: false, reason: 'rate' });
+    expect(third.messages.every((m) => m.to.sessionId === 'sa')).toBe(true);
+    expect(director.handle(ada, OP.RESYNC, '{}', now + 30).reason).toBe('rate');
+    expect(director.handle(ada, OP.READY, '{}', now).ok).toBe(true);
+    expect(director.handle(ada, OP.READY, '{}', now + 10).ok).toBe(true);
+    expect(director.handle(ada, OP.READY, '{}', now + 20).reason).toBe('rate');
+    // A second later both budgets are back, and the other seat was never limited.
+    expect(director.handle(ada, OP.HELLO, JSON.stringify(hello('ada')), now + 1000).ok).toBe(true);
+    expect(director.handle(ada, OP.READY, '{}', now + 1000).ok).toBe(true);
+    expect(director.handle({ userId: 'bea', sessionId: 'sb' }, OP.READY, '{}', now + 20).ok).toBe(true);
+    expect(INPUT_LIMITS.maxHelloPerSecond).toBe(2);
+    expect(INPUT_LIMITS.maxReadyPerSecond).toBe(2);
+  });
+
+  it('answers HELLO after the match is done with WELCOME, the final snapshot and a copy of RESULT, to the sender only', () => {
+    const director = boot({ leadInTicks: 0 });
+    stepTo(director, 30);
+    const done = director.advance(director.liveStart + STALL_MS + 100);
+    expect(director.phase).toBe('done');
+    const result = done.messages.find((m) => m.op === OP.RESULT);
+    expect(result).toBeDefined();
+    director.disconnect('bea', 'sb');
+    const later = director.liveStart + STALL_MS + 5000;
+    const back = director.handle({ userId: 'bea', sessionId: 'sb2' }, OP.HELLO, JSON.stringify(hello('bea')), later);
+    expect(back.ok).toBe(true);
+    expect(back.messages.map((m) => m.op)).toEqual([OP.WELCOME, OP.SNAPSHOT, OP.RESULT]);
+    expect(back.messages.every((m) => m.to && m.to.sessionId === 'sb2')).toBe(true);
+    expect(back.messages[0].body).toMatchObject({ seat: 1, phase: 'done' });
+    expect(back.messages[1].body).toMatchObject({ phase: 'done', tick: director.sim.tick });
+    expect(back.messages[2].body).toEqual(result.body);
+    // A stranger still gets `ended`, and RESULT for the match was broadcast only once.
+    expect(director.handle({ userId: 'cat', sessionId: 'sc' }, OP.HELLO, JSON.stringify(hello('cat')), later).reason).toBe('ended');
+    expect(director.advance(later + 100).messages.filter((m) => m.op === OP.RESULT)).toEqual([]);
+  });
+
+  it('decodes raw ArrayBuffer bodies (Nakama hands the match an ArrayBuffer) instead of calling them wrong_sender', () => {
+    const director = createDirector({ seed: 3, matchId: 'm' });
+    const buffer = (text) => new TextEncoder().encode(text).buffer;
+    const hi = director.handle({ userId: 'ada', sessionId: 'sa' }, OP.HELLO, buffer(JSON.stringify(hello('ada'))), 0);
+    expect(hi.ok).toBe(true);
+    director.handle({ userId: 'bea', sessionId: 'sb' }, OP.HELLO, buffer(JSON.stringify(hello('bea'))), 0);
+    expect(director.handle({ userId: 'ada', sessionId: 'sa' }, OP.READY, buffer('{}'), 0).ok).toBe(true);
+    expect(director.handle({ userId: 'bea', sessionId: 'sb' }, OP.READY, new ArrayBuffer(0), 0).ok).toBe(true);
+    expect(director.phase).toBe('live');
+    const packet = encodeInput(wish(1, 0));
+    const copy = packet.buffer.slice(packet.byteOffset, packet.byteOffset + packet.byteLength);
+    expect(director.handle({ userId: 'ada', sessionId: 'sa' }, OP.INPUT, copy, 0)).toMatchObject({ ok: true });
+    expect(director.seatStats(0).buffer).toBe(1);
+    // Garbage is malformed, never wrong_sender.
+    expect(director.handle({ userId: 'ada', sessionId: 'sa' }, OP.HELLO, buffer('{nope'), 0).reason).toBe('malformed');
+    expect(director.handle({ userId: 'ada', sessionId: 'sa' }, OP.INPUT, new ArrayBuffer(5), 0).reason).toBe('malformed');
+    expect(director.handle({ userId: 'ada', sessionId: 'sa' }, OP.PING, buffer('{"t":5}'), 0).ok).toBe(true);
+  });
+
+  it('steps the decoded used-log entry, so a replay matches by construction', () => {
+    const chunks = [];
+    // An out-of-range record (yaw 40000) does not survive the 16-bit log encoding.
+    const odd = { y: 40000, p: 0, mx: 5, mz: -5, b: 1, s: 1, src: SOURCE.input };
+    const decoded = appendUsedTick(chunks, [odd, neutralUsed()]);
+    expect(decoded).toEqual(decodeUsedLog(chunks)[0]);
+    expect(decoded[0].y).not.toBe(40000);
+    expect(wishOfUsed(decoded[0]).yaw).toBe(wishOfUsed(decodeUsedLog(chunks)[0][0]).yaw);
+    // And a whole match: the director's own hash is the replay's.
+    const golden = directorGolden(pvp, { record: true });
+    expect(JSON.parse(replayJSON(JSON.stringify(golden.record))).verified).toBe(true);
+  });
+
+  it('createHostedDirector requires a host spawn seed, a secret combat seed and the match id', () => {
+    const combatSeed = '00112233445566778899aabbccddeeff';
+    expect(() => createHostedDirector({ combatSeed, matchId: 'm' })).toThrow(/spawnSeed/);
+    expect(() => createHostedDirector({ spawnSeed: 5, combatSeed })).toThrow(/matchId/);
+    expect(() => createHostedDirector({ spawnSeed: 1.5, combatSeed, matchId: 'm' })).toThrow(/spawnSeed/);
+    expect(() => createHostedDirector({ spawnSeed: 5, matchId: 'm' })).toThrow(/combatSeed/);
+    const director = createHostedDirector({ spawnSeed: 5, combatSeed, matchId: 'm-1' });
+    expect(director.exportState()).toMatchObject({ spawnSeed: 5, matchId: 'm-1', hosted: true, combatSeedDerived: false });
+    expect(pvp.createHostedDirector).toBe(createHostedDirector);
   });
 });
 
@@ -450,6 +546,6 @@ describe('mock match handler', () => {
     expect(live.frozen).toBeNull();
     expect(frozen.sent).toEqual(live.sent);
     expect(live.sent.length).toBeGreaterThan(90);
-    expect(live.label).toEqual({ kind: 'sproto_shooter_free', game: 'sproto-shooter', mode: 'free', protocol: 2, content: 'ec36c8fa', stake: 0 });
+    expect(live.label).toEqual({ kind: 'sproto_shooter_free', game: 'sproto-shooter', mode: 'free', protocol: 2, content: '17d87c54', stake: 0 });
   });
 });

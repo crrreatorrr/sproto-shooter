@@ -217,6 +217,6 @@ describe('prediction against the real director (SHOOTER-S3)', () => {
 
   it('leaves the sim, its golden and the content fingerprint alone', () => {
     expect(hashState(replay(scriptedMatch(7, 180)))).toBe('6545ca0a');
-    expect(CONTENT_FINGERPRINT).toBe('ec36c8fa');
+    expect(CONTENT_FINGERPRINT).toBe('17d87c54');
   });
 });

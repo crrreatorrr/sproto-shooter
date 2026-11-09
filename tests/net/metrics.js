@@ -49,6 +49,8 @@ function blankPeer() {
     extrapolatedFrames: 0,
     clientHeldFrames: 0,
     net: null,
+    leadTrace: [],
+    aheadSamples: [],
     lastViewKey: null,
     disconnects: [],
     rejoins: [],
@@ -103,6 +105,8 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
           // Protocol 2: a late frame is accepted and discarded. It never reaches the sim.
           if (out.late) seat.lateDiscards += 1;
           else if (frame != null) seat.acceptedFrames.add(frame);
+          // How far ahead of the server's cursor this input arrived: the real input buffer.
+          if (frame != null && cursor != null && liveAt != null) seat.aheadSamples.push([round(now - liveAt, 1), frame - cursor]);
           if (rejoined) seat.acceptedAfterRejoin += 1;
         }
         return out;
@@ -135,7 +139,15 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
       if (held || since > starveMs) seat.starvedFrames += 1;
     },
     /** The client's own timing state (lead, RTT, clock), last value wins. */
-    clientNet(index, net) { stats[index].net = net ? { ...net } : null; },
+    clientNet(index, net, at = null) {
+      const seat = stats[index];
+      seat.net = net ? { ...net } : null;
+      // Lead changes over time ([ms since live start, lead]), for the RTT-spike test.
+      const last = seat.leadTrace[seat.leadTrace.length - 1];
+      if (net && at != null && liveAt != null && (!last || last[1] !== net.lead)) {
+        seat.leadTrace.push([round(at - liveAt, 1), net.lead]);
+      }
+    },
     disconnected(index, at, sessionId) { stats[index].disconnects.push({ at, sessionId }); },
     rejoined(index, at, sessionId) { stats[index].rejoins.push({ at, sessionId }); },
     joinRefused(index, reason) { stats[index].joinRefusals.push(reason); },
@@ -144,7 +156,12 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
       corrections[index].push(metres);
       contactFlags[index].push(!!contact);
     },
-    /** S2b/S3 hook: did the server's rewound hit test agree with what the shooter saw? */
+    /**
+     * S2b/S3 hook: did the server's rewound hit test agree with what the shooter saw? How much
+     * this measures depends on the check that feeds it: a check that casts both rays from the
+     * same (server) eye only compares target positions, so it mostly measures whether the
+     * shooter's rewind claim survived the director's clamp.
+     */
     rewindCheck(agree) {
       rewindChecks.checks += 1;
       if (agree) rewindChecks.agree += 1;
@@ -160,7 +177,7 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
       }
     },
 
-    report({ director, links = [], endedAt = null, options = {} } = {}) {
+    report({ director, links = [], endedAt = null, clocks = [], server = null, options = {} } = {}) {
       const ticks = director.sim ? director.sim.tick : 0;
       const result = director.result;
       const loopGaps = loops.slice(1).map((t, i) => t - loops[i]);
@@ -177,8 +194,14 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
         bothStalled: result && result.reason === 'both_stall' ? 1 : 0,
         loopGap: summary(loopGaps),
         links,
+        clocks,
+        server,
         peers: stats.map((seat, index) => {
-          const applied = [...seat.acceptedFrames].filter((frame) => frame < ticks).length;
+          // Queued: frames the director accepted into its input queue for a tick it has since
+          // stepped. Director v1 applies exactly what it queued, so this is the input it applied.
+          // Director v2 can queue a frame and still not apply it (a resent frame replaces it, a
+          // frame queued past the final tick never runs): directorApplied is what it applied.
+          const queued = [...seat.acceptedFrames].filter((frame) => frame < ticks).length;
           // Ticks before this peer's first input reached the server can never carry its input:
           // the match goes live before any client hears about it. Steady state starts there.
           const reach = seat.firstInputCursor == null ? ticks : seat.firstInputCursor;
@@ -193,15 +216,18 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
             seat: seatNo,
             // What the director itself applied: real input, held repeats, neutral ticks.
             directorApplied: used ? used.applied : null,
+            directorAppliedFraction: used && ticks ? round(used.applied / ticks) : null,
             directorHeld: used ? used.held : null,
             directorNeutral: used ? used.neutral : null,
+            // S2b: inputs whose view claim broke continuity (went back, or moved > 2 ticks).
+            directorViewClamped: used && used.viewClamped != null ? used.viewClamped : null,
             inputsSent: seat.inputsSent,
             inputsDroppedWhileDown: seat.inputsDroppedWhileDown,
             inputsAccepted: seat.inputsAccepted,
-            appliedTicks: applied,
-            appliedFraction: ticks ? round(applied / ticks) : 0,
+            queuedTicks: queued,
+            queuedFraction: ticks ? round(queued / ticks) : 0,
             firstInputCursor: seat.firstInputCursor,
-            steadyAppliedFraction: ticks > reach ? round(steady / (ticks - reach)) : 0,
+            steadyQueuedFraction: ticks > reach ? round(steady / (ticks - reach)) : 0,
             rejects: { ...seat.rejects },
             rejectsByOp: { ...seat.rejectsByOp },
             rejectTotal,
@@ -228,6 +254,8 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
               ? round((seat.extrapolatedFrames + seat.clientHeldFrames) / seat.renderFrames)
               : 0,
             net: seat.net,
+            leadTrace: seat.leadTrace,
+            aheadSamples: seat.aheadSamples,
             disconnects: seat.disconnects.length,
             rejoins: seat.rejoins.length,
             joinRefusals: [...seat.joinRefusals],

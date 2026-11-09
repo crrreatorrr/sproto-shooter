@@ -1,4 +1,4 @@
-// SHOOTER-S0 baseline, updated by SHOOTER-S1 and SHOOTER-S2a. PvP netcode measured on the
+// SHOOTER-S0 baseline, updated by SHOOTER-S1, S2a, S2b and S3. PvP netcode measured on the
 // harness, plus the §R.8 launch gates.
 //
 // The "documents current behaviour" tests pin how it behaves today, so the suite stays green.
@@ -22,11 +22,18 @@
 // The window starts at tick 0, after the director's live-start lead-in. Render metrics start
 // when the client's render clock reaches tick 0 (S3; see netsim.js); `starvedFractionWithStart`
 // keeps the S0-S2b count, which included the exact spawn view held before it.
+//
+// The harness is the realistic one (netsim.js REALISM): client clock offset and drift, a jittered
+// Nakama loop with pauses, ~130 B envelopes. `queued` counts frames the director accepted for a
+// tick it has stepped; `directorApplied` is what the director itself says it applied.
+//
 // Set NETSIM_REPORT=1 to print the measured numbers.
 import { describe, expect, it } from 'vitest';
 import { contentFingerprint } from '../../src/data/serverManifest.js';
 import { CONTENT_FINGERPRINT } from '../../src/sim/pvp/rules.js';
 import { hashState, replay, scriptedMatch } from '../../src/sim/pvp/sim.js';
+import { NET } from '../../src/net/client.js';
+import { STEP_MS } from '../../src/sim/pvp/rules.js';
 import { PROFILES, TARGETS, runScenario } from './netsim.js';
 
 const DURATION_MS = 15000;
@@ -48,11 +55,14 @@ function measure(name, extra = {}) {
         peers: report.peers.map((p) => ({
           sent: p.inputsSent,
           accepted: p.inputsAccepted,
-          applied: p.appliedFraction,
+          applied: p.queuedFraction,
           directorApplied: p.directorApplied,
           directorHeld: p.directorHeld,
           directorNeutral: p.directorNeutral,
-          steady: p.steadyAppliedFraction,
+          steady: p.steadyQueuedFraction,
+          directorAppliedFraction: p.directorAppliedFraction,
+          viewClamped: p.directorViewClamped,
+          leadTrace: p.leadTrace.length > 12 ? `${p.leadTrace.length} changes` : p.leadTrace,
           firstInputCursor: p.firstInputCursor,
           late: p.lateFraction,
           lateDiscards: p.lateDiscards,
@@ -71,6 +81,8 @@ function measure(name, extra = {}) {
           leadNow: p.net && p.net.leadNow,
           clockRate: p.net && [p.net.clockRateMin, p.net.clockRateMax],
           clockSnaps: p.net && p.net.clockSnaps,
+          clockHolds: p.net && p.net.clockHolds,
+          clockSteps: p.net && p.net.clockSteps,
           extrapolated: p.extrapolatedFrames,
           held: p.heldFrames,
           snapLate: p.snapshotLateFrames,
@@ -104,8 +116,10 @@ describe('pins the harness must never move', () => {
     const state = replay(scriptedMatch(7, 180));
     // Sim 2 (SHOOTER-S2b) is a deliberate golden bump from ce272de1 (sim 1).
     expect(hashState(state)).toBe('6545ca0a');
-    // Fingerprints: f5949631 (protocol 1) -> 0e584d36 (S2a) -> ec36c8fa (S2b, sim 2).
-    expect(CONTENT_FINGERPRINT).toBe('ec36c8fa');
+    // Fingerprints: f5949631 (protocol 1) -> 0e584d36 (S2a) -> ec36c8fa (S2b, sim 2) -> 17d87c54
+    // (S2b review fixes: 128-bit combat RNG, echo cap 1000 ms, view step 2). S3 (client only)
+    // leaves it alone.
+    expect(CONTENT_FINGERPRINT).toBe('17d87c54');
     expect(contentFingerprint(1)).toBe('3c657fb5');
   });
 });
@@ -115,32 +129,45 @@ describe('baseline: documents current behaviour (S3 client, director v2)', () =>
     it(`${name}: no rejects, no late frames, real input on every tick from tick 0`, () => {
       const report = measure(name);
       expect(report.result).toBeNull();
-      expect(report.ticks).toBe(450);
+      // The jittered loop's last callback lands a tick or two either side of 15 s.
+      expect(report.ticks).toBeGreaterThanOrEqual(448);
+      expect(report.ticks).toBeLessThanOrEqual(450);
       for (const peer of report.peers) {
         expect(peer.rejectTotal).toBe(0);
         expect(peer.lateFraction).toBe(0);
         // The lead-in lets the first inputs reach the director before tick 0.
         expect(peer.firstInputCursor).toBe(0);
-        expect(peer.appliedFraction).toBeGreaterThanOrEqual(0.99);
-        expect(peer.directorApplied).toBeGreaterThanOrEqual(446);
+        expect(peer.queuedFraction).toBeGreaterThanOrEqual(0.99);
+        expect(peer.directorAppliedFraction).toBeGreaterThanOrEqual(0.99);
         // The target lead starts at the PING round trip in ticks plus one.
         expect(peer.net.lead).toBe({ rtt0: 2, rtt100j30: 5, rtt150: 6 }[name]);
-        // S3: the input clock trims toward it (half a tick under) instead of skipping frames.
-        expect(peer.directorApplied).toBe(450);
+        // S3: the input clock trims toward it (half a tick under) instead of skipping frames,
+        // so the director applies real input on every tick (S2b on this harness: 449/450 at
+        // RTT 100±30, one frame skipped by a buffer trim).
+        expect(peer.directorApplied).toBe(report.ticks);
         expect(peer.net.clockSnaps).toBe(0);
+        expect(peer.net.clockHolds).toBe(0);
         expect(peer.net.leadNow).toBeGreaterThan(peer.net.lead - 1);
         expect(peer.net.leadNow).toBeLessThanOrEqual(peer.net.lead);
         expect(peer.net.clockRateMin).toBeGreaterThanOrEqual(0.95);
         expect(peer.net.clockRateMax).toBeLessThanOrEqual(1.05);
-        // One snapshot per tick, per recipient.
-        expect(peer.snapshotInterArrivalMs.p50).toBeGreaterThan(32);
-        expect(peer.snapshotInterArrivalMs.p50).toBeLessThan(34);
+        // Honest views are continuous: the director's backtrack rule never fires.
+        expect(peer.directorViewClamped).toBe(0);
+        // One snapshot per tick, per recipient (33.3 ms on a perfect loop; the jittered loop's
+        // callbacks wander 0-15 ms).
+        expect(peer.snapshotInterArrivalMs.p50).toBeGreaterThan(30);
+        expect(peer.snapshotInterArrivalMs.p50).toBeLessThan(40);
       }
     });
   }
 
+  // Jitter is how late each snapshot's tick arrives on the estimated server clock, so it covers
+  // the Nakama loop running behind its ticks (0-15 ms, 50 ms pauses) as well as the network; and
+  // D is at least a tick more than the p95 lateness of the first tick each snapshot makes
+  // drawable (a late callback steps two ticks and sends one snapshot). Measured 77 ms (RTT 0),
+  // 107-111 (RTT 100±30), 102 (RTT 150); ideal loop: 50, 75-100, 50.
   it('adaptive delay: D = clamp(interval + 2 x jitter p95, 50, 150) settles per link', () => {
-    for (const [name, lo, hi] of [['rtt0', 50, 50], ['rtt100j30', 75, 100], ['rtt150', 50, 50]]) {
+    for (const [name, lo, hi] of [['rtt0', 65, 90], ['rtt100j30', 90, 130], ['rtt150', 85, 120]]) {
       for (const peer of measure(name).peers) {
         expect(peer.net.interpDelayMs).toBeGreaterThanOrEqual(lo);
         expect(peer.net.interpDelayMs).toBeLessThanOrEqual(hi);
@@ -150,13 +177,15 @@ describe('baseline: documents current behaviour (S3 client, director v2)', () =>
     }
   });
 
-  it('RTT 100±30 ms: no starved frame once the render clock reaches tick 0', () => {
+  it('RTT 100±30 ms: (almost) no starved frame once the render clock reaches tick 0', () => {
     const report = measure('rtt100j30');
     for (const peer of report.peers) {
       expect(peer.starvedFraction).toBe(0);
-      expect(peer.clientStarvedFraction).toBe(0);
-      // S1 at 10 Hz: 13-15%; S2b (fixed 100 ms): 0.89-1.0%, all of it the exact spawn view
-      // before the render clock reached tick 0. Counted that way it is still under 1%.
+      // S1 at 10 Hz: 21-26%; S2b (fixed 100 ms) on this harness: 1.1-1.4% client-reported.
+      // S3: 0.11%, a frame after a loop pause.
+      expect(peer.clientStarvedFraction).toBeLessThan(0.005);
+      // The exact spawn view held before the render clock reached tick 0, counted the S0-S2b
+      // way, still keeps it under 1%.
       expect(peer.preStartFrames).toBeGreaterThan(0);
       expect(peer.starvedFractionWithStart).toBeLessThan(TARGETS.starvedFraction);
     }
@@ -171,7 +200,8 @@ describe('baseline: documents current behaviour (S3 client, director v2)', () =>
       expect(peer.lateDiscards).toBeGreaterThan(20);
       expect(peer.lateFraction).toBeLessThan(0.1);
       expect(peer.directorHeld).toBeGreaterThan(10);
-      expect(peer.appliedFraction).toBeGreaterThanOrEqual(0.9);
+      expect(peer.queuedFraction).toBeGreaterThanOrEqual(0.9);
+      expect(peer.directorViewClamped).toBe(0);
       // The client does not chase stalls with a bigger lead.
       expect(peer.net.lead).toBeLessThanOrEqual(6);
       // S3: stalls raise the adaptive delay (up to 150 ms) instead of starving at 100 ms.
@@ -203,11 +233,14 @@ describe('baseline: documents current behaviour (S3 client, director v2)', () =>
   it('S3 prediction: exact without body contact; contact corrections are the only ones', () => {
     for (const name of ['rtt0', 'rtt100j30', 'rtt150']) {
       for (const peer of measure(name).peers) {
-        expect(peer.corrections).toBeGreaterThan(440);
+        // One per snapshot that a prediction had reached: the jittered loop sends one snapshot
+        // per callback (~425 in 15 s), and at RTT 0 some arrive before the prediction got there.
+        expect(peer.corrections).toBeGreaterThan(340);
         expect(peer.correctionP99NoContactCm).toBe(0);
-        expect(peer.contactFraction).toBeLessThan(name === 'rtt0' ? 0.8 : 0.3);
-        // Measured with contact: p99 13.6 cm (RTT 0), 20.6 (RTT 100±30), 20.4 (RTT 150).
-        expect(peer.correctionP99Cm).toBeLessThan(25);
+        expect(peer.contactFraction).toBeLessThan(name === 'rtt0' ? 0.8 : 0.45);
+        // Measured with contact: p99 19.3 cm (RTT 0), 23.8 (RTT 100±30), 33.4 (RTT 150)
+        // (ideal loop: 13.6, 20.6, 20.4).
+        expect(peer.correctionP99Cm).toBeLessThan(40);
       }
     }
     expect(measure('rtt100j30').rewind.agreement).toBeNull();
@@ -222,22 +255,40 @@ describe('baseline: documents current behaviour (S3 client, director v2)', () =>
     const zero = fireRuns('rtt0');
     expect(zero.checks).toBeGreaterThan(300);
     expect(zero.agreement).toBeGreaterThanOrEqual(TARGETS.rewindAgreement);
-    expect(zero.unclampedAgreement).toBe(1);
+    // At the full claim the rewind is exact except where the client drew a target the server's
+    // history does not have: extrapolated past a late snapshot, or blended across a loop
+    // callback that stepped two ticks and sent one snapshot (S2b, seed 1: 99.2-99.8%). Pooled
+    // over four seeds: 99.3% (RTT 0), 99.6% (RTT 100±30), 100% (RTT 150).
+    expect(zero.unclampedAgreement).toBeGreaterThanOrEqual(0.99);
     for (const name of ['rtt100j30', 'rtt150']) {
       const pooled = fireRuns(name);
       expect(pooled.checks).toBeGreaterThan(300);
-      expect(pooled.unclampedAgreement).toBe(1);
+      expect(pooled.unclampedAgreement).toBeGreaterThanOrEqual(0.99);
       for (const report of pooled.runs) {
-        // S2b: only the first second (no RTT sample yet: cap 5) clamped. S3's smaller adaptive
-        // delay makes claims shorter, so nothing clamps.
+        // The second PING right after the first PONG gives the director an RTT before the first
+        // shots, so honest claims are (almost) never clamped.
         expect(report.rewind.clampedFraction).toBeLessThan(0.05);
         expect(report.rewind.appliedTicks.max).toBeLessThanOrEqual(10);
+        // Honest views are continuous: the backtrack rule never fires.
+        for (const peer of report.peers) expect(peer.directorViewClamped).toBe(0);
       }
     }
+    // During an RTT spike the director's RTT median lags, so the cap cuts honest claims for a
+    // while: the shooter is the one who pays for the spike. S3's firing bots mostly finish
+    // before the spike (4 s in); the seed that lasts 2 s into it measured 33.7% clamped, 78.1%.
+    const spiked = fireRuns('rttSpike').runs.filter((report) => report.ticks * STEP_MS > PROFILES.rttSpike.spikes[0].atMs + 2000);
+    expect(spiked.length).toBeGreaterThan(0);
+    for (const report of spiked) {
+      expect(report.rewind.clampedFraction).toBeGreaterThan(0.05);
+      expect(report.rewind.agreement).toBeLessThan(TARGETS.rewindAgreement);
+      // Measured 98.9% at the full claim (seed 2; two-tick loop steps, as at RTT 0).
+      expect(report.rewind.unclampedAgreement).toBeGreaterThanOrEqual(0.985);
+      for (const peer of report.peers) expect(peer.directorViewClamped).toBe(0);
+    }
     const mid = measure('rtt100j30', { fire: true });
-    // S2b (fixed 100 ms delay): 8. S3's adaptive delay settles near 88 ms here.
+    // S2b (fixed 100 ms delay): 8. S3's adaptive delay settles near 110 ms here.
     expect(mid.rewind.claimTicks.p50).toBeGreaterThanOrEqual(7);
-    expect(mid.rewind.claimTicks.p50).toBeLessThanOrEqual(8);
+    expect(mid.rewind.claimTicks.p50).toBeLessThanOrEqual(9);
     for (const peer of mid.peers) {
       // The director's own PING-echo RTT, and the cap it gives with the announced 100 ms delay.
       expect(peer.net.serverRttMs).toBeGreaterThan(90);
@@ -254,7 +305,7 @@ describe('§R.8 targets (pending: later PRs turn these on)', () => {
     expect(report.result).toBeNull();
     for (const peer of report.peers) {
       expect(peer.lateFraction).toBeLessThan(TARGETS.lateFraction);
-      expect(peer.appliedFraction).toBeGreaterThanOrEqual(0.99);
+      expect(peer.queuedFraction).toBeGreaterThanOrEqual(0.99);
     }
   });
 
@@ -264,7 +315,7 @@ describe('§R.8 targets (pending: later PRs turn these on)', () => {
       expect(report.result).toBeNull();
       for (const peer of report.peers) {
         expect(peer.lateFraction).toBeLessThan(TARGETS.lateFraction);
-        expect(peer.steadyAppliedFraction).toBeGreaterThanOrEqual(0.99);
+        expect(peer.steadyQueuedFraction).toBeGreaterThanOrEqual(0.99);
       }
     });
 
@@ -273,23 +324,65 @@ describe('§R.8 targets (pending: later PRs turn these on)', () => {
       expect(report.result).toBeNull();
       for (const peer of report.peers) {
         expect(peer.lateFraction).toBeLessThan(TARGETS.lateFraction);
-        expect(peer.appliedFraction).toBeGreaterThanOrEqual(0.99);
+        expect(peer.queuedFraction).toBeGreaterThanOrEqual(0.99);
       }
     });
 
-    // S1 measured 98.67% (444/450): the clock started on the last READY. S2a's lead-in fixes it.
+    // S1 measured 97.1% / 98.66% on the realistic harness (98.67% on the ideal loop): the clock
+    // started on the last READY, and v1's 4-frame window rejected frames after loop pauses.
+    // S2a's lead-in and 8-frame window fix it. Checked on what the director really applied.
     it(`S2a: ${name} real input on >= 99% of all ticks of a 15 s window`, () => {
       const report = measure(name);
-      for (const peer of report.peers) expect(peer.appliedFraction).toBeGreaterThanOrEqual(0.99);
+      for (const peer of report.peers) {
+        expect(peer.queuedFraction).toBeGreaterThanOrEqual(0.99);
+        expect(peer.directorAppliedFraction).toBeGreaterThanOrEqual(0.99);
+      }
     });
   }
+
+  // S3: the RTT rising past the target lifts the target at once, late frames jump the stamp up
+  // (TIMING.lateResyncTicks), a clock-estimate step (the downlink changing) moves the target
+  // with it, and the drop after the spike repeats frames (holds) instead of moving them back.
+  it('S1/S2a: after an RTT spike (300 ms for 3 s, then 80 ms) the input buffer comes back within ~2 s', () => {
+    const report = measure('rttSpike');
+    const spike = PROFILES.rttSpike.spikes[0];
+    const spikeEnd = spike.atMs + spike.forMs;
+    expect(report.result).toBeNull();
+    for (const peer of report.peers) {
+      // How far ahead of the cursor inputs arrive (the server-side input buffer), per 500 ms.
+      const worst = (from, to) => Math.max(...peer.aheadSamples.filter(([at]) => at >= from && at < to).map(([, a]) => a));
+      const calm = worst(spike.atMs - 2000, spike.atMs);
+      for (let at = spikeEnd + 2000; at < DURATION_MS - 500; at += 500) {
+        expect(worst(at, at + 500)).toBeLessThanOrEqual(calm + 1);
+      }
+      // And the client's own lead ends no higher than the round-trip lead plus the jitter margin.
+      const roundTripLead = Math.ceil(peer.net.rttMs / STEP_MS) + 1;
+      expect(peer.net.lead).toBeLessThanOrEqual(roundTripLead + NET.leadJitterTicks);
+      // S2b on this harness: late 1.8% / 2.2%, 3 view clamps per seat (frames moved back).
+      // S3: late 1.3% / 3.6%, no view clamp, no reject; the buffer is back to calm ~1.5 s
+      // after the spike (the buffer trim, floored at the shortest recent round trip).
+      expect(peer.lateFraction).toBeLessThan(0.05);
+      expect(peer.rejectTotal).toBe(0);
+      expect(peer.directorViewClamped).toBe(0);
+    }
+  });
+
+  it('S2a: heavy-tail jitter causes no reject storm and no stall forfeit', () => {
+    const report = measure('heavyTail');
+    expect(report.result).toBeNull();
+    for (const peer of report.peers) {
+      expect(peer.rejectFraction).toBeLessThan(TARGETS.lateFraction);
+      expect(peer.queuedFraction).toBeGreaterThanOrEqual(0.9);
+      expect(peer.directorViewClamped).toBe(0);
+    }
+  });
 
   it('S2a: stall bursts cause no reject storm and no stall forfeit', () => {
     const report = measure('stallBurst');
     expect(report.result).toBeNull();
     for (const peer of report.peers) {
       expect(peer.rejectFraction).toBeLessThan(TARGETS.lateFraction);
-      expect(peer.appliedFraction).toBeGreaterThanOrEqual(0.9);
+      expect(peer.queuedFraction).toBeGreaterThanOrEqual(0.9);
     }
   });
 
@@ -337,10 +430,28 @@ describe('§R.8 targets (pending: later PRs turn these on)', () => {
   it('S3: stall bursts are reported (starvation, corrections, late)', () => {
     const report = measure('stallBurst');
     for (const peer of report.peers) {
-      // S2b: starved 5.1% / 9.3%, client-starved 6.4% / 11.7%.
+      // S2b on this harness: starved 4.8% / 9.4%, client-starved 7.0% / 12.7%.
+      // S3: starved 3.9% / 8.7%, client-starved 5.7% / 10.0%, correction p99 35.8 / 38.6 cm.
       expect(peer.starvedFraction).toBeLessThan(0.1);
       expect(peer.clientStarvedFraction).toBeLessThan(0.11);
-      expect(peer.correctionP99Cm).toBeLessThan(40);
+      expect(peer.correctionP99Cm).toBeLessThan(45);
+      expect(peer.directorViewClamped).toBe(0);
+    }
+  });
+
+  // Reported, not gated. Heavy tail: 3% of messages up to 400 ms late (S2b: client-starved
+  // 1.3% / 2.0%). RTT spike: the delay rises to its cap while the spike's backlog drains.
+  it('S3: heavy-tail jitter and an RTT spike are reported (starvation, corrections)', () => {
+    for (const peer of measure('heavyTail').peers) {
+      // Measured: client-starved 0.67% / 0.90%, correction p99 without contact 16.8 / 0 cm.
+      expect(peer.clientStarvedFraction).toBeLessThan(0.02);
+      expect(peer.correctionP99NoContactCm).toBeLessThan(TARGETS.correctionP99Cm * 5);
+    }
+    for (const peer of measure('rttSpike').peers) {
+      // Measured (S2b: 8.7% / 8.8%): client-starved 5.4% / 4.7%, correction p99 without contact
+      // 0 / 21.7 cm (the frames the spike made late are predicted, then held at the server).
+      expect(peer.clientStarvedFraction).toBeLessThan(0.08);
+      expect(peer.correctionP99NoContactCm).toBeLessThan(TARGETS.correctionP99Cm * 6);
     }
   });
 
