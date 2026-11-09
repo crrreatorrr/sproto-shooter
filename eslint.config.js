@@ -12,6 +12,7 @@ export default [
       'tests/architecture.test.js',
       'tests/asset-manifest.test.js',
       'tests/performance-baseline.test.js',
+      'tests/net/**/*.js',
     ],
     languageOptions: {
       ecmaVersion: 2022,
