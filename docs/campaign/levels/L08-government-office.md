@@ -132,7 +132,7 @@ local y = 0.
   60   ~~ chopper loop (part 5) ~~
   55      A4 |          | A1          uplink antenna tops
   46 ROOF ====( [L3] SB: GLOWIE, ring r 27.8 )====  CP10 at the stair head
-  41 F8   | LOUNGE D2 | BOARDROOM E10 | CEO *bonk | OFFICES E9 |   S5  CP8, CP9   ^ stair D
+  41 F8   | LOUNGE D2 CP9 | BOARDROOM E10 | CEO *bonk | OFFICES E9 |   S5  CP8    ^ stair D
   36 F7   | dark racks | CORE: E8 hold | dark racks |  E7        |   S4  CP6, CP7   ^ stair C
   31 F6   | ring y15 ..... bridge (Big Obama) ......            | \
   26 F5   | ring y10 ..... bridge ..... [LIFT dock]             |  | S3 [L2] ATRIUM  E5, then
@@ -159,7 +159,7 @@ is up, 1 character = 2 m across, 1 row = 4 m.
 ### 6.1 S1: Lobby and Cubicle Farm (F0 and F1)
 
 Footprint 96 × 70 m. Floors at y 0 (lobby, clear height 5.5) and y 6 (farm, clear height 4.5).
-About 330 solids (22 pods × 8 is most of it). Encounters S1-E1, S1-E2 **[L1]**.
+About 260 solids (22 pods × 8 = 176 of them). Encounters S1-E1, S1-E2 **[L1]**.
 
 ```
 F0, y 0
@@ -490,7 +490,7 @@ z60 | stair D up to SB ->   |          g = glass partition   dk = desk
 | `s5-pil` | cylinder ×4 | r 0.5, h 4.5 | (26, 0, 24), (62, 0, 24), (44, 0, 12), (44, 0, 32) | pillar | Full cover |
 | `s5-cop` | `office.copier` ×3 | 1 × 1.1 × 0.7 | (40, 0, 21), (48, 0, 21), (23, 0, 33) | metal | Shock barrels. The pair sits where the riot wall walks |
 | `AL4` | alarm box | 0.5 cube, 40 HP | (83.3, 1.6, 21.5), east wall of office E2 | neon | In sight only through E2's door, or from inside E2 (Blink through the glass) |
-| `s5-band` | box | 80 × 4.5 × 0.5 | (44, 2.25, 36) | concrete | Wall between the pool and the south band. Opening x 42.8–45.2 = door **D-5a** (opens when S5-E9 is clear) |
+| `s5-band` | box | 80 × 4.5 × 0.5 | (44, 2.25, 36) | concrete | Wall between the pool and the south band. Opening x 42.8–45.2 = door **D-5a** (opens when S5-E9 is clear). Shells box b34 beside it |
 | `s5-br-w` | box | 0.5 × 4.5 × 20 | (24, 2.25, 46) | concrete | Boardroom west wall (room is x 24–64, z 36–56). Opening z 45.8–48.2 = door **D-5b** (KC-2) |
 | `s5-br-e` | box | 2 × 4.5 × 20 | (65, 2.25, 46) | concrete | East wall. Opening z 45.8–48.2 to the CEO suite (open) |
 | `s5-br-s` | box | 40 × 4.5 × 0.5 | (44, 2.25, 56) | concrete | South wall. Opening x 50–52.4 = catering door **CAT** (`door` spawns) |
@@ -503,7 +503,7 @@ z60 | stair D up to SB ->   |          g = glass partition   dk = desk
 | `s5-av` | box ×3 | 4.5 × 4.5 × 0.5; 0.5 × 4.5 × 3.5 (×2) | (50, 2.25, 32.5); (48, 2.25, 34.25), (52, 2.25, 34.25) | glass | AV booth in the pool, against the boardroom wall, x 48–52, z 32.5–36. No door. Switch **SW-5** inside at (50, 1.2, 35.3): turns NZ-5 off. The booth is outside the field, so a Blink from the pool reaches it |
 | `s5-ceo` | box + box ×2 | desk 4 × 0.9 × 1.5; sofas 3 × 0.8 × 1 | (75, 0.45, 42); (70, 0.4, 52), (74, 0.4, 38) | wood | CEO suite, x 66–84, z 36–56. Empty of enemies |
 | `s5-bath` | box ×2 + fragileWall | 6 × 4.5 × 0.5; 0.5 × 4.5 × 6; mirror 0.5 × 2.6 × 2 | (81, 2.25, 50); (78, 2.25, 53); mirror in it at (78, 1.3, 53) | concrete; mirror = glass | Private bathroom, x 78–84, z 50–56. **Golden Bonk** at (81.5, 0.5, 53.5) behind the mirror |
-| `s5-lounge` | box ×3 | bar 6 × 1.1 × 1; sofas 3 × 0.8 × 1 | (10, 0.55, 38.5); (8, 0.4, 50), (16, 0.4, 50) | wood | Executive lounge, x 4–24, z 36–56. `depot` at (13, 0, 45): depot crate D2, health station, spell loadout bench, shop terminal |
+| `s5-lounge` | box ×3 | bar 6 × 1.1 × 1; sofas 3 × 0.8 × 1 | (10, 0.55, 38.5); (8, 0.4, 50), (16, 0.4, 50) | wood | Executive lounge, x 4–24, z 36–56. `depot` at (13, 0, 45): depot crate D2, health station, spell loadout bench, shop terminal. Checkpoint CP9 |
 | `D-5c` | door | 2.4 × 2.8 × 0.5 | (8, 1.4, 56) | metal | Roof stair door. Opens on KC-2 |
 | `s5-stairD` | stairs | 12 × 5 × 3 | (13, 2.5, 59) | concrete | Stair D, x 4–20, z 57–62. Low end x 7 (y 0), high end x 19 (y 5) |
 
@@ -773,7 +773,7 @@ outside the field: a player who reads the room Blinks into the booth before open
 | B | `onKills(2)` | door | CAT, the catering door | 1 Nullifier, 3 Boom Midgets | Bombs run over the table inside a second, moving field. If you just switched NZ-5 off, this one switches your spells off again |
 
 Roles: ranged, support, anti-magic, rusher (4). Hazards: static null field and mobile null field,
-overlapping. Ammo inside: b35, b36; CP9 box b34 at the door. Estimate 75 s.
+overlapping. Ammo inside: b35, b36; box b34 at the door. Estimate 75 s.
 
 ### 8.11 SB-BOSS **[L3]**
 
@@ -808,7 +808,7 @@ mana, tickets and guns only.
 | Movement | 3.8 m/s, accel 20. Stays 5 to 7 m behind the nearest ally and 10 to 18 m from the player. Alone, he backs toward the nearest spawn door |
 | Hitboxes | Body capsule r 0.5, y 0–1.8; head weak sphere r 0.24 at y 1.85; **backpack** weak sphere r 0.3 at y 1.2, z −0.4 (×2, from behind) |
 | Gun | Pistol: 1 round, 5 damage, cooldown 1.8–2.6 s, spread 4°, speed 32, range 30, windup 0.4 s |
-| Null field | Radius 9 m, centred on him. Inside it: a spell cast fizzles (half the mana back, 0.6 s lockout); mana does not regenerate; spell projectiles and Chain Zap arcs stop at the edge; Sproto Swarm buddies and a Decoy pop 0.5 s after entering; Blink cannot start or end inside; a Mana Shield that is already on stays on and drains 12 mana/s (PLAN §6.2). Enemy magic fizzles too: a Hex Acolyte's bubbles pop |
+| Null field | Radius 9 m, centred on him. Inside it: a spell cast fizzles (half the mana back, 0.6 s lockout); mana does not regenerate; spell projectiles and Chain Zap arcs stop at the edge; Sproto Swarm buddies and a Decoy pop 0.5 s after entering; Blink cannot start or end inside; a Mana Shield that is already on stays on and drains 12 mana/s (PLAN §6.2). Enemy magic fizzles too (no enemy caster shares a room with one in this level) |
 | Counter | Guns. A poise break (shotgun, a copier blast) drops the field for 1.5 s. On death the field collapses and the player gets 25 mana if within 9 m |
 | Drops | Ammo 70%, mana orb 50%, gun 6% |
 | Seconds per enemy | 8 |
@@ -949,18 +949,17 @@ dishes and the pods. No charge packs, gas lines or mines in this level.
 |---|---|---|---|---|
 | CP1 | S1 escalator landing, outside SH-1a | (16, 6, 56) | 1:35 | The L1 restart point |
 | CP2 | S1 farm cleared (saved by L1), respawn at the break room door | (72, 6, 34) | 3:39 | |
-| CP3 | S2 Blink shrine | (58, 0, 43) | 6:06 | 2:27 after CP2, the longest gap |
+| CP3 | S2 Blink shrine | (58, 0, 43) | 6:06 | 2:27 after CP2 (the limit is 2:30) |
 | CP4 | S3 Mail Room, **depot 1**, outside SH-3a | (20, 0, 72) | 6:47 | The L2 restart point |
 | CP5 | S3 atrium cleared (saved by L2), at the lift dock | (40, 10, 40) | 9:45 | 2:13 of play after leaving the depot |
 | CP6 | S4 lift lobby | (44, 0, 55) | 11:03 | |
 | CP7 | S4 west core door | (33, 0, 23) | 12:10 | Before the hold |
 | CP8 | S5 stair C landing | (51, 0, 3) | 13:30 | |
-| CP9 | S5 boardroom door D-5a | (44, 0, 34) | 14:37 | |
+| CP9 | S5 Executive Lounge, **depot 2** | (13, 0, 45) | 15:57 | 2:27 after CP8: the offices and the boardroom are one stretch |
 | CP10 | SB stair D head, outside SH-Ba | (40, 0, 76) | 16:47 | The L3 restart point and the hub start |
 
-Depot 2 (Executive Lounge, (13, 0, 45), clock 15:57) is not a checkpoint of its own: nothing
-hostile lies between CP9's fight and CP10. Each depot has a depot crate, a health station, the
-spell loadout bench and the ticket shop terminal (PLAN §7.7). At depot 1 the bench is where the
+Each depot has a depot crate, a health station, the spell loadout bench, the ticket shop terminal
+and a checkpoint (PLAN §7.7). No depot has a Weapon Box. At depot 1 the bench is where the
 player first slots Blink.
 
 ### 12.2 Weapons (racks give Rare, the L08 base tier)
@@ -1039,10 +1038,10 @@ in §8 and never stand in for one of these.
 | b31 | Box, shells | S5 | (62, 0, 4) | Supply closet |
 | b32 | Box, bullets | S5 | (64, 0, 4) | Supply closet |
 | b33 | Box, bullets | S5 | (44, 0, 14) | Inside the pool (Nullifier squad B) |
-| b34 | Box, shells | S5 | (41, 0, 34) | CP9 |
+| b34 | Box, shells | S5 | (41, 0, 34) | Before S5-E10 |
 | b35 | Box, bullets | S5 | (30, 0, 40) | Inside NZ-5 |
 | b36 | Box, shells | S5 | (58, 0, 40) | Inside NZ-5 |
-| D2 | **Depot crate** | S5 | (13, 0, 45) | Depot 2 |
+| D2 | **Depot crate** | S5 | (13, 0, 45) | Depot 2; CP9 |
 | b37 | Box, bullets | SB | (37, 0, 74) | CP10 |
 | b38 | Box, bullets | SB | (49, 0, 65) | Standee `mg-roof` |
 | D3 | **Depot crate** | SB | (36, 0, 54), inside the ring | Boss section rule; inside L3 |
@@ -1191,7 +1190,7 @@ that run only, because the shrine grants Blink before G5).
 - Lockdowns: each has entry and exit shutters, at least 3 spawn points on different sides, 3 to 5
   waves, 25 to 45 enemies; Blink, Magic Carpet and Yeet-jumps cannot leave the room; dying
   restarts at wave 1 with the shutters open; the last two enemies get marked after 12 s.
-- Null fields: each of the eleven spells fizzles inside each field and works 1 m outside it; each
+- Null fields: every spell the player holds fizzles inside each field and works 1 m outside it; each
   field's off switch works; killing a Nullifier returns 25 mana.
 - Mimics: none within 6 m of a checkpoint, rack or reward; no row of §12.4 is a Mimic; a dormant
   Mimic takes double damage.

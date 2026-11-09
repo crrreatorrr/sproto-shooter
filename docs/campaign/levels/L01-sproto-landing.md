@@ -284,8 +284,8 @@ scaffold down to the mall forecourt. About 120 solids.
         |         |         |         |         |
  z=0    ######################|======[RD]=========|    mall front, revolving door at x 58
  z=5    ######################|  P        4   p   |    forecourt (ground). 4 = CP4 is inside the mall
- z=12   ######################|      [L]<<<<<<<<  |    scaffold ramp 2 (down to the ground)
- z=16   ######################|      [L]>>>>>>>>T |    scaffold ramp 1 (from roof 1b)
+ z=12   ######################|      [=]<<<<<<<<  |    scaffold ramp 2 (down to the ground); [=] landing
+ z=16   ######################|      [=]>>>>>>>>T |    scaffold ramp 1 (from roof 1b); T top platform
  z=20   ####################ff|   ROOF 1b   y 9   |
  z=28   ####################ff|  a  [sk] BBBBBB a |    B = billboard
  z=36   ####################==|......cross alley..|    ground, dead end; a fall lands here
@@ -1253,4 +1253,63 @@ Not used: E8 (no placeholder enemies), E9 (no jetpack).
 | 8 | §7.3: "Sniper: first found in L02" | The first brief for this level allowed a sniper rack near the end | No sniper in L01 |
 | 9 | §7.4: start with 240 bullets (`TUNING.startAmmo`) | The ammo lesson needs a short reserve | L01 starts with 36 in reserve (need 2 above) |
 
-<!-- PART-6 -->
+## 15. Bot route and tests
+
+**Autopilot route** (god mode, fixed seed; section-local waypoints, in order)
+
+| Section | Waypoints and actions |
+|---|---|
+| S1 | (12, 0, 30) → jump at x 43 → double jump at x 56 → sprint and slide at x 69 → jump and dash at x 83 → `A1` → clear E1 from (108, 0, 33) → `A2`, `A3` → CP1 → clear E2 from (160, 0, 27), then the north sidewalk → hold `S1-sw-gate` 1.5 s → (208, 0, 12) → exit |
+| S2 | Take `S2-rack-sg` → clear E3 from (40, 0, 136) → through `S2-D1` → use `S2-shrine` → cast Goo Bolt at (40, 0, 62) at each squad, stay in the circle 25 s → `S2-D2` → `S2-fe-1`, `-2`, `-3` → clear E5 from (48, 10.5, 50) → `S2-plank` → (75.5, 9, 17) → `S2-sc-r1`, `S2-sc-r2` → cast Goo Bolt at `S2-revolve`, walk through within 4 s → exit |
+| S3 | CP4 → cross the threshold (45, 0, 54) → fight from (45, 0, 40); up `S3-esc-E` for wave 3 → on clear open `S3-chest`, use `C1` → `S3-L1-out` → use `D1` → `S3-D4` |
+| S4 | (7, 0, 4) → `S4-ramp-1` → (53, 4, 30) → (53, 4, 56) → `S4-ramp-2` → (7, 8, 56) → kill squad E from (12, 8, 50) → destroy `S4-gen` → hold `S4-sw-lift` → ride → cross (47, 12, 30) → fight from (50, 12, 30) → on clear `C2`, `S4-chest` → the bridge → `S4-L2-out` |
+| S5 | (10, 12, 9) → circle `S5-A-cars` 3 until squad A is dead → squad B from (36, 12, 9) → `C3` → (69, 12, 20) → squad C from (65, 12, 50) → down `S5-ramp` → exit |
+| S6 | Use `D2` → cross (44, 0, 20) → destroy `S6-gen-N`, `-W`, `-E` in that order, killing adds as they come → part 2: circle `S6-fountain-column` clockwise, fire at the battery → part 3: keep 12 m away, fire only in vents → `S6-exit` |
+
+**Tests** (`tests/levels/L01.test.js` and the validator)
+
+| # | Test | Passes when |
+|---|---|---|
+| 1 | Validator | No errors: no solid thinner than 0.5 m, doorways at least 2.2 × 2.6 m, at most 600 solids a section, every rack has a `why` |
+| 2 | Reachability | The exit is reachable from the start and from each of CP1 to CP8; every ammo box, crate, rack and secret is reachable |
+| 3 | Pacing estimate | The PLAN §3 estimate is 19:03 ± 5 s, and inside 16:00 to 20:00 |
+| 4 | Enemy census | 139 on Normal: 85 / 11 / 23 / 13 / 5 / 1 / 1 by type. No elite |
+| 5 | Pressure | No squad or wave can put more than 8 alive; no squad adds a third role |
+| 6 | Lockdowns | Exactly three; each room is between 40 × 40 and 80 × 80 m; each has at least 3 spawn points on different sides, 3 to 5 waves, 25 to 45 enemies, at least two ammo boxes inside, a crate and a reward; no two are adjacent beats |
+| 7 | Lockdown seal | With the doors down, no walk, double jump or dash from any nav cell leaves the room volume |
+| 8 | Ammo rules | PLAN §7.4 placement holds for every rack, encounter, lockdown and checkpoint; the bullets and shells budgets are at least 1.5× |
+| 9 | Ammo lesson | A bot that only uses the machine gun sees "LOW AMMO" during E1 and reaches `A2` with under 36 in reserve |
+| 10 | Loot | The tier odds are 85 / 15 / 0 / 0 / 0; the five guaranteed drops appear; no resource or Weapon Box entry exists in L01 data |
+| 11 | Cover and approaches | Every encounter has at least 3 cover solids within 15 m of its trigger and 2 nav paths to its first squad |
+| 12 | Tools | The shotgun rack is within 40 m of E3's start with shells within 30 m |
+| 13 | Movement course | The four obstacles pass with the taught move and fail without it (walk into the barrier, single jump at the bus, walk at the trailer, plain jump at the sinkhole) |
+| 14 | Secrets | The Golden Bonk, the Mana Battery, the cache and the three Audit Files can each be reached with jump, double jump and dash only |
+| 15 | Bot run | The autopilot finishes in god mode; two runs with the same seed give the same state hash |
+| 16 | Finale script | Part 1 ends only when three generators are dead; adds fire at 90, 75, 60, 35 and 15% HP; vents fall at 8 s and every 12 s; the vent hitbox is off outside a vent |
+| 17 | Pins | Wave Mode and Sandbox hashes, the PvP fingerprint and the PvP golden do not move in the L01 PR |
+
+## 16. Build tasks
+
+In order, for the agent that builds `src/data/levels/L01/`. Tasks 1 to 6 need E1 to E5; the rest
+need the engine id shown.
+
+1. `prefabs/city.js`: the 22 prefabs in §7. Unit-test each for the 0.5 m rule.
+2. `L01/index.js`: header (tier 1, par 1,080 s, `city` dusk lighting, `startAmmo`), section order, the world offsets from §5.
+3. `L01/S1.js` to `L01/S6.js`: geometry only, from the six blockout tables. Validator green.
+4. Map export for each section; compare with the ASCII maps; fix the tables' numbers if a solid overlaps or floats.
+5. Entry and exit volumes, checkpoints CP1 to CP8, the `neon` critical path. Reachability test green.
+6. The movement course and its four prompts (need 1 in §14).
+7. Mechanisms (E6): doors and switches, the lift, the cage, the bridge, the revolving door, the void rescue, the depots (E13, E16).
+8. Pick-ups (E17): racks, 33 ammo boxes, 4 crates, 2 depot crates, the ammo lesson flags.
+9. Encounters E1 to E5, E7, E9 from the spawn timelines (E4, E7). Census and pressure tests green.
+10. The shrine, Goo Bolt and the hold in E4 (E10).
+11. Lockdowns E6 and E8: doors, thresholds, waves, lids, rewards and chests (E4, E17).
+12. `gateGenerator` and `gatekeeper` definitions; the FIN part script (E12).
+13. Loot: the L01 tier odds, the five guaranteed drops (E17).
+14. Secrets: Golden Bonk, Mana Battery, the cache, three Audit Files.
+15. Cutscene cards, the vista props, lighting.
+16. Autopilot route from §15; determinism test green.
+17. Pacing: run the validator's estimate, then a human Normal playthrough. If it is over 20:00, apply the cuts listed under §4.
+18. Easy and Heroic tables from §13.
+19. Run every check in `AGENTS.md`; attach the map export; open the PR from `<agent>/campaign-l01`.
+

@@ -9,15 +9,17 @@ are C §3.9, the boss data is B §3.1. Plan only: nothing here is built.
 |---|---|
 | Id, name | `L02`, The Grand Bazaar |
 | Stage, lighting | `desert`. Late afternoon: low orange sun, sand haze, long shadows in the alleys. `SB` is at dusk, lit by the fire ring |
-| Tier | 2 (enemy HP and damage × 1.15) |
-| Par | 20:00. Estimate from §4: **21:17** (inside ±2:00). Fast replay about 14:55 |
+| Tier | 2 (enemy HP and damage × 1.15). Rack and base drop tier: Common |
+| Par | 20:00. Estimate from §4: **21:34** (inside ±2:00). Fast replay about 15:05 |
 | Jetpack | No. Double jump (2.6 m) only |
-| Enemy total | **163**: 117 in encounters E1 to E9, 46 adds in `SB-BOSS`, plus Sahil. One elite (in the boss fight) |
-| Route length | **1.24 km**: 1,073 m on foot, 170 m on carpets, ziplines, the lift, the geyser and the catapult |
+| Enemy total | **161**: 121 in encounters E1 to E9, 40 adds in `SB-BOSS`, plus Sahil. One elite (in the boss fight) |
+| Route length | **1.25 km**: 1,078 m on foot, 170 m on carpets, ziplines, the lift, the geyser and the catapult |
 | Sections | 5: `S1` Caravan Camp and Souk Alleys, `S2` Dune Sea, `S3` Canyon Rim, `S4` Rooftop Market and Bazaar Gate, `SB` Sahil's Showroom |
 | Encounters | 9 combat encounters (E1 to E9) and `SB-BOSS` |
-| Checkpoints, depots | 10 checkpoints, 2 depots |
-| Finale | **Boss: Sahil the RugMaster**, 5 parts, about 4:30. Reward spell: Magic Carpet |
+| Lockdown arenas | **3** (PLAN §5.6): **[L1]** E3 Dyers' Court (S1, 44 × 44 m), **[L2]** E5 High Caravanserai (S2, 44 × 44 m), **[L3]** `SB-BOSS` (fire ring, 56 m across) |
+| Checkpoints, depots | 10 checkpoints, 2 depots, plus a depot crate in `SB` |
+| Unlockables | Chain Zap (shrine), Magic Carpet (Sahil), Mana Battery (hidden, S4), gun types Sniper and Bazooka, the first boss gun |
+| Finale | **Boss: Sahil the RugMaster**, 5 parts, about 4:15 |
 
 ## 2. Concept
 
@@ -31,8 +33,12 @@ and the Canyon Rim is one long-range beat with a sniper rack before the carpets.
 How it differs from the other nine: no jetpack, no stealth, almost no long sightlines. It is the only level
 where most enemies die inside 8 m, and the only one where the main movers are flying carpets over a void.
 
+The set pieces are three **lockdown arenas**: a yard whose doors drop behind you and stay shut until
+every wave is dead. The Dyers' Court opens with the phalanx marching at you down a sealed lane. The High
+Caravanserai is where the Hex Acolyte is taught. Sahil's fire ring is the third.
+
 Three things the level teaches for the boss: quicksand (E4), sand geysers (Geyser Flats), and **Rug Looms**,
-destroyable machines that power a shield (one alone in E5, two under pressure in E9, then in the fight).
+destroyable machines that power a shield (one alone after E5, two under pressure in E9, then in the fight).
 
 **Cutscene cards**
 
@@ -44,82 +50,97 @@ destroyable machines that power a shield (one alone in E5, two under pressure in
 
 ## 3. What the player has and learns
 
+There is no crafting and Magic has no levels (PLAN §6.2, §7). Everything below is found.
+
 | Item | Detail |
 |---|---|
-| Guns expected at the start | Starter machine gun, the L01 shotgun (tier 1), whatever dropped in L01 |
-| Guns placed here | **Shotgun** rack at the Souk Arch (S1, 40 m in). **Sniper** rack on the rim tower (S3). **Bazooka** rack in the Rug Vault (inside `SB`). Two shotgun standees for players who skipped the rack |
+| Guns expected at the start | Machine gun and the L01 shotgun, with whatever dropped in L01. All ammo is finite, the machine gun included |
+| Gun types in the drop pool at the start | Machine Gun, Shotgun |
+| **Gun types first found here** | **Sniper**: `rack-sn-tower` on the canyon rim (S3). **Bazooka**: `rack-bz-vault` in the boss section. **Ray Gun or Big Bullets**: Sahil's boss-gun drop, the first boss gun of the campaign. Each joins the drop pool once picked up |
+| Other placed guns | Shotgun rack at the Souk Arch (S1, 40 m in), two shotgun standees, two lockdown chests, one secret cache (§12). Racks are Common, gun level 2 |
 | Spells held at the start | Goo Bolt (L01 shrine) |
-| New spell | **Chain Zap** (30 mana, 4 s cooldown, 25 m, 4 chains). Shrine in the Shrine Court, S1 at (100, 0, 22), reached at about 2:26. It is 13 m before the Dyers' Gate, which only opens when conduit `C1` is zapped, and behind that gate is E3, the first phalanx that cannot be flanked |
+| **New spell** | **Chain Zap** (30 mana, 4 s cooldown, 25 m, 4 chains). Shrine in the Shrine Court, S1 at (100, 0, 22), reached at about 2:11. It is 13 m before the Dyers' Gate, which opens only when conduit `C1` is zapped. Behind that gate is **[L1]**, whose first wave is the first phalanx that cannot be flanked |
 | What Chain Zap does here | Stuns riot shields 2 s, pops Tax Shield bubbles, powers conduits `C1` (door) and `C2` (lift), sets off pots along the chain |
-| Reward spell | **Magic Carpet** from Sahil (B §6). Not needed anywhere in L02 |
+| Reward spell | **Magic Carpet** from Sahil (B §6). Not needed anywhere in L02; on replays the lockdown lids stop it |
+| **Mana Battery** | Hidden on filler roof F1 in S4 at (12, 5, 50): +10 max mana, +0.5 mana/s, kept for good. Route in §12 |
 | New enemies | `boomMidget` (E1), `riotMidget` (E2), `hexAcolyte` (E5). Each alone first, then in a mix, then with a twist (§9) |
-| New mechanisms | Quicksand, sand geysers, flying carpets over a void (void rescue), clothesline ziplines, rug catapult, explosive pots with elements, conduits, Rug Looms, the depot |
+| New mechanisms | Lockdown arenas, quicksand, sand geysers, flying carpets over a void (void rescue), clothesline ziplines, rug catapult, explosive pots with elements, conduits, Rug Looms, the depot |
 | Power-up | Overshield on the Minaret Terrace (S4) |
 
 ## 4. Time budget
 
 Formula per beat (PLAN §3): enemy seconds × 1.3 + metres on foot ÷ 5.5 + stated mechanism time.
 Enemy seconds: midget 3, boomMidget 3, flyingMidget 5, obama 6, robotLaser 6, riotMidget 8, hexAcolyte 8,
-robotShooter 9. The boss row is the flat PLAN figure; its 46 adds are inside it and are not counted twice.
+robotShooter 9. The boss row is the flat PLAN figure; its 40 adds are inside it and are not counted twice.
+**[L]** marks a lockdown arena.
 
 | # | Beat | Sec. | Enemies | Enemy s | × 1.3 | On foot (m) | ÷ 5.5 | Mechanism time | Beat (s) | Clock |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | E1 Caravan Camp | S1 | 8 midget, 1 obama, 2 boom = 11 | 24+6+6 = 36 | 46.8 | 45 | 8.2 | — | 55.0 | 0:55 |
-| 2 | E2 Shield Wall | S1 | 2 riot, 8 midget, 2 obama = 12 | 16+24+12 = 52 | 67.6 | 95 (incl. 39 m flank loop) | 17.3 | — | 84.9 | 2:20 |
-| 3 | Chain Zap shrine, conduit `C1` | S1 | — | — | — | 34 | 6.2 | 20 (shrine, practice cast, gate) | 26.2 | 2:46 |
-| 4 | E3 Phalanx | S1 | 4 riot, 2 obama, 6 midget, 2 boom = 14 | 32+12+18+6 = 68 | 88.4 | 78 | 14.2 | — | 102.6 | 4:29 |
-| 5 | E4 Boom Dunes | S2 | 7 boom, 7 midget, 2 obama = 16 | 21+21+12 = 54 | 70.2 | 163 | 29.6 | — | 99.8 | 6:09 |
-| 6 | Geyser Flats, then E5 High Caravanserai | S2 | 1 acolyte, 2 obama, 5 midget, 3 flying = 11 | 8+12+15+15 = 50 | 65.0 | 78 | 14.2 | 8 (geyser wait and launch) + 4 (loom-0) | 91.2 | 7:40 |
-| 7 | Depot 1 | S2 | — | — | — | 46 | 8.4 | 45 (breather) | 53.4 | 8:33 |
-| 8 | E6 Far Ledge | S3 | 3 obama, 1 acolyte, 2 laser, 1 shooter = 7 | 18+8+12+9 = 47 | 61.1 | 116 (incl. tower climb) | 21.1 | 5 (rack, scope) | 87.2 | 10:00 |
-| 9 | E7 Narrows and Carpets | S3 | 6 midget, 2 boom, 3 flying, 2 obama = 13 | 18+6+15+12 = 51 | 66.3 | 131 | 23.8 | 30 (3 carpet waits and rides, 67 m) | 120.1 | 12:00 |
-| 10 | E8 Rooftop Market | S4 | 8 midget, 4 boom, 2 obama, 2 riot, 1 acolyte = 17 | 24+12+12+16+8 = 72 | 93.6 | 148 | 26.9 | 14 (conduit `C2` and lift 8, two ziplines and catapult 6) | 134.5 | 14:15 |
-| 11 | E9 Bazaar Gate | S4 | 10 midget, 2 riot, 4 boom = 16 | 30+16+12 = 58 | 75.4 | 66 | 12.0 | 6 (two looms) | 93.4 | 15:48 |
-| 12 | Depot 2 | S4 | — | — | — | 32 | 5.8 | 45 (breather) | 50.8 | 16:39 |
-| 13 | `SB-BOSS` Sahil | SB | 46 adds (inside the boss time) | — | — | 41 | 7.5 | 270 (boss, 5 parts) | 277.5 | 21:17 |
-| | **Total** | | **117 + 46 = 163** | **488** | **634.4** | **1,073** | **195.1** | **87 + 90 + 270 = 447** | **1,276.6 s** | **21:17** |
+| 1 | E1 Caravan Camp | S1 | 6 midget, 1 obama, 2 boom = 9 | 18+6+6 = 30 | 39.0 | 45 | 8.2 | — | 47.2 | 0:47 |
+| 2 | E2 Shield Wall | S1 | 2 riot, 6 midget, 2 obama = 10 | 16+18+12 = 46 | 59.8 | 95 (incl. 39 m flank loop) | 17.3 | — | 77.1 | 2:04 |
+| 3 | Chain Zap shrine, conduit `C1` | S1 | — | — | — | 34 | 6.2 | 20 (shrine, practice cast, gate) | 26.2 | 2:31 |
+| 4 | **[L1]** E3 Dyers' Court, 4 waves | S1 | 4 riot, 2 obama, 13 midget, 6 boom = 25 | 32+12+39+18 = 101 | 131.3 | 83 | 15.1 | 6 (chest and crate) | 152.4 | 5:03 |
+| 5 | E4 Boom Dunes | S2 | 6 boom, 4 midget, 2 obama = 12 | 18+12+12 = 42 | 54.6 | 163 | 29.6 | — | 84.2 | 6:27 |
+| 6 | Geyser Flats, then **[L2]** E5 High Caravanserai, 4 waves | S2 | 2 acolyte, 2 obama, 14 midget, 3 flying, 4 boom = 25 | 16+12+42+15+12 = 97 | 126.1 | 82 | 14.9 | 8 (geyser) + 4 (loom-0) + 6 (chest) = 18 | 159.0 | 9:06 |
+| 7 | Depot 1 | S2 | — | — | — | 42 | 7.6 | 45 (breather) | 52.6 | 9:59 |
+| 8 | E6 Far Ledge | S3 | 3 obama, 1 acolyte, 2 laser, 1 shooter = 7 | 18+8+12+9 = 47 | 61.1 | 116 (incl. tower climb) | 21.1 | 5 (rack, scope) | 87.2 | 11:26 |
+| 9 | E7 Narrows and Carpets | S3 | 4 midget, 2 boom, 2 flying, 2 obama = 10 | 12+6+10+12 = 40 | 52.0 | 131 | 23.8 | 30 (3 carpet waits and rides, 67 m) | 105.8 | 13:12 |
+| 10 | E8 Rooftop Market | S4 | 5 midget, 2 boom, 2 obama, 2 riot, 1 acolyte = 12 | 15+6+12+16+8 = 57 | 74.1 | 148 | 26.9 | 14 (conduit `C2` and lift 8, two ziplines and catapult 6) | 115.0 | 15:07 |
+| 11 | E9 Bazaar Gate | S4 | 6 midget, 2 riot, 3 boom = 11 | 18+16+9 = 43 | 55.9 | 66 | 12.0 | 6 (two looms) | 73.9 | 16:21 |
+| 12 | Depot 2 | S4 | — | — | — | 32 | 5.8 | 45 (breather) | 50.8 | 17:11 |
+| 13 | **[L3]** `SB-BOSS` Sahil, 5 parts | SB | 40 adds (inside the boss time) | — | — | 41 | 7.5 | 255 (boss) | 262.5 | 21:34 |
+| | **Total** | | **121 + 40 = 161** | **503** | **653.9** | **1,078** | **196.0** | **99 + 90 + 255 = 444** | **1,293.9 s** | **21:34** |
 
-Check: 634.4 + 195.1 + 447 = 1,276.5 s (rounding). Par 1,200 s, so +77 s, inside ±120 s.
-Section times: S1 4:29, S2 4:04, S3 3:27, S4 4:39, SB 4:38 (all inside the 3 to 6 minute rule).
+Check: 653.9 + 196.0 + 444 = 1,293.9 s. Par 1,200 s, so +94 s, inside ±120 s.
+Section times: S1 5:03, S2 4:56, S3 3:13, S4 4:00, SB 4:23 (all inside the 3 to 6 minute rule).
+Time sealed in each lockdown: [L1] 2:11, [L2] 2:06 (rule: 2 to 3.5 minutes), [L3] 4:15 (boss rule: 4 to 5.5).
 
-**Intensity** (no two above 0.8 in a row): E1 0.3, E2 0.5, shrine 0.1, E3 0.75, E4 0.6, E5 0.55, depot 0,
-E6 0.45, E7 0.7, E8 0.85, E9 0.75, depot 0, boss 1.0.
+**Intensity** (no two above 0.8 in a row): E1 0.3, E2 0.5, shrine 0.1, [L1] 0.85, E4 0.5, [L2] 0.8, depot 0,
+E6 0.45, E7 0.65, E8 0.7, E9 0.75, depot 0, [L3] 1.0.
 
-**Why the mix is fodder-heavy.** 160 enemies inside a 20-minute par leaves about 3 to 4 enemy-seconds each
-once the boss, depots and 1 km of walking are paid for. So 121 of the 163 are 3-second enemies (Midgets
-and Boom Midgets), and the 13 shields and 4 Acolytes are placed where they matter. Big Obama does not
-appear on Normal (30 s each); Heroic adds one at E9.
+**Why the mix is fodder-heavy, and why the estimate sits above par.** 160 enemies inside a 20-minute par
+leave about 3 to 4 enemy-seconds each once the boss, depots and 1 km of walking are paid for. Two
+lockdowns of 25 enemies and at least 2 minutes each take 50 enemies and 4:20 of that. So 119 of the 161
+are 3-second enemies (Midgets and Boom Midgets), the seven open encounters have 7 to 12 enemies each, and
+the 13 shields and 5 Acolytes are placed where they matter. Big Obama does not appear on Normal (30 s
+each); Heroic adds one at E9. See §14, open question 5.
 
 ## 5. Overview map
 
-Schematic, not to scale. North is up. `◉` start, `CPn` checkpoint, `D1`/`D2` depots, `✦` shrine, `SG`/`SN`/`BZ` racks.
+Schematic, not to scale. North is up. `◉` start, `CPn` checkpoint, `D1`/`D2` depots, `✦` shrine,
+`SG`/`SN`/`BZ` racks, **[L]** lockdown arena (doors seal until every wave is dead).
 
 ```
         ┌─────────── S1  CARAVAN CAMP + SOUK ALLEYS  200×150 ───────────┐
-        │  ✦CP2 Shrine Court ─[C1]═ Dyers' Passage ═► Dyers' Court (E3) ─┼─► card "Into the Dunes"
-        │      ▲ Thread Lane                                             │
+        │  ✦CP2 Shrine Court ─[C1]═ Dyers' Passage ═► [L1] DYERS' COURT ─┼─► card "Into the Dunes"
+        │      ▲ Thread Lane                          (E3) CP3 on clear  │
         │  Spice Square                                                  │
         │      ▲ Spice Alley + 2 side lanes (E2)   SG at the arch        │
         │  Caravan Camp (E1)  ◉CP1                                       │
         └────────────────────────────────────────────────────────────────┘
  ┌────────────────── S2  DUNE SEA  290×200 (terrain) ──────────────────┐   ┌──── S3  CANYON RIM  220×160 ─────┐
- │ CP3 ► crest A ► quicksand ► crest B ► The Teeth (E4) CP4            │   │ tower SN ► Rim Terrace (E6) CP6  │
- │      ► Geyser Flats ⇧ shelf ► High Caravanserai (E5) ► D1 CP5 ══pass╪══►│ ► Narrows ► carpet ► Needle ►    │
+ │ ► crest A ► quicksand ► crest B ► The Teeth (E4) ► Geyser Flats ⇧   │   │ tower SN ► Rim Terrace (E6) CP6  │
+ │   CP4 ► [L2] HIGH CARAVANSERAI (E5) ► D1 CP5 ══════════════════ pass╪══►│ ► Narrows ► carpet ► Needle ►    │
  └─────────────────────────────────────────────────────────────────────┘   │ carpet ► East Dock (E7) ► carpet ╪═╗
                                                                            └──────────────────────────────────┘ ║
                       ┌──── S4  ROOFTOP MARKET + BAZAAR GATE  140×240 ────┐                                     ║
                       │ CP7 R1 ► R2 ► R3 ─[C2 lift]► M1 ─zip► M2 ─pad► H1 │◄════════════════════════════════════╝
-                      │ (E8)                          Overshield on H1    │
+                      │ (E8)    Mana Battery on F1    Overshield on H1    │
                       │                 long zipline ▼                    │
                       │ CP8 Gate Landing ► Gate Square (E9, 2 looms)      │
                       │ ► Bazaar Gate ► D2 CP9 ► vault door               │
                       └───────────────────────┬───────────────────────────┘
                                               ▼ boss card
                       ┌──── SB  SAHIL'S SHOWROOM  80×110 ────┐
-                      │ CP10 Rug Vault (BZ) ► ring gate ►    │
-                      │ fire-ring arena r 27.8 (SB-BOSS)     │
+                      │ CP10 Rug Vault (BZ, depot crate) ►   │
+                      │ ring gate ► [L3] fire-ring arena     │
+                      │ r 27.8 (SB-BOSS)                     │
                       └──────────────────────────────────────┘
 ```
+
+The three lockdowns are in S1, S2 and `SB`, with E4 between the first two and E6 to E9 before the third,
+so no two are back to back. The Gate Square (E9) would also suit one, but it is the last fight before
+the boss arena, so it stays open: its entry arch never closes.
 
 ## 6. Sections
 

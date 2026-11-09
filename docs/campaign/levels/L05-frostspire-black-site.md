@@ -280,3 +280,96 @@ roof **135 m**. Post gate (150, 410) to the pass rig **102 m**; pass mouth to th
 **Mechanisms in S1:** `cache` C1; `barrel` (fire) at the camp; `alarm` 1 and 3; `door` S1-tunnel, hut door, S1-passGate; `hazardZone slick` on the creek (x 12–288, n 250–262); `spellShrine`; harmless `searchlight`; `mover` S1-mastLift; `rack` R1 bazooka at (146, 0, 462).
 
 **Transition out:** seamless. The pass gate opens and S2 loads behind it. The first whiteout starts 10 s after the player enters S2.
+
+### 6.2 S2: The Kill Zone, the Wall and two Bunkers
+
+Footprint 260 × 250 m. Terrain west of x 170; the frozen lake east of it is built from boxes so it
+can have water and a cave under it. The wall runs east–west at n 200–206; the two bunkers are built
+into it either side of the shield gate. About 190 solids.
+
+```
+  n  x 0         50        100       150       200       250
+ 240   ##                                                 ##
+ 230   ##               ..gW...     ..gE...               ##   gW gE  generators
+ 220   ##               .BNK W.     .BNK E.               ##
+ 210   ##               .......     .......               ##
+ 200   ##====S=====T=======R====[GT]===R=======T=====S====##   S searchlight  T tower  R rig  [GT] shield gate
+ 190   ##           ::K        == ==         ::           ##   K hound kennel   == apron barriers
+ 180   ##            ::    |             ~~~~~~~~~~~~~~~~~##
+ 170   ##            ------              xxxxxxxxxxxxxxxxx##   x cracking-ice band 3
+ 160   ##            |  ::       _ *4    xxxxxxxxxxxxxxxxx##   _ Last Cover (checkpoint *4)
+ 150   ##          d |   ::    _   o    :~~~~~~~~~~~~~~h~~##   d dugout (sleepers)   h fishing hut
+ 140   ##                 :: o         ::~~~~~~~~h~~b~~~~~##   gap 2 in the trench wall at n 140–148
+ 130   ##            |     ::    =   o:: xxxxxxxxGxxxxxxxx##   band 2.  G tile over the secret cave
+ 120   ##      ------        :       :   xxxxxxxxxxxxxxxxx##
+ 110   ##      |              o:   :o    ~~~~~~~~~~~~~~~~~##   rigs open fire north of n 118
+ 100   ##      |               :: ::     ~~~~~~b~~~~~h~~~~##   b balloon mine
+  90   ##      |            O  =:=:=  O  xxxxxxxxxxxxxxxxx##   Sniper Rocks.  band 1
+  80   ##                                xxxxxxxxxxxxxxxxx##   gap 1 in the trench wall at n 80–88
+  70   ##      |               o         ~~~~h~~~~~~~~~~~~##
+  60   ##      |                         ~~~~~~~~~~~~~~~~~##
+  50   ##      |                  o      ~~~~~~~~~~~~~~~~~##   trench mouth (40, 50)
+  40   ##                                                 ##
+  30   ##                       o                         ##
+  20   ##                                                 ##
+  10   ##                                                 ##
+   0   ########################|pass|#######################
+```
+
+Sightlines: Sniper Rocks (130, 88) to each tower **135 m**, to each rig **119 m**, to the gate
+**112 m**. Last Cover (130, 155) to the rigs **57 m**, to the towers **85 m**. Trench gap 1 to tower W
+**121 m**. Fishing hut 2 (232, 100) to tower E **108 m**. From the pass mouth the wall is 190 m away:
+out of everyone's range, a place to watch one whole blizzard cycle.
+
+**Three routes.** West: the trench, full cover except two 8 m gaps swept by searchlight W, ends at
+bunker W's door. Centre: boulders with 15 to 25 m dashes, under both rigs from n 118. East: the
+lake, the shortest line and no rig can see behind the huts, but the ice cracks and searchlight E
+sweeps it; ends at bunker E's door.
+
+| Id | Shape | Size (m) | Position (x, y, n) | Mat | Purpose |
+|---|---|---|---|---|---|
+| S2-ground | terrain | 170 × 200, cell 4, seed 502, amp 0.8, freq 0.015 | origin (0, 0, 0) | snow | West and centre |
+| S2-cliffW, S2-cliffE | box | 10 × 14 × 250 | (5, 7, 125), (255, 7, 125) | rock | Side bounds |
+| S2-cliffS ×2 | box | 113 × 14 × 8 | (66.5, 7, 4), (193.5, 7, 4) | rock | South bound, pass mouth x 123–137 |
+| S2-eastSnow ×2 | box | 80 × 6 × 50 and 80 × 6 × 15 | (210, -3, 25), (210, -3, 192.5) | snow | Solid ground south and north of the lake |
+| S2-lakeBed | box | 80 × 1 × 135 | (210, -5.5, 117.5) | rock | Lake floor at y −5. Water y −5 to −0.5 is a kill zone with rescue |
+| S2-ice ×4 | box | 80 × 0.5 × 30, 28, 28, 13 | (210, -0.25, 65), (210, -0.25, 106), (210, -0.25, 146), (210, -0.25, 178.5) | ice | Solid ice between the bands, top y 0, not slick |
+| S2-band1, 2, 3 | `crackTiles`, tile 4 m | 80 × 12 each | n 80–92, n 120–132, n 160–172, x 170–250 | ice | Falls 1 s after a step, back in 20 s |
+| S2-log ×6 | box | 3 × 0.6 × 12 | (190, 0.3, 86), (240, 0.3, 86), (180, 0.3, 126), (225, 0.3, 126), (200, 0.3, 166), (245, 0.3, 166) | wood | Two safe crossings in each band |
+| S2-hut ×4 | prefab `fishHut` | — | (190, 0, 70), (232, 0, 100), (212, 0, 143), (238, 0, 150) | wood | Lake cover. Hut 2 has a sniper box; hut 4 has the Overshield |
+| S2-cave | box floor 10 × 0.5 × 10, 4 wall boxes 10 × 4 × 1, ramp 3 × 4 × 10 high end north | — | floor (212, -4.25, 126); ramp (212, -2, 136) comes up inside hut 3 | ice | Golden Bonk cave under tile G |
+| S2-approach ×3 | prefab `boulderM` | — | (125, 0, 30), (137, 0, 50), (121, 0, 70) | ice | Cover from the pass to Sniper Rocks |
+| S2-sniperRocks | 3 boxes 5 × 2.2 × 1.5; 2 prefab `boulderL` | — | boxes (118, 1.1, 90), (130, 1.1, 88), (142, 1.1, 90); boulders (104, 0, 90), (156, 0, 90) | rock, ice | Firing line. 2 m gaps to shoot through |
+| S2-centre ×6 | prefab `boulderM` ×4, `rockSlab`, `boulderS` | — | M (116, 0, 110), (146, 0, 112), (112, 0, 145), (141, 0, 147); slab (128, 0, 128); S (150, 0, 126) | ice, rock | Centre route |
+| S2-lastCover ×3 | prefab `snowBerm` | — | (118, 0, 152), (130, 0, 155), (142, 0, 152) | snow | Crouch cover 50 m from the wall. Checkpoint *4 |
+| S2-apron ×2 | box | 4 × 1.2 × 1 | (121, 0.6, 188), (139, 0.6, 188) | concrete | Under the rigs' dead angle (they cannot aim inside 15 m of the wall) |
+| S2-trLeg1 | 3 boxes 1.5 × 2.2 × L | L 73; 30; 30.5 | west wall (37.75, 1.1, 86.5); east wall (42.25, 1.1, 65) and (42.25, 1.1, 103.25) | snow | Lane x 38.5–41.5, n 50–120. **Gap 1** in the east wall n 80–88 |
+| S2-trJog1 | 2 boxes L × 2.2 × 1.5 | L 31.5; 26.5 | north (52.75, 1.1, 122.25); south (56.25, 1.1, 117.75) | snow | Lane n 118.5–121.5, x 38.5–71.5 |
+| S2-trLeg2 | 4 boxes 1.5 × 2.2 × L | L 25.5, 17.5; 23, 20.5 | west (67.75, 1.1, 135.25), (67.75, 1.1, 160.75); east (72.25, 1.1, 128.5), (72.25, 1.1, 158.25) | snow | Lane x 68.5–71.5, n 120–170. Dugout door in the west wall n 148–152. **Gap 2** in the east wall n 140–148 |
+| S2-dugout | `room(58–67, 146–154, 0, 2.2)`, door east | — | — | wood | 3 sleeping Midgets, a bullets box |
+| S2-trJog2 | 2 boxes L × 2.2 × 1.5 | L 31.5; 26.5 | north (82.75, 1.1, 172.25); south (86.25, 1.1, 167.75) | snow | Lane n 168.5–171.5, x 68.5–101.5 |
+| S2-trLeg3 | 2 boxes 1.5 × 2.2 × L | L 27; 32 | west (97.75, 1.1, 185.5); east (102.25, 1.1, 183) | snow | Lane x 98.5–101.5, n 170–199, to bunker W's door |
+| S2-wallW, S2-wallE | box | 75 × 8 × 6 | (47.5, 4, 203), (212.5, 4, 203) | concrete | Wall x 10–85 and x 175–250. Walk on top at y 8 |
+| S2-pierW, S2-pierE | box | 11 × 8 × 6 | (120.5, 4, 203), (139.5, 4, 203) | concrete | Gate piers |
+| S2-lintel | box | 8 × 2 × 6 | (130, 7, 203) | concrete | Gate opening 8 wide × 6 high |
+| S2-shieldGate | door | 8 × 6 × 1 | (130, 3, 200.5) | glass | Energy gate. Drops when both generators are destroyed |
+| S2-parapetS | 20 boxes 10 × 1.2 × 0.5 with 2 m gaps | — | x from 16 to 244, at (x, 8.6, 200.25) | concrete | Crouch parapet for the wall snipers |
+| S2-parapetN | box | 240 × 3 × 0.5 | (130, 9.5, 205.75) | concrete | No way down into the courtyard from the wall |
+| S2-towerW, S2-towerE | prefab `watchtower`, legs 4 m | — | (60, 8, 203), (200, 8, 203) | metal | Cabin floor at y 12. Audit File 2 and a sniper box in tower W |
+| S2-lightW, S2-lightE | prefab `searchlight` | — | (30, 8, 202), (230, 8, 202) | metal | W sweeps the trench gaps, E sweeps the lake. Lamp 30 HP |
+| S2-alarm4 | alarm box and 2 cables | — | box (130, 9.2, 200.2); cables along the wall face at y 7 to x 30 and x 230 | metal | Wall alarm. Cut either cable to unlink that searchlight |
+| S2-kennel | box with a door on the south face | 4 × 2 × 3 | (75, 1, 198.5) | concrete | E4-g hounds |
+| BW-shell | `room(85–115, 200–236, 0, 8)`, doors: south at x 100, north at x 100 (service) | — | — | concrete | Bunker W. Roof top at y 8 joins the wall walk |
+| BW-corridor | 2 boxes | 1 × 7.5 × 13 | (97.5, 3.75, 207.5), (102.5, 3.75, 207.5) | concrete | Entry corridor x 98–102, n 201–214 |
+| BW-partition | box with door gaps at x 88, 100, 108 | 28 × 7.5 × 1 | (100, 3.75, 214.5) | concrete | Splits front rooms from the generator room |
+| BW-stairs | stairs, low end north | 3 × 7.5 × 12 | (88, 3.75, 207) | concrete | Up to a roof hatch at (88, 8, 202). The flank on the rig |
+| BW-bunks ×2 | box | 2 × 1.2 × 1 | (110, 0.6, 204), (110, 0.6, 210) | wood | Bunk room x 103–114, n 201–214 |
+| BW-gen | `target` generator (500 HP) | prefab `generator` | (100, 0, 227) | metal | Generator W |
+| BW-cover ×3 | 2 prefab `crateStack`, box 4 × 1.2 × 1 | — | (93, 0, 221), (107, 0, 221), (100, 0.6, 219) | crate | Generator room x 86–114, n 215–235 |
+| BW-alarm5W | alarm box, cable along the north wall to x 100 | — | (113, 2, 234) | metal | Alarm 5W |
+| BW-rigPad | cylinder | r 2, h 0.5 | (100, 8, 203) | concrete | Mining Rig W on the roof |
+| BE-* | Bunker E: every BW row mirrored about x 130 (x' = 260 − x) | — | door (160, 200), generator (160, 0, 227), stairs (172, 3.75, 207), rig pad (160, 8, 203), alarm 5E (147, 2, 234), roof rope hatch (170, 8, 208) | concrete | Bunker E |
+
+**Mechanisms in S2:** blizzard (`weather`, whiteouts at t = 10–30, 100–120, 190–210 s after entering S2 and every 90 s after, 4 s warning); 2 `searchlight`; `alarm` 4, 5W, 5E; `crackTiles` × 3 bands; kill zone with rescue under the lake; 2 `target` generators; `door` shield gate, kennel, bunker doors; `powerup` Overshield in hut 4 (238, 0, 150).
+
+**Transition out:** seamless through the gate. S3's origin is S2 (80, 0, 206): the inner face of the wall.
