@@ -7,6 +7,10 @@
 //   S2a director v2: rejoin via HELLO, late-accept-discard, hold-last, frame caps
 //   S2b/S3 viewTick rewind, prediction, interpolation -> correction p99, rewind, starvation
 //
+// The harness is the realistic one (netsim.js REALISM): client clock offset and drift, a jittered
+// Nakama loop with pauses, ~130 B envelopes. `queued` is what the director accepted for a tick
+// it has stepped; director v1 applies exactly that.
+//
 // Set NETSIM_REPORT=1 to print the measured numbers.
 import { describe, expect, it } from 'vitest';
 import { contentFingerprint } from '../../src/data/serverManifest.js';
@@ -30,7 +34,7 @@ function measure(name, extra = {}) {
         peers: report.peers.map((p) => ({
           sent: p.inputsSent,
           accepted: p.inputsAccepted,
-          applied: p.appliedFraction,
+          queued: p.queuedFraction,
           late: p.lateFraction,
           rejects: p.rejectsByOp,
           snapMs: p.snapshotInterArrivalMs,
@@ -59,32 +63,36 @@ describe('pins the harness must never move', () => {
 });
 
 describe('baseline: documents current behaviour (expected to be bad)', () => {
-  it('RTT 0: no rejects, but real input lands on only 1 tick in 3', () => {
+  it('RTT 0: the jittered server loop makes a third of inputs late; real input on < 1 tick in 3', () => {
     const report = measure('rtt0');
     expect(report.result).toBeNull();
     expect(report.ticks).toBe(450);
     for (const peer of report.peers) {
-      expect(peer.rejectTotal).toBe(0);
-      expect(peer.lateFraction).toBe(0);
-      // Inputs are stamped with the last snapshot tick, and snapshots go out every 3 ticks.
-      expect(peer.appliedFraction).toBeGreaterThan(0.32);
-      expect(peer.appliedFraction).toBeLessThan(0.35);
-      expect(peer.snapshotInterArrivalMs.p50).toBe(100);
+      // Inputs are stamped with the last snapshot tick, and snapshots go out every 3 ticks. A
+      // loop callback that runs late (or after a pause) catches up more than one tick, so the
+      // next input arrives below the cursor: a perfect 30 Hz loop gave 0 rejects and 33.3%.
+      expect(peer.rejects.frame).toBeGreaterThan(40);
+      expect(peer.lateFraction).toBeGreaterThan(0.25);
+      expect(peer.queuedFraction).toBeGreaterThan(0.25);
+      expect(peer.queuedFraction).toBeLessThan(0.33);
+      expect(peer.snapshotInterArrivalMs.p50).toBeGreaterThan(95);
+      expect(peer.snapshotInterArrivalMs.p50).toBeLessThan(105);
       // The remote is sampled by tick, so it steps at 10 fps: 5 of every 6 frames at 60 Hz hold.
-      expect(peer.snapshotLateFrames).toBe(0);
       expect(peer.starvedFraction).toBeGreaterThan(0.8);
       expect(peer.starvedFraction).toBeLessThan(0.86);
     }
   });
 
-  for (const name of ['rtt100j30', 'rtt150']) {
+  for (const name of ['rtt100j30', 'rtt150', 'heavyTail']) {
     it(`${name}: every input is rejected as late, so the match ends both_stall at 10 s`, () => {
       const report = measure(name);
-      expect(report.result).toMatchObject({ outcome: 'draw', reason: 'both_stall', tick: 300 });
+      expect(report.result).toMatchObject({ outcome: 'draw', reason: 'both_stall' });
+      expect(report.result.tick).toBeGreaterThanOrEqual(300);
+      expect(report.result.tick).toBeLessThanOrEqual(302);
       expect(report.bothStalled).toBe(1);
       for (const peer of report.peers) {
         expect(peer.inputsAccepted).toBe(0);
-        expect(peer.appliedFraction).toBe(0);
+        expect(peer.queuedFraction).toBe(0);
         expect(peer.lateFraction).toBeGreaterThan(0.7);
         expect(peer.rejects.frame).toBeGreaterThan(150);
         // One late reject cascades into sequence rejects.
@@ -93,11 +101,12 @@ describe('baseline: documents current behaviour (expected to be bad)', () => {
     });
   }
 
-  it('stall bursts: no input lands, snapshots arrive in bursts, and the match ends both_stall', () => {
+  it('stall bursts: (almost) no input lands, snapshots arrive in bursts, and the match ends on a stall', () => {
     const report = measure('stallBurst');
-    expect(report.result).toMatchObject({ outcome: 'draw', reason: 'both_stall' });
+    expect(['both_stall', 'stall']).toContain(report.result.reason);
+    expect(report.result.tick).toBeLessThanOrEqual(302);
     for (const peer of report.peers) {
-      expect(peer.inputsAccepted).toBe(0);
+      expect(peer.inputsAccepted).toBeLessThanOrEqual(1);
       expect(peer.lateFraction).toBeGreaterThan(0.5);
       expect(peer.snapshotInterArrivalMs.max).toBeGreaterThan(300);
     }
@@ -130,17 +139,26 @@ describe('§R.8 targets (pending: later PRs turn these on)', () => {
       expect(report.result).toBeNull();
       for (const peer of report.peers) {
         expect(peer.lateFraction).toBeLessThan(TARGETS.lateFraction);
-        expect(peer.appliedFraction).toBeGreaterThanOrEqual(0.99);
+        expect(peer.queuedFraction).toBeGreaterThanOrEqual(0.99);
       }
     });
   }
+
+  it.skip('S2a: heavy-tail jitter causes no reject storm and no stall forfeit', () => {
+    const report = measure('heavyTail');
+    expect(report.result).toBeNull();
+    for (const peer of report.peers) {
+      expect(peer.rejectFraction).toBeLessThan(TARGETS.lateFraction);
+      expect(peer.queuedFraction).toBeGreaterThanOrEqual(0.9);
+    }
+  });
 
   it.skip('S2a: stall bursts cause no reject storm and no stall forfeit', () => {
     const report = measure('stallBurst');
     expect(report.result).toBeNull();
     for (const peer of report.peers) {
       expect(peer.rejectFraction).toBeLessThan(TARGETS.lateFraction);
-      expect(peer.appliedFraction).toBeGreaterThanOrEqual(0.9);
+      expect(peer.queuedFraction).toBeGreaterThanOrEqual(0.9);
     }
   });
 
@@ -166,6 +184,9 @@ describe('§R.8 targets (pending: later PRs turn these on)', () => {
     for (const peer of report.peers) expect(peer.starvedFraction).toBeLessThan(TARGETS.starvedFraction);
   });
 
+  // What this gate can show depends on the check behind rewindCheck(). If both rays start at
+  // the server's eye (no client prediction yet), it only compares the drawn target with the
+  // rewound one, so it mostly measures "the rewind claim was not clamped".
   it.skip('S2b/S3: RTT 100±30 ms rewind hit agreement >= 98%', () => {
     const report = measure('rtt100j30', { fire: true });
     expect(report.rewind.checks).toBeGreaterThan(0);

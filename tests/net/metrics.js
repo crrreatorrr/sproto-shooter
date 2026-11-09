@@ -121,13 +121,18 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
     joinRefused(index, reason) { stats[index].joinRefusals.push(reason); },
     /** S3 hook: record one prediction correction, in metres. */
     correction(index, metres) { corrections[index].push(metres); },
-    /** S2b/S3 hook: did the server's rewound hit test agree with what the shooter saw? */
+    /**
+     * S2b/S3 hook: did the server's rewound hit test agree with what the shooter saw? How much
+     * this measures depends on the check that feeds it: a check that casts both rays from the
+     * same (server) eye only compares target positions, so it mostly measures whether the
+     * shooter's rewind claim survived the director's clamp.
+     */
     rewindCheck(agree) {
       rewindChecks.checks += 1;
       if (agree) rewindChecks.agree += 1;
     },
 
-    report({ director, links = [], endedAt = null, options = {} } = {}) {
+    report({ director, links = [], endedAt = null, clocks = [], server = null, options = {} } = {}) {
       const ticks = director.sim ? director.sim.tick : 0;
       const result = director.result;
       const loopGaps = loops.slice(1).map((t, i) => t - loops[i]);
@@ -144,8 +149,13 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
         bothStalled: result && result.reason === 'both_stall' ? 1 : 0,
         loopGap: summary(loopGaps),
         links,
+        clocks,
+        server,
         peers: stats.map((seat, index) => {
-          const applied = [...seat.acceptedFrames].filter((frame) => frame < ticks).length;
+          // Queued: frames the director accepted into its input queue for a tick it has since
+          // stepped. Director v1 applies exactly what it queued, so this is the input it applied.
+          // Later directors can queue a frame and still not apply it (see directorApplied there).
+          const queued = [...seat.acceptedFrames].filter((frame) => frame < ticks).length;
           const arrivals = seat.snapshotArrivals.filter((at) => liveAt == null || at >= liveAt);
           const gaps = arrivals.slice(1).map((t, i) => t - arrivals[i]);
           const rejectTotal = Object.values(seat.rejects).reduce((a, b) => a + b, 0);
@@ -155,8 +165,8 @@ export function createMetrics({ accounts = ['ada', 'bea'], starveMs = 150 } = {}
             inputsSent: seat.inputsSent,
             inputsDroppedWhileDown: seat.inputsDroppedWhileDown,
             inputsAccepted: seat.inputsAccepted,
-            appliedTicks: applied,
-            appliedFraction: ticks ? round(applied / ticks) : 0,
+            queuedTicks: queued,
+            queuedFraction: ticks ? round(queued / ticks) : 0,
             rejects: { ...seat.rejects },
             rejectsByOp: { ...seat.rejectsByOp },
             rejectTotal,
