@@ -351,7 +351,8 @@ describe('rejoin', () => {
 describe('review fixes (SHOOTER-S2a)', () => {
   it('rate-limits HELLO + RESYNC to 2/s and READY to 2/s per seat', () => {
     const director = boot({ leadInTicks: 0 });
-    const now = director.liveStart + 10 * STEP_MS;
+    // More than a second after boot's HELLO and READY.
+    const now = director.liveStart + 40 * STEP_MS;
     const ada = { userId: 'ada', sessionId: 'sa' };
     expect(director.handle(ada, OP.HELLO, JSON.stringify(hello('ada')), now).ok).toBe(true);
     expect(director.handle(ada, OP.RESYNC, '{}', now + 10).ok).toBe(true);
@@ -400,7 +401,7 @@ describe('review fixes (SHOOTER-S2a)', () => {
     expect(director.handle({ userId: 'ada', sessionId: 'sa' }, OP.READY, buffer('{}'), 0).ok).toBe(true);
     expect(director.handle({ userId: 'bea', sessionId: 'sb' }, OP.READY, new ArrayBuffer(0), 0).ok).toBe(true);
     expect(director.phase).toBe('live');
-    const packet = encodeInput(wish(1, LEAD_IN_TICKS));
+    const packet = encodeInput(wish(1, 0));
     const copy = packet.buffer.slice(packet.byteOffset, packet.byteOffset + packet.byteLength);
     expect(director.handle({ userId: 'ada', sessionId: 'sa' }, OP.INPUT, copy, 0)).toMatchObject({ ok: true });
     expect(director.seatStats(0).buffer).toBe(1);

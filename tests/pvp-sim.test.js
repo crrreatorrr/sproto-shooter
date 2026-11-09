@@ -145,7 +145,7 @@ describe('browser, node, and goja', () => {
     expect(pin.directorState).toBe(2);
     expect(pin.replayVersion).toBe(2);
     expect(pin.matchmakerQuery).toContain(`+properties.protocol:2 +properties.content:${FINGERPRINT}`);
-    expect(pin.limits).toMatchObject({ futureFrames: 8, maxFramesPerSecond: 45, maxFramesPerCursor: 6, holdTicks: 3, catchUpTicks: 4 });
+    expect(pin.limits).toMatchObject({ futureFrames: 8, maxFramesPerSecond: 45, maxFramesPerCursor: 9, holdTicks: 3, catchUpTicks: 4, maxHelloPerSecond: 2, maxReadyPerSecond: 2 });
     expect(pin.campaignProtocol).toBe(1);
     expect(pin.campaignContentFingerprint).toBe('3c657fb5');
     expect(pin.mintsTickets).toBe(false);

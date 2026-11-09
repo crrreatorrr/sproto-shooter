@@ -1,6 +1,6 @@
 // Separately versioned free-arena export. Campaign verifyRun stays on the other bundle.
 import { createMatch, replay, hashState, step } from './sim.js';
-import { createDirector, restoreDirector } from './director.js';
+import { createDirector, createHostedDirector, restoreDirector } from './director.js';
 import { decodeUsedLog, wishOfUsed } from './used.js';
 import { encodeInput, decodeInput } from '../../net/inputCodec.js';
 import { OP } from '../../net/protocol.js';
@@ -94,6 +94,7 @@ export function replayJSON(text) {
 
 export {
   createDirector,
+  createHostedDirector,
   restoreDirector,
   encodeInput,
   decodeInput,

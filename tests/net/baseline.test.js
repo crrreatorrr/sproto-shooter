@@ -26,7 +26,7 @@ import { CONTENT_FINGERPRINT } from '../../src/sim/pvp/rules.js';
 import { hashState, replay, scriptedMatch } from '../../src/sim/pvp/sim.js';
 import { NET } from '../../src/net/client.js';
 import { STEP_MS } from '../../src/sim/pvp/rules.js';
-import { IDEAL, PROFILES, TARGETS, runScenario } from './netsim.js';
+import { PROFILES, TARGETS, runScenario } from './netsim.js';
 
 const DURATION_MS = 15000;
 const DROP = Object.freeze({ peer: 1, atMs: 3000, downMs: 1500 });
@@ -90,19 +90,25 @@ describe('baseline: documents current behaviour (S1 client, director v2)', () =>
     it(`${name}: no rejects, no late frames, real input on every tick from tick 0`, () => {
       const report = measure(name);
       expect(report.result).toBeNull();
-      expect(report.ticks).toBe(450);
+      // The jittered loop's last callback lands a tick or two either side of 15 s.
+      expect(report.ticks).toBeGreaterThanOrEqual(448);
+      expect(report.ticks).toBeLessThanOrEqual(450);
       for (const peer of report.peers) {
         expect(peer.rejectTotal).toBe(0);
         expect(peer.lateFraction).toBe(0);
         // The lead-in lets the first inputs reach the director before tick 0.
         expect(peer.firstInputCursor).toBe(0);
         expect(peer.queuedFraction).toBeGreaterThanOrEqual(0.99);
-        expect(peer.directorApplied).toBeGreaterThanOrEqual(446);
-        // The lead starts at the PING round trip in ticks plus one.
-        expect(peer.net.lead).toBe({ rtt0: 2, rtt100j30: 5, rtt150: 6 }[name]);
-        // One snapshot per tick, per recipient.
-        expect(peer.snapshotInterArrivalMs.p50).toBeGreaterThan(32);
-        expect(peer.snapshotInterArrivalMs.p50).toBeLessThan(34);
+        expect(peer.directorAppliedFraction).toBeGreaterThanOrEqual(0.99);
+        // The lead starts at the PING round trip in ticks plus one; the buffer trim may take
+        // a tick back.
+        const start = { rtt0: 2, rtt100j30: 5, rtt150: 6 }[name];
+        expect(peer.net.lead).toBeLessThanOrEqual(start);
+        expect(peer.net.lead).toBeGreaterThanOrEqual(start - 1);
+        // One snapshot per tick, per recipient (33.3 ms on a perfect loop; the jittered loop's
+        // callbacks wander 0-15 ms).
+        expect(peer.snapshotInterArrivalMs.p50).toBeGreaterThan(30);
+        expect(peer.snapshotInterArrivalMs.p50).toBeLessThan(40);
       }
     });
   }
@@ -111,8 +117,9 @@ describe('baseline: documents current behaviour (S1 client, director v2)', () =>
     const report = measure('rtt100j30');
     for (const peer of report.peers) {
       expect(peer.starvedFraction).toBeLessThanOrEqual(TARGETS.starvedFraction);
-      // S1 at 10 Hz: 13-15%. The first 100 ms of the match are always held (no older snapshot).
-      expect(peer.clientStarvedFraction).toBeLessThanOrEqual(0.0101);
+      // S1 at 10 Hz: 21-26% (ideal loop 13-17%). The first 100 ms of the match are always held
+      // (no older snapshot), and loop pauses delay a few snapshots past the delay.
+      expect(peer.clientStarvedFraction).toBeLessThanOrEqual(0.02);
     }
   });
 
@@ -182,10 +189,15 @@ describe('§R.8 targets (pending: later PRs turn these on)', () => {
       }
     });
 
-    // S1 measured 98.67% (444/450): the clock started on the last READY. S2a's lead-in fixes it.
+    // S1 measured 97.1% / 98.66% on the realistic harness (98.67% on the ideal loop): the clock
+    // started on the last READY, and v1's 4-frame window rejected frames after loop pauses.
+    // S2a's lead-in and 8-frame window fix it. Checked on what the director really applied.
     it(`S2a: ${name} real input on >= 99% of all ticks of a 15 s window`, () => {
       const report = measure(name);
-      for (const peer of report.peers) expect(peer.queuedFraction).toBeGreaterThanOrEqual(0.99);
+      for (const peer of report.peers) {
+        expect(peer.queuedFraction).toBeGreaterThanOrEqual(0.99);
+        expect(peer.directorAppliedFraction).toBeGreaterThanOrEqual(0.99);
+      }
     });
   }
 

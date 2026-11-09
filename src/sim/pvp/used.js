@@ -129,10 +129,18 @@ export function decodeUsedLog(chunks) {
   return ticks;
 }
 
-/** Append one tick to a chunk list in place. */
+/**
+ * Append one tick to a chunk list in place, and return the pair as the log now holds it
+ * (decoded back from its hex). The director steps the sim with this decoded pair, so a replay of
+ * the log is the same match by construction, even if a record ever failed to round-trip.
+ */
 export function appendUsedTick(chunks, pair) {
   const text = encodeUsedTick(pair);
+  const a = decodeOne(text, 0);
+  const b = decodeOne(text, TICK_HEX / 2);
+  if (!a || !b) throw new Error('used log: a record does not encode');
   const last = chunks.length ? chunks[chunks.length - 1] : null;
   if (last != null && last.length < CHUNK_TICKS * TICK_HEX) chunks[chunks.length - 1] = last + text;
   else chunks.push(text);
+  return [a, b];
 }
