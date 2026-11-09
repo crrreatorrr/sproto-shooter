@@ -29,6 +29,8 @@ The old plan describes a Halo-scale campaign. The code has a thin stand-in for i
 | Bosses | Five Sproto Duel fights, 3 stages, powers, arena shifts (B §3) | `tickDuelBoss`: walk at the player and fire one random attack every 1.6 s. 980 to 1,600 HP |
 | Jetpack | Fuel, hover, regen, ceiling (C §3.10) | Hold jump to rise while fuel lasts. No regen |
 | Carry-over, depots, shop mid-level | C §3.14 | Not built |
+| Crafting | Weapon Box at every depot, resources from every enemy (C §3.9, §3.12) | Built for Wave Mode: Crafting skill, recipes, six resources, two Weapon Boxes. **This plan removes all of it** (§7.1) |
+| Ammo | — | Four ammo types with caps and drops exist. The Machine Gun and the boss guns have endless reserves |
 | Unused models | — | `robot_laser`, `robot_shooter`, `monster`, `dragon`, `sproto_monster`, `car_monster`, `mole_monster` are in `public/assets/models/characters/` and have working wave-mode behaviour. The campaign uses none of them |
 
 So this plan has two halves: the engine work that makes a real level possible (§10), and ten levels
@@ -50,14 +52,19 @@ designed to last about 20 minutes each (§2 and the level documents).
    adds on a schedule, arena changes. Odd levels use the wave bosses whose models already exist.
 6. Magic is a real third tool next to guns and movement: ten new or reworked spells, spell shrines,
    and world objects that react to spells.
+7. **Progress is what you find, not what you grind or build.** There is no crafting and there are no
+   Magic skill levels. Spells are unlocked in campaign levels, guns come as drops (new types, or the
+   same type at a better tier), and ammo is picked up (§7).
 
 **Hard rules**
 
 - `src/sim` and `src/data` stay pure (`tests/architecture.test.js`). Level data is plain data.
 - **Gun stats are never changed by campaign systems** (CODEX_PLAN ground rule 1). Power-ups,
   modifiers and spells never edit a gun.
-- **Wave Mode and Sandbox stay bit-identical.** The hashes in `tests/fixtures/baseline-hashes.json`
-  do not move. New campaign state is created lazily so the arena state shape does not change.
+- **Wave Mode and Sandbox change once, on purpose.** Removing crafting, the Weapon Boxes and Magic
+  skill levels (§7.1) is game-wide, so the hashes in `tests/fixtures/baseline-hashes.json` are
+  re-pinned in that one PR. After it they do not move again: new campaign state is created lazily
+  so the arena state shape stays put.
 - The pins in `AGENTS.md` move only on purpose. §12 lists which ones this plan moves.
 - Bosses stay on **L02, L04, L06, L08, L10** so the hub's canonical boss table keeps its level ids.
 
@@ -108,9 +115,9 @@ A level document must add up. Every beat gets an estimated time, and the beats s
   breathers at a depot, 1 finale.
 - Route length 1.0 to 1.6 km. The player walks at 6.5 m/s and sprints at 9.5 m/s; budget **5.5 m/s** average.
 - 3 or 4 **lockdown arenas** (§5.6): semi-large rooms whose doors close until every wave is dead.
-- 8 to 10 checkpoints (never more than 2.5 minutes apart), 2 depots (mid level and before the finale).
-- 1 Golden Bonk (the old modifier table in C-level-designs §1.4 stays) and 3 optional **Audit Files**
-  (tickets and a line of story each).
+- 8 to 10 checkpoints (never more than 2.5 minutes apart), each with an ammo box; 2 depots (§7.7).
+- Hidden: 1 Golden Bonk (the old modifier table in C-level-designs §1.4 stays), 1 **Mana Battery**,
+  1 secret weapon cache and 3 **Audit Files** (tickets and a line of story each).
 
 **Time estimate** (first playthrough, Normal, a player who has finished the earlier levels):
 
@@ -314,13 +321,23 @@ wave table like any other spawn timeline.
 
 Five spells in `src/data/skills.js`, unlocked by Magic skill level: Goo Bolt (1), Chain Zap (3),
 Sproto Swarm (6), Mana Shield (8), Meteor Bonk (10). Mana 100, regen 5/s plus 1 per Magic level.
-The old plan adds five boss reward spells (B §6). None of the reward spells is built.
+Spell damage is ×(1 + 0.08 per Magic level) in `src/sim/combat.js`. Magic XP comes from casting,
+spell kills and Magic bosses. The old plan adds five boss reward spells (B §6). None of them is built.
 
 ### 6.2 Changes
 
-**Shrines grant spells in the campaign.** A spell shrine sets the perk directly, whatever the Magic
-level, so a level can rely on its spell. Magic level still raises spell damage. Wave Mode keeps
-unlocking by level, unchanged.
+**Magic has no skill levels.** The Magic skill, its XP and its level gates are removed. A spell is
+an **unlockable**: you get it at a spell shrine in a campaign level or from a boss, and you keep it
+for good. The spellbook is saved in the profile and is available in every mode; a new profile has
+Goo Bolt only. What the level bonus used to do is replaced like this:
+
+| Was | Now |
+|---|---|
+| Spells unlock at Magic level 1, 3, 6, 8, 10 | Spells unlock at shrines and from bosses (schedule below) |
+| Spell damage +8% per Magic level | Spell damage scales with the level's tier, on the same 1.15 curve as enemy HP, so a spell stays as strong against a tier-9 enemy as against a tier-1 one |
+| Mana regen +1/s per Magic level | **Mana Battery**: one hidden in every level. Each gives +10 max mana and +0.5 mana/s (100 → 200 mana and 5 → 10 /s across the campaign) |
+| Magic XP for casting and spell kills | Nothing. Casting is its own reward |
+| Magic bosses give Magic XP | Bosses give their reward spell |
 
 **Reworked spells** (same ids; numbers are a first pass)
 
@@ -379,13 +396,131 @@ replaces the old plan's single Boss Spell slot on Y, which now collides with the
 
 ---
 
-## 7. Guns, explosives and pick-ups
+## 7. Unlockables, weapon drops, ammo and explosives
 
-**World guns** stay as C §3.11: the four basic types, common quality, on racks and in caches, each
-with a `why`. Loot drops, Weapon Boxes and the shop stay on. Guns, skills, resources, tickets and
-ammo carry from level to level.
+### 7.1 What is removed from the game
 
-**Explosives kit** (no new input: everything uses Fire, Interact and spells)
+Crafting goes completely, in every mode. Magic skill levels go with it (§6.2).
+
+| Removed | Where it lives today | What replaces it |
+|---|---|---|
+| Crafting skill, its XP and its six perks (T1 to T5 recipes, Salvage, Master Forger) | `src/data/skills.js`, `src/sim/progression.js` | Nothing. Two skills remain: Health and Gunslinger |
+| Recipes for guns, ammo and medkits | `src/data/recipes.js`, `src/sim/economy.js` | Guns drop; ammo and medkits are picked up or bought |
+| Weapon Boxes (the crafting box) and their panel | `TUNING.weaponBoxes`, `src/sim/state.js`, `src/sim/collision.js` `pushOutOfBoxes`, `src/ui/ui.js`, `src/render/frame/present.js` | Removed from the arena and from campaign depots |
+| Resources: Scrap, Springs, Goo, Plating, Boss Cores, Mana Crystals | `src/data/drops.js` (every table), the `resources` vending outcome in `src/data/shop.js`, the HUD counters | Enemies drop ammo, health, mana, tickets and guns only |
+| Choosing a gun's element or part, salvage, stat reroll | Crafting perks | The drop decides. A better gun is found, not made |
+| Magic skill, Magic XP, Magic level gates | `src/data/skills.js` `SKILLS.magic`, `XP.magic`, `PERKS`; `src/sim/progression.js`; `src/sim/combat.js` | Spell unlockables (§6.2) |
+
+The ticket shop stays (between waves, between campaign levels and at depots): it sells guns, ammo
+and medkits for tickets. Health and Gunslinger keep their use-based levels and perks.
+
+### 7.2 What you unlock in campaign levels
+
+| Unlockable | How you get it | Kept |
+|---|---|---|
+| **Spell** | A spell shrine in a level, or a boss's reward spell | For good, every mode |
+| **Mana Battery** | Hidden, one per level | For good |
+| **Gun type** | The first time you pick that type up (a rack, a cache or a drop). From then on that type is in the drop pool | For good |
+| **Gun** | A drop, a rack, a cache, a lockdown reward, a boss | Carried from level to level until you swap it |
+| **Golden Bonk modifier** | Hidden, one per level | For good (toggle on replays) |
+| **Audit File** | Hidden, three per level | For good (tickets and a line of story) |
+
+### 7.3 Weapons as drops
+
+A drop is a different gun, or the same gun at a better **tier** (quality: Common, Uncommon, Rare,
+Epic, Legendary, as in `src/data/guns.js`). The gun generator and its stats are not changed; the
+plan only changes where guns come from and the odds.
+
+**Where guns come from**
+
+| Source | What it gives |
+|---|---|
+| Weapon rack or cache (placed) | A fixed type at the level's base tier. Always the same gun for the same rack. Placed where an encounter needs that type |
+| Enemy drop | Small chance per kill (today 2% to 10% by enemy). Any unlocked type, tier rolled from the level's table |
+| Elite | Always drops one gun, rolled one tier step up |
+| Lockdown reward | A chest when the doors open: one gun, never below the level's base tier, of a type the player does not carry if possible |
+| Mini-boss | Two guns, one of them guaranteed one tier above the level's base |
+| Boss | Two guns one tier above base, plus a **boss gun** (Ray Gun, Big Bullets), as today |
+| Secret cache | One per level: a guaranteed gun at the level's best tier |
+
+**Tier odds by level** (enemy drops; percent)
+
+| Level | Base tier (racks) | Common | Uncommon | Rare | Epic | Legendary |
+|---|---|---|---|---|---|---|
+| L01 | Common | 85 | 15 | 0 | 0 | 0 |
+| L02 | Common | 65 | 30 | 5 | 0 | 0 |
+| L03 | Uncommon | 45 | 40 | 14 | 1 | 0 |
+| L04 | Uncommon | 30 | 45 | 22 | 3 | 0 |
+| L05 | Uncommon | 20 | 42 | 30 | 7 | 1 |
+| L06 | Rare | 10 | 35 | 40 | 13 | 2 |
+| L07 | Rare | 5 | 27 | 43 | 21 | 4 |
+| L08 | Rare | 0 | 20 | 44 | 29 | 7 |
+| L09 | Epic | 0 | 12 | 40 | 37 | 11 |
+| L10 | Epic | 0 | 5 | 35 | 44 | 16 |
+
+Racks used to be Common everywhere (C §3.11). They now follow the base tier, so a rack is never a
+downgrade. Elements, manufacturers, parts and wacky Legendary perks roll as they do today.
+
+**Gun types and when they first appear**
+
+| Type | First found | Notes |
+|---|---|---|
+| Machine Gun | L01, start | |
+| Shotgun | L01, rack before the alley | |
+| Sniper | L02, canyon rim rack | Headline in L05 |
+| Bazooka | L02, rack in the boss section | Headline in L06 |
+| Ray Gun, Big Bullets | L02, Sahil's boss-gun drop | Boss guns, as today |
+| Duck Gun | L04 secret cache | Always Legendary |
+| Lob-o-Matic, Zap Ray, Pocket Bonker (COOP_PLAN §6.3b) | L07, L04, L01 if they have landed | Optional; no level depends on them |
+
+**Comparing and swapping.** Walking over a gun shows the compare card (it exists today). Hold reload
+to swap it into the active slot; the old gun drops and stays for 120 s. Four slots plus the
+Legendary slot, as today.
+
+### 7.4 Ammo and ammo pick-ups
+
+Every gun uses ammo you have to find. Ammo is no longer crafted, and no reserve is endless.
+
+| Ammo | Guns | Carry cap | Small box | Enemy drop |
+|---|---|---|---|---|
+| Bullets | Machine Gun | 480 | 60 | 45 |
+| Shells | Shotgun | 64 | 12 | 8 |
+| Sniper rounds | Sniper | 36 | 8 | 5 |
+| Rockets | Bazooka | 12 | 3 | 2 |
+| Energy cells | Ray Gun | 300 | 60 | 30 |
+| Heavy rounds | Big Bullets | 40 | 8 | 4 |
+| Rubber | Duck Gun | 80 | 16 | 8 |
+
+The caps and enemy-drop sizes for the first four are today's `TUNING.ammoCap` and `TUNING.ammoDrop`.
+The Machine Gun and the boss guns lose `infiniteReserve`; that is a gun-definition change and
+moves the content fingerprint (§12).
+
+**Ammo pick-ups**
+
+| Pick-up | Behaviour | Look (primitives) |
+|---|---|---|
+| **Ammo box** (small) | One ammo type. Walk over it to take it; it stays if you are full. Placed by the level along the route | Box 0.5 m in the ammo's colour with a `neon` stripe |
+| **Ammo crate** (big) | Refills every ammo type you carry to 50% of cap. Three uses. Interact to open | Box 1.2 × 0.8 × 0.8 m, `crate` with a lid box |
+| **Depot crate** | Unlimited. At depots and inside every boss section | Two stacked crates and a `neon` sign |
+| **Rocket Crate** | Rockets to the cap, once | Long box with cone ends |
+| **Enemy drop** | A small pack of one type, magnet pick-up as today, gone after 30 s | Small box |
+
+**Rules**
+
+- **Smart drops.** An enemy's ammo drop is for a gun you carry, weighted toward the type you are
+  lowest on. You never get ammo for a gun you do not have.
+- **Placement.** An ammo box for a gun type is within 30 m of every rack of that type and within
+  20 m before every encounter that needs it. Every lockdown has at least two ammo boxes inside
+  and an ammo crate as part of its reward. Every checkpoint has an ammo box next to it.
+- **Never stuck.** If every gun you carry is empty for 5 s, a supply drone drops one box of bullets
+  (or of your first gun's ammo) at your feet. At most once every 30 s. Spells still work without ammo.
+- **Boss sections.** A verified boss run starts with the starter machine gun, which is no longer
+  endless, so every boss section `SB` has a depot crate.
+- **Per-level budget.** A level document lists every ammo box and crate with its position, and shows
+  that the headline gun has enough: placed ammo plus expected drops is at least 1.5 times what the
+  level's encounters ask of it.
+
+### 7.5 Explosives kit (no new input: everything uses Fire, Interact and spells)
 
 | Item | Behaviour |
 |---|---|
@@ -396,11 +531,15 @@ ammo carry from level to level.
 | Ore cart | A cart on a short rail. Shoot the brake and it rolls downhill and explodes on impact |
 | Destructible target | Generators, reactors, engines, armour plates. Has HP and weak spots, no AI |
 
-The **Lob-o-Matic** grenade launcher from COOP_PLAN §6.3b fits L07. If it has landed by then, L07 puts
-one on a rack; the level does not depend on it.
+### 7.6 Power-ups
 
-**Power-ups** (C §3.11): Overshield, Sproto Camo, Turbo, Infinite Fuel. New: **Rocket Crate** (refills
-rockets to the cap; L06, L07, L10) and **Mana Surge** (20 s of 4× mana regen; L03, L09, L10).
+Overshield, Sproto Camo, Turbo, Infinite Fuel (C §3.11). New: **Rocket Crate** (L06, L07, L10) and
+**Mana Surge** (20 s of 4× mana regen; L03, L09, L10).
+
+### 7.7 Depots
+
+A depot is a safe room with a depot crate (unlimited ammo), a health station, the spell loadout
+bench, the ticket shop terminal and a checkpoint. It has **no Weapon Box**. Two per level.
 
 ---
 
@@ -467,17 +606,19 @@ Level documents cite these ids in their "engine needs" section.
 | **E8** | The new placeholder enemies in §5.3 | — | this plan |
 | **E9** | Jetpack v2: fuel regen, hover, ceiling, fuel pads | hold to rise | C §3.10 |
 | **E10** | Magic v2: shrines, reworked and new spells, world objects, the four-slot loadout, reward spells | 5 spells | §6, B §6 |
-| **E11** | Explosives kit (§7) | barrel event only | this plan |
+| **E11** | Explosives kit (§7.5) | barrel event only | this plan |
 | **E12** | Boss part scripts; Sproto Duel boss ports; wave bosses in walled arenas | generic boss tick | §9, B §2 to §5 |
-| **E13** | Campaign meta: carry-over, depots with shop and Weapon Box, difficulty, profile, objective marker, checkpoint toast, boss bars with part pips, timers, cutscene cards | partly | C §3.14, §3.16 |
+| **E13** | Campaign meta: carry-over, depots (§7.7, no Weapon Box), difficulty, profile, objective marker, checkpoint toast, boss bars with part pips, timers, cutscene cards | partly | C §3.14, §3.16 |
 | **E14** | Tools: validator with reachability and the §3 pacing estimate, top-down map export, nav-following autopilot bot, debug fly and teleport | basic validator, straight-line bot | C §4 |
 | **E15** | Pins and the hub contract (§12) | — | AGENTS.md |
+| **E16** | Remove crafting game-wide: Crafting skill, recipes, Weapon Boxes, resources, their UI and HUD; remove the Magic skill and its XP; spellbook unlockables in the profile (§6.2, §7.1) | all present | this plan |
+| **E17** | Loot and ammo: tier odds by level, guaranteed drops (elite, lockdown chest, mini-boss, boss, secret cache), gun-type unlocks, ammo for every gun, ammo boxes and crates, smart drops, the supply drone (§7.3, §7.4) | drops by enemy, endless MG | this plan |
 
 ---
 
 ## 11. Build order
 
-1. **Engine track** (serial where it must be): E1 → E2 → E3 → E4 and E5 → E6 and E7 → E8 to E13. E14 runs alongside from E4.
+1. **Engine track** (serial where it must be): **E16 first** (it is a removal, it re-pins Wave Mode once, and everything after builds on the smaller game), then E1 → E2 → E3 → E4 and E5 → E6 and E7 → E8 to E13 and E17. E14 runs alongside from E4.
 2. **Vertical slice:** build L01 alone on E1 to E7. It proves the 18-minute pacing estimate against a real
    playthrough. Fix the estimate table in §3 before the other nine start.
 3. **Level track, one agent per level, in parallel.** Each agent owns `src/data/levels/LNN/` and nothing
@@ -493,8 +634,8 @@ Level documents cite these ids in their "engine needs" section.
 
 | Pin | Moves when | What to do |
 |---|---|---|
-| Campaign content fingerprint `3c657fb5` | Boss encounter ids, section starts or units change; boss HP changes; any spell number changes (`SPELLS` is in `contentBody`); `TUNING` changes | Update `CANONICAL_BOSSES` in `src/data/serverManifest.js`, `tests/pvp-sim.test.js`, `tests/fixtures/boss-goldens.json`, `docs/shooter-server-contract.md`; run `npm run build:server-sim`; re-vendor in metaverse-hub |
-| Wave Mode and Sandbox hashes | Must **not** move | New player and level state is created lazily in campaign mode only |
+| Campaign content fingerprint `3c657fb5` | Boss encounter ids, section starts or units change; boss HP changes; any spell number changes (`SPELLS` is in `contentBody`); `TUNING` changes (removing `weaponBoxes`); gun definitions change (`infiniteReserve` removed from the Machine Gun and boss guns) | Update `CANONICAL_BOSSES` in `src/data/serverManifest.js`, `tests/pvp-sim.test.js`, `tests/fixtures/boss-goldens.json`, `docs/shooter-server-contract.md`; run `npm run build:server-sim`; re-vendor in metaverse-hub |
+| Wave Mode and Sandbox hashes | **Once**, in the E16 PR: crafting, Weapon Boxes, resources and the Magic skill leave the arena state; finite Machine Gun ammo changes Wave Mode play | Re-pin `tests/fixtures/baseline-hashes.json` in that PR and say so. After it, they must not move: new player and level state is created lazily in campaign mode only |
 | PvP fingerprint `f5949631` and golden `ce272de1` | Must **not** move | Do not touch `src/sim/pvp/`. If a shared `src/sim` module must change, prove the PvP goldens still pass |
 
 Every boss level keeps a dedicated boss section named **`SB`** with one boss encounter **`SB-BOSS`**,
@@ -520,7 +661,7 @@ Every file in `docs/campaign/levels/` has these sections, in this order.
 
 1. **Header table**: stage, lighting, tier, par, jetpack, enemy total, route length, sections, finale.
 2. **Concept**: what the level is and how it plays differently from the others. Cutscene card text.
-3. **What the player has and learns**: guns expected, spells held, the new spell and where its shrine is.
+3. **What the player has and learns**: guns expected, spells held, and this level's **unlockables**: the new spell and its shrine, new gun types, the Mana Battery.
 4. **Time budget**: one row per beat with its estimate from §3. The rows sum to the par.
 5. **Overview map**: ASCII, all sections, the route, checkpoints, depots.
 6. **Sections**: for each one, footprint, an ASCII map, and a **blockout table** of primitives
@@ -533,7 +674,7 @@ Every file in `docs/campaign/levels/` has these sections, in this order.
 9. **New enemies**: full stat block and primitive look for any enemy this level introduces.
 10. **Finale**: the mini-boss or boss as a **parts table** (§9): HP, attacks, adds, arena change, what ends the part.
 11. **Mechanisms, magic and explosives used**, with what is new to this level.
-12. **Checkpoints, depots, weapons, power-ups, secrets** (Golden Bonk and 3 Audit Files).
+12. **Checkpoints, depots, weapons, loot, ammo, power-ups, secrets**: racks and caches; the **loot table** (tier odds from §7.3 and every guaranteed drop: elites, lockdown chests, mini-boss, boss, secret cache); every **ammo box and crate** with its position and the ammo budget (§7.4); Golden Bonk, Mana Battery, 3 Audit Files. No Weapon Box, no crafting resources.
 13. **Difficulty**: how this level is harder than the one before, and the Easy and Heroic changes.
 14. **Engine needs**: which of E1 to E15 it uses, and anything it needs that §10 lacks.
 15. **Bot route and tests**.
