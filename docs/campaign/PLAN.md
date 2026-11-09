@@ -1,6 +1,6 @@
 # Sproto Shooter: Campaign Plan v2 — *The Great Sproto Audit*
 
-Status: **plan only, nothing here is built yet.** Written 2026-11-09.
+Status: **plan only, nothing here is built yet.** Written 2026-11-09. The master plan and all ten level documents are complete.
 
 This plan replaces the level content of `docs/codex/C-level-designs.md` and extends the engine spec
 in `docs/codex/C-campaign-levels.md` (cited as **C §x**) and the boss spec in
@@ -89,7 +89,31 @@ Changes from the old arc: L03 becomes the magic level, L05 the sniping level, L0
 level, L07 the explosives level. Every level now has a mini-boss or a boss, and the existing wave-boss
 models are used as mini-bosses. L01 goes from 10 to 18 minutes; L09 and L10 come down from 28 and 30.
 
-### 2.1 Story spine (one line per level)
+### 2.1 What the ten level documents came to
+
+Each level was designed by its own agent against this plan. These are the numbers in the documents.
+
+| Level | Enemies | Route | Sections | Encounters | Estimate (par) | Lockdown arenas | Finale parts |
+|---|---|---|---|---|---|---|---|
+| L01 Sproto Landing | 139 | 1.03 km | 6 | 9 + finale | 19:03 (18) | Mall of Sproto 66 × 50 m; Parking Roof 60 × 60 m; Gate Plaza 80 × 78 m | Gatekeeper: 3 |
+| L02 Grand Bazaar | 161 | 1.25 km | 5 | 9 + boss | 21:34 (20) | Dyers' Court 44 × 44 m; High Caravanserai 44 × 44 m; Sahil's ring 56 m | Sahil: 5 |
+| L03 Vegetable Grove | 164 | 1.27 km | 6 | 8 + finale | 21:27 (20) | Gazebo Court; The Hothouse; The Rootway | Compost Hex: 3, then Sprout flees, then an escape |
+| L04 Blockchain Void | 152 | 1.24 km | 6 | 8 + boss | 21:25 (20) | Trading Pit 50 × 50 m; Clearing House 60 × 60 m; Exchange floor 60 × 60 m | The Duo: 5 |
+| L05 Frostspire Black Site | 154 | 1.41 km | 5 | 7 + finale | 21:16 (20) | Courtyard 70 × 70 m; Records Library 56 × 44 m; Vault 44 × 44 m | Abominable Auditor, then the vault hold |
+| L06 Vape Cabal Skyline | 180 | 1.04 km | 6 | 7 + mini-boss + boss | 21:48 (20) | Toll Plaza 64 × 64 m; Crane Yard 48 × 48 m; Cabal Streets 64 × 64 m | Car Part Monster: 3; Broccoli Head: 5 |
+| L07 Hellfire Underworks | 205 | 1.52 km | 6 | 8 + finale | 21:21 (20) | Sorting Hall 70 × 44 m; Tapping Floor 60 × 44 m; Reactor Ring 80 m | The Foreman: 3, then the meltdown escape |
+| L08 Government Office | 217 | 1.15 km | 6 | 10 + boss | 21:32 (20) | Cubicle Farm 64 × 44 m; Atrium 72 × 54 m; Roof ring 56 m | Glowie: 5 |
+| L09 Moonlit Ruins | 221 | 1.1 to 1.4 km | 3 | 10 + finale | 22:12 (21) | Crypt of the Seal 44 × 40 m; Sunken Stage 80 m; Moon Gate 72 m | Sproto Beast: 2; the twins: 2; Tinubu flees |
+| L10 Hellfire Caldera | 238 | 1.19 km + escape | 7 | 10 | 22:44 (22) | The Kiln 44 × 40 m; Spire Roost 64 × 48 m; The Caldera 56 m | Jade Dragon: 3; Tinubu: 5; the eruption escape |
+| **Campaign** | **1,831** | **about 12.3 km** | 56 | | **3 h 34 min** | 30 | |
+
+Every level lands 1 to 1.75 minutes **over** its par, inside the ±2 minutes this plan allows. The
+cause is the same each time: three lockdowns at their minimum size, a multi-part finale and more
+than a kilometre of route do not leave room for fewer minutes. The estimates are arithmetic from
+the §3 table, not playtests. The L01 vertical slice (§11) is what tells us whether the table runs
+long or short; trim the other nine only after that.
+
+### 2.2 Story spine (one line per level)
 
 1. L01: you drop into Los Angeles; the Bitcoin Tax Empire has shut the city gate.
 2. L02: Sahil's bazaar is where the Empire launders its rugs. Take his carpet.
@@ -139,7 +163,7 @@ A level document must add up. Every beat gets an estimated time, and the beats s
 | New enemies (§5.3): hexWisp, frostHound 5; manaLeech, spotterDrone, shieldDrone, cabinetMimic 6 | as listed |
 | bombTosser, magmaSlug, nullifier 8; rocketObama 9; moonCultist 10 (its portal Midgets counted separately) | as listed |
 | gooGlob 14 (the whole family); tinubuImp 14; flakPod 15; barkBrute 18; ruinSentinel 30 | as listed |
-| auditVan 40 (its passengers counted separately); vapeGunship 60 | as listed |
+| auditVan 40 (its passengers counted separately); vapeGunship 45; moleMiner 10 | as listed |
 | Elite of any type | ×2 |
 | Mini-boss, **adds included** | 150 to 210 |
 | Boss, **adds included** | 240 to 330 |
@@ -383,7 +407,7 @@ campaign still has one spell. What the level bonus used to do is replaced like t
 | Chain Zap | 40 damage, 4 chains | Powers **conduits** (a switch you shoot with a spell), pops Hex Acolyte bubbles, stuns riot shields and Shield Drones 2 s, sets off barrels along the chain |
 | Sproto Swarm | 5 buddies, 8 s | Buddies stand on **pressure plates** and hold **capture zones** for you. Look at a target and cast again to send them at it |
 | Mana Shield | Mana absorbs 60% | While on, mana drain auras and Nullifier fields weaken it instead of you (the shield takes the drain) |
-| Meteor Bonk | All mana, 300 damage | Costs 60 mana minimum and scales with mana spent. Breaks `fragile` walls and vehicle armour for 6 s |
+| Meteor Bonk | All mana, 300 damage | Costs 60 mana minimum and scales with mana spent. Breaks `fragile` walls, strips vehicle armour for 6 s and knocks one armour plate off a boss that has plates |
 
 **New shrine spells**
 
@@ -699,8 +723,10 @@ Each need below came out of a level's design. It extends the engine item named; 
 | E11 | Demolition hooks: a planted charge or a burst pipe changes geometry, opens a route or drops an object on a boss | L07 |
 | E4, E17 | Per-level `startAmmo` and ammo-drop overrides, a per-encounter `noAmmoDrop` flag, tutorial input prompts | L01, L07 |
 | E4 | `flight` transitions between sections | L04 |
-| E4 | Lockdown variants: opened by a switch, no exit door, two entry doors, a dome or lid as the door, a spawn door that becomes the exit, a boss-scripted lockdown | L01, L02, L09 |
-| E6 | Hazards: a `slow` zone (quicksand), zones that also hurt enemies, zone sets a script switches on, a hazard that advances along x | L02, L03, L10 |
+| E4 | Lockdown variants: opened by a switch, no exit door, two entry doors, a dome or lid as the door, a spawn door that becomes the exit, a boss-scripted lockdown, a lid with one-way ports enemies fly in through | L01, L02, L06, L09 |
+| E6 | Hazards: a `slow` zone (quicksand), zones that also hurt enemies, zone sets a script switches on, a hazard that advances along x, a flood that rises by height, rain | L02, L03, L06, L10 |
+| E7, E8 | Vehicles: a lane graph to drive on, armour zones that differ by damage kind, plates that come off | L06 |
+| E7 | Projectiles that have HP and can be shot down or change owner (rockets) | L06 |
 | E6 | Geyser with its own damage and landing point, and a damage-only geyser | L02, L10 |
 | E6 | `weather`: a blizzard on a timer that shortens sight for everyone | L05 |
 | E6 | `alarm`: a box or cable to cut, a countdown, a written reinforcement squad | L05, L08 |
@@ -787,3 +813,20 @@ Every file in `docs/campaign/levels/` has these sections, in this order.
 14. **Engine needs**: which of E1 to E15 it uses, and anything it needs that §10 lacks.
 15. **Bot route and tests**.
 16. **Build tasks**: the ordered task list for the agent that will build this level.
+
+---
+
+## 15. Decisions for the owner
+
+These were decided so the plan could be written. Each is easy to change now and expensive later.
+
+| # | Decision taken | Alternative |
+|---|---|---|
+| 1 | "Eliminate levels for magic" was read as removing the **Magic skill levels**. L03 stays the level where magic is the main tool | If it meant removing the magic-themed level, L03 needs a new identity and the spell shrines move |
+| 2 | The **ticket shop stays**: between waves, between levels and at depots | Remove it too, so guns come only from drops and tickets become a score |
+| 3 | **Health and Gunslinger keep** their use-based levels and perks | Remove all skill levels and make their perks unlockables as well |
+| 4 | Crafting and endless machine-gun ammo are removed **in every mode**, Wave Mode included. The Wave Mode and Sandbox hashes are re-pinned once | Keep Wave Mode as it is and apply the change to the campaign only (two rule sets to maintain) |
+| 5 | A hub-verified boss run gets the starter machine gun **at the boss level's tier** | Keep the tier-1 gun and scale the boss down for verified runs |
+| 6 | The par stays 20 minutes although the documents estimate about 21.5 | Raise the par to 22, or cut one encounter per level after the L01 slice |
+| 7 | Bosses stay on L02, L04, L06, L08 and L10 and every boss level ends in a section named `SB` | — |
+

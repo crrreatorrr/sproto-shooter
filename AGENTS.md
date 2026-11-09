@@ -3,7 +3,8 @@
 A first-person loot shooter in Three.js and plain JavaScript, built with Vite and tested with
 Vitest. It has Wave Mode, a ten-level campaign, boss fights and a Free 1v1 arena. `README.md`
 describes the modes, controls and code layout. `PLAN.md` is the architecture plan, `docs/codex/`
-holds the campaign specs, and `docs/shooter-server-contract.md` and `docs/shooter-pvp-protocol.md`
+holds the campaign specs, `docs/campaign/` is campaign plan v2 (a plan, not built; it replaces the
+level designs in `docs/codex/C-level-designs.md`), and `docs/shooter-server-contract.md` and `docs/shooter-pvp-protocol.md`
 are the hub contracts.
 
 - `src/sim` and `src/data` stay pure: no `three`, no DOM, no `Math.random`, `Date.now` or
