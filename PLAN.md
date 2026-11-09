@@ -20,7 +20,7 @@
 
 | Action | Primary | Secondary | Notes |
 |---|---|---|---|
-| Move | W A S D | — | |
+| Move | W A S D | Arrow keys | |
 | Look | Mouse | — | Pointer Lock |
 | Fire | LMB | — | Every gun fires while held, at its fireRate |
 | Zoom / ADS | RMB (hold) | — | Sniper gets a scope overlay; other guns get a mild FOV zoom |
@@ -31,17 +31,20 @@
 | Reload | R | — | |
 | Gun slots | 1 2 3 4 | Mouse wheel cycles | |
 | Spell: Goo Bolt (Magic Lv1) | Q | — | |
-| Spell: Chain Zap (Magic Lv3) | E | — | **E is spell-only.** |
+| Spell: Chain Zap (Magic Lv3) | Y | — | Was E. Since the 2026-11 Sproto keyboard convention E is Interact in every Sproto game. |
 | Spell: Sproto Swarm (Magic Lv6) | Z | — | Dedicated key, no slot cycling |
 | Spell: Mana Shield (Magic Lv8) | X | — | Toggle |
-| Ultimate: Meteor Bonk (Magic Lv10) | F | — | Needs full mana |
-| **Interact** (Weapon Box, pick up a gun) | **G** | — | Resolves the E conflict |
+| Ultimate: Meteor Bonk (Magic Lv10) | T | — | Needs full mana (F is the aim toggle) |
+| **Interact** (Weapon Box, pick up a gun) | **E** | G | E matches the hub and the other Sproto games |
 | Use Medkit | H | — | |
 | Skills / Stats screen | Tab (**hold**) | — | Overlay only. Pointer lock is kept and the game is not paused. |
 | Shop (intermission only) | B | — | Releases pointer lock |
 | Skip intermission | Enter | "Ready!" button in the shop | |
 | Debug panel | ` (Backquote) | — | Releases pointer lock |
 | Pause | Esc | — | The browser drops pointer lock on Esc, and we show the pause overlay |
+| Menus | Arrows, W / S | A / D across a row | Enter or Space confirms, Esc goes back |
+
+Controller bindings and aim assist: README.md (Controls) and `src/data/gamepad.js`.
 
 ---
 
@@ -1350,10 +1353,10 @@ General rules for every milestone:
 3. Damage-taken XP accumulates fractionally (0.2 XP per HP), capped at 15 XP per second via a per-second budget in the player scratch.
 4. Spells (`spells.js`). Each checks the perk, mana, cooldown and not-downed.
    - **Goo Bolt (Q):** a projectile from the eye at speed 30, splash r 1.5, dmg 25, guaranteed goo slow.
-   - **Chain Zap (E):** hitscan from the crosshair (range 25). On a hit, chain 4× within 6 m to the nearest unhit enemies, each ×0.8. Zap tracers. Each hit is shock element with a guaranteed proc of 0 (no recursion).
+   - **Chain Zap (Y):** hitscan from the crosshair (range 25). On a hit, chain 4× within 6 m to the nearest unhit enemies, each ×0.8. Zap tracers. Each hit is shock element with a guaranteed proc of 0 (no recursion).
    - **Sproto Swarm (Z):** spawn 5 allies in an arc in front of you.
    - **Mana Shield (X):** toggle. Costs 10 mana on activation and drains 4/s, absorption per §4.5. Auto-off at 0 mana. Shows a blue bubble tint on the screen edges.
-   - **Meteor Bonk (F):** needs `mana >= maxMana`, consumes all mana. Target = the crosshair ground point (raycast vs the ground, max 40 m; if pointing at the sky, use 15 m forward). Spawns a `meteorMarker` hazard (r 6, 1.0 s, pulsing red circle). Then 300 × spellMult splash with min falloff 0.4, knockback 14, a big shake and a falling-sphere visual from y = 40. It can hurt the player? No: the meteor has no self-damage.
+   - **Meteor Bonk (T):** needs `mana >= maxMana`, consumes all mana. Target = the crosshair ground point (raycast vs the ground, max 40 m; if pointing at the sky, use 15 m forward). Spawns a `meteorMarker` hazard (r 6, 1.0 s, pulsing red circle). Then 300 × spellMult splash with min falloff 0.4, knockback 14, a big shake and a falling-sphere visual from y = 40. It can hurt the player? No: the meteor has no self-damage.
 5. `allies.js`: mini Sprotos seek the nearest enemy at 9 m/s and explode on contact (30 dmg × spellMult, splash r 2, sourceKind `'spell'` or `'gun'` per the creator). ttl 8 s, then they explode harmlessly into confetti. Cap 12 alive.
 6. Kill attribution for XP:
    - `sourceKind` `'gun'` includes splash from rockets and DoT from gun elements. Carry `originKind` on DoT and splash hits (`burn.originKind = 'gun' | 'spell'`).
@@ -1826,10 +1829,10 @@ Estimated run-1 (T1 win) totals: Health ≈ 1150 (Lv5), Gunslinger ≈ 950 (Lv5)
 | Spell | Key | Unlock | Mana | CD | Effect |
 |---|---|---|---|---|---|
 | Goo Bolt | Q | Magic 1 | 15 | 0.6 s | proj 30 m/s, 25 dmg, splash 1.5, goo slow guaranteed |
-| Chain Zap | E | Magic 3 | 30 | 4 s | 40 dmg, range 25, 4 chains within 6 m, ×0.8 each |
+| Chain Zap | Y | Magic 3 | 30 | 4 s | 40 dmg, range 25, 4 chains within 6 m, ×0.8 each |
 | Sproto Swarm | Z | Magic 6 | 50 | 15 s | 5 allies, 8 s, 30 dmg splash r 2 each |
 | Mana Shield | X | Magic 8 | 10 + 4/s | 1 s toggle | absorbs 60% of incoming at 1.5 dmg per mana |
-| Meteor Bonk | F | Magic 10 | all (must be full) | 30 s | 1 s telegraph, 300 dmg splash r 6, knockback 14 |
+| Meteor Bonk | T | Magic 10 | all (must be full) | 30 s | 1 s telegraph, 300 dmg splash r 6, knockback 14 |
 
 - **Crafting unlocks:** Lv1 T1; Lv3 T2; Lv5 T3 + element choice; Lv7 T4 + part choice; Lv8 Salvage; Lv10 T5 + Reroll.
 

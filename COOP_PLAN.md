@@ -22,7 +22,7 @@ Section 1 is what the code has today. Sections 2–4 are the first draft of each
 - **Weak spots already exist.** Each enemy in `src/data/enemies.js` has hitboxes with a `zone` of `body`, `weak` or `shield`. A `weak` hit does ×2 (`hit.critMult ?? 2` in `src/sim/combat.js`), or ×2.5 for the Big Bitcoin Obama's back battery. The UI calls it **BONK**. A random crit (×1.5, 5%) stacks on top. Bosses have a head sphere plus a belly spot that only counts while stunned (`onlyWhen: 'stunned'`). Hex Sahil's weak spot orbits him.
 - Hitboxes are static shapes in the enemy's local space. They don't follow the animated skeleton.
 - **Multiplayer hooks are half done.** `state.players` is a map, `simulate()` takes commands per player, and the player already has `downed`, `downedT` and `respawnT` fields. 21 places still assume one player through `state.localPlayerId` (Game, renderer, UI, waves, actions, combat, progression, world). Enemies target `nearestPlayer()`.
-- **No gamepad support.** Keyboard and mouse with pointer lock only.
+- **Gamepad support (single player, added 2026-11-09, plan item P2).** Before that it was keyboard and mouse with pointer lock only. Any standard-mapping pad plays every mode and drives every menu; aim assist is controller only. See the README's Controls section and `src/data/gamepad.js`. Split-screen seats are not built yet.
 - Enemy attacks: Midget has one melee swipe. Flying Midget has one pellet burst. Bitcoin Obama has one 3-round burst. Big Obama has a ground pound and a bullet hose. The five bosses share a pattern system (`chase`, `volley`, `charge`, `slam`, `missiles`, `summon` for the "mega" bosses, a bespoke set for the Dragon and Hex Sahil).
 - **Six open pull requests**: #1 (B-M0 baseline, draft), #3 (B-M1 lint and CI), #4 (B-M2 perf overlay), #5 (B-M3 renderer split), #6 (campaign plan), #7 (C-M0 level format). All are 31+ commits behind `main`.
 
@@ -67,7 +67,7 @@ Section 1 is what the code has today. Sections 2–4 are the first draft of each
 | 6 | JavaScript vs TypeScript | Converting during the move mixes two risky changes | Move the JS as is (`allowJs`), convert files later one at a time |
 | 7 | Copying Duel's netcode as is | Duel has no guest prediction. That works for slow spells, but in a first-person shooter 100 ms of input lag on your own movement and aim feels broken | Guest predicts its own movement and aim. Host rewinds enemies for the guest's hitscan shots (lag compensation), so guest headshots land where the guest aimed |
 | 8 | Porting the shooter sim to Duel's fixed-point `sim-core` | Large effort, only needed when a server must verify results for real rewards | Not needed at 0 Tickets PvE. Keep the float sim. **Owner decision** if co-op will ever pay Tickets |
-| 9 | Local co-op without gamepads | The shooter has no gamepad code and only one mouse exists | Gamepad support with aim assist comes before split-screen |
+| 9 | Local co-op without gamepads | Only one mouse exists | Gamepad support with aim assist comes before split-screen (single-player pad support landed 2026-11-09) |
 | 10 | Split-screen with 60-enemy swarms | Two first-person views double draw calls. Duel only draws two wizards | Frame budget, half-resolution post per view, shared shadow map, enemy count cap in split-screen |
 | 11 | Duel's side-by-side split | Two tall, narrow first-person views are hard to aim in | Top/bottom split by default, side-by-side as an option |
 | 12 | One player still assumed in 21 places | Each one is a co-op bug | Explicit task to remove every `localPlayerId` use from the sim |
@@ -152,6 +152,7 @@ Phases in order. Each phase is one or more PRs into `sproto-duel`.
 - Reuse `src/core/Gamepad.ts` and `src/input/assignDevices.ts`. Add a `ShooterSeat` that turns a device into the shooter's per-tick `Command`.
 - Gamepad bindings for every action (fire, aim, jump, slide, dash, reload, swap, spells, interact, medkit, menus).
 - Aim assist for gamepads only: slowdown near targets and light pull toward the head while aiming. Strength in data, off for keyboard and mouse.
+- **Status (2026-11-09): single-player part done in the shooter repo, before the move into Duel.** Bindings for every action and every menu, RT fire / LT aim, right-stick look with a response curve and edge turn boost, latch on connect, hot-plug, and controller-only aim assist (slowdown, plus a pull toward the head while aiming) with its strength in `src/data/gamepad.js` and a pause-menu setting. Duel's `Gamepad.ts` and `assignDevices.ts` were used as references, not imported, since the shooter is still its own JavaScript repo: `src/input/gamepad.js` (pure pad reading), `src/input/padGameplay.js` (layout) and `src/input/aimAssist.js` feed the existing `Command` through `src/input/input.js`. **Still open:** seats and device assignment (`ShooterSeat`, a second pad as player 2), which belong with P3/P4.
 
 **P3. Two players in the sim (Cursor).**
 - Remove every `state.localPlayerId` use from `src/shooter/sim/**`. Rendering, UI and audio receive "which player am I drawing for".
