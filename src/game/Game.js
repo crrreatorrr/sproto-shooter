@@ -9,7 +9,10 @@ import { createUI } from '../ui/ui.js';
 import { ENEMIES, BOSSES } from '../data/enemies.js';
 import { CAMPAIGN, getLevelData } from '../data/levels/index.js';
 import { unlockLevel, loadProfile, rememberModifier, saveProfile, syncNonEconomicProfile, cloudBody } from '../save/profile.js';
-import { decideHubReturn, hubChipHtml } from '../hub/link.js';
+import { decideHubReturn, hubChipHtml, WAGER_RPC } from '../hub/link.js';
+import {
+  bindWagerScreen, browserReceiptStore, createWagerFlow, labelIsWager, renderWagerScreen, RULE_TEXT, wagerSlotHtml,
+} from '../hub/wagers.js';
 import { createWaveRelicReporter, relicName } from '../hub/waveRelic.js';
 import { restoreCheckpoint } from '../sim/campaign/campaign.js';
 import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY, zoomLevelsOf, zoomFovFor } from '../data/guns.js';
@@ -35,6 +38,10 @@ export class Game {
     this.hubLeaveArmed = false;
     this.pvpActive = false;
     this.pvp = null;
+    this.wagerFlow = null;
+    this.wagerLeaveArmed = false;
+    this._wagerPlaying = false;
+    this._wagerScreen = false;
     this.bus = createEventBus();
     this.state = createGameState({ seed });
     this.paused = true;
@@ -192,7 +199,8 @@ export class Game {
           <button class="btn big alt" data-go="test">🎯 Test Range <small>every gun, infinite ammo</small></button>
           <button class="btn big alt" data-go="bossSelect">👑 Boss Fight <small>pick a boss to fight</small></button>
           <button class="btn big" data-go="campaignSelect">🗺 Campaign <small>The Great Sproto Audit</small></button>
-          <button class="btn big alt" data-go="pvp">⚔ Free 1v1 <small>equal guns, no Tickets</small></button>
+          <button class="btn big alt" data-go="pvp">Play free <small>equal guns, no Tickets</small></button>
+          <span data-wager-slot></span>
           <button class="btn alt" data-go="hub">${this.hubReturnLabel()}</button>
           <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
         </div>
@@ -257,7 +265,12 @@ export class Game {
     }
     this.screen.innerHTML = body;
     this.screen.hidden = false;
-    if (kind === 'title') this.paintHubChip();
+    if (kind === 'title') {
+      this._wagerScreen = false;
+      this.wagerLeaveArmed = false;
+      this.paintHubChip();
+      void this.refreshWagerOffer();
+    }
     this.screen.onclick = (e) => {
       const b = e.target.closest('[data-go]');
       if (!b) return;
@@ -265,6 +278,7 @@ export class Game {
       if (go === 'hub') { this.requestHubReturn(b); return; }
       if (go === 'continue') { this.hideScreen(); this.paused = false; this.input.lock(); return; }
       if (go === 'pvp') { this.openPvp(); return; }
+      if (go === 'wager') { void this.openWagerDesk(); return; }
       if (go === 'title' || go === 'bossSelect' || go === 'campaignSelect') { this.showScreen(go); return; }
       if (go === 'checkpoint') { restoreCheckpoint(this.state); this._campaignShown = false; this.hideScreen(); this.paused = false; this.input.lock(); return; }
       const tier = b.dataset.tier ? +b.dataset.tier : +(this.screen.querySelector('#tier-sel')?.value || s.tier);
@@ -279,11 +293,18 @@ export class Game {
     return this.playing && this.hubLeaveArmed ? 'Leave this run?' : '⌂ Return to Hub';
   }
   requestHubReturn(button) {
+    if (this.wagerFlow && this.wagerFlow.needsLeaveWarning() && !this.wagerLeaveArmed) {
+      this.wagerLeaveArmed = true;
+      if (button) button.textContent = 'Leave this wager?';
+      return;
+    }
     if (decideHubReturn({ playing: this.playing, armed: this.hubLeaveArmed }) === 'confirm') {
       this.hubLeaveArmed = true;
       if (button) button.textContent = 'Leave this run?';
       return;
     }
+    if (this.wagerFlow) void this.wagerFlow.abandon();
+    this.stopWagerPlay();
     this.hub.exitHub();
   }
   hubChip() {
@@ -604,6 +625,265 @@ export class Game {
       this.showScreen('title');
       this.ui.toast(err && err.message ? err.message : 'Free 1v1 failed');
     }
+  }
+
+  ensureWagerFlow() {
+    if (this.wagerFlow) return this.wagerFlow;
+    this.wagerFlow = createWagerFlow({
+      rpc: (id, body) => this.wagerRpc(id, body),
+      balance: () => (this.hub.refreshBalance ? this.hub.refreshBalance(0) : Promise.resolve(this.hub.balance)),
+      session: () => ({
+        playerId: this.hub.playerId || '',
+        bankable: !!this.hub.bankable,
+        guest: this.hub.status === 'guest',
+        status: this.hub.status || 'offline',
+      }),
+      store: browserReceiptStore(),
+      addMatchmaker: async (req) => {
+        const rt = await this.wagerRealtime();
+        return rt.addMatchmaker(req);
+      },
+      removeMatchmaker: async (ticket) => {
+        if (this._wagerRt) await this._wagerRt.removeMatchmaker(ticket);
+      },
+      listenMatched: (fn) => { this._onWagerMatched = fn; },
+      onMatched: (info) => this.joinWager(info),
+      leaveMatch: () => (this._leaveWagerMatch ? this._leaveWagerMatch() : Promise.resolve()),
+    });
+    return this.wagerFlow;
+  }
+
+  async wagerRealtime() {
+    if (this._wagerRt) return this._wagerRt;
+    const sdk = this.hub && this.hub.api;
+    if (!sdk || typeof sdk.getSession !== 'function' || !sdk.getSession()) {
+      const err = new Error('offline');
+      err.code = 'offline';
+      throw err;
+    }
+    const { realtimeFromSdk } = await import('@metaverse/hub-sdk');
+    const rt = realtimeFromSdk(sdk);
+    if (!rt) {
+      const err = new Error('offline');
+      err.code = 'offline';
+      throw err;
+    }
+    await rt.connect();
+    rt.onMatchmakerMatched((info) => { if (this._onWagerMatched) void this._onWagerMatched(info); });
+    this._wagerRt = rt;
+    return rt;
+  }
+
+  async wagerRpc(id, body) {
+    const rt = await this.wagerRealtime();
+    return rt.rpc(id, body || {});
+  }
+
+  async refreshWagerOffer() {
+    const token = {};
+    this._wagerPaint = token;
+    try {
+      if (!this.hub || !this.hub.bankable || !this.hub.api) {
+        if (this.wagerFlow) await this.wagerFlow.refresh();
+        if (this._wagerPaint === token) this.paintWagerSlot();
+        return;
+      }
+      const flow = this.ensureWagerFlow();
+      await flow.refresh();
+      flow.recallReceipt();
+      if (this._wagerPaint !== token) return;
+      if (!this.screen.querySelector('[data-wager-slot]')) return;
+      this.paintWagerSlot();
+    } catch {
+      if (this._wagerPaint === token) this.paintWagerSlot();
+    }
+  }
+
+  paintWagerSlot() {
+    const slot = this.screen.querySelector('[data-wager-slot]');
+    if (!slot || !this.wagerFlow) return;
+    slot.innerHTML = wagerSlotHtml(this.wagerFlow.view);
+  }
+
+  async openWagerDesk() {
+    const flow = this.ensureWagerFlow();
+    await flow.confirmStake();
+    this.paintWagerScreen();
+  }
+
+  paintWagerScreen() {
+    if (this._wagerPlaying) return;
+    this._wagerScreen = true;
+    this.stopWagerPlay();
+    this.screen.hidden = false;
+    this.screen.style.display = '';
+    this.screen.innerHTML = renderWagerScreen(this.wagerFlow.view);
+    bindWagerScreen(this.screen, this.wagerFlow, {
+      onFree: () => {
+        this._wagerScreen = false;
+        void this.wagerFlow.cancelQueue();
+        this.openPvp();
+      },
+      onBack: () => {
+        this._wagerScreen = false;
+        this.showScreen('title');
+      },
+      onLeave: () => { void this.leaveWagerFromScreen(); },
+      repaint: () => {
+        if (this._wagerPlaying) return;
+        this.screen.innerHTML = renderWagerScreen(this.wagerFlow.view);
+      },
+    });
+  }
+
+  async leaveWagerFromScreen() {
+    const flow = this.wagerFlow;
+    if (!flow) return;
+    if (flow.needsLeaveWarning() && !flow.view.leaveArmed) {
+      flow.armLeave();
+      this.paintWagerOverlay(flow.view.notice);
+      return;
+    }
+    await flow.abandon();
+    this.stopWagerPlay();
+    this.paintWagerScreen();
+  }
+
+  async joinWager(info) {
+    let match = null;
+    try {
+      const rt = await this.wagerRealtime();
+      const target = info.matchId ? { matchId: info.matchId } : { token: info.token };
+      match = await rt.joinMatch(target);
+      if (!labelIsWager(match.label)) {
+        this.wagerFlow.noteNotEscrowed();
+        try { await match.leave(); } catch { /* the free match is not ours to keep */ }
+        this.paintWagerScreen();
+        return;
+      }
+      this._leaveWagerMatch = () => match.leave();
+      await this.startWagerPlay(match);
+    } catch (err) {
+      this.stopWagerPlay();
+      if (match) { try { await match.leave(); } catch { /* already closed */ } }
+      this.wagerFlow.noteNotEscrowed();
+      this.wagerFlow.view.notice = err && err.message ? err.message : 'Could not join. No Tickets were taken.';
+      this.paintWagerScreen();
+    }
+  }
+
+  async startWagerPlay(match) {
+    const [{ createArenaView }, { createPvpClient }] = await Promise.all([
+      import('../render/pvp/view.js'),
+      import('../net/client.js'),
+    ]);
+    this._wagerPlaying = true;
+    this._wagerLiveNoted = false;
+    this._wagerResultNoted = false;
+    this.pvpActive = true;
+    this.pvpNav = false;
+    this.playing = false;
+    this.ui.setPvp(true);
+    this.ui.setWagerLive(true, RULE_TEXT);
+    this.screen.hidden = false;
+    this.screen.style.display = 'block';
+    this.screen.style.padding = '0';
+    this.screen.innerHTML = `<div data-wager-play style="position:absolute;inset:0">
+      <canvas style="width:100%;height:100%;display:block"></canvas>
+      <div data-wager-overlay class="wager-overlay"></div>
+      <button class="btn" data-wager-ready style="position:absolute;left:12px;bottom:12px">Ready</button>
+      <button class="btn alt" data-wager-leave style="position:absolute;top:12px;right:12px">Leave</button>
+    </div>`;
+    const canvas = this.screen.querySelector('canvas');
+    if (this._wagerArena) this._wagerArena.dispose();
+    const arena = createArenaView(canvas);
+    this._wagerArena = arena;
+    const flow = this.wagerFlow;
+    const client = createPvpClient({
+      accountId: this.hub.playerId,
+      match,
+      onChange: () => this.onWagerClient(client),
+    });
+    this._wagerClient = client;
+    this.screen.querySelector('[data-wager-ready]').onclick = () => {
+      client.ready();
+      flow.noteReady();
+      this.paintWagerOverlay(flow.view.notice);
+    };
+    this.screen.querySelector('[data-wager-leave]').onclick = () => { void this.leaveWagerFromScreen(); };
+    if (this.input.setLockElement) this.input.setLockElement(canvas);
+    canvas.addEventListener('mousedown', () => this.input.lock());
+    this.paintWagerOverlay(RULE_TEXT);
+    this.pvp = {
+      wantsLock: true,
+      frame: (_dt, cmd) => {
+        const now = performance.now();
+        client.updateCommand(now, cmd);
+        const state = client.viewState(now);
+        arena.render(state.sample, Math.max(0, client.seat), client.phase === 'live' ? client.look : null, { shots: client.shots, now });
+        if (state.link === 'reconnecting' && !state.result) {
+          const left = Math.max(0, Math.ceil((state.graceLeftMs || 0) / 1000));
+          this.paintWagerOverlay(`Reconnecting. After both players are Ready, 10 seconds without input forfeits. ${left}s left. This client cannot refund.`);
+        }
+      },
+    };
+  }
+
+  onWagerClient(client) {
+    const flow = this.wagerFlow;
+    if (!flow) return;
+    if (client.seat === 0 || client.seat === 1) flow.noteSeat(client.seat);
+    if (client.phase === 'live' && !this._wagerLiveNoted) {
+      this._wagerLiveNoted = true;
+      void flow.noteLive().then(() => this.paintWagerOverlay(flow.view.notice));
+    }
+    if (client.result && !this._wagerResultNoted) {
+      this._wagerResultNoted = true;
+      flow.noteLocalResult(client.result);
+      void this.finishWager(client);
+    }
+  }
+
+  async finishWager(client) {
+    const flow = this.wagerFlow;
+    const matchId = flow && flow.view.matchId;
+    if (flow && matchId) {
+      for (let i = 0; i < 8; i++) {
+        try {
+          const metrics = await this.wagerRpc(WAGER_RPC.metrics, { matchId });
+          await flow.ingestMetrics(metrics, client.seat);
+        } catch { /* stay pending */ }
+        if (flow.view.receipt && flow.view.receipt.status !== 'pending') break;
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
+    }
+    this._wagerPlaying = false;
+    this.stopWagerPlay();
+    this.paintWagerScreen();
+  }
+
+  paintWagerOverlay(text) {
+    const el = this.screen.querySelector('[data-wager-overlay]');
+    if (el) el.textContent = text || '';
+  }
+
+  stopWagerPlay() {
+    this._wagerPlaying = false;
+    if (this._wagerArena) {
+      this._wagerArena.dispose();
+      this._wagerArena = null;
+    }
+    this._wagerClient = null;
+    if (this.input.setLockElement) this.input.setLockElement(null);
+    if (this.pvpActive) {
+      this.pvpActive = false;
+      this.pvp = null;
+      this.pvpNav = false;
+    }
+    if (this.ui.setWagerLive) this.ui.setWagerLive(false);
+    if (this.ui.setPvp) this.ui.setPvp(false);
+    this.screen.style.display = '';
+    this.screen.style.padding = '';
   }
 
   drawStats(now) {

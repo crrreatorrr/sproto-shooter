@@ -610,5 +610,23 @@ export function createUI(root, { input, bus, project, game }) {
     if (hud) hud.style.visibility = on ? 'hidden' : '';
   }
 
-  return { update, closeMenu, openMenu, openGearPanel, cycleMenu, banner, toast, setPvp, get menuOpen() { return !!st.menu; }, get menu() { return st.menu; }, els };
+  /** The 10s forfeit rule, over the arena. The campaign HUD stays hidden while it is up. */
+  function setWagerLive(on, text) {
+    let el = root.querySelector('[data-wager-live]');
+    if (!on) {
+      if (el) el.remove();
+      return;
+    }
+    if (!el) {
+      el = h('div', 'wager-live');
+      el.dataset.wagerLive = '1';
+      root.appendChild(el);
+    }
+    el.textContent = text || '';
+  }
+
+  return {
+    update, closeMenu, openMenu, openGearPanel, cycleMenu, banner, toast, setPvp, setWagerLive,
+    get menuOpen() { return !!st.menu; }, get menu() { return st.menu; }, els,
+  };
 }

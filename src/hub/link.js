@@ -13,6 +13,29 @@ const ECONOMIC_KEY = /^(tickets|runCash|cash|guns|resources|godTickets|godMode|i
 const DEAD_SESSION = new Set(['session_closed', 'unauthorized', 'not_game_session', 'session_expired']);
 
 /**
+ * Nakama RPCs the wager screen may call. There is no settle, winner, refund, or earn RPC.
+ * Anything else is refused on the client before a socket sees it.
+ */
+const SHOOTER_RPC = 'shooter.';
+export const WAGER_RPC = Object.freeze({
+  version: `${SHOOTER_RPC}version`,
+  roomCreate: `${SHOOTER_RPC}room_create`,
+  roomJoin: `${SHOOTER_RPC}room_join`,
+  queueCancel: `${SHOOTER_RPC}queue_cancel`,
+  resume: `${SHOOTER_RPC}resume`,
+  metrics: `${SHOOTER_RPC}metrics`,
+});
+export const WAGER_RPCS = Object.freeze(Object.values(WAGER_RPC));
+
+export function assertWagerRpc(id) {
+  if (typeof id !== 'string' || !WAGER_RPCS.includes(id)) {
+    const err = new Error('rpc_refused');
+    err.code = 'rpc_refused';
+    throw err;
+  }
+}
+
+/**
  * The one hub event this client reports: clearing wave 1 of Wave Mode, which grants the Dragon Scale
  * Relic (hub-sdk 0.6.4, migration 0042). It pays no Tickets. Every other event, and every Ticket or
  * Verse earn, stays off the client.
