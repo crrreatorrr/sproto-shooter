@@ -1,7 +1,8 @@
 // The harness itself: virtual clock, TCP link model, determinism, new-session reconnects.
 import { describe, expect, it } from 'vitest';
 import {
-  PROFILES, createRng, createScheduler, createTcpLink, runScenario, wireBytes,
+  ENVELOPE_BYTES, IDEAL, PROFILES, REALISM, createPeerClock, createRng, createScheduler, createServerLoop,
+  createTcpLink, runScenario, wireBytes,
 } from './netsim.js';
 import { createMetrics, percentile } from './metrics.js';
 
@@ -88,7 +89,8 @@ describe('TCP link model', () => {
     scheduler.at(0, () => { for (let i = 0; i < 10; i++) link.send(100, i); });
     scheduler.runUntil(5000);
     expect(got.map((g) => g.at)).toEqual(Array.from({ length: 10 }, (_, i) => (i + 1) * 100 + 10));
-    expect(wireBytes(16)).toBe(24 + 64);
+    expect(wireBytes(16)).toBe(24 + ENVELOPE_BYTES);
+    expect(ENVELOPE_BYTES).toBe(130);
   });
 
   it('loses only what was in flight when the connection resets', () => {
@@ -99,6 +101,86 @@ describe('TCP link model', () => {
     scheduler.runUntil(1000);
     expect(got.map((g) => g.payload)).toEqual(['kept']);
     expect(link.stats.lostToReset).toBe(1);
+  });
+});
+
+describe('heavy-tail jitter', () => {
+  it('adds rare long delays (Pareto tail) without breaking order', () => {
+    const { scheduler, link, got } = linkRig(PROFILES.heavyTail, 11);
+    for (let i = 0; i < 3000; i++) scheduler.at(i * 10, () => link.send(80, i));
+    scheduler.runUntil(60000);
+    expect(got.map((g) => g.payload)).toEqual(Array.from({ length: 3000 }, (_, i) => i));
+    const delays = got.map((g, i) => g.at - i * 10).sort((a, b) => a - b);
+    const p50 = delays[1500];
+    const p99 = delays[2970];
+    const base = PROFILES.heavyTail.latencyMs + PROFILES.heavyTail.jitterMs;
+    expect(p50).toBeLessThanOrEqual(base);
+    expect(p99).toBeGreaterThan(base + 40);
+    expect(delays[2999]).toBeLessThanOrEqual(base + PROFILES.heavyTail.tail.maxMs + 1e-6 + 10);
+    expect(link.stats.tailed).toBeGreaterThan(30);
+  });
+});
+
+describe('client clocks', () => {
+  it('have an offset and a drift', () => {
+    const clock = createPeerClock({ offsetMs: 1000, driftPpm: 200 });
+    expect(clock.now(0)).toBe(1000);
+    expect(clock.now(10000)).toBeCloseTo(1000 + 10002, 9);
+    // A 60 Hz local loop runs 200 ppm fast in true time.
+    expect(clock.truePeriod(1000 / 60)).toBeCloseTo(1000 / 60 / 1.0002, 12);
+    const slow = createPeerClock({ offsetMs: 0, driftPpm: -200 });
+    expect(slow.now(10000)).toBeCloseTo(9998, 9);
+  });
+});
+
+describe('server loop', () => {
+  function loopRig(options) {
+    const scheduler = createScheduler();
+    const calls = [];
+    // 601 ticks (0..20 s): each is either a callback or dropped.
+    const loop = createServerLoop({
+      scheduler,
+      rng: createRng(4),
+      periodMs: 100 / 3,
+      horizonMs: 20000,
+      run: (at) => { calls.push(at); return calls.length + loop.stats.dropped < 601; },
+      ...options,
+    });
+    scheduler.runUntil(30000);
+    return { calls, loop };
+  }
+
+  it('without jitter runs on the nominal 30 Hz grid', () => {
+    const { calls, loop } = loopRig({});
+    expect(calls.length).toBe(601);
+    calls.forEach((at, k) => expect(at).toBeCloseTo((k * 100) / 3, 9));
+    expect(loop.stats.dropped).toBe(0);
+  });
+
+  it('jitters each callback 0..15 ms late and never reorders them', () => {
+    const { calls } = loopRig({ jitterMs: 15 });
+    expect(calls.length).toBe(601);
+    calls.forEach((at, k) => {
+      const late = at - (k * 100) / 3;
+      expect(late).toBeGreaterThanOrEqual(0);
+      expect(late).toBeLessThanOrEqual(15);
+      if (k) expect(at).toBeGreaterThanOrEqual(calls[k - 1]);
+    });
+    const lates = calls.map((at, k) => at - (k * 100) / 3);
+    expect(Math.max(...lates)).toBeGreaterThan(10);
+  });
+
+  it('collapses the ticks of a pause into one buffered callback at its end (Go ticker)', () => {
+    const { calls, loop } = loopRig({ jitterMs: 15, pauseEveryMs: 2000, pauseMs: 50 });
+    expect(loop.pauses.length).toBeGreaterThan(4);
+    expect(loop.stats.dropped).toBeGreaterThan(0);
+    expect(calls.length).toBe(601 - loop.stats.dropped);
+    const gaps = calls.slice(1).map((t, i) => t - calls[i]);
+    expect(Math.max(...gaps)).toBeGreaterThan(50);
+    for (const [start, end] of loop.pauses) {
+      expect(calls.some((at) => at > start && at < end)).toBe(false);
+      if (end < 19900) expect(calls).toContain(end);
+    }
   });
 });
 
@@ -113,6 +195,38 @@ describe('scenario runner', () => {
     expect(JSON.stringify(c.peers.map((p) => p.snapshotInterArrivalMs)))
       .not.toBe(JSON.stringify(a.peers.map((p) => p.snapshotInterArrivalMs)));
     expect(new Set(a.peers.map((p) => p.seat))).toEqual(new Set([0, 1]));
+  });
+
+  it('is realistic by default: client clocks, server loop jitter and pauses, Nakama envelopes', () => {
+    expect(REALISM).toMatchObject({ clockDriftPpm: 200, envelopeBytes: 130, loop: { jitterMs: 15, pauseMs: 50 } });
+    const report = runScenario({ seed: 9, profile: PROFILES.rtt0, durationMs: 6000 });
+    expect(report.options.realism).toEqual(REALISM);
+    const clocks = report.clocks;
+    expect(clocks.length).toBe(2);
+    for (const clock of clocks) {
+      expect(Math.abs(clock.driftPpm)).toBeLessThanOrEqual(200);
+      expect(clock.offsetMs).toBeGreaterThanOrEqual(0);
+    }
+    expect(clocks[0].driftPpm).not.toBe(clocks[1].driftPpm);
+    expect(report.server.loop.pauses).toBeGreaterThan(0);
+    expect(report.loopGap.max).toBeGreaterThan(50);
+    const ideal = runScenario({ seed: 9, profile: PROFILES.rtt0, durationMs: 6000, realism: IDEAL });
+    expect(ideal.server.loop).toMatchObject({ dropped: 0, pauses: 0 });
+    expect(ideal.loopGap.max).toBeCloseTo(100 / 3, 1);
+    expect(report.loopGap.p50).not.toBe(ideal.loopGap.p50);
+    expect(ideal.clocks.every((c) => c.offsetMs === 0 && c.driftPpm === 0)).toBe(true);
+    // Same messages, bigger realistic envelope.
+    expect(report.links[0].up.bytes / report.links[0].up.sent)
+      .toBeGreaterThan(ENVELOPE_BYTES);
+  });
+
+  it('can cap the messages one server loop handles and carries the rest over', () => {
+    const report = runScenario({ seed: 9, profile: PROFILES.stallBurst, durationMs: 6000, loopMessageCap: 2 });
+    expect(report.server.loopMessageCap).toBe(2);
+    expect(report.server.deferred).toBeGreaterThan(0);
+    expect(report.server.maxBacklog).toBeGreaterThan(2);
+    const free = runScenario({ seed: 9, profile: PROFILES.stallBurst, durationMs: 6000 });
+    expect(free.server.deferred).toBe(0);
   });
 
   it('reconnects a dropped client on a new session id', () => {

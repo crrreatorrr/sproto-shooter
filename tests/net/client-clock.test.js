@@ -191,6 +191,87 @@ describe('input lead and rejects (SHOOTER-S1)', () => {
   });
 });
 
+describe('round-trip probes and the lead after an RTT spike (S1 review fix)', () => {
+  /**
+   * Render at 60 Hz for `ms`, with 10 Hz snapshots `downMs` old and every READY probe answered
+   * by this seat's WELCOME after rttAt(sentAt) ms.
+   */
+  function runProbed(r, { ms, rttAt, downMs = 0 }) {
+    const answered = new Set();
+    const frameMs = 1000 / 60;
+    let nextSnap = Math.floor(r.now / STEP_MS / 3) * 3 + 3;
+    const end = r.now + ms;
+    while (r.now < end) {
+      r.now += frameMs;
+      r.sent.forEach((m, i) => {
+        if (m.op !== OP.READY || answered.has(i) || m.at + rttAt(m.at) > r.now) return;
+        answered.add(i);
+        r.deliver(OP.WELCOME, { accountId: 'ada', seat: 0, phase: 'live', tick: 0 });
+      });
+      while ((nextSnap * STEP_MS) + downMs <= r.now) {
+        r.deliver(OP.SNAPSHOT, snapshot(nextSnap));
+        nextSnap += 3;
+      }
+      r.client.update(r.now, () => ({ yaw: 0 }));
+    }
+  }
+
+  it('probes the round trip with READY every NET.pingMs while live (protocol 1 has no PING)', () => {
+    const r = rig({ rttMs: 80 });
+    r.goLive();
+    const before = r.sent.filter((m) => m.op === OP.READY).length;
+    runProbed(r, { ms: 3000, rttAt: () => 80 });
+    const probes = r.sent.filter((m) => m.op === OP.READY).length - before;
+    expect(probes).toBeGreaterThanOrEqual(Math.floor(3000 / NET.pingMs) - 1);
+    expect(probes).toBeLessThanOrEqual(Math.ceil(3000 / NET.pingMs) + 1);
+    expect(r.client.net.rttMs).toBeGreaterThanOrEqual(80);
+    expect(r.client.net.rttMs).toBeLessThan(80 + 20);
+  });
+
+  it('caps the lead at leadForRtt + NET.leadJitterTicks as soon as the measured RTT falls', () => {
+    const r = rig({ rttMs: 80 });
+    r.goLive();
+    runProbed(r, { ms: 1500, rttAt: () => 80 });
+    const calm = r.client.net.lead;
+    expect(calm).toBe(Math.ceil(80 / STEP_MS) + 1);
+    // A spike: the RTT jumps to 300 ms for 3 s and late rejects push the lead up.
+    const spikeStart = r.now;
+    const rttAt = (at) => (at >= spikeStart && at < spikeStart + 3000 ? 300 : 80);
+    runProbed(r, { ms: 1000, rttAt });
+    const last = r.inputs().at(-1);
+    r.reject('frame', last.seq - 1, last.frame + 8);
+    expect(r.client.net.lead).toBeGreaterThanOrEqual(calm + 8);
+    runProbed(r, { ms: 2000, rttAt });
+    const spiked = r.client.net.lead;
+    expect(spiked).toBeGreaterThanOrEqual(calm + 8);
+    // Back to 80 ms: within ~2 s the lead is back to the round-trip lead plus the jitter margin.
+    runProbed(r, { ms: 2000, rttAt });
+    expect(r.client.net.rttMs).toBeLessThan(100);
+    expect(r.client.net.lead).toBeLessThanOrEqual(Math.ceil(80 / STEP_MS) + 1 + NET.leadJitterTicks);
+    expect(r.client.net.leadCaps).toBeGreaterThanOrEqual(1);
+    expect(NET.leadJitterTicks).toBe(2);
+  });
+
+  it('never caps below the round-trip lead while the RTT is rising', () => {
+    const r = rig({ rttMs: 80 });
+    r.goLive();
+    runProbed(r, { ms: 1500, rttAt: () => 80 });
+    runProbed(r, { ms: 3000, rttAt: () => 300 });
+    expect(r.client.net.rttMs).toBeGreaterThanOrEqual(300);
+    expect(r.client.net.leadCaps).toBe(0);
+  });
+
+  it('drops a probe whose answer never came (socket reset) instead of mismatching later ones', () => {
+    const r = rig({ rttMs: 80 });
+    r.goLive();
+    r.client.update(r.now + NET.pingMs, () => ({ yaw: 0 }));
+    r.now += NET.pingMs + NET.rttMaxSampleMs + 1;
+    runProbed(r, { ms: 2000, rttAt: () => 80 });
+    expect(r.client.net.rttMs).toBeLessThan(80 + 20);
+    expect(Math.max(...r.client.net.rttSamples)).toBeLessThan(80 + 20);
+  });
+});
+
 describe('monotonic phase (SHOOTER-S1)', () => {
   it('ignores phase changes once a result exists', () => {
     const r = rig();
