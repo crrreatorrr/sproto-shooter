@@ -7,6 +7,7 @@ import { equipAuditorPlates } from './plates.js';
 import { damagePlayer } from '../combat.js';
 import { inBox } from '../level/runtime.js';
 import { solidFromPrimitive, solidsFromGeometry, terrainSolid } from './solids.js';
+import { solidTerrain } from './terrain.js';
 import { tickBossScript } from './bossScript.js';
 import { tickDuo } from './duo.js';
 
@@ -23,12 +24,12 @@ function encState(lv, id) {
 
 export function bindV2Section(state, sec) {
   const lv = state.level;
-  const hideStand = !!(sec && sec.terrain);
-  const geometry = hideStand
+  const field = solidTerrain(sec);
+  const geometry = field
     ? (sec.geometry || []).filter((g) => g.tag !== 'terrainStandIn')
     : (sec && sec.geometry);
   let solids = sec && sec.solids ? sec.solids.slice() : solidsFromGeometry(geometry);
-  if (sec && sec.terrain) solids.push(terrainSolid(sec.terrain));
+  if (field) solids.push(terrainSolid(field));
   if (lv.brokenSolids) solids = solids.filter((s) => !lv.brokenSolids[s.id]);
   lv.solids = solids;
   lv.closedDoors = [];
