@@ -8,6 +8,7 @@ import { clampToArena, pushOutOfBoxes, raycastEnemies, rayWorld, eyePos, playerH
 import { activeSolids, campaignSolidsOn, firstSolid, groundHeight, pushHorizontal, snapToGround, voidAt, STEP_UP } from './campaign/solids.js';
 import { clampToRoom, sealOf, tickGrapple } from './grapple.js';
 import { damageLevelSolid } from './campaign/mechanisms.js';
+import { alarmRay, damageAlarm } from './campaign/alarms.js';
 import { effectiveGunStats } from './guns.js';
 import { damageEnemy, damagePlayer, healPlayer, explode } from './combat.js';
 import { createProjectile } from './state.js';
@@ -174,10 +175,19 @@ export function playerMovement(state, dt) {
     if (state.mode === 'campaign' && state.level && state.level.gravityMult !== 1 && m.mode !== 'dash') {
       p.vel.y -= TUNING.gravity * (state.level.gravityMult - 1) * dt;
     }
-    if (state.mode === 'campaign' && p.jetpack && c.held.jump && !p.onGround && state.level && state.level.fuel > 0) {
-      p.vel.y += 28 * dt;
-      if (p.vel.y > 12) p.vel.y = 12;
-      if (!state.level.modifiers.fuelInfinite) state.level.fuel = Math.max(0, state.level.fuel - 18 * dt);
+    if (state.mode === 'campaign' && p.jetpack && state.level) {
+      const lv = state.level;
+      if (lv.fuel == null) lv.fuel = 0;
+      const infinite = !!(lv.modifiers && lv.modifiers.fuelInfinite);
+      const drop = !p.onGround && (c.pressed.slide || (c.held && c.held.slide));
+      if (drop) p.vel.y = Math.min(p.vel.y, -16);
+      else if (!p.onGround && c.held.jump && (infinite || lv.fuel > 0)) {
+        // Undo this frame's gravity and damp, so holding jump keeps the altitude.
+        p.vel.y += TUNING.gravity * dt;
+        p.vel.y *= Math.max(0, 1 - 8 * dt);
+        if (!infinite) lv.fuel = Math.max(0, lv.fuel - 10 * dt);
+      }
+      if (p.onGround && !infinite && lv.fuel < 100) lv.fuel = Math.min(100, lv.fuel + 25 * dt);
     }
     p.pos.x += p.vel.x * dt; p.pos.y += p.vel.y * dt; p.pos.z += p.vel.z * dt;
     const wasAir = !p.onGround;
@@ -211,6 +221,15 @@ export function playerMovement(state, dt) {
       p.onGround = true;
     } else p.onGround = false;
     if (seal) clampToRoom(p, seal);
+    if (state.mode === 'campaign' && p.jetpack && state.level) {
+      const lids = state.level.flyerLids || (state.level.flyerVolume ? [state.level.flyerVolume] : []);
+      for (const lid of lids) {
+        if (!lid || !lid.max || !lid.min) continue;
+        if (p.pos.x < lid.min[0] || p.pos.x > lid.max[0] || p.pos.z < lid.min[2] || p.pos.z > lid.max[2]) continue;
+        const cap = lid.max[1] - 2;
+        if (p.pos.y > cap) { p.pos.y = cap; if (p.vel.y > 0) p.vel.y = 0; }
+      }
+    }
     if (state.mode !== 'campaign') {
       clampToArena(p, TUNING.playerRadius);
       pushOutOfBoxes(state, p, TUNING.playerRadius);
@@ -281,6 +300,11 @@ export function fireHitscan(state, p, g, st, origin, dir, extra = {}) {
     if (solids) {
       const wall = firstSolid(solids, origin, dir, remaining);
       if (wall && !damageLevelSolid(state, wall.solid, { base: st.damage, sourceKind: 'gun' })) remaining = wall.t;
+    }
+    const alarm = alarmRay(state, origin, dir, remaining);
+    if (alarm) {
+      damageAlarm(state, alarm, st.damage);
+      remaining = alarm.t;
     }
   }
   let pierce = st.pierce;
