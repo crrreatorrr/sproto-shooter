@@ -51,6 +51,7 @@ describe('asset manifest', () => {
     expect(manifest.authoring.blenderFiles.map((file) => file.path)).toEqual([
       'art/blender/boss_animations.blend',
       'art/blender/new_enemies.blend',
+      'art/blender/weapon_animations.blend',
     ]);
     expect(manifest.authoring.shippedInPublic).toBe(false);
     expect(manifest.assets.some((asset) => asset.path.endsWith('.blend'))).toBe(false);
