@@ -102,7 +102,7 @@ describe('campaign solids', () => {
   });
 
   it('does not move the campaign fingerprint or the PvP fingerprint', () => {
-    expect(contentFingerprint(1)).toBe('9ec1c6ea');
+    expect(contentFingerprint(1)).toBe('cea1f88b');
     expect(CONTENT_FINGERPRINT).toBe('17d87c54');
   });
 });

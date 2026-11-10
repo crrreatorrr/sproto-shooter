@@ -490,8 +490,8 @@ function bucket(state) {
 export function saveCheckpoint(state, id) {
   const lv = state.level;
   if (!lv) return;
-  bucket(state)[id] = structuredClone(state);
   lv.checkpoint = id;
+  bucket(state)[id] = structuredClone(state);
 }
 
 export function restoreCheckpoint(state) {
@@ -500,9 +500,14 @@ export function restoreCheckpoint(state) {
   const b = snaps.get(state);
   const snap = b && (b[lv.checkpoint] || b.start);
   if (!snap) return false;
+  const tick = state.tick;
+  const time = state.time;
   const fresh = structuredClone(snap);
   for (const k of Object.keys(state)) delete state[k];
   Object.assign(state, fresh);
+  state.tick = tick;
+  state.time = time;
+  state.events = [];
   snaps.set(state, b);
   return true;
 }

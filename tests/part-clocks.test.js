@@ -30,7 +30,7 @@ function living(s, enc) {
 
 describe('part clocks, flock units, fallback waves', () => {
   it('keeps the campaign and PvP pins', () => {
-    expect(contentFingerprint(1)).toBe('9ec1c6ea');
+    expect(contentFingerprint(1)).toBe('cea1f88b');
     expect(CONTENT_FINGERPRINT).toBe('17d87c54');
   });
 
