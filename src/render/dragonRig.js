@@ -13,7 +13,7 @@
 // All blends are exact critically damped springs (anim.js), so walking, flying and attacking flow together.
 // Rotations are applied in world space around the dragon's own axes, independent of bone-local conventions.
 import * as THREE from 'three';
-import { springTo, spring, gaitAdvance, legCycle, rotWorld, wrapAngle } from './anim.js';
+import { springTo, spring, gaitAdvance, legCycle, rotWorld, wrapAngle, attackEnvelope, groundProbe, smoothstep } from './anim.js';
 
 const _up = new THREE.Vector3(), _side = new THREE.Vector3(), _fwd = new THREE.Vector3(), _rootQ = new THREE.Quaternion();
 
@@ -33,13 +33,15 @@ export function createDragonRig(ch, def = {}) {
     { bones: chain('0_Right_Limb_', 3), off: 0.93, front: true },
   ];
   const all = Object.values(bones);
-  const bind = new Map(all.map((b) => [b, b.quaternion.clone()]));
+  const bind = all.map((b) => [b, b.quaternion.clone(), b.position.clone()]);
   // stride from the skeleton: measured shoulder-to-foot leg length; the stance sweep covers what the body
   // travels while a foot is planted (stepLen × duty), so the feet don't skate
   const DUTY = 0.77;
   ch.root.updateMatrixWorld(true);
   const fl = legs[1].bones;
   const legLen = fl.length >= 3 ? fl[0].getWorldPosition(new THREE.Vector3()).distanceTo(fl[2].getWorldPosition(new THREE.Vector3())) : 0.3 * (def.height || 3.2);
+  const clearance = groundProbe(legs.map((l) => l.bones.at(-1)).filter(Boolean));
+  const center = new THREE.Vector3(), worldScale = new THREE.Vector3();
   const stepLen = 1.0 * Math.max(0.1, legLen);
   const sweep = Math.asin(Math.min(0.85, (stepLen * DUTY) / Math.max(0.1, legLen)));
   let time = 0, walk = 0, swim = 0;
@@ -62,9 +64,8 @@ export function createDragonRig(ch, def = {}) {
     /** s = { moving, speed, action, actionT, altitude, yaw } from the boss sim state */
     update(dt, s) {
       dt = Math.min(dt, 0.05);
-      if (dt <= 0) return;
       time += dt;
-      for (const [b, q] of bind) b.quaternion.copy(q);
+      for (const [b, q, p] of bind) { b.quaternion.copy(q); b.position.copy(p); }
       ch.root.updateMatrixWorld(true);
       ch.root.getWorldQuaternion(_rootQ);
       _up.set(0, 1, 0);
@@ -73,8 +74,8 @@ export function createDragonRig(ch, def = {}) {
 
       const flying = springTo(fly, (s.altitude || 0) > 0.4 ? 1 : 0, 0.18, dt);
       const g = springTo(gait, s.moving && flying < 0.5 ? 1 : 0, 0.1, dt) * (1 - flying);
-      const yawRate = prevYaw === null ? 0 : wrapAngle(s.yaw - prevYaw) / dt; prevYaw = s.yaw;
-      const vy = prevAlt === null ? 0 : ((s.altitude || 0) - prevAlt) / dt; prevAlt = s.altitude || 0;
+      const yawRate = prevYaw === null || dt <= 0 ? 0 : wrapAngle(s.yaw - prevYaw) / dt; prevYaw = s.yaw;
+      const vy = prevAlt === null || dt <= 0 ? 0 : ((s.altitude || 0) - prevAlt) / dt; prevAlt = s.altitude || 0;
       // whole-body attitude: bank into turns and pitch with climbs/dives while flying
       const roll = springTo(bank, Math.max(-0.5, Math.min(0.5, -yawRate * 0.35)) * flying, 0.2, dt);
       const nose = springTo(pitch, Math.max(-0.45, Math.min(0.45, -vy * 0.09)) * flying, 0.25, dt);
@@ -82,6 +83,7 @@ export function createDragonRig(ch, def = {}) {
       lastRoll = roll; lastNose = nose;
 
       // ---- ground walk: speed-matched duty-factor cycle ----
+      const backward = s.forward < -0.2;
       walk += gaitAdvance(g > 0.05 ? (s.speed || 0) : 0, stepLen, dt);
       const cyc = walk / (2 * Math.PI);
       // trunk: standing-wave side bend (C-curve between still shoulders and hips), toward the reaching fore leg
@@ -105,13 +107,20 @@ export function createDragonRig(ch, def = {}) {
         if (i < spine.length) trunkHeading += lat;
       });
       // ---- tail: follow-through on turns (each segment lags a little more) + gentle ground sweep ----
+      const tailWindup = def.tail?.windup ?? 0.6;
       tail.forEach((b, i) => {
         const lag = springTo(tailLag[i], -yawRate * 0.06 * (i + 1) / tail.length, 0.08 + i * 0.05, dt);
-        rotWorld(b, _up, lag + Math.sin(time * 2.4 - i * 0.75) * (0.08 + 0.08 * g) * (1 - flying));
+        const env = attackEnvelope(s.action === 'tailSwipe' ? s.actionT : -1, tailWindup, 0.6);
+        const lash = (env.wind * (1 - env.hit) * -0.28 + env.hit * 0.46) * (1 - env.rec);
+        rotWorld(b, _up, lash * (1 + i * 0.17) + lag + Math.sin(time * 2.4 - i * 0.75) * (0.08 + 0.08 * g) * (1 - flying));
+        rotWorld(b, _side, Math.abs(lash) * 0.12);
       });
 
       // ---- neck/head: cancel the trunk's sway so the head stays on target; breath/fireball poses; bob ----
-      const want = s.action === 'breath' ? (s.actionT < 0.7 ? -1 : 1) : s.action === 'fireballs' ? 0.6 : s.action === 'fly' ? 0.35 : 0;
+      const tell = def.breath?.telegraph ?? 0.7;
+      const want = s.action === 'breath' ? -smoothstep(s.actionT / tell * 3) + 2 * smoothstep((s.actionT - tell + 0.14) / 0.14)
+        : s.action === 'fireballs' ? 0.6 : s.action === 'fly' ? 0.35
+          : s.action === 'summon' || s.action === 'intro' ? -smoothstep(s.actionT * 2.4) : 0;
       const bp = springTo(breath, want, 0.1, dt);
       neck.forEach((b, i) => {
         if (i === 0) rotWorld(b, _up, -trunkHeading * 0.9 - bend * 0.5);
@@ -122,13 +131,19 @@ export function createDragonRig(ch, def = {}) {
       for (const l of legs) {
         if (!l.bones.length) continue;
         const c = legCycle(cyc + l.off, DUTY);
-        const swing = c.swing * sweep * g, lift = c.lift * g;
+        const swing = c.swing * sweep * g * (backward ? -1 : 1), lift = c.lift * g;
         const paddle = Math.sin(swim + l.off * 2 * Math.PI + (l.front ? 0 : 1.6)) * 0.45 * flying;
         const tuck = flying * (l.front ? 0.7 : 0.95);
         rotWorld(l.bones[0], _side, swing + tuck + paddle); // + swings forward on this rig (its head is at -X)
         // hind knees bend the other way from the elbows, so their lift goes the opposite direction
         if (l.bones[1]) rotWorld(l.bones[1], _side, lift * (l.front ? 1.0 : -1.0) + flying * (l.front ? -0.9 : 0.4) - paddle * 0.6);
         if (l.bones[2]) rotWorld(l.bones[2], _side, flying * 0.4 + paddle * 0.4 + lift * 0.4);
+      }
+
+      if (!s.clipDriven && s.altitude < 0.08) {
+        const y = ch.root.getWorldPosition(center).y;
+        ch.root.getWorldScale(worldScale);
+        ch.root.position.y = clearance(y, worldScale.y, (def.height ?? 3.2) * 0.09);
       }
 
       // ---- jaw: breath stream holds it open, each ground fireball snaps it open; idle breathing otherwise ----
@@ -143,6 +158,7 @@ export function createDragonRig(ch, def = {}) {
           for (let i = 0; i < n; i++) { const d = s.actionT - (0.4 + i * 0.45); m = Math.max(m, d < 0 ? 1 + d / 0.2 : 1 - d / 0.25); }
           open = 0.08 + 0.36 * Math.max(0, Math.min(1, m));
         } else if (s.action === 'tailSwipe') open = 0.16;
+        else if (s.action === 'summon' || s.action === 'intro') open = 0.32 * smoothstep(s.actionT * 2.4);
         rotWorld(jaw, _side, -springTo(jawOpen, open, 0.04, dt));
       }
     },

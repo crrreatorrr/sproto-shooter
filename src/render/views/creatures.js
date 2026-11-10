@@ -3,10 +3,12 @@ import { ENEMIES as ENEMY_DEFS, BOSSES, enemyStage } from '../../data/enemies.js
 import { CHARACTER_MODELS } from '../../data/stages.js';
 import { instantiateCharacter, peekModel } from '../assets.js';
 import { createClipLayer } from '../clipLayer.js';
+import { CREATURE_MOTION } from '../creatureMotionData.js';
 import { createDragonRig } from '../dragonRig.js';
 import { createHumanoidRig } from '../humanoidRig.js';
 import { createViewRegistry } from './ViewRegistry.js';
 import { buildLookGroup } from '../level/levelView.js';
+import { createPrimitiveCreatureRig } from '../primitiveCreatureRig.js';
 
 export function mountCreatures(env) {
   const { E, G, M, MAT, scene } = env;
@@ -23,7 +25,7 @@ export function mountCreatures(env) {
   function buildFallback(color, height, radius) {
     const g = new THREE.Group();
     const bodyMat = M(color, { roughness: 0.5 });
-    const body = new THREE.Mesh(G.capsule, bodyMat); body.scale.set(radius, Math.max(0.1, (height - radius * 2) / 2 + radius * 0.6), radius); body.position.y = height / 2;
+    const body = new THREE.Mesh(G.capsule, bodyMat); body.scale.set(radius, height / 3, radius); body.position.y = height / 2;
     g.add(body);
     const eyes = [];
     for (const x of [-0.18, 0.18]) { const ey = googly(0.13); ey.position.set(x * radius * 2, height * 0.8, radius * 0.9); g.add(ey); eyes.push(ey); }
@@ -33,6 +35,14 @@ export function mountCreatures(env) {
 
   function blob(r) { const b = new THREE.Mesh(G.disc, MAT.blob); b.rotation.x = -Math.PI / 2; b.position.y = 0.02; b.scale.setScalar(r); return b; }
 
+  function mountCharacter(parts, ch, height) {
+    parts.char = ch;
+    parts.fitH = height;
+    parts.motion = CREATURE_MOTION[ch.path.split('/').pop().slice(0, -4)];
+    parts.clips = createClipLayer(ch, { procedural: !!parts.rig, floor: parts.motion?.floor, tailPitch: parts.motion?.tailPitch });
+    if (!parts.clips) ch.play('idle');
+  }
+
   /** Enemy view: Sproto Duel rigged character for its stage, plus gameplay markers (crown, shield plate, battery). */
   function buildEnemy(e) {
     const def = ENEMY_DEFS[e.type];
@@ -40,16 +50,21 @@ export function mountCreatures(env) {
     const parts = { eyes: [] };
     let ch = null;
     if (def.model) ch = instantiateCharacter(def.model, enemyStage(e), def.height);
-    if (ch) { g.add(ch.root); parts.char = ch; if (!def.clips) ch.play('idle'); }
-    if (ch && def.clips) { parts.clips = createClipLayer(ch); parts.clipsOnly = !!parts.clips; } // every state is an authored clip
-    else if (def.look) { g.add(buildLookGroup(def.look)); parts.look = true; }
-    else { const f = buildFallback(def.color, def.height, def.radius); g.add(f); Object.assign(parts, f.userData); }
+    if (ch) {
+      g.add(ch.root);
+      mountCharacter(parts, ch, def.height);
+    } else {
+      const body = def.look ? buildLookGroup(def.look) : buildFallback(def.color, def.height, def.radius);
+      g.add(body);
+      parts.bodyMotion = createPrimitiveCreatureRig(body, e.type, def, !!e.boss);
+      Object.assign(parts, body.userData);
+    }
     if (e.type === 'bigObama') {
       const shield = new THREE.Mesh(G.box, MAT.shield); shield.scale.set(1.8, 1.9, 0.14); shield.position.set(0, 1.3, 1.0);
       const batt = new THREE.Mesh(G.box, MAT.weak); batt.scale.set(0.5, 0.6, 0.3); batt.position.set(0, 1.5, -0.95);
       g.add(shield, batt); parts.weak = batt;
     }
-    if (def.flying) {
+    if (def.flying && def.model) {
       // propeller beanie: the wacky reason it can fly
       const cap = new THREE.Mesh(G.sphere, M(0xff5ec4)); cap.scale.set(0.2, 0.12, 0.2); cap.position.y = def.height + 0.02;
       const prop = new THREE.Group();
@@ -83,8 +98,13 @@ export function mountCreatures(env) {
     const ch = instantiateCharacter(def.model, si + 1, h);
     const holder = new THREE.Group();
     g.add(holder);
-    if (ch) { holder.add(ch.root); parts.char = ch; ch.play('idle'); }
-    else { const f = buildFallback(def.color, h, def.radius); holder.add(f); Object.assign(parts, f.userData); }
+    if (ch) holder.add(ch.root);
+    else {
+      const body = buildFallback(def.color, h, def.radius);
+      holder.add(body);
+      parts.bodyMotion = createPrimitiveCreatureRig(body, e.type, def, !!e.boss);
+      Object.assign(parts, body.userData);
+    }
     parts.holder = holder;
     const extra = [];
     if (def.ai === 'mega') {
@@ -93,7 +113,7 @@ export function mountCreatures(env) {
       const belly = new THREE.Mesh(G.sphere, E(0xff3b3b)); belly.scale.setScalar(hb ? hb.r * 1.1 : 0.55);
       if (hb) belly.position.set(hb.x || 0, hb.y, hb.z || 0); belly.visible = false;
       g.add(belly, blob(def.radius * 1.3)); parts.belly = belly;
-      if (ch && def.rig === 'humanoid') parts.rig = createHumanoidRig(ch, def); // skeleton animated in code
+      if (ch && (e.type === 'monster' || e.type === 'sprotoBeast')) parts.rig = createHumanoidRig(ch, def); // skeleton animated in code
     } else if (e.type === 'dragon') {
       holder.rotation.y = Math.PI; // this model's head is at Tripo -X, the opposite of the other characters
       parts.groundShadow = blob(3.4); g.add(parts.groundShadow); // stays on the ground while it flies
@@ -109,8 +129,7 @@ export function mountCreatures(env) {
       extra.push(orb, aura, auraFill);
       Object.assign(parts, { weak: orb, aura, auraFill });
     }
-    // authored clips (walk, attacks, flight) blended over the procedural rig; see bossClips.js
-    if (ch && (parts.rig || def.rig === 'clips')) { parts.clips = createClipLayer(ch); parts.fitH = h; parts.clipsOnly = def.rig === 'clips' && !!parts.clips; }
+    if (ch) mountCharacter(parts, ch, h);
     g.userData = parts;
     markOwned(g);
     for (const x of extra) markOwned(x);

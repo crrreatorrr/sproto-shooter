@@ -72,3 +72,17 @@ export function legCycle(p, duty) {
   const s = (p - duty) / (1 - duty);
   return { swing: -1 + 2 * smoothstep(s), lift: Math.sin(Math.PI * s) };
 }
+
+// Approximate sole clearance for procedural poses. The bind sole is fitted to the floor by
+// assets.js. A relative probe follows the ankle/toe without evaluating the skinned mesh every frame.
+const _sole = new THREE.Vector3();
+export function groundProbe(feet) {
+  if (!feet.length) return () => 0;
+  const bottom = () => {
+    let y = Infinity;
+    for (const foot of feet) y = Math.min(y, foot.getWorldPosition(_sole).y);
+    return y;
+  };
+  const rest = bottom();
+  return (baseY, scale, maxLift) => Math.min(maxLift, Math.max(0, rest + baseY - bottom()) / Math.max(0.01, scale));
+}

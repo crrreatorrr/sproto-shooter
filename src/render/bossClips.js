@@ -74,7 +74,7 @@ export function enemyClipWant(s) {
   const spec = ENEMY_CLIPS[s.type] || {};
   const ai = s.ai || {}, def = s.def || {};
   const dur = (name) => clipLen(s, name);
-  if (s.state === 'stagger') return { clip: 'stun', blend: BLEND.attack };
+  if (s.state === 'stagger') return { clip: 'stun', time: s.stateT ?? 0, blend: BLEND.attack };
   if (spec.special && def.special) {
     const t = gunClipTime(ai, 'sp', def.special, spec.special.release);
     if (t !== null && t < dur(spec.special.clip)) return { clip: spec.special.clip, time: t, blend: BLEND.attack };
@@ -83,11 +83,7 @@ export function enemyClipWant(s) {
     const t = gunClipTime(ai, '', def.gun, spec.cast.release);
     if (t !== null && t < dur(spec.cast.clip) && (ai.shooting || (ai.doneT != null && ai.doneT < 0.4))) return { clip: spec.cast.clip, time: t, blend: BLEND.attack };
   }
-  if ((s.speed || 0) > 0.6 && spec.run) {
-    const clipSpeed = spec.run * (s.fitHeight || def.height || 1);
-    return { clip: 'run', rate: Math.max(0.6, Math.min(2.4, s.speed / clipSpeed)), blend: BLEND.locomotion };
-  }
-  return { clip: 'idle', blend: BLEND.locomotion };
+  return locomotionClip(s, { walk: s.pace?.walk, run: spec.run });
 }
 
 /** Clip time inside a barrage: wind-up clip over the telegraph, then the loop phase-locked to the shots. */
@@ -106,11 +102,20 @@ function clipsOnlyWant(spec, s) {
   switch (s.action) {
     case 'intro': case 'transition': case 'summon':
       return { clip: spec.roar, time: Math.min(dur(spec.roar), t), blend: loco };
-    case 'stunned': return { clip: spec.stunned, blend: atk };
-    case 'slam': return { clip: spec.slam, time: Math.min(dur(spec.slam), t), blend: atk };
+    case 'stunned': return { clip: spec.stunned, time: t, blend: atk };
+    case 'slam': {
+      // With a 10 m/s launch and 30 m/s² gravity, the jump is about 2/3 s.
+      // Once it lands, use the actual landing timer (also drives the shockwaves).
+      const contact = s.slamContact ?? 20 / 30;
+      const airborne = 2 * 10 / 30;
+      const time = s.data?.landed
+        ? contact + Math.max(0, (s.data.lt || 0) - 1 / 60) / 1.6 * (dur(spec.slam) - contact)
+        : Math.min(1, t / airborne) * contact;
+      return { clip: spec.slam, time, blend: atk };
+    }
     case 'charge':
       if (t < spec.charge.telegraph) return { clip: spec.charge.start, time: dur(spec.charge.start) * (t / spec.charge.telegraph), blend: atk };
-      return { clip: spec.charge.clip, rate: Math.max(0.6, Math.min(2.4, (s.speed || 0) / (spec.charge.speedPerHeight * H))), blend: atk };
+      return { clip: spec.charge.clip, rate: gaitRate(s.speed || 0, (s.pace?.charge ?? spec.charge.speedPerHeight) * H), blend: atk, phaseGroup: 'stride' };
     case 'melee': {
       const mel = def.melee || { windup: 0.75, recover: 0.9 };
       const m = spec.melee.smash;
@@ -125,14 +130,32 @@ function clipsOnlyWant(spec, s) {
     const w = barrageClip(b, t, cfg.gap, shots, s.durations);
     if (w) return { ...w, blend: atk };
   }
-  if ((s.speed || 0) > 0.4 && spec.walk) {
-    return { clip: spec.walk.clip, rate: Math.max(0.6, Math.min(2.4, s.speed / (spec.walk.speedPerHeight * H))), blend: loco };
-  }
-  return { clip: 'idle', blend: loco };
+  return s.action === 'chase'
+    ? locomotionClip(s, { walk: spec.walk.speedPerHeight })
+    : { clip: 'idle', blend: loco };
 }
 
 /** Blend half-lives (s) between the procedural rig and a clip: attacks take over fast, locomotion eases in. */
-export const BLEND = { attack: 0.06, locomotion: 0.16 };
+export const BLEND = { attack: 0.035, locomotion: 0.10 };
+
+const gaitRate = (speed, clipSpeed) => Math.min(3, speed / Math.max(0.1, clipSpeed));
+
+export function locomotionClip(s, fallback = {}) {
+  const height = s.fitHeight || s.def?.height || 1;
+  const speed = s.speed || 0, current = s.current;
+  const blend = BLEND.locomotion;
+  const walking = current === 'walk' || current === 'run' || current?.startsWith('strafe_') || current === 'run_back';
+  if (speed < (walking ? 0.19 : 0.32)) return { clip: 'idle', blend };
+  const pace = { ...fallback, ...s.pace };
+  const strafe = s.side > 0 ? 'strafe_l' : 'strafe_r'; // local +X is the model's left
+  let clip;
+  if (s.durations?.[strafe] && Math.abs(s.side) > Math.abs(s.forward) * (current === strafe ? 0.9 : 1.35)) clip = strafe;
+  else if (s.durations?.run_back && s.forward < -speed * (current === 'run_back' ? 0.5 : 0.72)) clip = 'run_back';
+  else if (pace.walk && (!pace.run || !s.durations?.run || speed < pace.walk * height * (current === 'run' ? 1.3 : 1.65))) clip = 'walk';
+  else clip = 'run';
+  const gaitSpeed = pace[clip] ?? (clip === 'run_back' ? 1.4 : 2.2);
+  return { clip, rate: gaitRate(speed, gaitSpeed * height), blend, phaseGroup: 'stride' };
+}
 
 /** Actions during which a walking boss uses its walk clip (others keep their procedural pose). */
 const WALK_ACTIONS = new Set(['chase']);
@@ -142,7 +165,7 @@ const WALK_ACTIONS = new Set(['chase']);
  * on the sim's swing (actionT === windup); the recovery maps onto the rest of the clip.
  */
 export function meleeClipTime(t, windup, recover, impact, duration) {
-  if (t <= windup) return impact * Math.max(0, t) / Math.max(1e-3, windup);
+  if (windup > 0 && t <= windup) return impact * Math.max(0, t) / windup;
   return Math.min(duration, impact + (t - windup) * ((duration - impact) / Math.max(0.05, recover)));
 }
 
@@ -192,9 +215,9 @@ export function bossClipWant(s) {
     const m = spec.melee[s.variant || 'smash'] || spec.melee.smash || Object.values(spec.melee)[0];
     if (m) return { clip: m.clip, time: meleeClipTime(s.actionT, mel.windup, mel.recover, m.impact, clipLen(s, m.clip)), blend: BLEND.attack };
   }
-  if (spec.walk && WALK_ACTIONS.has(s.action) && (s.speed || 0) > 0.4) {
-    const clipSpeed = spec.walk.speedPerHeight * (s.fitHeight || def.height || 1);
-    return { clip: spec.walk.clip, rate: Math.max(0.6, Math.min(2.4, s.speed / clipSpeed)), blend: BLEND.locomotion };
+  if (spec.walk && (WALK_ACTIONS.has(s.action) || (s.action === 'charge' && s.actionT >= 0.8))) {
+    const want = locomotionClip(s, { walk: spec.walk.speedPerHeight });
+    if (want.clip !== 'idle') return want;
   }
   return null;
 }
