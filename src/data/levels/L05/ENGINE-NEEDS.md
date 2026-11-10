@@ -1,35 +1,69 @@
 # L05 engine needs
 
-Wired to main through #75. A quiet god-mode run clears **The Picket** and stops on the
-Frozen Creek. Campaign fingerprint on this main is `0ebc3c6d`. PvP fingerprint
-`17d87c54` and golden `6545ca0a` are untouched.
+Main is merged through #79. Campaign fingerprint on this main is `9ec1c6ea`.
+PvP fingerprint `17d87c54` and golden `6545ca0a` are untouched.
+
+Seed 1, god mode, `enemyHpMult` 0.08, the same aim loop as
+`tests/levels/campaign.test.js`. The Spotter Drone stays at a finite altitude
+and dies. The bot clears S1 (Crash Site, Frozen Creek, listening post) and
+walks into S2. At tick **11185** the sim throws.
 
 ## Still blocking a clear
 
-1. **`spotterDrone` flies into NaN.** `ENEMIES.spotterDrone` uses
-   `behavior: 'flyingMidget'` and does not set `altMin`, `altMax`, `orbitMin`,
-   `orbitMax`, `jinkMin`, or `jinkMax`. `flyingMidget.update` calls
-   `range(rng, def.altMin, def.altMax)`, which is NaN, and the drone's `y`
-   becomes NaN on the first jink. Bullets never meet it. Observed on seed 1,
-   tier 5, `enemyHpMult` 0.08: the drone sits at about `(80, NaN, -256)` with
-   **6 HP** of 6, and the bot stands on the creek. The level data already
-   spawns it (`S1-E2` squad `E2-a`, plus the two in `S2-E4` and the one in
-   `S5-F2`). The flying Midget's own numbers work: alt **8 to 9**, orbit
-   **7 to 14**, jink **0.5 to 1.2**. The design patrol (8 m/s along a written
-   loop, 8 to 9 m up) is still not what `flyingMidget` does; the NaN is what
-   stops the run.
+1. **`frostHound` has no steering weights, so the first chase throws.**
+   `ENEMIES.frostHound` (`src/data/enemies.js`) is `behavior: 'midget'` and
+   does not set `weights`, `range`, `windup`, `active`, or `recover`.
+   `midget.update` calls `steer` with `def.weights`, and `steer` reads
+   `w.seek`.
+
+   ```
+   TypeError: Cannot read properties of undefined (reading 'seek')
+       at steer (src/sim/enemies.js:47)
+       at midget.update (src/sim/enemies.js:139)
+   ```
+
+   Seed 1 reached that line when squad `E4-g` woke. Those two hounds spawn
+   at local `(75, 0, 198)` once the player crosses local north 150
+   (`onAlert`, `zBelow: -150`). Both were alive at the throw, world about
+   `(95, 0, -718)`, **8 HP** of 8. Also still up: two Mining Rigs at 20 HP
+   and one Audit Sniper at 8 HP. S2-E4 was not cleared. S3, S4 and S5 were
+   not reached. The shared autopilot in `tests/levels/campaign.test.js`
+   throws on the same line, so "autopilots every level" cannot pass while
+   L05 is registered.
+
+   Minimum so chase does not throw, using the design lunge:
+
+   - `weights: { seek: 1.0, sep: 1.2, wall: 2.0, strafe: 0.25 }`
+   - `range: 9`
+   - `windup: 0.5` (the crouch)
+   - `active: 0.2`
+   - `recover: 0.9`
+
+   The design lunge is also speed **20**, damage **16** (28 at tier 5),
+   knockback **6**, then an ice patch of radius **2.5** for **6** s.
+   `midget`'s active step is a hardcoded 4 m/s, so those fields stop the
+   throw and still are not that lunge. Scent is **45** m with no line of
+   sight, trot **5**, run **9.5**. Hounds ignore Decoy, weather and slick.
+   Elite **Alpha** is 2.5× HP, two lunges, patch radius 3.5.
+
+## Landed, and not what stopped this run
+
+- **Spotter Drone (#79).** `altMin` 8, `altMax` 9, `orbitMin` 7, `orbitMax` 14,
+  `jinkMin` 0.5, `jinkMax` 1.2. `y` stays finite. Seed 1 killed the creek
+  drone and cleared S1-E2. The written 8 m/s patrol loop is still not what
+  `flyingMidget` does.
+- **Alarm ringer (#76).** Runners stand 1.5 s at the box, a searchlight hold
+  of 2 s rings, and a spotter with `ringsAlarm` rings after 1.5 s of line of
+  sight inside 35 m. This run threw before an alarm pack spawned. The six
+  packs stay `optional: true`, `delay: 6`, `onAlarm`.
 
 ## Not on the engine, and not what stopped this run
-
-These are still absent. A clear does not need them once the drone has a
-finite altitude. Numbers are the design's.
 
 2. **Sight.** Audit Sniper **140** m inside a 30° cone (sweep 60° in 6 s),
    **60** m outside it, **40** m in a whiteout. Laser **1.4** s, **35** damage,
    relocate after 2 shots. Mining Rig **90** m, no aim inside **15** m of the
    wall. Idle **30** m / 120°. Asleep: no sight, hearing **12** m. Hound scent
-   **45** m with no line of sight. Placed squads in S1 and S2 should exist at
-   section load; the duels are at 125, 128 and 135 m.
+   **45** m with no line of sight. The duels are at 125, 128 and 135 m.
 3. **Blizzard.** `S2-blizzard`: **20** s whiteouts at t = 10–30, 100–120,
    190–210 and every 90 s, **4** s warning. View and sight cap **40** m.
    Hounds ignore it.
@@ -44,27 +78,32 @@ finite altitude. Numbers are the design's.
    mana, **12** s cooldown, **6** s life, cast **20** m. `SPELL_IDS` has no
    Decoy, so the unlock never becomes a cast. Snipers, drones, searchlights,
    rigs and a tracking strike should lock the standee. Hounds ignore it.
-6. **Alarm ringer.** `ringAlarm(state, id)` exists. Nothing calls it. The six
-   packs are `optional: true` with `delay: 6` and `onAlarm`, so a quiet clear
-   no longer waits on them. Still missing: the runner's **1.5** s at the box,
-   box **40** HP, cable **20** HP (a non-solid line), searchlight hold **2** s
-   (beam 120 m, spot r 6, lamp 30 HP), and a drone hold of **1.5** s. Alarm
-   ids: `S1-alarm1`, `S1-alarm3`, `S2-alarm4`, `S2-alarm5W`, `S2-alarm5E`.
-7. **Ground.** Terrain does not collide or draw, and `primitiveGeometry`
+6. **Ground.** Terrain does not collide or draw, and `primitiveGeometry`
    reads `at[1]` on every entry, so a heightfield in `geometry` crashes the
    frame. `S1-ground` and `S2-ground` sit on `section.terrain` instead.
-   `S1-floor` and `S2-floor` are the flat stand-ins (`S1-ground` is still
-   seed 501, amp 1.2, freq 0.012, 2 octaves). Spheres do not collide, so
-   boulder rows are not cover.
-   `crackTiles` (`S2-crack1`–`3`, `S3-crack`) stay solid: fall **1** s after a
-   step, telegraph **0.5** s, back in **20** s. The Tax Season cave stays sealed.
-8. **Nav.** `findPath` cannot search a 1 m grid of 300 × 520. Sections do not
-   set `navBounds`. Wanted local bounds: S1 x 0–300 z −520–0, S2 x 0–260
-   z −250–0, S3 x 0–100 z −120–0, S4 x 0–80 z −70–0, S5 x 0–80 z −100–0.
-   Lifts: `S1-lift` (y 0, 14, 22), `S4-lift` (y 0 to 7), `S4-freight` (15 s).
-9. **Smaller leftovers.** Racks are forced Common; C1, R1 and R2 want Uncommon,
+   `S1-floor` and `S2-floor` are the flat stand-ins. Spheres do not collide,
+   so boulder rows are not cover. `crackTiles` (`S2-crack1`–`3`, `S3-crack`)
+   stay solid: fall **1** s after a step, telegraph **0.5** s, back in **20** s.
+7. **Nav.** `findPath` cannot search a 1 m grid of 300 × 520. Sections do not
+   set `navBounds`. `useNav` is false. Wanted local bounds: S1 x 0–300
+   z −520–0, S2 x 0–260 z −250–0, S3 x 0–100 z −120–0, S4 x 0–80 z −70–0,
+   S5 x 0–80 z −100–0.
+8. **Smaller leftovers.** Racks are forced Common; C1, R1 and R2 want Uncommon,
    gun level 5. `S1-secretCache` wants a Legendary sniper. `taxSeason` still
    multiplies speed by 0.82; the bonk is +25% enemy HP and tickets ×2.
    `S4-battery` wants +0.5 mana/s as well as +10 max mana. The boss bar should
    read **The Abominable Auditor**. Cold zones ignore height, so an aura that
-   is switched on would burn the gallery too.
+   is switched on would burn the gallery too. Step-up is 0.4 m, and a mover
+   whose shaft is within 1.6 m of a deck pins the player to the top of the
+   shaft. Hazard zones test XZ only, so a slick band under a bridge slows the
+   bridge too.
+
+The shrine dais and the pass rig pad are discs. A cylinder has to be at least
+0.5 m tall, and step-up is 0.4 m, so the legal cylinder is a curb the bot
+cannot climb and cannot sidestep while the sandbags pinch the pass.
+
+Grapple anchors and `tag: 'slide'` are on the ridge, the gallery stairs, the
+library stairs, the tower cabins, the wall walk and the vault pillars.
+`noGrapple` covers the volume above the vault ceiling. The shared autopilot
+grapples only when the level has `voids` and the bot is stuck, and it never
+holds slide, so those routes do not move this clear.

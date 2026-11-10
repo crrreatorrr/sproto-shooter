@@ -1,6 +1,6 @@
 // S2 Kill Zone, the Wall and two Bunkers. Footprint 260 × 250.
 // World origin sits the pass mouth on S1's pass.
-import { P, ammo, door, hazard, latch, room, slab, terrain, zone } from './prim.js';
+import { P, ammo, door, hazard, hook, latch, room, slab, terrain, zone } from './prim.js';
 import {
   boulderL, boulderM, boulderS, crateStack, fishHut, generator, rockSlab, searchlight, snowBerm, watchtower,
 } from './prefabs.js';
@@ -61,6 +61,14 @@ export const S2 = {
   routeM: 438,
   flyerVolume: { min: [0, -8, -250], max: [260, 24, 0] },
   exit: zone(126, 134, 206, 214, -2, 8),
+  grappleAnchors: [
+    hook('S2-hook-towerW', 60, 12.6, 203),
+    hook('S2-hook-towerE', 200, 12.6, 203),
+    hook('S2-hook-walkW', 85, 8.6, 203),
+    hook('S2-hook-walkE', 175, 8.6, 203),
+    hook('S2-hook-hatchW', 88, 8.6, 202),
+    hook('S2-hook-hatchE', 172, 8.6, 202),
+  ],
   terrain: terrain({
     id: 'S2-ground', origin: [0, 0, -200], size: [170, 200], cell: 4, seed: 502, mat: 'snow',
     noise: { amp: 0.8, freq: 0.015, octaves: 1 },
@@ -152,8 +160,8 @@ export const S2 = {
       kind: 'weather', id: 'S2-blizzard', whiteout: 20, period: 90, warning: 4,
       windows: [[10, 30], [100, 120], [190, 210]], sightCap: 40, viewCap: 40,
     },
-    { kind: 'searchlight', id: 'S2-lightW', at: P(30, 8, 202), beam: 120, spot: 6, hold: 2, lamp: 30, sweep: 8, alarm: 'S2-alarm4' },
-    { kind: 'searchlight', id: 'S2-lightE', at: P(230, 8, 202), beam: 120, spot: 6, hold: 2, lamp: 30, sweep: 8, alarm: 'S2-alarm4' },
+    { kind: 'searchlight', id: 'S2-lightW', at: P(30, 8, 202), yaw: Math.PI, beam: 120, spot: 6, hold: 2, lamp: 30, sweep: 8, alarm: 'S2-alarm4' },
+    { kind: 'searchlight', id: 'S2-lightE', at: P(230, 8, 202), yaw: Math.PI, beam: 120, spot: 6, hold: 2, lamp: 30, sweep: 8, alarm: 'S2-alarm4' },
     { kind: 'alarm', id: 'S2-alarm4', at: P(130, 9.2, 200.2), hp: 40, cableHp: 20, cables: [P(30, 7, 203), P(230, 7, 203)] },
     { kind: 'alarm', id: 'S2-alarm5W', at: P(113, 2, 234), hp: 40, cableHp: 20, cableTo: P(100, 2, 234) },
     { kind: 'alarm', id: 'S2-alarm5E', at: P(147, 2, 234), hp: 40, cableHp: 20, cableTo: P(160, 2, 234) },

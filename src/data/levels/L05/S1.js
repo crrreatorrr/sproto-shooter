@@ -1,5 +1,5 @@
 // S1 Crash Site and Outer Snowfield. Footprint 300 × 520. Local design metres.
-import { P, ammo, door, hazard, latch, room, slab, stairs, terrain, zone } from './prim.js';
+import { P, ammo, door, hazard, hook, latch, room, slab, stairs, terrain, zone } from './prim.js';
 import {
   alarmPole, boulderL, boulderM, crateStack, pine, rockSlab, searchlight, snowBerm, snowcat,
 } from './prefabs.js';
@@ -50,6 +50,14 @@ export const S1 = {
       'Glowie is watching from a drone. Be far away. Be boring.',
     ],
   },
+  grappleAnchors: [
+    hook('S1-hook-ridge', 150, 3.6, 75, 2.2),
+    hook('S1-hook-look', 120, 3.2, 186),
+    hook('S1-hook-mast', 150, 14.4, 445),
+    hook('S1-hook-nest', 150, 22.2, 445),
+    hook('S1-hook-spire', 70, 6.4, 420),
+    hook('S1-hook-hut', 225, 4.4, 432),
+  ],
   terrain: terrain({
     id: 'S1-ground',
     origin: [0, 0, -520],
@@ -79,7 +87,7 @@ export const S1 = {
     { kind: 'ramp', id: 'S1-ridgeS', at: P(150, 1.5, 66), size: [80, 3, 12], yaw: 180, mat: 'snow' },
     slab('S1-ridgeTop', 150, 1.5, 75, [80, 3, 6], 'snow'),
     ...lips,
-    { kind: 'ramp', id: 'S1-ridgeN', at: P(150, 1.5, 83), size: [80, 3, 10], yaw: 0, mat: 'snow' },
+    { kind: 'ramp', id: 'S1-ridgeN', at: P(150, 1.5, 83), size: [80, 3, 10], yaw: 0, mat: 'snow', tag: 'slide' },
     ...field,
     ...pines,
     ...snowcat('S1-snowcat', 165, 172, 30),
@@ -113,7 +121,7 @@ export const S1 = {
     slab('S1-leanRoof', 165, 1.85, 265.5, [6, 0.5, 3], 'wood'),
     slab('S1-leanWall', 165, 0.8, 267.25, [6, 1.6, 0.5], 'wood'),
     ...room('S1-kennel', 203, 207, 284, 286, 0, 1.6, [{ side: 's', at: 205, w: 1.2, h: 1.6 }], 'wood'),
-    { kind: 'cylinder', id: 'S1-shrineDais', at: P(150, 0, 300), r: 3, h: 0.5, mat: 'stone' },
+    { kind: 'disc', id: 'S1-shrineDais', at: P(150, 0.02, 300), r: 3, mat: 'stone' },
     { kind: 'cylinder', id: 'S1-shrineObelisk', at: P(150, 0.5, 300), r: 0.5, h: 3, mat: 'gold' },
     { kind: 'disc', id: 'S1-shrineDisc', at: P(150, 0.05, 300), r: 5, mat: 'neon' },
     { kind: 'cylinder', id: 'S1-shrineStone1', at: P(146, 0, 296), r: 0.6, h: 2.5, mat: 'ice' },
@@ -131,7 +139,7 @@ export const S1 = {
     ...mastRails,
     slab('S1-crowsNest', 150, 21.75, 445, [3, 0.5, 3], 'metal'),
     ...nestRails,
-    slab('S1-mastLift', 152.5, 0.25, 445, [1.5, 0.5, 1.5], 'metal'),
+    slab('S1-mastLift', 157, 0.25, 448, [1.5, 0.5, 1.5], 'metal'),
     { kind: 'cylinder', id: 'S1-spire', at: P(70, 0, 425), r: 4, h: 9, mat: 'ice' },
     { kind: 'cone', id: 'S1-spireCap', at: P(70, 9, 425), r: 4, h: 6, mat: 'ice' },
     slab('S1-spireLedge', 70, 5.75, 420, [4, 0.5, 3], 'ice'),
@@ -140,7 +148,7 @@ export const S1 = {
     stairs({ id: 'S1-hutStairs', at: P(231.75, 2, 425), size: [1.5, 4, 6], yaw: 180, mat: 'concrete' }),
     slab('S1-hutRail', 225, 4.6, 428.25, [10, 1.2, 0.5], 'concrete'),
     ...pass,
-    { kind: 'cylinder', id: 'S1-rigPad', at: P(150, 0, 512), r: 2.2, h: 0.6, mat: 'concrete' },
+    { kind: 'disc', id: 'S1-rigPad', at: P(150, 0.02, 512), r: 2.2, mat: 'concrete' },
     slab('S1-rigBagW', 146.5, 0.6, 508, [3, 1.2, 0.8], 'concrete'),
     slab('S1-rigBagE', 153.5, 0.6, 508, [3, 1.2, 0.8], 'concrete'),
   ],
@@ -157,12 +165,13 @@ export const S1 = {
     { kind: 'barrel', id: 'S1-fire', at: P(158, 0.55, 168), element: 'fire' },
     { kind: 'shrine', id: 'S1-shrine', at: P(150, 0.5, 300), spell: 'decoy', name: 'Cardboard Sproto' },
     { kind: 'searchlight', id: 'S1-practice', at: P(150, 0, 312), harmless: true, beam: 120, spot: 6, sweep: 8 },
-    hazard('S1-slick', 12, 288, 250, 262, { slow: 0.15, tag: 'slick', y0: -1, y1: 2 }),
+    hazard('S1-slickW', 12, 146, 250, 262, { slow: 0.15, tag: 'slick', y0: -1, y1: 1.2 }),
+    hazard('S1-slickE', 154, 288, 250, 262, { slow: 0.15, tag: 'slick', y0: -1, y1: 1.2 }),
     door('S1-tunnel', 12.5, 1.5, 215, [4, 3, 1]),
     door('S1-hutDoor', 220, 1.3, 433, [1, 2.6, 2.4]),
     door('S1-passGate', 150, 2.5, 518.5, [14, 5, 1], { opens: 'S1-E3.cleared' }),
     latch('S1-passLatch', 'S1-passGate', P(6, 3, 500)),
-    { kind: 'mover', id: 'S1-lift', carry: true, from: P(152.5, 0, 445), to: P(152.5, 22, 445), speed: 2, stops: [0, 14, 22] },
+    { kind: 'mover', id: 'S1-lift', carry: true, from: P(157, 0, 448), to: P(157, 22, 448), speed: 2, stops: [0, 14, 22] },
     { kind: 'alarm', id: 'S1-alarm1', at: P(122, 6.5, 187.5), hp: 40, cableHp: 20, cableTo: P(120, 0.75, 205), runner: 1.5, arrive: 6 },
     { kind: 'alarm', id: 'S1-alarm3', at: P(219.7, 2, 430), hp: 40, cableHp: 20, cableTo: P(219.7, 4, 436) },
     { kind: 'cache', id: 'S1-secretCache', at: P(70, 6, 424), gun: 'sniper', quality: 'legendary' },

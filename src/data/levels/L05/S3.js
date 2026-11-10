@@ -1,6 +1,6 @@
 // S3 Gatehouse and Courtyard. Lockdown 1, the Abominable Auditor.
 // Origin is S2's inner wall face (80, 0, 206).
-import { P, ammo, door, hazard, room, slab, stairs, zone } from './prim.js';
+import { P, ammo, door, hazard, hook, room, slab, stairs, zone } from './prim.js';
 import { crateStack, generator } from './prefabs.js';
 import { F1 } from './encounters.js';
 
@@ -26,6 +26,17 @@ export const S3 = {
   routeM: 105,
   flyerVolume: { min: [0, -6, -120], max: [100, 14, 0] },
   exit: zone(48, 52, 114, 120, -2, 8),
+  grappleAnchors: [
+    hook('S3-hook-gallSW', 20, 5.8, 28),
+    hook('S3-hook-gallSE', 80, 5.8, 28),
+    hook('S3-hook-gallNW', 20, 5.8, 90),
+    hook('S3-hook-gallNE', 80, 5.8, 90),
+    hook('S3-hook-pillarSW', 32, 7.4, 41),
+    hook('S3-hook-pillarSE', 68, 7.4, 41),
+    hook('S3-hook-pillarNW', 32, 7.4, 77),
+    hook('S3-hook-pillarNE', 68, 7.4, 77),
+    hook('S3-hook-rig', 50, 6.4, 26),
+  ],
   intro: {
     title: 'Something in the courtyard has been on ice since the last audit.',
     lines: [],
@@ -63,8 +74,8 @@ export const S3 = {
     slab('S3-gallW', 17, 4.75, 59, [4, 0.5, 70], 'metal'),
     slab('S3-gallE', 83, 4.75, 59, [4, 0.5, 70], 'metal'),
     ...rails,
-    stairs({ id: 'S3-stairSW', at: P(20.5, 2.5, 34), size: [3, 5, 10], yaw: 0, mat: 'metal' }),
-    stairs({ id: 'S3-stairSE', at: P(79.5, 2.5, 34), size: [3, 5, 10], yaw: 0, mat: 'metal' }),
+    stairs({ id: 'S3-stairSW', at: P(20.5, 2.5, 34), size: [3, 5, 10], yaw: 0, mat: 'metal', tag: 'slide' }),
+    stairs({ id: 'S3-stairSE', at: P(79.5, 2.5, 34), size: [3, 5, 10], yaw: 0, mat: 'metal', tag: 'slide' }),
     { kind: 'cylinder', id: 'S3-pillar1', at: P(32, 0, 41), r: 2, h: 8, mat: 'ice' },
     { kind: 'cylinder', id: 'S3-pillar2', at: P(68, 0, 41), r: 2, h: 8, mat: 'ice' },
     { kind: 'cylinder', id: 'S3-pillar3', at: P(32, 0, 77), r: 2, h: 8, mat: 'ice' },

@@ -1,6 +1,6 @@
 // S5 Armory and Vault. Lockdown 3 is the vault hold.
 // Origin is the freight lift's top: S4 (40, 21, 5) lands on S5 (40, 0, 5).
-import { P, ammo, door, hazard, room, slab } from './prim.js';
+import { P, ammo, door, hazard, hook, room, slab, zone } from './prim.js';
 import { F2, S5_END } from './encounters.js';
 import { DRONE_STRIKE } from './enemies.js';
 
@@ -24,6 +24,13 @@ export const S5 = {
   footprint: [80, 100],
   routeM: 105,
   flyerVolume: { min: [0, -2, -100], max: [80, 14, 0] },
+  grappleAnchors: [
+    hook('S5-hook-pillarSW', 24, 10, 46),
+    hook('S5-hook-pillarSE', 56, 10, 46),
+    hook('S5-hook-pillarNW', 24, 10, 78),
+    hook('S5-hook-pillarNE', 56, 10, 78),
+  ],
+  noGrapple: [zone(18, 62, 40, 84, 12, 30)],
   exit: null,
   intro: {
     title: "Glowie, on the speakers: 'This is a routine inquiry. Please stand still.'",

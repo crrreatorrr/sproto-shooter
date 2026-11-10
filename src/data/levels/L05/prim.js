@@ -20,6 +20,11 @@ export function ammo(id, x, y, n, ammoType, amount) {
   return { kind: 'ammo', id, at: P(x, y, n), ammoType, amount };
 }
 
+/** A hook the grapple snaps to. `at` is local kit space; makeV2Level adds the origin. */
+export function hook(id, x, y, n, r = 1.8) {
+  return { id, at: P(x, y, n), r };
+}
+
 export function door(id, x, y, n, size, extra = {}) {
   return { kind: 'door', id, at: P(x, y, n), size, ...extra };
 }

@@ -36,7 +36,7 @@ export const E1 = {
     squad('E1-c', { type: 'onEnter' }, [
       u('sewerMidget', 2),
     ], [[150, 0, 165], [172, 0, 166]], 'burrow', { delay: 0.6, near: 'the campfire, 20 m' }),
-    alarm('E1-R', 'S1-alarm1', [u('midget', 4), u('boomMidget', 2)], [[12, 0, 215]]),
+    alarm('E1-R', 'S1-alarm1', [u('midget', 4), u('boomMidget', 2)], [[18, 0, 215]]),
   ],
 };
 
@@ -64,20 +64,20 @@ export const E3 = {
   objective: { kind: 'clearAll', text: 'Clear the listening post' },
   activate: zone(40, 270, 300, 530, -4, 30),
   squads: [
-    squad('E3-a', { type: 'onEnter' }, [u('auditSniper', 2)], [[150, 14, 445], [70, 6, 420]], 'placed', {
+    squad('E3-a', { type: 'onEnter' }, [u('auditSniper', 2)], [[150, 14, 442], [70, 6, 420]], 'placed', {
       perches: [['P1', 'P3', 'P1'], ['P2', 'P3', 'P2']],
       shotsBeforeMove: 2,
     }),
     squad('E3-b', { type: 'onEnter' }, [
       u('obama', 1, { role: 'runner', alarm: 'S1-alarm3' }),
-    ], [[220, 0, 431]], 'placed'),
+    ], [[216, 0, 433]], 'placed'),
     squad('E3-c', { type: 'onKills', n: 2 }, [
       u('auditSniper', 1, { elite: true, name: 'the Head Auditor' }),
-    ], [[150, 22, 445]], 'hidden', { delay: 2, perches: ['P4', 'P1', 'P3'] }),
+    ], [[150, 22, 442]], 'hidden', { delay: 2, perches: ['P4', 'P1', 'P3'] }),
     squad('E3-d', { type: 'onAlert', box: zone(100, 200, 400, 530, -2, 8) }, [
       u('miningRig', 1),
     ], [[150, 0, 512]], 'placed'),
-    alarm('E3-R', 'S1-alarm3', [u('midget', 3), u('riotMidget', 2)], [[220, 0, 433]]),
+    alarm('E3-R', 'S1-alarm3', [u('midget', 3), u('riotMidget', 2)], [[216, 0, 433]]),
   ],
 };
 
@@ -89,10 +89,10 @@ export const E4 = {
   activate: zone(0, 260, 0, 380, -8, 20),
   zone: zone(110, 150, 180, 200, -2, 6),
   squads: [
-    squad('E4-a', { type: 'onEnter' }, [u('miningRig', 2)], [[100, 8, 203], [160, 8, 203]], 'placed', {
+    squad('E4-a', { type: 'onEnter' }, [u('miningRig', 2)], [[100, 0, 196], [160, 0, 196]], 'placed', {
       overheatOffset: 3, openFire: 90,
     }),
-    squad('E4-b', { type: 'onEnter' }, [u('auditSniper', 2)], [[60, 12, 203], [200, 12, 203]], 'placed', {
+    squad('E4-b', { type: 'onEnter' }, [u('auditSniper', 2)], [[60, 12, 198], [200, 12, 198]], 'placed', {
       perches: [[60, 12, 203], [85, 12, 203], [200, 12, 203], [175, 12, 203]],
     }),
     squad('E4-c', { type: 'onEnter' }, [u('spotterDrone', 2)], [[100, 9, 110], [150, 9, 70]], 'air', {
@@ -102,7 +102,7 @@ export const E4 = {
       ],
       ringsAlarm: 'S2-alarm4',
     }),
-    squad('E4-d', { type: 'onEnter' }, [u('midget', 3)], [[62, 0, 150]], 'placed', { asleep: true }),
+    squad('E4-d', { type: 'onEnter' }, [u('midget', 3)], [[70, 0, 150]], 'placed', { asleep: true }),
     squad('E4-e', { type: 'onEnter' }, [u('obama', 2)], [[118, 0, 150]], 'placed', {
       patrol: { loop: [[118, 0, 150], [112, 0, 112], [118, 0, 150]], period: 40 },
     }),

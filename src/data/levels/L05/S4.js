@@ -1,6 +1,6 @@
 // S4 Frost Halls. Three floors. Lockdown 2 is the Records Library.
 // Origin is S3 (10, 0, 116).
-import { P, ammo, door, hazard, room, slab, stairs, zone } from './prim.js';
+import { P, ammo, door, hazard, hook, room, slab, stairs, zone } from './prim.js';
 import { E6, E7 } from './encounters.js';
 
 const shelfX = [24, 29, 34, 46, 51, 56];
@@ -25,6 +25,12 @@ export const S4 = {
   footprint: [80, 70],
   routeM: 250,
   flyerVolume: { min: [0, -2, -70], max: [80, 22, 0] },
+  grappleAnchors: [
+    hook('S4-hook-gallW', 14, 14.6, 34),
+    hook('S4-hook-gallE', 66, 14.6, 34),
+    hook('S4-hook-gallS', 40, 14.6, 14),
+    hook('S4-hook-gallN', 40, 14.6, 54),
+  ],
   exit: zone(36, 44, 2, 8, 20, 26),
   geometry: [
     slab('S4-floor', 40, -0.5, 35, [80, 1, 70], 'concrete'),
@@ -89,9 +95,9 @@ export const S4 = {
     slab('S4-gallS', 40, 13.75, 14, [48, 0.5, 4], 'metal'),
     slab('S4-gallN', 40, 13.75, 54, [48, 0.5, 4], 'metal'),
     ...rails,
-    stairs({ id: 'S4-stairNW', at: P(17.5, 10.5, 43), size: [3, 7, 14], yaw: 180, mat: 'metal' }),
+    stairs({ id: 'S4-stairNW', at: P(17.5, 10.5, 43), size: [3, 7, 14], yaw: 180, mat: 'metal', tag: 'slide' }),
     slab('S4-landNW', 17.5, 13.75, 35, [3, 0.5, 2], 'metal'),
-    stairs({ id: 'S4-stairSE', at: P(62.5, 10.5, 25), size: [3, 7, 14], yaw: 0, mat: 'metal' }),
+    stairs({ id: 'S4-stairSE', at: P(62.5, 10.5, 25), size: [3, 7, 14], yaw: 0, mat: 'metal', tag: 'slide' }),
     slab('S4-landSE', 62.5, 13.75, 33, [3, 0.5, 2], 'metal'),
     slab('S4-vent1', 26, 19.75, 43, [2, 0.5, 2], 'metal'),
     slab('S4-vent2', 54, 19.75, 25, [2, 0.5, 2], 'metal'),
