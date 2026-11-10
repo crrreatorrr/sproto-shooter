@@ -56,7 +56,7 @@ Hub ids stay `S4` / `S4-E4` because `tests/server-sim.test.js` and `CANONICAL_BO
 
 ## E12 — Sahil, five parts
 
-`S4-E4.script` is the document. Parts 2, 4, and 5 are Duel stages. v2 never calls `tickDuelBoss`, so Sahil stands and can be shot immediately. He is not immune in parts 1 and 3. Looms and pylons do not exist as targets. The pit, quicksand pools, oasis, and sand vents do not spawn.
+`S4-E4.script` is the level spec. Parts 2, 4, and 5 are Duel stages. v2 never calls `tickDuelBoss`, so Sahil stands and can be shot immediately. He is not immune in parts 1 and 3. Looms and pylons do not exist as targets. The pit, quicksand pools, oasis, and sand vents do not spawn.
 
 | Part | Time | HP | Ends when | Adds |
 |---|---|---|---|---|
