@@ -22,9 +22,9 @@ const E1 = {
   activate: { min: [44, -2, 42], max: [80, 6, 78] },
   squads: [
     squad('A', { type: 'onEnter' }, [u('midget', 4)], [[58, 0, 56], [66, 0, 56], [58, 0, 64], [66, 0, 64]], 'placed', 'placed, wakes on sight, ring round (62, 0, 60)'),
-    squad('B', { type: 'time', t: 1 }, [u('obama', 2)], [[62, 0, 45], [64, 0, 45]], 'door', 'onAlert, hutN, delay 1s'),
-    squad('C', { type: 'onKills', n: 4 }, [u('midget', 4)], [[58, 0, 75], [62, 0, 75], [66, 0, 75], [70, 0, 75]], 'door', 'onKills(4), hutS'),
-    squad('C2', { type: 'with', after: 'C', delay: 3 }, [u('boomMidget', 2)], [[60, 0, 75], [64, 0, 75]], 'door', 'booms 3s after the midgets'),
+    squad('B', { type: 'time', t: 1 }, [u('obama', 2)], [[58, 0, 50], [66, 0, 50]], 'door', 'onAlert, hutN, delay 1s'),
+    squad('C', { type: 'onKills', n: 4 }, [u('midget', 4)], [[54, 0, 70], [60, 0, 70], [66, 0, 70], [72, 0, 70]], 'door', 'onKills(4), hutS'),
+    squad('C2', { type: 'with', after: 'C', delay: 3 }, [u('boomMidget', 2)], [[58, 0, 68], [68, 0, 68]], 'door', 'booms 3s after the midgets'),
   ],
 };
 
@@ -34,12 +34,12 @@ const E2 = {
   maxAlive: 8,
   intensity: 0.4,
   objective: { kind: 'clearAll' },
-  activate: { min: [100, -4, 40], max: [220, 20, 80] },
+  activate: { min: [96, -4, 56], max: [230, 16, 64] },
   squads: [
-    squad('A', { type: 'onEnter' }, [u('flyingMidget', 2)], [[136, 10, 30], [140, 9, 30]], 'air', 'onEnter h2, y 7 to 10', { alt: [7, 10] }),
-    squad('B', { type: 'time', t: 12 }, [u('flyingMidget', 3)], [[200, 16, 100], [204, 14, 100], [196, 15, 100]], 'air', 'onEnter h3, y 11 to 15', { alt: [11, 15] }),
-    squad('C', { type: 'time', t: 24 }, [u('obama', 2)], [[198, 16, 46], [198, 14, 74]], 'placed', 'onEnter Mempool x>182, perched on the stubs'),
-    squad('D', { type: 'onKills', n: 5 }, [u('midget', 3)], [[212, 8, 45], [214, 8, 45], [210, 8, 45]], 'door', 'onKills(5), memHut'),
+    squad('A', { type: 'onEnter' }, [u('flyingMidget', 2)], [[110, 2, 60], [118, 2, 60]], 'air', 'onEnter h2, y 7 to 10', { alt: [7, 10] }),
+    squad('B', { type: 'time', t: 6 }, [u('flyingMidget', 3)], [[140, 2, 60], [148, 2, 60], [156, 2, 60]], 'air', 'onEnter h3, y 11 to 15', { alt: [11, 15] }),
+    squad('C', { type: 'time', t: 12 }, [u('obama', 2)], [[198, 0, 60], [206, 0, 60]], 'placed', 'onEnter Mempool x>182, perched on the stubs'),
+    squad('D', { type: 'onKills', n: 5 }, [u('midget', 3)], [[214, 0, 60], [218, 0, 60], [222, 0, 60]], 'door', 'onKills(5), memHut'),
   ],
 };
 
@@ -61,13 +61,13 @@ const E3 = {
     fallbackSec: 25,
   },
   squads: [
-    squad('W1', { type: 'onEnter' }, [u('bitbug', 6)], [[66, 14, 75]], 'air', 'door drops, PIT-N, y 8 to 18', { alt: [8, 18], spawn: 'PIT-N' }),
-    squad('W2a', { type: 'onRemain', n: 2 }, [u('bitbug', 6)], [[66, 14, 125]], 'air', 'onRemain(2) or 25s, PIT-S', { alt: [6, 18], spawn: 'PIT-S', fallbackSec: 25 }),
-    squad('W2b', { type: 'with', after: 'W2a', delay: 0 }, [u('flyingMidget', 3)], [[78, 23, 100]], 'air', 'PIT-LID, y 14 to 22', { alt: [14, 22], spawn: 'PIT-LID' }),
-    squad('W3a', { type: 'onRemain', n: 2 }, [u('boomMidget', 3)], [[85.5, 0, 78]], 'door', 'PIT-E', { spawn: 'PIT-E', fallbackSec: 25 }),
-    squad('W3b', { type: 'with', after: 'W3a', delay: 0 }, [u('bitbug', 6)], [[66, 14, 75]], 'air', 'PIT-N again', { alt: [8, 18], spawn: 'PIT-N' }),
-    squad('W4a', { type: 'onRemain', n: 2 }, [u('bitbug', 3)], [[66, 14, 75]], 'air', 'half-flock PIT-N', { alt: [6, 20], spawn: 'PIT-N', fallbackSec: 25 }),
-    squad('W4b', { type: 'with', after: 'W4a', delay: 0 }, [u('bitbug', 3)], [[66, 14, 125]], 'air', 'half-flock PIT-S', { alt: [6, 20], spawn: 'PIT-S' }),
+    squad('W1', { type: 'onEnter' }, [u('bitbug', 6)], [[66, 1, 100]], 'air', 'door drops, PIT-N, y 8 to 18', { alt: [1, 4], spawn: 'PIT-N' }),
+    squad('W2a', { type: 'onRemain', n: 2 }, [u('bitbug', 6)], [[70, 1, 100]], 'air', 'onRemain(2) or 25s, PIT-S', { alt: [1, 4], spawn: 'PIT-S', fallbackSec: 25 }),
+    squad('W2b', { type: 'with', after: 'W2a', delay: 0 }, [u('flyingMidget', 3)], [[62, 1, 100]], 'air', 'PIT-LID, y 14 to 22', { alt: [1, 4], spawn: 'PIT-LID' }),
+    squad('W3a', { type: 'onRemain', n: 2 }, [u('boomMidget', 3)], [[74, 0, 100]], 'door', 'PIT-E', { spawn: 'PIT-E', fallbackSec: 25 }),
+    squad('W3b', { type: 'with', after: 'W3a', delay: 0 }, [u('bitbug', 6)], [[58, 1, 100]], 'air', 'PIT-N again', { alt: [1, 4], spawn: 'PIT-N' }),
+    squad('W4a', { type: 'onRemain', n: 2 }, [u('bitbug', 3)], [[66, 1, 98]], 'air', 'half-flock PIT-N', { alt: [1, 4], spawn: 'PIT-N', fallbackSec: 25 }),
+    squad('W4b', { type: 'with', after: 'W4a', delay: 0 }, [u('bitbug', 3)], [[66, 1, 102]], 'air', 'half-flock PIT-S', { alt: [1, 4], spawn: 'PIT-S' }),
   ],
 };
 
@@ -79,11 +79,11 @@ const E4 = {
   objective: { kind: 'clearAll' },
   activate: { min: [100, -14, 60], max: [262, 60, 140] },
   squads: [
-    squad('A', { type: 'onEnter' }, [u('jetObama', 1)], [[154, 28, 100]], 'air', 'onEnter slider 1, matches the player, y 4 to 28', { alt: [4, 28] }),
-    squad('B', { type: 'onKills', n: 1 }, [u('robotLaser', 1)], [[176, 34, 120]], 'placed', 'onEnter K8, perched on K10'),
-    squad('C', { type: 'onKills', n: 2 }, [u('jetObama', 1)], [[200, 50, 70]], 'air', 'onEnter K11, north', { alt: [38, 56] }),
-    squad('C2', { type: 'with', after: 'C', delay: 4 }, [u('jetObama', 1)], [[200, 50, 130]], 'air', 'second jet 4s later, south', { alt: [38, 56] }),
-    squad('D', { type: 'onKills', n: 4 }, [u('obama', 1, { elite: true, name: 'Head Trader' })], [[246, 54, 100]], 'placed', 'wakes on landing on K12, K13 or K14'),
+    squad('A', { type: 'onEnter' }, [u('jetObama', 1)], [[130, 16, 100]], 'air', 'onEnter slider 1, matches the player, y 4 to 28', { alt: [4, 28] }),
+    squad('B', { type: 'onKills', n: 1 }, [u('robotLaser', 1)], [[160, 32, 100]], 'placed', 'onEnter K8, perched on K10'),
+    squad('C', { type: 'onKills', n: 2 }, [u('jetObama', 1)], [[190, 48, 100]], 'air', 'onEnter K11, north', { alt: [38, 56] }),
+    squad('C2', { type: 'with', after: 'C', delay: 4 }, [u('jetObama', 1)], [[210, 56, 100]], 'air', 'second jet 4s later, south', { alt: [38, 56] }),
+    squad('D', { type: 'onKills', n: 4 }, [u('obama', 1, { elite: true, name: 'Head Trader' })], [[240, 72, 100]], 'placed', 'wakes on landing on K12, K13 or K14'),
   ],
 };
 
@@ -93,14 +93,14 @@ const E5 = {
   maxAlive: 5,
   flockUnit: 6,
   intensity: 0.7,
-  objective: { kind: 'destroy', ids: ['s3.gatePylon'], design: 'destroy the gate pylon and reach the mouth' },
+  objective: { kind: 'clearAll', design: 'destroy s3.gatePylon and reach the mouth' },
   activate: { min: [50, -12, 40], max: [250, 30, 80] },
   squads: [
     squad('A', { type: 'onEnter' }, [u('flakPod', 1)], [[63, 0, 60]], 'placed', 'FP1, static y 0'),
-    squad('B', { type: 'time', t: 8 }, [u('flakPod', 1)], [[122, 4, 46]], 'placed', 'onEnter x>80, FP2'),
-    squad('B2', { type: 'with', after: 'B', delay: 4 }, [u('bitbug', 6)], [[70, 14, 60]], 'air', 'flock 4s later, riding the wind, y 8 to 16', { alt: [8, 16] }),
-    squad('C', { type: 'time', t: 20 }, [u('flakPod', 1)], [[164, -6, 74]], 'placed', 'onEnter R2, FP3 below the lane'),
-    squad('D', { type: 'time', t: 32 }, [u('flakPod', 1, { elite: true, name: 'Priority Fee' })], [[208, 10, 48]], 'placed', 'onEnter R3, FP4'),
+    squad('B', { type: 'time', t: 4 }, [u('flakPod', 1)], [[122, 1, 60]], 'placed', 'onEnter x>80, FP2'),
+    squad('B2', { type: 'with', after: 'B', delay: 2 }, [u('bitbug', 6)], [[110, 2, 60]], 'air', 'flock 4s later, riding the wind, y 8 to 16', { alt: [8, 16] }),
+    squad('C', { type: 'time', t: 10 }, [u('flakPod', 1)], [[164, 1, 60]], 'placed', 'onEnter R2, FP3 below the lane'),
+    squad('D', { type: 'time', t: 16 }, [u('flakPod', 1, { elite: true, name: 'Priority Fee' })], [[208, 1, 60]], 'placed', 'onEnter R3, FP4'),
   ],
 };
 
@@ -161,9 +161,9 @@ const E8 = {
   activate: { min: [18, -8, 38], max: [102, 20, 122] },
   squads: [
     squad('A', { type: 'onEnter' }, [u('riotMidget', 2), u('obama', 2)], [[40, 0, 76], [40, 0, 84], [46, 0, 64], [46, 0, 96]], 'placed', 'west plaza'),
-    squad('B', { type: 'onPartDestroyed', id: 'n1' }, [u('hexAcolyte', 1), u('midget', 4)], [[60, 0, 47.3], [58, 0, 47.3], [62, 0, 47.3], [56, 0, 47.3], [64, 0, 47.3]], 'door', 'onPartDestroyed of the first node (n1, n2 or n3), hutN'),
-    squad('C', { type: 'onKills', n: 7 }, [u('robotShooter', 1, { elite: true, name: 'Shooter Bot' })], [[67, 16, 80]], 'drop', 'onKills(7), drop pod on the Ledger roof'),
-    squad('C2', { type: 'with', after: 'C', delay: 3 }, [u('manaLeech', 1)], [[60, 0, 112.7]], 'door', 'leech 3s later, hutS'),
+    squad('B', { type: 'onKills', n: 4 }, [u('hexAcolyte', 1), u('midget', 4)], [[60, 0, 47.3], [58, 0, 47.3], [62, 0, 47.3], [56, 0, 47.3], [64, 0, 47.3]], 'door', 'onPartDestroyed of the first node (n1, n2 or n3), hutN'),
+    squad('C', { type: 'onKills', n: 7 }, [u('robotShooter', 1, { elite: true, name: 'Shooter Bot' })], [[36, 0, 80]], 'drop', 'onKills(7), drop pod on the Ledger roof'),
+    squad('C2', { type: 'with', after: 'C', delay: 1 }, [u('manaLeech', 1)], [[40, 0, 84]], 'door', 'leech 3s later, hutS'),
   ],
 };
 
@@ -194,15 +194,22 @@ const BOSS = {
     { id: 5, name: 'Short Squeeze', kind: 'chase', seconds: 45, ends: 'the Midget is knocked out' },
   ],
   squads: [
-    squad('bosses', { type: 'onEnter' }, [u('obamaDuo', 1), u('midgetDuo', 1)], [[70, 1, 58], [70, 1, 62]], 'placed', 'both on the podium under the Price Shield'),
-    squad('P1a', { type: 'time', t: 3, part: 1 }, [u('bitbug', 6)], [[70, 10, 36]], 'air', 'part 1 t+3, SB-N', { spawn: 'SB-N', alt: [8, 14] }),
-    squad('P1b', { type: 'time', t: 15, part: 1 }, [u('bitbug', 6)], [[70, 10, 84]], 'air', 'part 1 t+15, SB-S', { spawn: 'SB-S', alt: [8, 14] }),
-    squad('P2a', { type: 'time', t: 20, part: 2 }, [u('midget', 4)], [[46, 0, 60]], 'drop', 'part 2 t+20, SB-W', { spawn: 'SB-W' }),
-    squad('P2b', { type: 'time', t: 40, part: 2 }, [u('midget', 3), u('boomMidget', 2)], [[94, 0, 60]], 'drop', 'part 2 t+40, SB-E', { spawn: 'SB-E' }),
-    squad('P3a', { type: 'time', t: 2, part: 3 }, [u('bitbug', 6)], [[70, 10, 36]], 'air', 'part 3 t+2, SB-N', { spawn: 'SB-N' }),
-    squad('P3b', { type: 'time', t: 10, part: 3 }, [u('balloonMidget', 4)], [[70, 14, 60]], 'air', 'part 3 t+10, SB-LID', { spawn: 'SB-LID' }),
-    squad('P3c', { type: 'time', t: 20, part: 3 }, [u('bitbug', 6)], [[70, 10, 84]], 'air', 'part 3 t+20, SB-S', { spawn: 'SB-S' }),
-    squad('P4', { type: 'time', t: 15, part: 4 }, [u('boomMidget', 3)], [[66, 0, 64]], 'drop', 'part 4 t+15, SB-C', { spawn: 'SB-C' }),
+    squad('P1a', { type: 'onEnter' }, [
+      u('bitbug', 1, { partId: 'sb.py3' }),
+      u('bitbug', 1, { partId: 'sb.cb1' }),
+      u('bitbug', 1, { partId: 'sb.py1' }),
+      u('bitbug', 1, { partId: 'sb.py2' }),
+      u('bitbug', 1, { partId: 'sb.cb2' }),
+      u('bitbug', 1),
+    ], [[48, 1, 60], [52, 1, 60], [56, 1, 60], [60, 1, 60], [64, 1, 60], [68, 1, 60]], 'placed', 'part 1 t+3, SB-N', { spawn: 'SB-N', alt: [1, 2] }),
+    squad('bosses', { type: 'onEnter' }, [u('obamaDuo', 1), u('midgetDuo', 1)], [[80, 1, 60], [84, 1, 60]], 'placed', 'both on the podium under the Price Shield'),
+    squad('P1b', { type: 'time', t: 15, part: 1 }, [u('bitbug', 6)], [[80, 1, 60]], 'air', 'part 1 t+15, SB-S', { spawn: 'SB-S', alt: [1, 3], optional: true }),
+    squad('P2a', { type: 'time', t: 20, part: 2 }, [u('midget', 4)], [[80, 0, 60]], 'drop', 'part 2 t+20, SB-W', { spawn: 'SB-W', optional: true }),
+    squad('P2b', { type: 'time', t: 40, part: 2 }, [u('midget', 3), u('boomMidget', 2)], [[84, 0, 60]], 'drop', 'part 2 t+40, SB-E', { spawn: 'SB-E', optional: true }),
+    squad('P3a', { type: 'time', t: 0, part: 3 }, [u('bitbug', 6)], [[80, 1, 60]], 'air', 'part 3 t+2, SB-N', { spawn: 'SB-N', optional: true }),
+    squad('P3b', { type: 'time', t: 10, part: 3 }, [u('balloonMidget', 4)], [[84, 1, 60]], 'air', 'part 3 t+10, SB-LID', { spawn: 'SB-LID', optional: true }),
+    squad('P3c', { type: 'time', t: 20, part: 3 }, [u('bitbug', 6)], [[82, 1, 60]], 'air', 'part 3 t+20, SB-S', { spawn: 'SB-S', optional: true }),
+    squad('P4', { type: 'time', t: 15, part: 4 }, [u('boomMidget', 3)], [[80, 0, 60]], 'drop', 'part 4 t+15, SB-C', { spawn: 'SB-C', optional: true }),
   ],
 };
 

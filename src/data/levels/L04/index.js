@@ -46,14 +46,16 @@ const BUILT = makeV2Level({
   tier: 4,
   parTime: 20 * 60,
   jetpack: 'pickup',
-  useNav: true,
+  useNav: false,
   maxAlive: 12,
   lighting: { sky: 'black', aurora: ['green', 'purple'], chart: true, fogStart: 220 },
-  bounds: { min: [-30, -80, -30], max: [1560, 140, 240] },
+  bounds: { min: [-40, -80, -80], max: [1400, 160, 220] },
   sections: [S1, S2, S3, S4, S5, SB],
 });
 
 for (const sec of BUILT.sections) {
+  sec.navBounds = null;
+  if (!sec.voidRescue) sec.voidRescue = { y: sec.id === 'S4' ? -60 : -40, penalty: 0.25 };
   const o = sec.origin;
   if (sec.navLinks) {
     sec.navLinks = sec.navLinks.map((link) => ({

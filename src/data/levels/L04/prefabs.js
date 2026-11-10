@@ -195,7 +195,7 @@ export function fireRing(id, { at, r, h = 4 }) {
     const a = (i / n) * Math.PI * 2;
     let d = Math.abs(a - Math.PI);
     if (d > Math.PI) d = Math.PI * 2 - d;
-    if (d < 0.16) continue;
+    if (d < 0.55) continue;
     parts.push(box({
       id: `${id}-${i}`,
       at: [at[0] + Math.cos(a) * r, h / 2, at[2] + Math.sin(a) * r],

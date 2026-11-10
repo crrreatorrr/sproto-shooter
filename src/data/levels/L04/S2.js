@@ -1,6 +1,6 @@
 // S2 Candle Forest. Footprint 270 × 200, y -40 to 100. Climbs 54 m.
-import { box, cylinder, disc, ammo, door } from './prim.js';
-import { candle, chain, crate, hollowCandle, hut, lockRoom, server, ticker, vent } from './prefabs.js';
+import { box, cylinder, disc, ammo, door, deckBox, stair } from './prim.js';
+import { candle, chain, crate, hollowCandle, hut, server, ticker, vent } from './prefabs.js';
 import { ENCOUNTERS } from './encounters.js';
 
 const vista = [];
@@ -19,7 +19,7 @@ function updraft(id, min, max) {
 export const S2 = {
   id: 'S2',
   name: 'Candle Forest',
-  origin: [280, 0, 0],
+  origin: [240, 0, -40],
   start: [6, 0, 100],
   yaw: -Math.PI / 2,
   footprint: [270, 200],
@@ -27,7 +27,13 @@ export const S2 = {
   navBounds: { min: [0, 0], max: [270, 200] },
   flyerVolume: { min: [0, -40, 0], max: [270, 100, 200] },
   voids: [{ id: 's2.void', min: [-20, -200, -20], max: [290, -40, 220], penalty: 0.25, invuln: 1, mode: 'lastSafe', to: [6, 0, 100] }],
-  exit: { min: [254, 50, 94], max: [264, 60, 106] },
+  exit: { min: [250, 40, 94], max: [266, 90, 106] },
+  grappleAnchors: [
+    { id: 's2.hook.pit', at: [66, 20, 100], r: 2.4 },
+    { id: 's2.hook.k8', at: [154, 24, 100], r: 2.6 },
+    { id: 's2.hook.k11', at: [200, 48, 100], r: 2.6 },
+    { id: 's2.hook.k14', at: [252, 60, 100], r: 3 },
+  ],
   navLinks: [
     { from: { x: 20, z: 100 }, to: { x: 32, z: 100 }, kind: 'chain' },
     { from: { x: 100, z: 100 }, to: { x: 112, z: 100 }, kind: 'slider' },
@@ -36,24 +42,23 @@ export const S2 = {
   ],
   geometry: [
     box({ id: 's2.ent', at: [10, -2, 100], size: [20, 4, 20], mat: 'metal' }),
+    deckBox('s2.slide.lip', -12, 24, 0, 100, 12),
+    ...stair('s2.slide.climb', [100, 0, 100], [262, 76, 100], 10),
+    disc({ id: 's2.slide-pad', at: [108, 4, 100], r: 1.1, mat: 'neon' }),
     ...chain('s2.chainIn', [20, 0, 100], [32, 0, 100]),
     box({ id: 's2.porchW', at: [36, -2, 100], size: [8, 4, 12], mat: 'metal' }),
-    box({ id: 's2.pit', at: [66, -2, 100], size: [52, 4, 52], mat: 'metal' }),
-    ...lockRoom('s2.pitRoom', {
-      min: [41, 0, 75], max: [91, 24, 125],
-      gaps: [{ side: 'w', at: 100, width: 4, height: 6 }, { side: 'e', at: 100, width: 4, height: 6 }],
-    }),
+    box({ id: 's2.pit', at: [60, -2, 100], size: [80, 4, 160], mat: 'metal' }),
     disc({ id: 's2.thresh', at: [47, 0.06, 100], r: 2, mat: 'neon' }),
-    ...candle('s2.pk1', [8, 6, 8], [54, 3, 86], 'up'),
-    ...candle('s2.pk2', [8, 10, 8], [78, 5, 86], 'down'),
-    ...candle('s2.pk3', [8, 8, 8], [54, 4, 114], 'down'),
-    ...candle('s2.pk4', [8, 12, 8], [78, 6, 114], 'up'),
-    ...candle('s2.pk5', [6, 16, 6], [66, 8, 100], 'up'),
+    ...candle('s2.pk1', [8, 6, 8], [54, 3, 40], 'up'),
+    ...candle('s2.pk2', [8, 10, 8], [78, 5, 40], 'down'),
+    ...candle('s2.pk3', [8, 8, 8], [54, 4, 160], 'down'),
+    ...candle('s2.pk4', [8, 12, 8], [78, 6, 160], 'up'),
+    ...candle('s2.pk5', [6, 16, 6], [66, 8, 170], 'up'),
     crate('s2.pitCr1', [48, 0.6, 108]),
     crate('s2.pitCr2', [60, 0.6, 78]),
     crate('s2.pitCr3', [72, 0.6, 122]),
     crate('s2.pitCr4', [86, 0.6, 108]),
-    ticker('s2.pitT1', [60, 1, 100], 6),
+    ticker('s2.pitT1', [60, 1, 88], 6),
     ticker('s2.pitT2', [84, 1, 92], 6),
     ...hut('s2.pitHut', [5, 3, 5], [88, 1.5, 78]),
     ...vent('s2.pv1', [46, 0, 80]),
@@ -94,8 +99,8 @@ export const S2 = {
   ],
   mechanisms: [
     { kind: 'killPlane', id: 's2.kill', y: -40 },
-    door('s2.pitIn', [40.3, 3, 100], [0.6, 6, 4]),
-    door('s2.pitOut', [91.7, 3, 100], [0.6, 6, 4]),
+    door('s2.pitIn', [40.3, 3, 100], [0.6, 6, 8]),
+    door('s2.pitOut', [91.7, 3, 100], [0.6, 6, 8]),
     updraft('s2.pv1-up', [43, 0, 77], [49, 18, 83]),
     updraft('s2.pv2-up', [83, 0, 117], [89, 18, 123]),
     updraft('s2.v1-up', [119, -12, 97], [125, 14, 103]),
@@ -104,7 +109,7 @@ export const S2 = {
     updraft('s2.v4-up', [197, 42, 97], [203, 56, 103]),
     { kind: 'mover', id: 's2.sl1', mode: 'pingpong', speed: 4, from: [112, 5, 74], to: [112, 5, 126], size: [8, 2, 8] },
     { kind: 'mover', id: 's2.sl2', mode: 'pingpong', speed: 4, from: [132, 11, 126], to: [132, 11, 74], size: [8, 2, 8] },
-    { kind: 'fuelPad', id: 's2.pad.pk5', at: [66, 16.2, 100], safe: true },
+    { kind: 'fuelPad', id: 's2.pad.pk5', at: [66, 16.2, 112], safe: true },
     { kind: 'fuelPad', id: 's2.pad.k8', at: [154, 20.2, 100], safe: true },
     { kind: 'fuelPad', id: 's2.pad.k11', at: [200, 42.2, 100], safe: true },
     { kind: 'fuelPad', id: 's2.pad.k14', at: [252, 54.2, 100], safe: true },

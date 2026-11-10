@@ -1,12 +1,12 @@
 // S4 Mine Field. Footprint 250 × 200, y -60 to 90.
-import { box, cylinder, disc, sphere, ammo, door, deck } from './prim.js';
+import { box, cylinder, disc, sphere, ammo, door, deck, deckBox, stair } from './prim.js';
 import { lockRoom, sign } from './prefabs.js';
 import { ENCOUNTERS } from './encounters.js';
 
 export const S4 = {
   id: 'S4',
   name: 'Mine Field',
-  origin: [880, 0, 0],
+  origin: [750, 0, -40],
   start: [6, 0, 100],
   yaw: -Math.PI / 2,
   footprint: [250, 200],
@@ -15,11 +15,21 @@ export const S4 = {
   flyerVolume: { min: [0, -60, 40], max: [250, 90, 160] },
   voids: [{ id: 's4.void', min: [-20, -200, 20], max: [270, -60, 180], penalty: 0.25, invuln: 1, mode: 'lastSafe', to: [6, 0, 100] }],
   exit: { min: [222, -2, 94], max: [230, 6, 106] },
+  grappleAnchors: [
+    { id: 's4.hook.b3', at: [68, 14, 98], r: 2.4 },
+    { id: 's4.hook.b7', at: [110, 18, 72], r: 2.4 },
+    { id: 's4.hook.b9', at: [132, 12, 100], r: 2.4 },
+    { id: 's4.hook.hb5', at: [177, 26, 100], r: 2.2 },
+  ],
   navLinks: [
     { from: { x: 169, z: 100 }, to: { x: 185, z: 100 }, kind: 'bridge' },
   ],
   geometry: [
     box({ id: 's4.ent', at: [12, -2, 100], size: [24, 4, 24], mat: 'metal' }),
+    deckBox('s4.slide.lip', -16, 8, 0, 100, 8),
+    ...stair('s4.slide.up', [20, 0, 100], [36, 10, 100], 10),
+    deckBox('s4.slide.field', 36, 140, 10, 100, 10),
+    ...stair('s4.slide.down', [140, 10, 100], [156, 0, 100], 10),
     box({ id: 's4.entWall', at: [22, 0.6, 100], size: [0.6, 1.2, 8], mat: 'metal' }),
     ...sign('s4.sign', [22, 3, 92], 'POP THEM FROM HERE'),
     box({ id: 's4.b1', at: [44, -1, 84], size: [10, 6, 10], mat: 'metal' }),
@@ -55,8 +65,8 @@ export const S4 = {
     box({ id: 's4.chCr2', at: [189, 0.6, 76], size: [1.6, 1.2, 1.6], mat: 'crate' }),
     box({ id: 's4.chCr3', at: [165, 0.6, 124], size: [1.6, 1.2, 1.6], mat: 'crate' }),
     box({ id: 's4.chCr4', at: [189, 0.6, 124], size: [1.6, 1.2, 1.6], mat: 'crate' }),
-    box({ id: 's4.chT1', at: [166, 1, 100], size: [0.6, 2, 6], mat: 'neon' }),
-    box({ id: 's4.chT2', at: [188, 1, 100], size: [0.6, 2, 6], mat: 'neon' }),
+    box({ id: 's4.chT1', at: [166, 1, 78], size: [0.6, 2, 6], mat: 'neon' }),
+    box({ id: 's4.chT2', at: [188, 1, 122], size: [0.6, 2, 6], mat: 'neon' }),
     cylinder({ id: 's4.c4post', at: [152, 0, 76], r: 0.5, h: 2, mat: 'metal' }),
     sphere({ id: 's4.wellVis', at: [177, -8, 100], r: 3, mat: 'metal' }),
     disc({ id: 's4.well1', at: [177, -5, 100], r: 6, mat: 'neon' }),

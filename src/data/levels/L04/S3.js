@@ -1,5 +1,5 @@
 // S3 Liquidity Stream. Footprint 270 × 120, y -40 to 80.
-import { box, cylinder, disc, ammo, door, deck } from './prim.js';
+import { box, cylinder, disc, ammo, door, deck, deckBox, stair } from './prim.js';
 import { candle, chain, crate, island, podIsle, pylon, sign, ticker } from './prefabs.js';
 import { ENCOUNTERS } from './encounters.js';
 
@@ -13,7 +13,7 @@ wallX.forEach((x, i) => {
 export const S3 = {
   id: 'S3',
   name: 'Liquidity Stream',
-  origin: [580, 0, 0],
+  origin: [490, 0, 0],
   start: [14, 0, 60],
   yaw: -Math.PI / 2,
   footprint: [270, 120],
@@ -26,6 +26,12 @@ export const S3 = {
     title: 'Liquidity',
     lines: ['Bitcoin Obama pumps the price. The Midget dumps it.', 'You ride the chart.'],
   },
+  grappleAnchors: [
+    { id: 's3.hook.r1', at: [100, 10, 70], r: 2.4 },
+    { id: 's3.hook.r2', at: [142, 10, 52], r: 2.4 },
+    { id: 's3.hook.r3', at: [186, 8, 66], r: 2.4 },
+    { id: 's3.hook.r4', at: [230, 8, 58], r: 2.4 },
+  ],
   navLinks: [
     { from: { x: 34, z: 60 }, to: { x: 54, z: 60 }, kind: 'chain' },
     { from: { x: 106, z: 68 }, to: { x: 136, z: 54 }, kind: 'bridge' },
@@ -39,6 +45,7 @@ export const S3 = {
     ...sign('s3.sign', [30, 3, 56], 'FLAK HITS FLYERS. WALK, SHIELD OR SNIPE.'),
     ...chain('s3.chainA', [34, 0, 60], [54, 0, 60]),
     ...island('s3.isl1', 7, 3, [61, -3, 60]),
+    box({ id: 's3.slide.lane', at: [140, -0.25, 60], size: [280, 0.5, 36], mat: 'metal', tag: 'slide' }),
     crate('s3.isl1Cr1', [56, 0.6, 57.5]),
     crate('s3.isl1Cr2', [56, 0.6, 62.5]),
     ...walls,
@@ -61,8 +68,8 @@ export const S3 = {
     box({ id: 's3.mouth', at: [258, -4, 60], size: [24, 4, 28], mat: 'metal' }),
     ticker('s3.mouthWall', [250, -1, 60], 6),
     ...pylon('s3.pylon', [252, -2, 52]),
-    ...deck('eb2', [106, 2, 68], [136, 2, 54], 4, 2),
-    ...deck('eb3', [192, -2, 65], [224, -2, 59], 4, -2),
+    ...deck('eb2', [106, 8, 68], [136, 8, 54], 4, 8),
+    ...deck('eb3', [192, 8, 65], [224, 8, 59], 4, 8),
     box({ id: 's3.tun-roof', at: [264, 2.5, 60], size: [12, 1, 8], mat: 'metal' }),
     box({ id: 's3.tun-n', at: [264, 1, 56.5], size: [12, 6, 1], mat: 'metal' }),
     box({ id: 's3.tun-s', at: [264, 1, 63.5], size: [12, 6, 1], mat: 'metal' }),
