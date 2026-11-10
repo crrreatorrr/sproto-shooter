@@ -1,4 +1,5 @@
 // Records quantized campaign boss logs with the real sim. Not a test file.
+import { kiteCommand } from '../src/sim/campaign/kiteAim.js';
 import { simulate } from '../src/sim/simulate.js';
 import { verifyStateHash } from '../src/sim/hash.js';
 import { buildIssuance, buildIssuedState } from '../src/server/runContract.js';
@@ -17,55 +18,8 @@ export function issueBoss(canonicalBoss, seed, binding = BINDING) {
   return built.issuance;
 }
 
-function livingBosses(state) {
-  return state.enemies.filter((e) => e.boss && !e.dead && !e.fled);
-}
-
-function aimYaw(from, to) {
-  return Math.atan2(-(to.x - from.x), -(to.z - from.z));
-}
-
 function decide(state, mode) {
-  const p = state.players[state.localPlayerId];
-  const live = livingBosses(state);
-  if (!live.length) {
-    return { yaw: -Math.PI / 2, pitch: 0, moveX: 0, moveZ: 1, held: { sprint: true }, pressed: {}, slot: -1, wheel: 0, actions: [] };
-  }
-  let target = live[0];
-  let best = Infinity;
-  for (const e of live) {
-    const d = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
-    if (d < best) { best = d; target = e; }
-  }
-  if (mode === 'fail') {
-    if (best > 4.5) {
-      return { yaw: aimYaw(p.pos, target.pos), pitch: 0, moveX: 0, moveZ: 1, held: { sprint: true }, pressed: {}, slot: -1, wheel: 0, actions: [] };
-    }
-    return { yaw: aimYaw(p.pos, target.pos), pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [] };
-  }
-  const eye = p.pos.y + 1.6;
-  const aimY = target.pos.y + target.height * 0.55;
-  let pitch = Math.atan2(aimY - eye, Math.max(0.2, best)) - p.recoil.pitch;
-  if (pitch > 1.45) pitch = 1.45;
-  if (pitch < -1.45) pitch = -1.45;
-  const assist = mode === 'assisted' && target.hp < 80;
-  let moveZ = 0;
-  if (best > 18) moveZ = 1;
-  else if (best < 9) moveZ = -1;
-  const pressed = {};
-  if (assist) pressed.gooBolt = true;
-  else if (p.hp < 45 && p.medkits > 0 && !p.downed) pressed.medkit = true;
-  return {
-    yaw: aimYaw(p.pos, target.pos),
-    pitch,
-    moveX: 0,
-    moveZ,
-    held: { fire: !assist, sprint: best > 18 },
-    pressed,
-    slot: -1,
-    wheel: 0,
-    actions: [],
-  };
+  return kiteCommand(state, mode);
 }
 
 function noteBoss(memory, state, parts) {

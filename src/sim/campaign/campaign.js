@@ -1,17 +1,18 @@
 // Campaign director. No-op unless state.mode === 'campaign'.
 // Gun stats are never written here. Power-ups only touch speed, gravity, shields, fuel and presentation flags.
-import { float } from '../../core/rng.js';
+import { float, next } from '../../core/rng.js';
 import { yawTo } from '../../core/math.js';
 import { BOSSES } from '../../data/enemies.js';
 import { getLevelRuntime, sectionById, inBox, nearPoint } from '../level/runtime.js';
 import { emit } from '../events.js';
 import { createEnemy, createBoss, createPickup, createProjectile, nextId } from '../state.js';
 import { generateGun } from '../guns.js';
-import { next } from '../../core/rng.js';
 import { damagePlayer, onEnemyKilled } from '../combat.js';
 import { clearCampaignSpells, grantSpell } from '../spellbook.js';
 import { beginV2, noteV2Section, v2Post, v2Pre } from './v2.js';
 import { detonateBarrel, isZone, onMover, playerZoneSlow, publishSlowZones, slowEnemiesInHazard, tickGeyser, tickMover, tickRising, tickSwitch, tickZoneDamage } from './mechanisms.js';
+import { tickAlarms } from './alarms.js';
+import { tickWeather } from './weather.js';
 import { noteSafeGround, tickRides, tickVoid } from './sectionMotion.js';
 
 const snaps = new WeakMap();
@@ -70,10 +71,19 @@ export function campaignPre(state, dt) {
   const lv = state.level;
   if (!lv || lv.won || lv.lost) return;
   lv.time += dt;
+  if (lv.fuelTimer > 0) {
+    lv.fuelTimer -= dt;
+    if (lv.fuelTimer <= 0) {
+      lv.fuelTimer = 0;
+      if (lv.modifiers) lv.modifiers.fuelInfinite = false;
+    }
+  }
   const p = state.players[state.localPlayerId];
   if (p.padCd > 0) p.padCd -= dt;
   const sec = sectionById(lv.id, lv.section);
   if (!sec) return;
+  tickAlarms(state, dt);
+  tickWeather(state, sec, dt);
   for (const m of sec.mechanisms || []) {
     touchMechanism(state, p, lv, sec, m, dt);
     tickZoneDamage(state, p, m, dt);
@@ -246,7 +256,7 @@ function touchMechanism(state, p, lv, sec, m, dt) {
       if (g && g.stats && g.ammoInMag < g.stats.magSize) g.ammoInMag = g.stats.magSize;
     }
   }
-  if (m.kind === 'door' && m.opens && !lv.got[m.id] && flagOn(lv, m.opens)) {
+  if (m.kind === 'door' && m.opens && m.opens !== 'p.jet.has' && !lv.got[m.id] && flagOn(lv, m.opens)) {
     lv.got[m.id] = true;
     emit(state, 'door', { id: m.id, open: true });
   }
@@ -262,11 +272,18 @@ function touchMechanism(state, p, lv, sec, m, dt) {
     slowEnemiesInHazard(state, m);
     if (m.enemyDps) hurtEnemiesInHazard(state, p, m, dt);
   }
-  if ((m.kind === 'jetpack' || m.kind === 'fuel') && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.8)) {
+  if ((m.kind === 'jetpack' || m.kind === 'fuel') && !lv.got[m.id] && !(m.skipIfOwned && p.jetpack) && nearPoint(m.at, x, y + 1, z, 1.8)) {
     lv.got[m.id] = true;
     p.jetpack = true;
-    lv.fuel = Math.max(lv.fuel, m.kind === 'fuel' ? 100 : 80);
+    lv.fuel = Math.max(lv.fuel || 0, m.kind === 'fuel' ? 100 : 80);
     emit(state, 'jetpack', { id: m.id });
+  }
+  if (m.kind === 'fuelPad' && m.at && nearPoint(m.at, x, y + 1, z, 1.6)) {
+    lv.fuel = Math.min(100, (lv.fuel || 0) + 40 * dt);
+    if (m.safe) {
+      lv.padSafe = true;
+      lv.safePos = { x: m.at[0], y: m.at[1] || 0, z: m.at[2] };
+    }
   }
   if (m.kind === 'power' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.8)) {
     lv.got[m.id] = true;
@@ -328,7 +345,12 @@ function grantModifier(state, p, id) {
   emit(state, 'modifier', { id });
   if (MOD_SPEED[id]) p.campaignSpeed = (p.campaignSpeed || 1) * MOD_SPEED[id];
   if (id === 'moonBoots') state.level.gravityMult = 0.6;
-  if (id === 'fuel') { p.jetpack = true; state.level.fuel = 100; state.level.modifiers.fuelInfinite = true; }
+  if (id === 'fuel') {
+    p.jetpack = true;
+    state.level.fuel = 100;
+    state.level.modifiers.fuelInfinite = true;
+    state.level.fuelTimer = 20;
+  }
   if (id === 'overshield' || id === 'ironSproto') {
     p.maxShield += id === 'ironSproto' ? 80 : 40;
     p.shield = p.maxShield;
@@ -406,7 +428,10 @@ function tickDuelBoss(state, e, dt) {
   const scale = e.boss.scripted && e.boss.attackScale ? e.boss.attackScale : 1;
   e.ai.atk = (def.attackEvery || 1.6) * scale;
   const attacks = e.boss.scripted && e.boss.attackList ? e.boss.attackList : def.attacks;
-  const name = attacks[Math.floor(float(state.rng) * attacks.length)];
+  const roll = e.boss.scripted ? next(state.rng) : float(state.rng);
+  const span = attacks && attacks.length ? attacks.length : 1;
+  const index = e.boss.scripted ? (span <= 1 ? 0 : roll % span) : Math.floor(roll * span);
+  const name = attacks[index];
   bossAttack(state, e, def, t, name);
 }
 
@@ -449,6 +474,10 @@ function bossAttack(state, e, def, t, name) {
   if (name === 'drone') { shot(16, 8, { homing: 1.2, homingSpeed: 16 }); return; }
   if (name === 'blast' || name === 'cloud' || name === 'breath') { shot(22, 12, { radius: 0.4 }); return; }
   if (name === 'fly') { e.pos.y = 1.2; return; }
+  if (name === 'pigRain') {
+    for (let i = 0; i < 4; i++) shot(18, 6, { homing: 0.4, homingSpeed: 14 });
+    return;
+  }
   shot(26, 7);
 }
 
@@ -461,8 +490,8 @@ function bucket(state) {
 export function saveCheckpoint(state, id) {
   const lv = state.level;
   if (!lv) return;
-  bucket(state)[id] = structuredClone(state);
   lv.checkpoint = id;
+  bucket(state)[id] = structuredClone(state);
 }
 
 export function restoreCheckpoint(state) {
@@ -471,9 +500,14 @@ export function restoreCheckpoint(state) {
   const b = snaps.get(state);
   const snap = b && (b[lv.checkpoint] || b.start);
   if (!snap) return false;
+  const tick = state.tick;
+  const time = state.time;
   const fresh = structuredClone(snap);
   for (const k of Object.keys(state)) delete state[k];
   Object.assign(state, fresh);
+  state.tick = tick;
+  state.time = time;
+  state.events = [];
   snaps.set(state, b);
   return true;
 }

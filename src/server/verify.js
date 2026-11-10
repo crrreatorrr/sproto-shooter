@@ -1,5 +1,6 @@
 // Replay a server-issued run. The receipt never credits Tickets.
 import { simulate } from '../sim/simulate.js';
+import { runSahilKiteProbe } from '../sim/campaign/kiteProbe.js';
 import { verifyStateHash } from '../sim/hash.js';
 import { bossById, contentFingerprint } from '../data/serverManifest.js';
 import { ECONOMY, SOURCE_COMMIT, buildIssuedState, buildIssuance, canonicalLoadoutOk } from './runContract.js';
@@ -200,7 +201,7 @@ export function verifyRun(log, ctx) {
       const before = { x: state.players[playerId].pos.x, y: state.players[playerId].pos.y, z: state.players[playerId].pos.z };
       simulate(state, { [playerId]: decoded.commands[f] });
       const moved = movementDelta(before, state.players[playerId].pos);
-      if (moved) return fail(moved, { logDigest: digest, tick: state.tick });
+      if (moved && !checkpointRestored(state)) return fail(moved, { logDigest: digest, tick: state.tick });
       const cheat = runtimeCheat(state) || inventoryCheat(state);
       if (cheat) return fail(cheat, { logDigest: digest, tick: state.tick });
       noteParts(seenParts, state, boss);
@@ -237,6 +238,17 @@ export function verifyRun(log, ctx) {
   };
 }
 
+/** A lockdown rewind or a void rescue snaps the player. That jump is the sim, not a forged teleport. */
+function checkpointRestored(state) {
+  const events = state && state.events;
+  if (!events) return false;
+  for (let i = 0; i < events.length; i++) {
+    const type = events[i].type;
+    if (type === 'lockdownReset' || type === 'voidRescue') return true;
+  }
+  return false;
+}
+
 function rejectedOrUnknown(id) {
   if (id === 'agent' || id === 'glowieAgent') return 'glowie_not_agent';
   if (id === 'obamaDuo' || id === 'midgetDuo') return 'obama_is_one';
@@ -258,6 +270,14 @@ export function verifyRunJSON(text) {
     return JSON.stringify(out);
   }
   return JSON.stringify(publicReceipt(verifyRun(body.log, body.ctx)));
+}
+
+export function runKiteProbeJSON(text) {
+  let body = {};
+  if (typeof text === 'string' && text) {
+    try { body = JSON.parse(text); } catch { body = {}; }
+  }
+  return JSON.stringify(runSahilKiteProbe(body.seed, body.mode, body.maxFrames));
 }
 
 export function contentFingerprintOf() {

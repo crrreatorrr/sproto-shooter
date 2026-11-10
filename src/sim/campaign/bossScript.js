@@ -43,12 +43,16 @@ function spawnTarget(state, enc, spec, boss, player, index) {
   return e;
 }
 
-function spawnAdd(state, enc, unit, boss) {
+function spawnAdd(state, enc, unit, boss, at, slot, count) {
   const type = unit[0];
   const extra = unit[2] || {};
-  const e = createEnemy(state, type, { elite: !!extra.elite, pos: { x: boss.pos.x + 2, z: boss.pos.z + 2 } });
+  const base = at || [boss.pos.x + 2, boss.pos.y || 0, boss.pos.z + 2];
+  const ox = ((slot || 0) - ((count || 1) - 1) / 2) * 1.1;
+  const e = createEnemy(state, type, { elite: !!extra.elite, pos: { x: base[0] + ox, z: base[2] } });
+  e.pos.y = base[1] || 0;
   e.campaignEnc = enc.id;
   e.state = 'chase';
+  if (extra.name) e.name = extra.name;
   if (extra.hp) {
     const hp = Math.max(1, Math.round(extra.hp * (state.tuning.enemyHpMult || 1)));
     e.maxHp = hp;
@@ -113,6 +117,11 @@ export function tickBossScript(state, enc, dt) {
   prog.partT += dt;
   if (!prog.center) prog.center = { x: boss.pos.x, z: boss.pos.z };
   const last = prog.part >= script.parts.length - 1;
+  if (part.hp && prog.hpFor !== prog.part) {
+    prog.hpFor = prog.part;
+    boss.maxHp = part.hp;
+    boss.hp = part.hp;
+  }
   boss.boss.scripted = true;
   boss.boss.attackList = Array.isArray(part.attacks) ? part.attacks : null;
   boss.boss.attackScale = part.attacks && part.attacks.bolts === 'half' ? 2 : 1;
@@ -142,7 +151,7 @@ export function tickBossScript(state, enc, dt) {
     prog.spawned[key] = true;
     for (const unit of add.units || []) {
       const count = unit[1] || 1;
-      for (let n = 0; n < count; n++) spawnAdd(state, enc, unit, boss);
+      for (let n = 0; n < count; n++) spawnAdd(state, enc, unit, boss, add.at, n, count);
     }
   });
 

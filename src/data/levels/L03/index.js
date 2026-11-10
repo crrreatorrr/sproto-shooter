@@ -20,12 +20,12 @@ export const L03_PACING = [
 ];
 
 export const L03_BOT = [
-  { section: 'S1', steps: ['truck', 'SH-YEET', 'pod 2 twice at the barricade', 'clear E1', 'MP3', 'clear E2', 'S1-GATE'] },
+  { section: 'S1', steps: ['truck', 'SH-YEET', 'pod 2 twice at the barricade', 'clear E1', 'MP3', 'clear E2', 'S1-GATE', 'optional hook S1-GA-LEAF then S1-GA-CROWN'] },
   { section: 'S2', steps: ['W2 W3', 'main ring route', 'clear E3', 'goo S2-GG1', 'threshold', 'four waves', 'zap S2-CD1 when 3 are near the gazebo', 'goo then zap S2-CD2'] },
   { section: 'S3', steps: ['Yeet the brute off Bridge 1', 'clear E5', 'DP1', 'SH-SWARM', 'buddy on S3-PP0', 'sprint Bridge 2', 'PP1 and swarm on PP2', 'Bridge 3'] },
   { section: 'S4', steps: ['threshold', 'four waves', 'bazooka the nest cores', 'clear E8', 'S4-DE'] },
-  { section: 'S5', steps: ['DP2', 'threshold', 'Yeet orbs in part 1', 'goo then zap totems from TOT-SE', 'stay inside radius 24 after the flood'] },
-  { section: 'S6', steps: ['F2 until the flee', 'R1', 'S6-MP1', 'R3', 'truck'] },
+  { section: 'S5', steps: ['DP2', 'threshold', 'swing S5-GA-N E S W inside the room', 'Yeet orbs in part 1', 'goo then zap totems from TOT-SE', 'stay inside radius 24 after the flood'] },
+  { section: 'S6', steps: ['F2 until the flee', 'hook S6-GA-T1 T2 TRK or walk R1 R3', 'S6-SLIDE back down', 'truck'] },
 ];
 
 const BUILT = makeV2Level({

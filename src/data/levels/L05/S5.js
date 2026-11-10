@@ -1,0 +1,117 @@
+// S5 Armory and Vault. Lockdown 3 is the vault hold.
+// Origin is the freight lift's top: S4 (40, 21, 67) lands on S5 (40, 0, 5).
+import { P, ammo, door, hazard, hook, room, slab, zone } from './prim.js';
+import { F2, S5_END } from './encounters.js';
+import { DRONE_STRIKE } from './enemies.js';
+
+const blocks = [
+  [54, 62], [49.9, 71.9], [40, 76], [30.1, 71.9], [26, 62], [30.1, 52.1], [40, 48], [49.9, 52.1],
+].map(([x, n], i) => slab(
+  `S5-block${i + 1}`, x, i % 2 === 0 ? 1.1 : 0.6, n,
+  i % 2 === 0 ? [3, 2.2, 1.5] : [3, 1.2, 1.5], 'metal',
+));
+
+function band(id, x0, x1, n, y = 12.5) {
+  return slab(id, (x0 + x1) / 2, y, n, [x1 - x0, 1, 3], 'metal');
+}
+
+export const S5 = {
+  id: 'S5',
+  name: 'Armory and Vault',
+  origin: [110, 21, -904],
+  start: P(40, 0, 5),
+  yaw: 0,
+  footprint: [80, 100],
+  routeM: 105,
+  flyerVolume: { min: [0, -2, -100], max: [80, 14, 0] },
+  grappleAnchors: [
+    hook('S5-hook-pillarSW', 24, 10, 46),
+    hook('S5-hook-pillarSE', 56, 10, 46),
+    hook('S5-hook-pillarNW', 24, 10, 78),
+    hook('S5-hook-pillarNE', 56, 10, 78),
+  ],
+  noGrapple: [zone(18, 62, 40, 84, 12, 30)],
+  exit: null,
+  intro: {
+    title: "Glowie, on the speakers: 'This is a routine inquiry. Please stand still.'",
+    lines: [],
+  },
+  geometry: [
+    slab('S5-floor', 40, -0.5, 50, [80, 1, 100], 'concrete'),
+    ...room('S5-liftBay', 36, 44, 1, 9, 0, 5, [{ side: 'n', at: 40 }], 'concrete'),
+    ...room('S5-armory', 28, 52, 9, 25, 0, 5, [{ side: 's', at: 40 }, { side: 'n', at: 40 }], 'concrete'),
+    ...room('S5-ante', 36, 44, 25, 39, 0, 6, [{ side: 's', at: 40 }, { side: 'n', at: 40, w: 6 }], 'concrete'),
+    slab('S5-vaultS1', 26.5, 6, 39, [21, 12, 2], 'metal'),
+    slab('S5-vaultS2', 53.5, 6, 39, [21, 12, 2], 'metal'),
+    slab('S5-vaultSLintel', 40, 9, 39, [6, 6, 2], 'metal'),
+    slab('S5-vaultN1', 27, 6, 85, [22, 12, 2], 'metal'),
+    slab('S5-vaultN2', 53, 6, 85, [22, 12, 2], 'metal'),
+    slab('S5-vaultNLintel', 40, 8, 85, [4, 8, 2], 'metal'),
+    slab('S5-vaultW1', 17, 6, 50.25, [2, 12, 20.5], 'metal'),
+    slab('S5-vaultW2', 17, 6, 73.75, [2, 12, 20.5], 'metal'),
+    slab('S5-vaultWLintel', 17, 7.5, 62, [2, 9, 3], 'metal'),
+    slab('S5-vaultE', 63, 6, 62, [2, 12, 44], 'metal'),
+    slab('S5-roofS1', 40, 12.5, 44.25, [44, 1, 8.5], 'metal'),
+    slab('S5-roofS2', 40, 12.5, 53.75, [44, 1, 4.5], 'metal'),
+    band('S5-roofSA', 18, 24.5, 50),
+    band('S5-roofSM', 27.5, 52.5, 50),
+    band('S5-roofSB', 55.5, 62, 50),
+    slab('S5-roofN1', 40, 12.5, 70.25, [44, 1, 4.5], 'metal'),
+    slab('S5-roofN2', 40, 12.5, 79.75, [44, 1, 8.5], 'metal'),
+    band('S5-roofNC', 18, 24.5, 74),
+    band('S5-roofNM', 27.5, 52.5, 74),
+    band('S5-roofND', 55.5, 62, 74),
+    slab('S5-roofW', 26, 12.5, 62, [16, 1, 12], 'metal'),
+    slab('S5-roofE', 54, 12.5, 62, [16, 1, 12], 'metal'),
+    ...room('S5-guard', 6, 17, 56, 68, 0, 4, [{ side: 'e', at: 62, w: 3, h: 3 }], 'concrete'),
+    { kind: 'cylinder', id: 'S5-safe', at: P(40, 0, 62), r: 2.5, h: 3, mat: 'gold' },
+    slab('S5-drill', 40, 4, 62, [1, 1, 6], 'metal'),
+    { kind: 'disc', id: 'S5-ring', at: P(40, 0.04, 62), r: 9, mat: 'neon' },
+    slab('S5-console1', 46, 0.6, 62, [2, 1.2, 1], 'metal'),
+    slab('S5-console2', 34, 0.6, 62, [2, 1.2, 1], 'metal'),
+    slab('S5-console3', 40, 0.6, 56, [2, 1.2, 1], 'metal'),
+    slab('S5-console4', 40, 0.6, 68, [2, 1.2, 1], 'metal'),
+    ...blocks,
+    { kind: 'cylinder', id: 'S5-pillar1', at: P(24, 0, 46), r: 1.5, h: 12, mat: 'concrete' },
+    { kind: 'cylinder', id: 'S5-pillar2', at: P(56, 0, 46), r: 1.5, h: 12, mat: 'concrete' },
+    { kind: 'cylinder', id: 'S5-pillar3', at: P(24, 0, 78), r: 1.5, h: 12, mat: 'concrete' },
+    { kind: 'cylinder', id: 'S5-pillar4', at: P(56, 0, 78), r: 1.5, h: 12, mat: 'concrete' },
+    { kind: 'disc', id: 'S5-grate1', at: P(30, 0.04, 56), r: 3, mat: 'ice' },
+    { kind: 'disc', id: 'S5-grate2', at: P(50, 0.04, 56), r: 3, mat: 'ice' },
+    { kind: 'disc', id: 'S5-grate3', at: P(30, 0.04, 68), r: 3, mat: 'ice' },
+    { kind: 'disc', id: 'S5-grate4', at: P(50, 0.04, 68), r: 3, mat: 'ice' },
+    slab('S5-gantry', 40, -0.25, 90, [4, 0.5, 12], 'metal'),
+    slab('S5-padFloor', 40, -0.25, 96, [10, 0.5, 10], 'concrete', { tag: 'padStandIn' }),
+    { kind: 'disc', id: 'S5-pad', at: P(40, 0.05, 96), r: 5, mat: 'neon' },
+  ],
+  weapons: [],
+  checkpoints: [
+    { id: 'CP10', at: P(40, 0, 34), whenDesign: 'leaving depot 2' },
+  ],
+  mechanisms: [
+    { kind: 'depot', id: 'D2', at: P(40, 0, 17) },
+    { kind: 'depotCrate', id: 'D2-crate', at: P(33, 0, 17) },
+    { kind: 'health', id: 'D2-health', at: P(33, 0, 21) },
+    { kind: 'bench', id: 'D2-bench', at: P(47, 0, 21) },
+    { kind: 'shop', id: 'D2-shop', at: P(47, 0, 17) },
+    door('S5-blastDoor', 40, 3, 39.5, [6, 6, 0.6]),
+    door('S5-exitDoor', 40, 2, 84.5, [4, 4, 0.6]),
+    door('S5-guardDoor', 17, 1.5, 62, [0.6, 3, 3]),
+    { kind: 'switch', id: 'S5-drillSwitch', at: P(40, 1.2, 59.5), needsHold: true, holdTime: 1.5, starts: 'S5-F2' },
+    {
+      kind: 'droneStrike', id: 'S5-strikes', at: P(40, 12, 62), ...DRONE_STRIKE,
+      times: [8, 22, 36, 50, 64, 78, 92], thenEvery: 14,
+    },
+    hazard('S5-cool1', 27, 33, 53, 59, { set: 'F2-coolant', tag: 'cold', shieldRegen: 0, y0: -1, y1: 3 }),
+    hazard('S5-cool2', 47, 53, 53, 59, { set: 'F2-coolant', tag: 'cold', shieldRegen: 0, y0: -1, y1: 3 }),
+    hazard('S5-cool3', 27, 33, 65, 71, { set: 'F2-coolant', tag: 'cold', shieldRegen: 0, y0: -1, y1: 3 }),
+    hazard('S5-cool4', 47, 53, 65, 71, { set: 'F2-coolant', tag: 'cold', shieldRegen: 0, y0: -1, y1: 3 }),
+    { kind: 'hold', id: 'S5-hold', at: P(40, 0, 62), r: 9, seconds: 90, needs: 'player-or-buddy' },
+    { kind: 'chest', id: 'chest-l3', at: P(40, 0, 66), opens: 'S5-F2.cleared', tier: 'uncommon' },
+    { kind: 'ammoCrate', id: 'AC3', at: P(42, 0, 66), uses: 3, opens: 'S5-F2.cleared' },
+    ammo('AB21', 42, 0, 32, 'bullets', 60),
+    ammo('AB22', 60, 0, 62, 'bullets', 60),
+    ammo('AB23', 40, 0, 80, 'shells', 12),
+  ],
+  encounters: [F2, S5_END],
+};

@@ -42,7 +42,7 @@ describe('campaign mechanisms', () => {
   });
 
   it('does not move the campaign or PvP pins', () => {
-    expect(contentFingerprint(1)).toBe('9ec1c6ea');
+    expect(contentFingerprint(1)).toBe('cea1f88b');
     expect(CONTENT_FINGERPRINT).toBe('b33eada6');
   });
 });

@@ -3,6 +3,7 @@
 /** @type {Record<string, string[]>} */
 export const EVENT_COVERAGE = {
   actionFailed: ['audio'],
+  alarm: ['audio', 'ui'],
   allyPoof: ['audio', 'vfx'],
   allyShot: ['audio'],
   ammoEmpty: ['audio', 'ui'],
@@ -28,6 +29,7 @@ export const EVENT_COVERAGE = {
   dash: ['audio', 'vfx'],
   defeat: ['audio', 'ui'],
   door: ['audio', 'ui'],
+  droneStrike: ['audio', 'vfx'],
   doubleJump: ['audio'],
   duckBounce: ['audio', 'vfx'],
   encounterClear: ['audio', 'ui'],
@@ -40,6 +42,7 @@ export const EVENT_COVERAGE = {
   grappleRelease: ['audio'],
   gunDropped: ['none'],
   gunPickedUp: ['audio', 'vfx', 'ui'],
+  icePatch: ['vfx'],
   impact: ['audio', 'vfx'],
   intermissionEnd: ['none'],
   intermissionStart: ['audio', 'ui'],
@@ -64,6 +67,7 @@ export const EVENT_COVERAGE = {
   noMana: ['audio', 'ui'],
   perkUnlocked: ['audio', 'ui'],
   pickup: ['audio', 'ui'],
+  plateBreak: ['audio', 'vfx'],
   playerDamaged: ['audio'],
   playerDied: ['none'],
   playerDowned: ['audio'],
@@ -99,6 +103,9 @@ export const EVENT_COVERAGE = {
   waveCleared: ['audio', 'ui'],
   wavePre: ['audio', 'ui'],
   waveStart: ['audio', 'ui'],
+  whiteout: ['audio', 'vfx', 'ui'],
+  whiteoutLift: ['audio', 'ui'],
+  whiteoutWarn: ['audio', 'ui'],
   worldGun: ['audio', 'ui'],
   xpGain: ['none'],
 };

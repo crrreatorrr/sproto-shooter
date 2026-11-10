@@ -178,6 +178,6 @@ describe('slide, grapple, stamina', () => {
     expect(back.held.grapple).toBe(true);
     expect(back.pressed.grapple).toBe(true);
     expect(CONTENT_FINGERPRINT).toBe('b33eada6');
-    expect(contentFingerprint(1)).toBe('9ec1c6ea');
+    expect(contentFingerprint(1)).toBe('cea1f88b');
   });
 });

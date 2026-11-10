@@ -10,7 +10,7 @@ are the hub contracts.
 - `src/sim` and `src/data` stay pure: no `three`, no DOM, no `Math.random`, `Date.now` or
   `performance.now`. `tests/architecture.test.js` checks this.
 - Pins and tripwires. Change these numbers only on purpose, and say so in the PR:
-  - Campaign content fingerprint `9ec1c6ea` (`contentFingerprint(1)` in
+  - Campaign content fingerprint `cea1f88b` (`contentFingerprint(1)` in
     `src/data/serverManifest.js`; `tests/pvp-sim.test.js`, `tests/fixtures/boss-goldens.json`). It
     covers boss, encounter, gun, part, element, spell and tuning data.
   - PvP content fingerprint `b33eada6` (`CONTENT_FINGERPRINT` in `src/sim/pvp/rules.js`).

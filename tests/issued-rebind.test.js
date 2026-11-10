@@ -3,6 +3,7 @@ import { box } from '../src/data/levels/kit.js';
 import { makeV2Level } from '../src/data/levels/v2.js';
 import { installLevel } from '../src/data/levels/index.js';
 import { createGameState } from '../src/sim/state.js';
+import { simulate } from '../src/sim/simulate.js';
 import { startCampaign } from '../src/sim/campaign/campaign.js';
 import { noteV2Section } from '../src/sim/campaign/v2.js';
 import { getLevelRuntime } from '../src/sim/level/runtime.js';
@@ -38,13 +39,21 @@ describe('issued v2 section', () => {
     expect(state.level.solids.some((s) => s.id === 'floor-a')).toBe(false);
   });
 
-  it('leaves the current v1 Sahil issue alone', () => {
+  it('issues Sahil on the v2 showroom with the pinned fingerprints', () => {
     const built = buildIssuance({ ...caller, canonicalBoss: 'sahil' });
     const state = buildIssuedState(built.issuance);
+    const p = state.players[state.localPlayerId];
     expect(state.level.id).toBe('L02');
     expect(state.level.section).toBe('S4');
-    expect(state.level.format).not.toBe('v2');
-    expect(contentFingerprint(1)).toBe('9ec1c6ea');
+    expect(state.level.format).toBe('v2');
+    expect(state._v2section.id).toBe('S4');
+    expect(p.pos.x).toBeCloseTo(149.5, 5);
+    expect(p.pos.z).toBeCloseTo(11, 5);
+    expect(p.pos.y).toBeGreaterThan(-1);
+    simulate(state, { [state.localPlayerId]: { yaw: 0, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [] } });
+    expect(state.enemies.some((e) => e.type === 'sahil' && e.boss && !e.dead)).toBe(true);
+    expect(p.pos.y).toBeGreaterThan(-1);
+    expect(contentFingerprint(1)).toBe('cea1f88b');
     expect(CONTENT_FINGERPRINT).toBe('b33eada6');
   });
 });

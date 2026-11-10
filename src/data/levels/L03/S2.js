@@ -1,5 +1,5 @@
 // S2 Hedge Maze. Rings are generated from the gap table in §6.2.
-import { box, cylinder, disc, door, hedgeRing, place } from './prim.js';
+import { box, cylinder, disc, door, hedgeRing, place, sphere } from './prim.js';
 import { gazebo, manaBloom, mound, topiary } from './prefabs.js';
 import { ENCOUNTERS } from './encounters.js';
 
@@ -52,6 +52,7 @@ export const S2 = {
     ...place(manaBloom(), { at: [96, 0, -60], id: 'MB7' }),
     disc({ id: 'S2-THR', at: [44, 0.05, -60], r: 2, mat: 'neon' }),
     disc({ id: 'S2-GZP-pad', at: [66.5, 0.05, -60], r: 1.2, mat: 'neon' }),
+    sphere({ id: 'S2-GA-GZ-mark', at: [48, 7, -60], r: 0.45, mat: 'neon' }),
   ],
   weapons: [
     { id: 'W2', at: [3, 0.9, -57], gun: 'shotgun', why: 'E3: burrowers at arm\'s length in 4 m corridors' },
@@ -90,4 +91,8 @@ export const S2 = {
     { kind: 'secret', id: 'S2-AF2', at: [101, 0.4, -54], tickets: 15, story: 'The maze is a tax shelter. Nothing in the middle is declared.' },
   ],
   encounters: [ENCOUNTERS.E3, ENCOUNTERS.E4],
+  // West of the gazebo roof, in the z = -60 gap, so a hook from the lane clears the hedge.
+  grappleAnchors: [
+    { id: 'S2-GA-GZ', at: [48, 7, -60], r: 2.2 },
+  ],
 };

@@ -11,6 +11,7 @@ import { PAD_BINDINGS } from '../input/padConfig.js';
 import { padGlyph } from '../input/gamepad.js';
 import { keyLabel } from '../input/input.js';
 import { TUNING } from '../data/tuning.js';
+import { bossLabel } from './bossLabel.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -519,7 +520,7 @@ export function createUI(root, { input, bus, project, game }) {
     html(els.bossbars, 'boss', bossList.map((b) => {
       const def = BOSSES[b.type];
       const pips = def.phases.map((ph, i) => `<i class="${i <= b.boss.phaseIdx ? 'on' : ''}" style="left:${ph.hpBelow * 100}%"></i>`).slice(1).join('');
-      return `<div class="bossbar ${def.tag}"><div class="bn">${def.name} <span class="tag">${def.tag === 'magic' ? '🔮 MAGIC' : '💪 PHYSICAL'}</span></div><div class="bb"><b style="width:${(b.hp / b.maxHp) * 100}%"></b>${pips}${b.boss.invuln ? '<em>INVULNERABLE</em>' : ''}</div></div>`;
+      return `<div class="bossbar ${def.tag}"><div class="bn">${bossLabel(b, def)} <span class="tag">${def.tag === 'magic' ? '🔮 MAGIC' : '💪 PHYSICAL'}</span></div><div class="bb"><b style="width:${(b.hp / b.maxHp) * 100}%"></b>${pips}${b.boss.invuln ? '<em>INVULNERABLE</em>' : ''}</div></div>`;
     }).join(''));
 
     // crosshair spread

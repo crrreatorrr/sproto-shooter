@@ -3,6 +3,14 @@ import { box, cylinder, disc, polar, place, rotY, sphere } from './prim.js';
 import { manaBloom, mound, podStump, rootArch } from './prefabs.js';
 import { ENCOUNTERS } from './encounters.js';
 
+// High points inside the lockdown room so a swing stays in the Hex fight.
+const HEX_ANCHORS = [
+  { id: 'S5-GA-N', at: [45, 9, -108], r: 2.4 },
+  { id: 'S5-GA-E', at: [73, 9, -80], r: 2.4 },
+  { id: 'S5-GA-S', at: [45, 9, -52], r: 2.4 },
+  { id: 'S5-GA-W', at: [17, 9, -80], r: 2.4 },
+];
+
 function arenaWalls() {
   const parts = [];
   for (let i = 0; i < 16; i++) {
@@ -102,6 +110,7 @@ export const S5 = {
     ...place(manaBloom(), { at: [45, 0, -30], id: 'MB16' }),
     ...bloomBearings.flatMap((b, i) => place(manaBloom(), { at: polar(45, -80, 24, b, 0), id: `MB${17 + i}` })),
     disc({ id: 'S5-THR', at: [45, 0.05, -52], r: 2, mat: 'neon' }),
+    ...HEX_ANCHORS.map((a) => sphere({ id: `${a.id}-mark`, at: a.at, r: 0.45, mat: 'neon' })),
   ],
   weapons: [
     { id: 'W5', at: [41, 0.9, -52], gun: 'mg', why: 'F1: the finale section holds its own gun' },
@@ -135,4 +144,5 @@ export const S5 = {
     { kind: 'chest', id: 'L3-CHEST', at: [45, 0.6, -80], opens: 'S5-F1.cleared', guns: 2, tier: 'rare' },
   ],
   encounters: [ENCOUNTERS.F1],
+  grappleAnchors: HEX_ANCHORS,
 };
