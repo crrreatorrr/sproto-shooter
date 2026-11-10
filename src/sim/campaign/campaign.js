@@ -71,6 +71,13 @@ export function campaignPre(state, dt) {
   const lv = state.level;
   if (!lv || lv.won || lv.lost) return;
   lv.time += dt;
+  if (lv.fuelTimer > 0) {
+    lv.fuelTimer -= dt;
+    if (lv.fuelTimer <= 0) {
+      lv.fuelTimer = 0;
+      if (lv.modifiers) lv.modifiers.fuelInfinite = false;
+    }
+  }
   const p = state.players[state.localPlayerId];
   if (p.padCd > 0) p.padCd -= dt;
   const sec = sectionById(lv.id, lv.section);
@@ -248,7 +255,7 @@ function touchMechanism(state, p, lv, sec, m, dt) {
       if (g && g.stats && g.ammoInMag < g.stats.magSize) g.ammoInMag = g.stats.magSize;
     }
   }
-  if (m.kind === 'door' && m.opens && !lv.got[m.id] && flagOn(lv, m.opens)) {
+  if (m.kind === 'door' && m.opens && m.opens !== 'p.jet.has' && !lv.got[m.id] && flagOn(lv, m.opens)) {
     lv.got[m.id] = true;
     emit(state, 'door', { id: m.id, open: true });
   }
@@ -264,11 +271,18 @@ function touchMechanism(state, p, lv, sec, m, dt) {
     slowEnemiesInHazard(state, m);
     if (m.enemyDps) hurtEnemiesInHazard(state, p, m, dt);
   }
-  if ((m.kind === 'jetpack' || m.kind === 'fuel') && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.8)) {
+  if ((m.kind === 'jetpack' || m.kind === 'fuel') && !lv.got[m.id] && !(m.skipIfOwned && p.jetpack) && nearPoint(m.at, x, y + 1, z, 1.8)) {
     lv.got[m.id] = true;
     p.jetpack = true;
-    lv.fuel = Math.max(lv.fuel, m.kind === 'fuel' ? 100 : 80);
+    lv.fuel = Math.max(lv.fuel || 0, m.kind === 'fuel' ? 100 : 80);
     emit(state, 'jetpack', { id: m.id });
+  }
+  if (m.kind === 'fuelPad' && m.at && nearPoint(m.at, x, y + 1, z, 1.6)) {
+    lv.fuel = Math.min(100, (lv.fuel || 0) + 40 * dt);
+    if (m.safe) {
+      lv.padSafe = true;
+      lv.safePos = { x: m.at[0], y: m.at[1] || 0, z: m.at[2] };
+    }
   }
   if (m.kind === 'power' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.8)) {
     lv.got[m.id] = true;
@@ -330,7 +344,12 @@ function grantModifier(state, p, id) {
   emit(state, 'modifier', { id });
   if (MOD_SPEED[id]) p.campaignSpeed = (p.campaignSpeed || 1) * MOD_SPEED[id];
   if (id === 'moonBoots') state.level.gravityMult = 0.6;
-  if (id === 'fuel') { p.jetpack = true; state.level.fuel = 100; state.level.modifiers.fuelInfinite = true; }
+  if (id === 'fuel') {
+    p.jetpack = true;
+    state.level.fuel = 100;
+    state.level.modifiers.fuelInfinite = true;
+    state.level.fuelTimer = 20;
+  }
   if (id === 'overshield' || id === 'ironSproto') {
     p.maxShield += id === 'ironSproto' ? 80 : 40;
     p.shield = p.maxShield;
