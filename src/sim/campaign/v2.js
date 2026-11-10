@@ -3,6 +3,7 @@
 import { BOSSES } from '../../data/enemies.js';
 import { emit } from '../events.js';
 import { createEnemy, createBoss } from '../state.js';
+import { damagePlayer } from '../combat.js';
 import { inBox } from '../level/runtime.js';
 import { solidFromPrimitive, solidsFromGeometry } from './solids.js';
 import { tickBossScript } from './bossScript.js';
@@ -332,9 +333,11 @@ export function v2Pre(state, dt) {
     noteKills(state, enc, prog);
     considerSeal(state, rt, enc, prog, dt);
     prog.t += dt;
-    if (enc.objective && enc.objective.kind === 'hold' && enc.hold && inBox(enc.hold, p.pos.x, p.pos.y, p.pos.z)) {
-      prog.hold = (prog.hold || 0) + dt;
+    if (wantsHold(enc) && enc.hold && bodyIn(state, enc.hold)) {
+      const rushed = enc.objective && enc.objective.also && enc.objective.also.kind === 'hold' && wavesClear(state, enc, prog);
+      prog.hold = (prog.hold || 0) + dt * (rushed ? 3 : 1);
     }
+    tickStrikes(state, enc, prog, dt);
     (enc.squads || []).forEach((squad, i) => {
       const key = squadKey(squad, i);
       if (prog.squads[key]) return;
@@ -375,12 +378,78 @@ function retirePartSquads(state, enc, prog) {
   }
 }
 
+function wantsHold(enc) {
+  const obj = enc.objective;
+  if (!obj) return false;
+  if (obj.kind === 'hold') return true;
+  return !!(obj.also && obj.also.kind === 'hold');
+}
+
+function bodyIn(state, box) {
+  const p = state.players[state.localPlayerId];
+  if (p && !p.dead && inBox(box, p.pos.x, p.pos.y, p.pos.z)) return true;
+  for (const a of state.allies || []) {
+    if (a && !a.dead && a.pos && inBox(box, a.pos.x, a.pos.y, a.pos.z)) return true;
+  }
+  return false;
+}
+
+function wavesClear(state, enc, prog) {
+  const accounted = (enc.squads || []).every((sq, i) => prog.squads[squadKey(sq, i)] || sq.optional);
+  return !!(prog.started && accounted && aliveOf(state, enc.id) === 0 && !(prog.queue && prog.queue.length));
+}
+
+const STRIKE = { radius: 2.6, track: 1.8, lock: 0.75, player: 30, enemy: 120 };
+
+function strikeDue(enc, n) {
+  const times = enc.strikes || [];
+  if (!times.length || n < 0) return Infinity;
+  if (n < times.length) return times[n];
+  return times[times.length - 1] + (n - times.length + 1) * (enc.strikeEvery || 14);
+}
+
+function tickStrikes(state, enc, prog, dt) {
+  if (!enc.strikes || !enc.strikes.length) return;
+  if (prog.strikeN == null) prog.strikeN = 0;
+  if (prog.inbound) {
+    prog.inbound.t += dt;
+    const p = state.players[state.localPlayerId];
+    const tracking = enc.strikeTrack != null ? enc.strikeTrack : STRIKE.track;
+    if (p && prog.inbound.t < tracking) {
+      prog.inbound.x = p.pos.x;
+      prog.inbound.z = p.pos.z;
+    }
+    const track = enc.strikeTrack != null ? enc.strikeTrack : STRIKE.track;
+    const lock = enc.strikeLock != null ? enc.strikeLock : STRIKE.lock;
+    if (prog.inbound.t >= track + lock) {
+      const hit = prog.inbound;
+      const pNow = state.players[state.localPlayerId];
+      if (pNow && !pNow.dead && Math.hypot(pNow.pos.x - hit.x, pNow.pos.z - hit.z) <= STRIKE.radius) {
+        damagePlayer(state, pNow, { base: STRIKE.player, sourceKind: 'world', fromPos: { x: hit.x, y: 0, z: hit.z } });
+      }
+      for (const e of state.enemies) {
+        if (e.dead || Math.hypot(e.pos.x - hit.x, e.pos.z - hit.z) > STRIKE.radius) continue;
+        e.hp -= STRIKE.enemy;
+        if (e.hp <= 0) { e.hp = 0; e.dead = true; }
+      }
+      emit(state, 'droneStrike', { x: hit.x, z: hit.z, encounter: enc.id });
+      prog.inbound = null;
+    }
+  }
+  if (!prog.inbound && prog.t >= strikeDue(enc, prog.strikeN)) {
+    const p = state.players[state.localPlayerId];
+    prog.inbound = { t: 0, x: p ? p.pos.x : 0, z: p ? p.pos.z : 0 };
+    prog.strikeN += 1;
+  }
+}
+
 function objectiveDone(state, enc, prog) {
   const kind = (enc.objective && enc.objective.kind) || 'clearAll';
-  const alive = aliveOf(state, enc.id);
   if (kind === 'clearAll' || kind === 'boss') {
-    const accounted = (enc.squads || []).every((sq, i) => prog.squads[squadKey(sq, i)] || sq.optional);
-    return prog.started && accounted && alive === 0 && !(prog.queue && prog.queue.length);
+    const waves = wavesClear(state, enc, prog);
+    const also = enc.objective && enc.objective.also;
+    if (also && also.kind === 'hold') return waves && (prog.hold || 0) >= (also.seconds || 1);
+    return waves;
   }
   if (kind === 'reach' || kind === 'escape' || kind === 'switch') {
     const p = state.players[state.localPlayerId];
