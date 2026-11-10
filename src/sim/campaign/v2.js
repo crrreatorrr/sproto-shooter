@@ -5,6 +5,7 @@ import { emit } from '../events.js';
 import { createEnemy, createBoss } from '../state.js';
 import { inBox } from '../level/runtime.js';
 import { solidFromPrimitive, solidsFromGeometry } from './solids.js';
+import { tickBossScript } from './bossScript.js';
 
 function book(lv) {
   if (!lv.v2) lv.v2 = { enc: {}, parts: {}, doorOpen: {} };
@@ -55,7 +56,33 @@ function triggerReady(state, enc, squad, prog) {
   if (tr.type === 'onEnter') return prog.started;
   if (tr.type === 'time') return prog.t >= (tr.t || 0);
   if (tr.type === 'onKills') return prog.kills >= (tr.n || 1);
-  if (tr.type === 'onRemain') return prog.started && aliveOf(state, enc.id) <= (tr.n ?? 2) && Object.keys(prog.squads).length > 0;
+  if (tr.type === 'onRemain') {
+    const byCount = prog.started && aliveOf(state, enc.id) <= (tr.n ?? 2) && Object.keys(prog.squads).length > 0;
+    if (byCount) return true;
+    const waveSec = enc.lockdown && enc.lockdown.waveSec;
+    if (!waveSec || !prog.started) return false;
+    const keys = Object.keys(prog.squads);
+    if (!keys.length) return false;
+    const last = prog.squads[keys[keys.length - 1]];
+    if (prog.t - (last.at || 0) < waveSec) return false;
+    for (let i = 0; i < (enc.squads || []).length; i++) {
+      const sq = enc.squads[i];
+      if (prog.squads[squadKey(sq, i)]) continue;
+      return sq === squad;
+    }
+    return false;
+  }
+  if (tr.type === 'onAlert') {
+    const p = state.players[state.localPlayerId];
+    if (!p) return false;
+    if (tr.zBelow != null && p.pos.z < tr.zBelow) return true;
+    if (tr.zAbove != null && p.pos.z > tr.zAbove) return true;
+    if (tr.box && inBox(tr.box, p.pos.x, p.pos.y, p.pos.z)) return true;
+    for (const e of state.enemies) {
+      if (!e.dead && e.campaignEnc === enc.id && e.ai && e.ai.alert === 'alerted') return true;
+    }
+    return false;
+  }
   if (tr.type === 'onHold') return (prog.hold || 0) >= (tr.p || 0);
   if (tr.type === 'onBossHp') {
     for (const e of state.enemies) {
@@ -124,18 +151,68 @@ function doorBox(m) {
   });
 }
 
-function seal(state, sec, enc) {
-  const prog = encState(state.level, enc.id);
-  if (prog.sealed || !enc.lockdown) return;
-  prog.sealed = true;
+function pointInside(solid, x, y, z) {
+  return x >= solid.min[0] && x <= solid.max[0] && y >= solid.min[1] && y <= solid.max[1] && z >= solid.min[2] && z <= solid.max[2];
+}
+
+function pushClear(p, solid, toward) {
+  const y = p.pos.y + 1;
+  if (!pointInside(solid, p.pos.x, y, p.pos.z)) return true;
+  const cx = (solid.min[0] + solid.max[0]) / 2;
+  const cz = (solid.min[2] + solid.max[2]) / 2;
+  const tx = toward[0] - cx;
+  const tz = toward[2] - cz;
+  if (Math.abs(tx) >= Math.abs(tz)) p.pos.x = tx >= 0 ? solid.max[0] + 0.45 : solid.min[0] - 0.45;
+  else p.pos.z = tz >= 0 ? solid.max[2] + 0.45 : solid.min[2] - 0.45;
+  return !pointInside(solid, p.pos.x, y, p.pos.z);
+}
+
+function switchedDoorIds(sec) {
+  const ids = {};
+  for (const m of (sec && sec.mechanisms) || []) {
+    if ((m.kind === 'switch' || m.kind === 'conduit') && m.opens) ids[m.opens] = true;
+  }
+  return ids;
+}
+
+function refreshDoors(state, sec) {
+  const lv = state.level;
+  const switched = switchedDoorIds(sec);
+  const sealed = {};
+  for (const enc of (sec && sec.encounters) || []) {
+    const prog = encState(lv, enc.id);
+    if (!enc.lockdown || !prog.sealed) continue;
+    if (enc.lockdown.entry) sealed[enc.lockdown.entry] = enc;
+    if (enc.lockdown.exit && !enc.lockdown.noExit) sealed[enc.lockdown.exit] = enc;
+  }
   const doors = [];
-  for (const m of sec.mechanisms || []) {
+  for (const m of (sec && sec.mechanisms) || []) {
     if (m.kind !== 'door') continue;
-    if (m.id !== enc.lockdown.entry && m.id !== enc.lockdown.exit) continue;
+    if (!sealed[m.id] && !(switched[m.id] && !lv.got[m.id])) continue;
     const box = doorBox(m);
     if (box) doors.push(box);
   }
-  state.level.closedDoors = doors;
+  lv.closedDoors = doors;
+}
+
+function seal(state, sec, enc) {
+  const prog = encState(state.level, enc.id);
+  if (prog.sealed || !enc.lockdown) return;
+  const p = state.players[state.localPlayerId];
+  const entry = (sec.mechanisms || []).find((m) => m.kind === 'door' && m.id === enc.lockdown.entry);
+  const box = doorBox(entry);
+  if (box && prog.sealDelay && p) {
+    const act = enc.activate;
+    const toward = act ? [
+      (act.min[0] + act.max[0]) / 2,
+      0,
+      (act.min[2] + act.max[2]) / 2,
+    ] : [p.pos.x, 0, p.pos.z];
+    if (!pushClear(p, box, toward)) return;
+  }
+  prog.sealed = true;
+  prog.sealWait = 0;
+  refreshDoors(state, sec);
   emit(state, 'lockdown', { encounter: enc.id, sealed: true });
 }
 
@@ -143,8 +220,33 @@ function unseal(state, enc) {
   const prog = encState(state.level, enc.id);
   if (!prog.sealed) return;
   prog.sealed = false;
-  state.level.closedDoors = [];
+  refreshDoors(state, state._v2section);
   emit(state, 'lockdown', { encounter: enc.id, sealed: false });
+}
+
+function lockdownDelay(enc) {
+  if (!enc.lockdown) return 0;
+  if (enc.lockdown.delaySec != null) return enc.lockdown.delaySec;
+  return enc.lockdown.waveSec ? 1 : 0;
+}
+
+function considerSeal(state, sec, enc, prog, dt) {
+  if (!enc.lockdown || prog.sealed || lvCleared(state, enc)) return;
+  const p = state.players[state.localPlayerId];
+  const inside = enc.lockdown.threshold && inBox(enc.lockdown.threshold, p.pos.x, p.pos.y, p.pos.z);
+  if (!inside && !(prog.sealWait > 0)) return;
+  const delay = lockdownDelay(enc);
+  if (delay <= 0) { seal(state, sec, enc); return; }
+  if (!(prog.sealWait > 0)) {
+    prog.sealWait = delay;
+    prog.sealDelay = true;
+  }
+  prog.sealWait -= dt;
+  if (prog.sealWait <= 0) seal(state, sec, enc);
+}
+
+function lvCleared(state, enc) {
+  return !!(state.level.cleared && state.level.cleared[enc.id]);
 }
 
 export function v2Pre(state, dt) {
@@ -152,6 +254,7 @@ export function v2Pre(state, dt) {
   const rt = state._v2section;
   if (!rt) return;
   const p = state.players[state.localPlayerId];
+  refreshDoors(state, rt);
   for (const enc of rt.encounters || []) {
     const prog = encState(lv, enc.id);
     if (!prog.started) {
@@ -159,12 +262,11 @@ export function v2Pre(state, dt) {
       if (box && inBox(box, p.pos.x, p.pos.y, p.pos.z)) {
         prog.started = true;
         lv.spawned[enc.id] = true;
-        if (enc.lockdown && enc.lockdown.threshold && inBox(enc.lockdown.threshold, p.pos.x, p.pos.y, p.pos.z)) seal(state, rt, enc);
       }
     }
     if (!prog.started || lv.cleared[enc.id]) continue;
     noteKills(state, enc, prog);
-    if (enc.lockdown && !prog.sealed && enc.lockdown.threshold && inBox(enc.lockdown.threshold, p.pos.x, p.pos.y, p.pos.z)) seal(state, rt, enc);
+    considerSeal(state, rt, enc, prog, dt);
     prog.t += dt;
     if (enc.objective && enc.objective.kind === 'hold' && enc.hold && inBox(enc.hold, p.pos.x, p.pos.y, p.pos.z)) {
       prog.hold = (prog.hold || 0) + dt;
@@ -215,6 +317,7 @@ export function v2Post(state, dt) {
   for (const enc of sec.encounters || []) {
     const prog = encState(lv, enc.id);
     if (!prog.started || lv.cleared[enc.id]) continue;
+    tickBossScript(state, enc, dt);
     noteKills(state, enc, prog);
     if (enc.fleeAt) {
       for (const e of state.enemies) {
@@ -231,13 +334,31 @@ export function v2Post(state, dt) {
         emit(state, 'bossEscape', { id: e.id, bossType: e.type });
       }
     }
+    if (enc.lockdown && enc.lockdown.stallSec && prog.sealed && !lv.cleared[enc.id]) {
+      const left = [];
+      for (const e of state.enemies) if (!e.dead && e.campaignEnc === enc.id) left.push(e);
+      if (left.length > 0 && left.length <= (enc.lockdown.stallN || 2)) prog.stall = (prog.stall || 0) + dt;
+      else prog.stall = 0;
+      if ((prog.stall || 0) >= enc.lockdown.stallSec) {
+        for (const e of left) { e.ai.charge = true; e.marked = true; }
+      }
+    }
     if (objectiveDone(state, enc, prog)) {
       lv.cleared[enc.id] = true;
       unseal(state, enc);
       emit(state, 'encounterClear', { id: enc.id });
     }
   }
-  if (p.dead) { lv.lost = true; emit(state, 'levelLost', { level: lv.id }); return; }
+  if (p.dead) {
+    let rewind = null;
+    for (const enc of sec.encounters || []) {
+      if (enc.lockdown && encState(lv, enc.id).sealed && !lv.cleared[enc.id]) rewind = enc.id;
+    }
+    if (rewind) { lv._rewind = rewind; return; }
+    lv.lost = true;
+    emit(state, 'levelLost', { level: lv.id });
+    return;
+  }
   const rt = state._v2runtime;
   if (sec.exit && (sec.encounters || []).every((e) => lv.cleared[e.id]) && inBox(sec.exit, p.pos.x, p.pos.y, p.pos.z)) {
     const next = rt.sections[rt.sections.indexOf(sec) + 1];

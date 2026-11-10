@@ -139,7 +139,20 @@ export function campaignPost(state, dt) {
     if (e.dead || !e.boss || !BOSSES[e.type] || !BOSSES[e.type].campaign) continue;
     tickDuelBoss(state, e, dt);
   }
-  if (lv.format === 'v2') { v2Post(state, dt); return; }
+  if (lv.format === 'v2') {
+    v2Post(state, dt);
+    const again = state.level;
+    if (again && again._rewind) {
+      const encounter = again._rewind;
+      delete again._rewind;
+      if (restoreCheckpoint(state)) emit(state, 'lockdownReset', { encounter });
+      else {
+        state.level.lost = true;
+        emit(state, 'levelLost', { level: state.level.id });
+      }
+    }
+    return;
+  }
   const p = state.players[state.localPlayerId];
   for (const e of state.enemies) {
     if (e.dead || e.type !== 'daycare') continue;
@@ -348,8 +361,15 @@ function spawnSquad(state, enc) {
 
 function tickDuelBoss(state, e, dt) {
   const def = BOSSES[e.type];
+  if (e.boss.stunT > 0) {
+    e.boss.stunT -= dt;
+    e.vel.x = 0;
+    e.vel.z = 0;
+    if (e.boss.stunT <= 0 && e.boss.action && e.boss.action.id === 'stunned') e.boss.action = { id: 'idle', t: 0 };
+    return;
+  }
   const frac = e.hp / e.maxHp;
-  e.boss.phaseIdx = frac <= 0.33 ? 2 : frac <= 0.66 ? 1 : 0;
+  if (!e.boss.scripted) e.boss.phaseIdx = frac <= 0.33 ? 2 : frac <= 0.66 ? 1 : 0;
   const t = livingPlayer(state);
   if (t) {
     const dx = t.pos.x - e.pos.x, dz = t.pos.z - e.pos.z;
@@ -363,8 +383,10 @@ function tickDuelBoss(state, e, dt) {
   e.pos.z += e.vel.z * dt;
   e.ai.atk = (e.ai.atk == null ? 0.8 : e.ai.atk) - dt;
   if (e.ai.atk > 0 || !t) return;
-  e.ai.atk = def.attackEvery || 1.6;
-  const name = def.attacks[Math.floor(float(state.rng) * def.attacks.length)];
+  const scale = e.boss.scripted && e.boss.attackScale ? e.boss.attackScale : 1;
+  e.ai.atk = (def.attackEvery || 1.6) * scale;
+  const attacks = e.boss.scripted && e.boss.attackList ? e.boss.attackList : def.attacks;
+  const name = attacks[Math.floor(float(state.rng) * attacks.length)];
   bossAttack(state, e, def, t, name);
 }
 
@@ -389,6 +411,11 @@ function bossAttack(state, e, def, t, name) {
       const m = createEnemy(state, 'midget', { pos: { x: e.pos.x + 2, z: e.pos.z }, summoned: true });
       m.campaignEnc = e.campaignEnc;
     }
+    return;
+  }
+  if (name === 'carpetSweep') {
+    const d = Math.hypot(t.pos.x - e.pos.x, t.pos.z - e.pos.z);
+    if (d < 15) damagePlayer(state, t, { base: 14, sourceKind: 'boss', fromPos: e.pos });
     return;
   }
   if (name === 'slam' || name === 'rugSlam') {

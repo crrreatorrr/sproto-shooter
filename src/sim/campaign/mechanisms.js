@@ -3,6 +3,7 @@
 import { explode, damagePlayer } from '../combat.js';
 import { emit } from '../events.js';
 import { markPartDestroyed } from './v2.js';
+import { scriptShields } from './bossScript.js';
 
 export function detonateBarrel(state, section, m) {
   const lv = state.level;
@@ -27,17 +28,17 @@ export function tickSwitch(state, p, m, dt) {
   const lv = state.level;
   if (lv.got[m.id]) return;
   const held = p.cmd && p.cmd.held && p.cmd.held.interact;
-  if (!m.needsHold) {
-    lv.got[m.id] = true;
-    emit(state, 'switch', { id: m.id });
-    return;
-  }
+  if (!m.needsHold) { finishSwitch(state, m); return; }
   if (!held) { m._hold = 0; return; }
   m._hold = (m._hold || 0) + dt;
-  if (m._hold >= (m.holdTime || 0.35)) {
-    lv.got[m.id] = true;
-    emit(state, 'switch', { id: m.id });
-  }
+  if (m._hold >= (m.holdTime || 0.35)) finishSwitch(state, m);
+}
+
+function finishSwitch(state, m) {
+  const lv = state.level;
+  lv.got[m.id] = true;
+  emit(state, 'switch', { id: m.id });
+  if (m.opens) lv.got[m.opens] = true;
 }
 
 export function onMover(p, m) {
@@ -165,7 +166,7 @@ export function damageLevelSolid(state, solid, hit) {
   const sec = state._campaignSection || state._v2section;
   if (!lv || !sec || !solid || !solid.id) return false;
   const m = (sec.mechanisms || []).find((item) => item.kind === 'target' && targetKey(item) === solid.id);
-  if (!m) return false;
+  if (!m || scriptShields(state, solid.id)) return false;
   if (!lv.targets) lv.targets = {};
   const rec = lv.targets[m.id] || (lv.targets[m.id] = { hp: m.hp, max: m.hp });
   if (rec.hp <= 0) return true;

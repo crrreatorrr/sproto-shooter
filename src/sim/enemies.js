@@ -266,12 +266,15 @@ export function enemyAI(state, dt) {
       e.ai.burstLeft = 0; e.ai.aimT = 0;
       approachVel(e, { x: 0, z: 0 }, 0, 25, dt);
       if (e.stateT >= def.staggerTime) setState(e, 'chase');
+    } else if (e.ai.scriptTarget) {
+      approachVel(e, { x: 0, z: 0 }, 0, 30, dt);
     } else if (e.ai.buried > 0) {
       e.ai.buried -= dt;
       approachVel(e, { x: 0, z: 0 }, 0, 30, dt);
-    } else if (e.ai.alert && e.ai.alert !== 'alerted' && !sensePlayer(state, e, target)) {
+    } else if (e.ai.alert && e.ai.alert !== 'alerted' && !e.ai.charge && !sensePlayer(state, e, target)) {
       approachVel(e, { x: 0, z: 0 }, 0, 30, dt);
     } else {
+      if (e.ai.charge) e.ai.alert = 'alerted';
       if (state.mode === 'campaign' && state.level && state.level.useNav) {
         const far = Math.hypot(target.pos.x - e.pos.x, target.pos.z - e.pos.z);
         e.ai.navPoint = far > 2.5 ? navWaypoint(state, e.pos, target.pos) : null;
@@ -279,8 +282,9 @@ export function enemyAI(state, dt) {
       if (e.state === 'idle' && e.type !== 'dummy') setState(e, 'chase');
       const slow = e.status.goo ? 1 - e.status.goo.slow : 1;
       const zone = state.mode === 'campaign' ? enemyZoneSlow(state.level, state._campaignSection, e) : 1;
+      const rush = e.ai.charge ? 1.8 : 1;
       const beh = BEHAVIORS[e.type] || BEHAVIORS[def.behavior];
-      beh.update(state, e, target, def, def.speed * e.speedMult * slow * zone, dt);
+      beh.update(state, e, target, def, def.speed * e.speedMult * slow * zone * rush, dt);
       if (e.ai.bubble > 0) e.ai.bubble -= dt;
       tickArchetype(state, e, target, dt);
     }

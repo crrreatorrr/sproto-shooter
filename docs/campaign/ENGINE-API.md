@@ -117,6 +117,8 @@ lockdown: {
 
 The two ids are `door` mechanisms with `at` and `size`. Crossing `threshold` adds those doors to the solid list (`lockdown` event, `sealed: true`). Clearing the encounter removes them (`sealed: false`).
 
+`waveSec` starts the next squad when that many seconds have passed since the previous squad spawned, or on `onRemain`, whichever is first. A lockdown with `waveSec` waits `delaySec` seconds (default 1) before the slabs drop, pushes a player standing in the entry slab into the room, and does not seal while they are still inside it. `delaySec: 0` seals on the same frame, which is the default when `waveSec` is absent. `stallSec` marks the last `stallN` (default 2) enemies and makes them run at the player. `noExit` skips the exit slab. A switch or conduit with `opens` set to a door id keeps that door solid until the switch fires. Dying while a lockdown is sealed restores the last checkpoint (`lockdownReset`) instead of losing the level. `onAlert` spawns a squad when the player crosses `zBelow` or `zAbove`, enters `box`, or an enemy of the encounter is already alerted.
+
 ## Enemy re-skins
 
 These ids have an `archetype` and run it on top of the enemy they are dressed as. Wave Mode never spawns them.
@@ -147,6 +149,8 @@ A barrel blast damages enemies, hurts the player, and chains. A switch with `nee
 A squad whose type is in `BOSSES` spawns with `createBoss`, including the Hex. In a campaign the Hex is not pulled back to the wave arena. Set `encounter.arena` to `{ x, z, radius }` to keep it inside that circle. `unit.elite: true` is kept.
 
 `fleeAt` on a v2 encounter marks the boss `fled`, emits `bossEscape`, and does not add a boss kill. `lv.fled[encounterId]` is set, so a door with `opens: 'S6-F2.fled'` opens. A `risingHazard` with `starts: 'S6-F2.fled'` then lifts its surface at `rate` metres per second.
+
+`enc.script.parts` is an optional boss script. It does not add squads, so a `sameParts` encounter can stay `sahil` × 1. An `immune` part with `targets` takes no boss damage until those targets die. A target `{ id, hp, at, shields, rise }` is a stationary body. `rise` (1.5 s when the id starts with `pylon`) blocks damage while it counts down. A living target whose `shields` lists a solid id blocks damage to that solid. A phase part refills `hp` when the bar would hit zero, until the last part. `adds` spawn on `t` seconds, `on` (`firstLoom`, `secondPylon`), or `onBossHp` (percent of the current bar). `pit`, `pools` and `vents` are `{ at, r, slow, dps, period, offset }` in section-local coordinates. `ring` burns 12 once when the player crosses it. `attacks: { bolts: 'half' }` doubles the attack gap. `attacks` as a list replaces the boss attack list (`carpetSweep` is the low sweep). `kind: 'entry'` stuns the boss for 3 s when the part ends. `duelStage` selects the portrait phase. Target `at`, pit, pool and vent positions are shifted by the section origin.
 
 A `target` with id `TOT-N-hp` tracks HP for the solid `TOT-N`. A bullet that hits that solid spends the HP (`bulletMul` scales gun damage). At 0 the solid is removed and both ids are marked destroyed.
 
