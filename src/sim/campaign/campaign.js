@@ -139,7 +139,20 @@ export function campaignPost(state, dt) {
     if (e.dead || !e.boss || !BOSSES[e.type] || !BOSSES[e.type].campaign) continue;
     tickDuelBoss(state, e, dt);
   }
-  if (lv.format === 'v2') { v2Post(state, dt); return; }
+  if (lv.format === 'v2') {
+    v2Post(state, dt);
+    const again = state.level;
+    if (again && again._rewind) {
+      const encounter = again._rewind;
+      delete again._rewind;
+      if (restoreCheckpoint(state)) emit(state, 'lockdownReset', { encounter });
+      else {
+        state.level.lost = true;
+        emit(state, 'levelLost', { level: state.level.id });
+      }
+    }
+    return;
+  }
   const p = state.players[state.localPlayerId];
   for (const e of state.enemies) {
     if (e.dead || e.type !== 'daycare') continue;

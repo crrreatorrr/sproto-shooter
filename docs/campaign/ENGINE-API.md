@@ -117,6 +117,8 @@ lockdown: {
 
 The two ids are `door` mechanisms with `at` and `size`. Crossing `threshold` adds those doors to the solid list (`lockdown` event, `sealed: true`). Clearing the encounter removes them (`sealed: false`).
 
+`waveSec` starts the next squad when that many seconds have passed since the previous squad spawned, or on `onRemain`, whichever is first. A lockdown with `waveSec` waits `delaySec` seconds (default 1) before the slabs drop, pushes a player standing in the entry slab into the room, and does not seal while they are still inside it. `delaySec: 0` seals on the same frame, which is the default when `waveSec` is absent. `stallSec` marks the last `stallN` (default 2) enemies and makes them run at the player. `noExit` skips the exit slab. A switch or conduit with `opens` set to a door id keeps that door solid until the switch fires. Dying while a lockdown is sealed restores the last checkpoint (`lockdownReset`) instead of losing the level. `onAlert` spawns a squad when the player crosses `zBelow` or `zAbove`, enters `box`, or an enemy of the encounter is already alerted.
+
 ## Enemy re-skins
 
 These ids have an `archetype` and run it on top of the enemy they are dressed as. Wave Mode never spawns them.
