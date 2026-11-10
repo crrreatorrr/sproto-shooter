@@ -22,7 +22,7 @@ function core(receipt) {
 }
 
 describe('run validation', () => {
-  const recorded = recordBoss('sahil', 7, 'success', 5000);
+  const recorded = recordBoss('sahil', 7, 'success', 16000);
   const cases = rejectionCases(recorded);
 
   it('fails closed before trusting a hostile log', () => {
@@ -93,7 +93,7 @@ describe('run validation', () => {
 
   it('matches the locked boss fixture outcomes', () => {
     for (const spec of Object.values(goldens.runs)) {
-      const rec = recordBoss(spec.boss, spec.seed, spec.mode, 8000);
+      const rec = recordBoss(spec.boss, spec.seed, spec.mode, 16000);
       const receipt = verifyRun(rec.log, { issuance: rec.issuance });
       expect(receipt.stateHash).toBe(spec.stateHash);
       expect(receipt.outcome).toBe(spec.outcome);
