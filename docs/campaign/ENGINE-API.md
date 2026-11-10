@@ -142,6 +142,30 @@ These ids have an `archetype` and run it on top of the enemy they are dressed as
 
 A barrel blast damages enemies, hurts the player, and chains. A switch with `needsHold` waits for interact held for `holdTime`. A mover with `carry` rides the player from `from` to `to`. A hazard with `affectsEnemies` slows enemies in its box. Corridor switches stay proximity triggers.
 
+## Bosses, flees and breakable solids
+
+A squad whose type is in `BOSSES` spawns with `createBoss`, including the Hex. In a campaign the Hex is not pulled back to the wave arena. Set `encounter.arena` to `{ x, z, radius }` to keep it inside that circle. `unit.elite: true` is kept.
+
+`fleeAt` on a v2 encounter marks the boss `fled`, emits `bossEscape`, and does not add a boss kill. `lv.fled[encounterId]` is set, so a door with `opens: 'S6-F2.fled'` opens. A `risingHazard` with `starts: 'S6-F2.fled'` then lifts its surface at `rate` metres per second.
+
+A `target` with id `TOT-N-hp` tracks HP for the solid `TOT-N`. A bullet that hits that solid spends the HP (`bulletMul` scales gun damage). At 0 the solid is removed and both ids are marked destroyed.
+
+`noteV2Section` copies `navLinks`. A lockdown `room` or an encounter `lid` is a flyer lid for that section.
+
+A `hazard` with `enemyDps` hurts enemies in the box. Goo globs ignore it. `stripsBark` sets bark to stripped.
+
+## Placeholder enemies
+
+`hexWisp` flies and ignores solids (`ghost`), and stays inside `navBounds`. Bullets deal 20%, explosives 50%, spells 200%. `barkBrute` starts in bark state `hard` (bullets deal nothing, the back knot still takes them). Goo softens it. `manaLeech` drains 8 mana per second inside 10 m. `gooGlob` splits into two smaller globs, then those split into two small ones. `e.ai.exposed` shows a hitbox whose `onlyWhen` matches it.
+
+## Hazard zones and geysers
+
+`kind: 'hazardZone'` (or `'slow'`) with `min`/`max` or `at` plus `r`. `slow` is a sustained speed multiplier (0.5 means half speed). `dps` hurts the player. `affectsEnemies` does both to enemies. `navCost` above 1 makes the nav grid treat those cells as expensive, so enemies walk around a pool when a way around exists. `set` stays off until `setHazardSet(state, id, true)`. `when` uses the same flags as a door (`switch:id`, `id.cleared`).
+
+`kind: 'geyser'` at `at`, with `period`, `offset`, `rumble`, `damage` and optional `to`. Damage 0 is a launcher. Standing on it during the erupt moves the player to `to`.
+
+The old `kind: 'hazard'` brake is unchanged.
+
 ## What L02 and L03 can use today
 
 Collision (`useSolids`), line of sight (`hasLOS`, `coverNear`), alert (`ai.alert = 'unaware'`), the nav grid (`useNav`, `navBounds`, `navLinks`), flyer lids (`flyerVolume`), this v2 director, the mechanisms above, and the re-skins in the table.

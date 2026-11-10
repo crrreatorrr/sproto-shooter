@@ -8,10 +8,10 @@ import { emit } from '../events.js';
 import { createEnemy, createBoss, createPickup, createProjectile, nextId } from '../state.js';
 import { generateGun } from '../guns.js';
 import { next } from '../../core/rng.js';
-import { damagePlayer } from '../combat.js';
+import { damagePlayer, onEnemyKilled } from '../combat.js';
 import { clearCampaignSpells, grantSpell } from '../spellbook.js';
 import { beginV2, noteV2Section, v2Post, v2Pre } from './v2.js';
-import { detonateBarrel, onMover, slowEnemiesInHazard, tickMover, tickSwitch } from './mechanisms.js';
+import { detonateBarrel, isZone, onMover, playerZoneSlow, publishSlowZones, slowEnemiesInHazard, tickGeyser, tickMover, tickRising, tickSwitch, tickZoneDamage } from './mechanisms.js';
 
 const snaps = new WeakMap();
 
@@ -73,7 +73,28 @@ export function campaignPre(state, dt) {
   if (p.padCd > 0) p.padCd -= dt;
   const sec = sectionById(lv.id, lv.section);
   if (!sec) return;
-  for (const m of sec.mechanisms || []) touchMechanism(state, p, lv, sec, m, dt);
+  for (const m of sec.mechanisms || []) {
+    touchMechanism(state, p, lv, sec, m, dt);
+    tickZoneDamage(state, p, m, dt);
+    tickGeyser(state, p, m);
+    tickRising(state, p, m, dt);
+  }
+  // Only levels that actually have a zone grow these fields. Boss goldens hash the whole state.
+  let zoned = false;
+  for (const m of sec.mechanisms || []) if (isZone(m)) { zoned = true; break; }
+  if (zoned) {
+    state._campaignSection = sec;
+    const slow = playerZoneSlow(lv, sec, p);
+    if (slow < 1) p.hazardSlow = slow;
+    else if (p.hazardSlow != null) delete p.hazardSlow;
+    if (lv._zonesDirty || lv._zoneSec !== sec.id) publishSlowZones(lv, sec);
+    lv._zoneSec = sec.id;
+  } else if (state._campaignSection || lv.slowZones || p.hazardSlow != null || lv._zoneSec) {
+    delete state._campaignSection;
+    delete lv.slowZones;
+    delete lv._zoneSec;
+    if (p.hazardSlow != null) delete p.hazardSlow;
+  }
   for (const w of sec.weapons || []) {
     if (lv.got[w.id]) continue;
     if (!nearPoint(w.at, p.pos.x, p.pos.y + 1, p.pos.z, 3.2)) continue;
@@ -98,15 +119,28 @@ export function campaignPre(state, dt) {
   lv.objective = objectiveText(lv, sec);
 }
 
+function hurtEnemiesInHazard(state, p, m, dt) {
+  for (const e of state.enemies) {
+    if (e.dead || e.type === 'gooGlob' || (e.type && e.type.startsWith('gooGlob'))) continue;
+    if (!inBox(m, e.pos.x, e.pos.y, e.pos.z)) continue;
+    e.hp -= m.enemyDps * dt;
+    if (m.stripsBark && e.ai && e.ai.armour && e.ai.armour !== 'stripped') e.ai.armour = 'stripped';
+    if (e.hp <= 0) {
+      e.lastHit = { sourceId: p.id, sourceKind: 'world', element: 'none' };
+      onEnemyKilled(state, e);
+    }
+  }
+}
+
 export function campaignPost(state, dt) {
   const lv = state.level;
   if (!lv || lv.won || lv.lost) return;
-  if (lv.format === 'v2') { v2Post(state, dt); return; }
-  const p = state.players[state.localPlayerId];
   for (const e of state.enemies) {
     if (e.dead || !e.boss || !BOSSES[e.type] || !BOSSES[e.type].campaign) continue;
     tickDuelBoss(state, e, dt);
   }
+  if (lv.format === 'v2') { v2Post(state, dt); return; }
+  const p = state.players[state.localPlayerId];
   for (const e of state.enemies) {
     if (e.dead || e.type !== 'daycare') continue;
     e.ai.nestT = (e.ai.nestT || 1.2) - dt;
@@ -127,6 +161,8 @@ export function campaignPost(state, dt) {
         if (e.hp / e.maxHp <= enc.fleeAt) {
           e.dead = true;
           e.fled = true;
+          if (!lv.fled) lv.fled = {};
+          lv.fled[enc.id] = true;
           emit(state, 'bossEscape', { id: e.id, bossType: e.type });
         }
       }
@@ -169,6 +205,7 @@ function objectiveText(lv, sec) {
 function flagOn(lv, when) {
   if (!when) return true;
   if (when.endsWith('.cleared')) return !!lv.cleared[when.slice(0, -'.cleared'.length)];
+  if (when.endsWith('.fled')) return !!(lv.fled && lv.fled[when.slice(0, -'.fled'.length)]);
   if (when.startsWith('switch:')) return !!lv.got[when.slice('switch:'.length)];
   return !!lv.got[when];
 }
@@ -190,6 +227,7 @@ function touchMechanism(state, p, lv, sec, m, dt) {
     if (m.dps) damagePlayer(state, p, { base: m.dps * dt, sourceKind: 'world', fromPos: { x: m.min[0], y: 0, z: m.min[2] } });
     if (m.slow) { const k = m.slow; p.vel.x *= k; p.vel.z *= k; }
     slowEnemiesInHazard(state, m);
+    if (m.enemyDps) hurtEnemiesInHazard(state, p, m, dt);
   }
   if ((m.kind === 'jetpack' || m.kind === 'fuel') && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.8)) {
     lv.got[m.id] = true;

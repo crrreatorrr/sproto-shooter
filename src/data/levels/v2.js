@@ -46,7 +46,10 @@ export function makeV2Level(def) {
       lockdown: enc.lockdown ? {
         ...enc.lockdown,
         threshold: shiftBox(enc.lockdown.threshold, origin),
+        room: shiftBox(enc.lockdown.room, origin),
       } : null,
+      lid: shiftBox(enc.lid, origin),
+      arena: enc.arena ? { x: enc.arena.x + origin[0], z: enc.arena.z + origin[2], radius: enc.arena.radius } : null,
     }));
     const next = def.sections[i + 1];
     return {

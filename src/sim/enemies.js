@@ -9,6 +9,7 @@ import { activeSolids, pushHorizontal, snapToGround } from './campaign/solids.js
 import { sensePlayer } from './campaign/perception.js';
 import { clampFlyer, navWaypoint } from './campaign/nav.js';
 import { tickArchetype } from './campaign/archetypes.js';
+import { enemyZoneSlow } from './campaign/mechanisms.js';
 import { hitPlayerSphere, enemyAoE } from './combat.js';
 import { createProjectile, createHazard } from './state.js';
 
@@ -208,7 +209,7 @@ const BEHAVIORS = {
       approachVel(e, { x: wx / wl, z: wz / wl }, speed, def.accel, dt);
       e.vel.y += ((ai.alt - e.pos.y) * 3 - e.vel.y) * Math.min(1, 4 * dt);
       faceToward(e, t, deg(720), dt);
-      ai.shooting = enemyGun(state, e, t, def.gun, dt, true);
+      ai.shooting = def.gun ? enemyGun(state, e, t, def.gun, dt, true) : false;
     },
   },
   bigObama: {
@@ -277,8 +278,9 @@ export function enemyAI(state, dt) {
       }
       if (e.state === 'idle' && e.type !== 'dummy') setState(e, 'chase');
       const slow = e.status.goo ? 1 - e.status.goo.slow : 1;
+      const zone = state.mode === 'campaign' ? enemyZoneSlow(state.level, state._campaignSection, e) : 1;
       const beh = BEHAVIORS[e.type] || BEHAVIORS[def.behavior];
-      beh.update(state, e, target, def, def.speed * e.speedMult * slow, dt);
+      beh.update(state, e, target, def, def.speed * e.speedMult * slow * zone, dt);
       if (e.ai.bubble > 0) e.ai.bubble -= dt;
       tickArchetype(state, e, target, dt);
     }
@@ -287,9 +289,20 @@ export function enemyAI(state, dt) {
     else e.vel.y -= 30 * dt;
     e.pos.x += e.vel.x * dt; e.pos.y += e.vel.y * dt; e.pos.z += e.vel.z * dt;
     const solids = activeSolids(state);
-    if (solids && !def.flying) {
+    if (def.ghost) {
+      if (state.mode === 'campaign' && state.level && state.level.navBounds) {
+        const b = state.level.navBounds;
+        if (e.pos.x < b.min[0]) e.pos.x = b.min[0];
+        if (e.pos.x > b.max[0]) e.pos.x = b.max[0];
+        if (e.pos.z < b.min[1]) e.pos.z = b.min[1];
+        if (e.pos.z > b.max[1]) e.pos.z = b.max[1];
+      }
+      if (!def.flying && solids) snapToGround(e, solids, e.radius * e.scale);
+    } else if (solids && !def.flying) {
       pushHorizontal(e, solids, e.radius * e.scale, e.height * e.scale);
       snapToGround(e, solids, e.radius * e.scale);
+    } else if (def.flying && state.mode === 'campaign' && state.level && state.level.flyerLids) {
+      for (let i = 0; i < state.level.flyerLids.length; i++) clampFlyer(e, state.level.flyerLids[i]);
     } else if (def.flying && state.mode === 'campaign' && state.level && state.level.flyerVolume) {
       clampFlyer(e, state.level.flyerVolume);
     } else {

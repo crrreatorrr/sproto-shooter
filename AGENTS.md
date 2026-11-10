@@ -13,8 +13,8 @@ are the hub contracts.
   - Campaign content fingerprint `bfe99bf4` (`contentFingerprint(1)` in
     `src/data/serverManifest.js`; `tests/pvp-sim.test.js`, `tests/fixtures/boss-goldens.json`). It
     covers boss, encounter, gun, part, element, spell and tuning data.
-  - PvP content fingerprint `f5949631` (`CONTENT_FINGERPRINT` in `src/sim/pvp/rules.js`).
-  - PvP golden state hash `ce272de1` (`scriptedMatch(7, 180)`, `GOLDEN_HASH` in
+  - PvP content fingerprint `17d87c54` (`CONTENT_FINGERPRINT` in `src/sim/pvp/rules.js`).
+  - PvP golden state hash `6545ca0a` (`scriptedMatch(7, 180)`, `GOLDEN_HASH` in
     `tests/pvp-sim.test.js`).
   - Wave Mode and Sandbox hashes in `tests/fixtures/baseline-hashes.json`
     (`tests/levels/baseline.test.js`).
