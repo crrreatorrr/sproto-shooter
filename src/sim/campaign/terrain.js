@@ -67,6 +67,20 @@ function inFlat(t, u, north) {
   return false;
 }
 
+/**
+ * The field is the walked floor only when the section has no stand-in slab.
+ * L05's clear walks S1-floor and S2-floor. Those slabs stay until a route is
+ * recleared on the heightfield itself.
+ */
+export function solidTerrain(sec) {
+  if (!sec || !sec.terrain) return null;
+  const geometry = sec.geometry || [];
+  for (let i = 0; i < geometry.length; i++) {
+    if (geometry[i] && geometry[i].tag === 'terrainStandIn') return null;
+  }
+  return sec.terrain;
+}
+
 /** Surface height, or null outside the field. Flats sit on the origin's y. */
 export function heightAt(t, x, z) {
   const local = terrainLocal(t, x, z);
