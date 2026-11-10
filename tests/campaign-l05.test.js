@@ -90,7 +90,7 @@ describe('L05 Frostspire Black Site', () => {
     const f1 = L05.sections[2].encounters.find((e) => e.id === 'S3-F1');
     expect(f1.script.parts[0].attacks[0]).toBe('chase');
     expect(f1.script.parts[0].adds[0].at[0]).toBeCloseTo(118, 0);
-    expect(f1.script.parts[1].targets[0].at).toEqual([117, 5, -817]);
+    expect(f1.script.parts[1].targets[0].at).toEqual([142, 0, -781]);
     const f2 = L05.sections[4].encounters.find((e) => e.id === 'S5-F2');
     expect(f2.objective.also).toEqual({ kind: 'hold', seconds: 90 });
     expect(f2.strikes).toEqual([8, 22, 36, 50, 64, 78, 92]);

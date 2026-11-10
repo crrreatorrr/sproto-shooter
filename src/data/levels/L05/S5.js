@@ -1,5 +1,5 @@
 // S5 Armory and Vault. Lockdown 3 is the vault hold.
-// Origin is the freight lift's top: S4 (40, 21, 5) lands on S5 (40, 0, 5).
+// Origin is the freight lift's top: S4 (40, 21, 67) lands on S5 (40, 0, 5).
 import { P, ammo, door, hazard, hook, room, slab, zone } from './prim.js';
 import { F2, S5_END } from './encounters.js';
 import { DRONE_STRIKE } from './enemies.js';
@@ -18,7 +18,7 @@ function band(id, x0, x1, n, y = 12.5) {
 export const S5 = {
   id: 'S5',
   name: 'Armory and Vault',
-  origin: [110, 21, -842],
+  origin: [110, 21, -904],
   start: P(40, 0, 5),
   yaw: 0,
   footprint: [80, 100],

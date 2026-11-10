@@ -142,8 +142,8 @@ export const E6 = {
   zone: zone(32, 48, 56, 68, -2, 8),
   squads: [
     squad('E6-a', { type: 'onAlert', zBelow: -14 }, [u('riotMidget', 3)], [[40, 0, 52]], 'placed'),
-    squad('E6-b', { type: 'onAlert', zBelow: -28 }, [u('midget', 2)], [[31, 0, 22]], 'door'),
-    squad('E6-c', { type: 'onKills', n: 3 }, [u('frostHound', 2)], [[50, 0, 50]], 'door', { delay: 1 }),
+    squad('E6-b', { type: 'onAlert', zBelow: -28 }, [u('midget', 2)], [[40, 0, 26]], 'door'),
+    squad('E6-c', { type: 'onKills', n: 3 }, [u('frostHound', 2)], [[40, 0, 48]], 'door', { delay: 1 }),
   ],
 };
 
@@ -152,7 +152,7 @@ export const E7 = {
   name: 'Records Library',
   maxAlive: 12,
   objective: { kind: 'clearAll', text: 'Clear the Records Library' },
-  activate: zone(12, 68, 12, 56, 6, 20),
+  activate: zone(32, 48, 58, 66, 6, 12),
   lockdown: {
     id: 'L2',
     entry: 'LIB-in',
@@ -165,18 +165,18 @@ export const E7 = {
     room: zone(12, 68, 12, 56, 7, 20),
   },
   squads: [
-    squad('W1', { type: 'onEnter' }, [u('midget', 6)], [[26, 7, 43]], 'drop'),
-    squad('W1b', { type: 'with', after: 'W1', delay: 0 }, [u('glowieAgent', 2)], [[68, 7, 34]], 'door'),
-    squad('W2', { type: 'onRemain', n: 2 }, [u('riotMidget', 2)], [[12, 7, 34]], 'door'),
-    squad('W2b', { type: 'with', after: 'W2', delay: 0 }, [u('auditSniper', 2)], [[66, 14, 44], [40, 14, 14]], 'door'),
-    squad('W2c', { type: 'with', after: 'W2', delay: 0 }, [u('manaLeech', 1)], [[68, 7, 34]], 'door'),
-    squad('W3', { type: 'onRemain', n: 2 }, [u('midget', 4), u('boomMidget', 2)], [[54, 7, 25]], 'drop'),
-    squad('W3b', { type: 'with', after: 'W3', delay: 0 }, [u('frostHound', 2)], [[12, 7, 34]], 'door'),
-    squad('W4', { type: 'onRemain', n: 2 }, [u('midget', 2)], [[26, 7, 43]], 'drop'),
-    squad('W4b', { type: 'with', after: 'W4', delay: 0 }, [u('glowieAgent', 1)], [[68, 7, 34]], 'door'),
+    squad('W1', { type: 'onEnter' }, [u('midget', 6)], [[40, 7, 46]], 'drop'),
+    squad('W1b', { type: 'with', after: 'W1', delay: 0 }, [u('glowieAgent', 2)], [[40, 7, 42]], 'door'),
+    squad('W2', { type: 'onRemain', n: 2 }, [u('riotMidget', 2)], [[40, 7, 38]], 'door'),
+    squad('W2b', { type: 'with', after: 'W2', delay: 0 }, [u('auditSniper', 2)], [[40, 7, 28], [40, 7, 24]], 'door'),
+    squad('W2c', { type: 'with', after: 'W2', delay: 0 }, [u('manaLeech', 1)], [[40, 7, 22]], 'door'),
+    squad('W3', { type: 'onRemain', n: 2 }, [u('midget', 4), u('boomMidget', 2)], [[40, 7, 48]], 'drop'),
+    squad('W3b', { type: 'with', after: 'W3', delay: 0 }, [u('frostHound', 2)], [[40, 7, 44]], 'door'),
+    squad('W4', { type: 'onRemain', n: 2 }, [u('midget', 2)], [[40, 7, 40]], 'drop'),
+    squad('W4b', { type: 'with', after: 'W4', delay: 0 }, [u('glowieAgent', 1)], [[40, 7, 36]], 'door'),
     squad('W4c', { type: 'with', after: 'W4', delay: 0 }, [
       u('robotShooter', 1, { elite: true, name: 'the Archivist' }),
-    ], [[17, 7, 17]], 'hidden'),
+    ], [[40, 7, 26]], 'hidden'),
   ],
 };
 
@@ -225,8 +225,8 @@ export const F1 = {
         immune: true,
         attacks: ['missiles'],
         targets: [
-          { id: 'S3-genNW', hp: 500, at: P(17, 5, 91) },
-          { id: 'S3-genNE', hp: 500, at: P(83, 5, 91) },
+          { id: 'S3-genNW', hp: 500, at: P(42, 0, 55) },
+          { id: 'S3-genNE', hp: 500, at: P(58, 0, 55) },
         ],
         adds: [
           { t: 0, at: spN[0], method: 'drop', spawn: 'SP-N', units: [['glowieAgent', 3, { flashbang: 1 }]] },
