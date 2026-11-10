@@ -4,7 +4,10 @@ import { BOSSES, ENEMIES as ENEMY_DEFS } from '../../data/enemies.js';
 import { zoomFovFor } from '../../data/guns.js';
 import { stageFor } from '../../data/stages.js';
 import { worldHitboxes } from '../../sim/collision.js';
-import { bossClipWant, enemyClipWant } from '../bossClips.js';
+import { DT } from '../../sim/simulate.js';
+import { activeSolids, groundHeight } from '../../sim/campaign/solids.js';
+import { damp } from '../anim.js';
+import { creatureClip, creatureTravel, creatureYaw } from '../creatureMotion.js';
 import { createClock } from '../core/clock.js';
 import { assetsVersion } from '../assets.js';
 
@@ -15,6 +18,9 @@ export function mountPresent(env) {
   let vmGun = null, vmGunKey = null;
   let needsT = 0;
   const clock = createClock();
+  const cues = new Map();
+  let motionTime = 0, motionState;
+  for (const type of ['bossAttack', 'enemyShot']) env.bus.on(type, (event) => cues.set(event.id, event));
   let showHitboxes = false;
   const hbGroup = new THREE.Group(); scene.add(hbGroup);
   const hbMats = { body: new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true }), weak: new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: true }), shield: new THREE.MeshBasicMaterial({ color: 0x00aaff, wireframe: true }) };
@@ -35,6 +41,13 @@ export function mountPresent(env) {
     const fdt = frame.dt;
     const p = state.players[state.localPlayerId];
     const t = state.time;
+    const sampleTime = t - (1 - alpha) * DT;
+    const resetMotion = motionState !== state || sampleTime < motionTime - DT;
+    const motionDt = resetMotion ? 0 : Math.min(0.1, Math.max(0, sampleTime - motionTime));
+    if (resetMotion) cues.clear();
+    motionTime = sampleTime;
+    motionState = state;
+    for (const [id, cue] of cues) if (state.tick - cue.tick > 60) cues.delete(id);
 
     // camera
     const px = lerp(p.prevPos.x, p.pos.x, alpha), py = lerp(p.prevPos.y, p.pos.y, alpha), pz = lerp(p.prevPos.z, p.pos.z, alpha);
@@ -142,19 +155,22 @@ export function mountPresent(env) {
       scene.fog.near = 60;
       scene.fog.far = 200;
     }
+    const creatureSolids = activeSolids(state);
     for (const e of state.enemies) {
       // Model-swap only when the needed stage model is loaded (avoid flicker between fallback and model).
       const v = syncView(e.id, () => (e.boss ? buildBoss(e) : buildEnemy(e)), viewKey(e));
       const o = v.obj, u = o.userData;
       const ex = lerp(e.prevPos.x, e.pos.x, alpha), ey = lerp(e.prevPos.y, e.pos.y, alpha), ez = lerp(e.prevPos.z, e.pos.z, alpha);
       o.position.set(ex, ey, ez);
-      // bosses turn smoothly on screen (an angular ease toward the sim's facing)
-      if (e.boss) {
-        if (u.visYaw === undefined) u.visYaw = e.yaw;
-        const dy = Math.atan2(Math.sin(e.yaw - u.visYaw), Math.cos(e.yaw - u.visYaw));
-        u.visYaw += dy * Math.min(1, fdt * 7);
-        o.rotation.y = u.visYaw + Math.PI;
-      } else o.rotation.y = e.yaw + Math.PI;
+      if (resetMotion || u.entity !== e) {
+        u.clips?.reset();
+        u.entity = e;
+        u.visYaw = e.yaw;
+      }
+      const def = e.boss ? BOSSES[e.type] : ENEMY_DEFS[e.type];
+      u.visYaw = creatureYaw(e, u.visYaw, motionDt);
+      o.rotation.y = u.visYaw + Math.PI;
+      const travel = creatureTravel(e, u.visYaw);
       // flash / status tint
       const tint = e.hitFlash > 0 ? [0.9, 0.9, 0.9] : e.status.burn ? [0.45, 0.12, 0] : e.status.goo ? [0.08, 0.3, 0] : [0, 0, 0];
       if (u.char) u.char.setTint(...tint);
@@ -164,7 +180,7 @@ export function mountPresent(env) {
       if (e.state === 'spawning') sc *= Math.min(1, 0.2 + e.stateT / 0.8);
       if (e.dead) sc = 0.01;
       o.scale.setScalar(sc);
-      o.rotation.z = e.state === 'stagger' ? Math.sin(now * 0.04) * 0.12 : 0;
+      o.visible = !(e.ai.buried > 0);
       if (u.weak && !e.boss) {
         const bh = e.bigHeadT > 0 ? 1.8 : 1;
         if (!u.weakBase) u.weakBase = u.weak.scale.clone();
@@ -173,57 +189,41 @@ export function mountPresent(env) {
       for (const ey2 of u.eyes) { const pu = ey2.userData.pupil; pu.position.x = Math.sin(now * 0.013 + e.id) * 0.04; pu.position.y = Math.cos(now * 0.017 + e.id) * 0.04; }
       if (u.crown) u.crown.rotation.y += fdt * 2;
       if (u.prop) u.prop.rotation.y += fdt * 40;
-      if (u.shadow) { u.shadow.position.y = 0.02 - ey / Math.max(0.05, sc); u.shadow.visible = !ENEMY_DEFS[e.type]?.flying || ey < 10; }
-      const spd = Math.hypot(e.vel.x, e.vel.z);
+      if (u.shadow) {
+        const ground = creatureSolids ? groundHeight(creatureSolids, ex, ez, def.radius * sc * 0.2, ey) : 0;
+        u.shadow.visible = Number.isFinite(ground) && (!def.flying || ey - ground < 10);
+        if (u.shadow.visible) u.shadow.position.y = (0.02 + ground - ey) / Math.max(0.05, sc);
+      }
+      if (u.bodyMotion) u.bodyMotion(e, travel, motionDt);
       if (u.char) {
         const ch = u.char;
-        if (u.clipsOnly) { /* clip layer drives every state (below) */ }
-        else if (!e.boss) {
-          if (e.state === 'stagger') ch.play('stun');
-          else if (e.state === 'attack') ch.play(e.type === 'bigObama' ? 'castBig' : 'cast', { speed: e.type === 'midget' ? 1.8 : 1.2 });
-          else if (e.ai.shooting) ch.play('cast', { speed: 1.4 });
-          else if (ENEMY_DEFS[e.type].flying) ch.play(ch.has('jump') ? 'jump' : 'idle', { speed: 0.8 });
-          else if (spd > 0.6) { ch.play('run'); ch.setSpeed(Math.min(2.2, Math.max(0.6, spd / 4.5))); }
-          else ch.play('idle');
-        } else {
-          const act = e.boss.action.id;
-          const map = e.type === 'dragon' ? {} : BOSSES[e.type].ai === 'mega'
-            ? { intro: 'victory', transition: 'hit', chase: 'run', charge: e.boss.action.t < 0.8 ? 'castBig' : 'run', stunned: 'stun', slam: 'jump', volley: 'castBig', summon: 'victory', melee: 'castBig', missiles: 'cast' }
-            : { intro: 'victory', transition: 'hit', drift: 'idle', ring: 'cast', fan: 'cast', spiral: 'cast', taxBolts: 'castBig', spiralRing: 'castBig', teleport: 'castBig' };
-          const clip = map[act] || 'idle';
-          // longer blends between clips; the run plays at the pace the boss actually moves
-          const runPace = Math.min(1.8, Math.max(0.6, spd / Math.max(1, BOSSES[e.type].speed || 4.5)));
-          ch.play(clip, { fade: 0.3, speed: act === 'charge' && e.boss.action.t >= 0.8 ? 1.8 : clip === 'run' ? runPace : 1 });
-        }
-        if (!u.clipsOnly) ch.update(fdt);
-        // authored clip for this frame (bossClips.js), decided first so the procedural rig can hold still under it
-        let want = null;
-        if (u.clips && e.boss) {
-          const a = e.boss.action;
-          want = bossClipWant({ type: e.type, action: a.id, actionT: a.t, variant: a.data.variant, data: a.data, speed: spd,
-            fitHeight: u.fitH, altitude: ey, def: BOSSES[e.type], phaseIdx: e.boss.phaseIdx, durations: u.clips.durations });
-        } else if (u.clips) {
-          const def = ENEMY_DEFS[e.type];
-          want = enemyClipWant({ type: e.type, state: e.state, ai: e.ai, def, speed: spd, fitHeight: def.height * (e.scale || 1), durations: u.clips.durations });
-        }
-        if (u.rig) u.rig.update(fdt, { moving: !!e.ai.moving, speed: spd, action: e.boss ? e.boss.action.id : null, actionT: e.boss ? e.boss.action.t : 0,
-          variant: e.boss ? e.boss.action.data.variant : null, altitude: ey, yaw: e.yaw, clipDriven: !!want });
         if (u.clips) {
-          const w = u.clips.apply(fdt, want);
-          if (w > 0 && u.rig) { if (u.rig.post) u.rig.post(w); ch.root.position.y *= 1 - w; } // the clip carries its own hip bob
-        }
+          const cue = cues.get(e.id);
+          const elapsed = cue ? (state.tick - cue.tick + alpha) * DT : Infinity;
+          const want = creatureClip(e, def, u, travel, u.fitH * sc, cue, elapsed);
+          const a = e.boss?.action;
+          ch.root.position.y = 0;
+          if (u.rig) u.rig.update(motionDt, { ...travel, moving: travel.speed > 0.18, action: a?.id,
+            actionT: a?.t ?? 0, variant: a?.data?.variant, data: a?.data ?? {}, altitude: ey, yaw: u.visYaw,
+            clipDriven: !!want, phaseIdx: e.boss?.phaseIdx });
+          const w = u.clips.apply(motionDt, want && !u.clips.has(want.clip) && !u.rig ? { clip: 'idle' } : want);
+          if (u.rig?.post) u.rig.post(w, u.clips.state.tailPitch);
+          const usesFloor = !def.flying && def.ai !== 'hex' && !(def.campaign && ey > 0.5);
+          ch.root.position.y = ch.root.position.y * (1 - w) + (usesFloor ? u.clips.state.clearance * u.fitH : 0);
+          if (def.flying || def.ai === 'hex') {
+            ch.root.rotation.x = damp(ch.root.rotation.x, Math.max(-0.16, Math.min(0.16, travel.forward * 0.027)), 0.09, motionDt);
+            ch.root.rotation.z = damp(ch.root.rotation.z, Math.max(-0.18, Math.min(0.18, -travel.side * 0.03)), 0.09, motionDt);
+          }
+        } else ch.update(motionDt);
       }
       if (e.boss) {
         if (e.type === 'dragon') {
-          const airborne = ey > 0.4;
-          o.position.y = ey + (airborne ? Math.sin(now * 0.004) * 0.15 : e.ai.moving ? Math.abs(Math.sin(now * 0.008)) * 0.12 : Math.sin(now * 0.002) * 0.05);
           if (u.groundShadow) { // shadow stays on the floor, shrinking and fading with altitude
             u.groundShadow.position.y = 0.02 - (o.position.y) / Math.max(0.05, o.scale.y);
             u.groundShadow.scale.setScalar(3.4 * Math.max(0.5, 1 - ey * 0.05));
           }
         } else if (BOSSES[e.type].ai === 'mega') {
           u.belly.visible = e.boss.action.id === 'stunned';
-          o.rotation.z = e.boss.action.id === 'stunned' ? Math.sin(now * 0.02) * 0.06 : 0;
         } else {
           const a = e.boss.weakAngle;
           u.weak.position.set(ex + Math.cos(a) * 1.9, ey + 0.2, ez + Math.sin(a) * 1.9);

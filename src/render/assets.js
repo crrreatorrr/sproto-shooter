@@ -139,7 +139,10 @@ function loadModel(path, prio = NOW) {
     root.traverse((o) => { if (o.isSkinnedMesh || o.isMesh) { o.frustumCulled = false; if (o.material) o.material.side = THREE.DoubleSide; } });
     if (!IN_PLACE_CLIPS.test(path)) pinRootMotion(root, g.animations);
     const holder = new THREE.Group();
-    root.rotation.y = THREE.MathUtils.degToRad(rotationForModelPath(path));
+    // The legacy enemy meshes' bind poses and locomotion both face +Z (verified on their rigs).
+    // Other callers of the asset rotation table still use the original model conventions.
+    const forward = /\/(midget|obama|sahil|tinubu)_stage[1-3]\.glb$/.test(path) ? 0 : rotationForModelPath(path);
+    root.rotation.y = THREE.MathUtils.degToRad(forward);
     holder.add(root);
     holder.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(holder, true);
