@@ -189,6 +189,7 @@ function spawnOne(state, enc, squad, at) {
   if (bossDef) {
     if (state.mode === 'campaign' && type === 'monster') equipAuditorPlates(e, state.tier);
     if (enc.arena) e.boss.arena = enc.arena;
+    if (at.name) e.boss.displayName = at.name;
     emit(state, 'bossSpawn', { id: e.id, bossType: type });
   }
   return e;
@@ -206,6 +207,7 @@ function trySpawn(state, enc, squad, key) {
       spots.push({
         type: u.type, pos: at, partId: u.partId || null, elite: !!u.elite, flockPart,
         role: u.role || null, alarm: u.alarm || null, ringsAlarm: squad.ringsAlarm || u.ringsAlarm || null,
+        name: u.name || null,
         asleep: !!(squad.asleep || u.asleep), hearing: squad.hearing || u.hearing || null,
       });
       i++;

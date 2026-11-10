@@ -1,13 +1,12 @@
 // Campaign director. No-op unless state.mode === 'campaign'.
 // Gun stats are never written here. Power-ups only touch speed, gravity, shields, fuel and presentation flags.
-import { float } from '../../core/rng.js';
+import { float, next } from '../../core/rng.js';
 import { yawTo } from '../../core/math.js';
 import { BOSSES } from '../../data/enemies.js';
 import { getLevelRuntime, sectionById, inBox, nearPoint } from '../level/runtime.js';
 import { emit } from '../events.js';
 import { createEnemy, createBoss, createPickup, createProjectile, nextId } from '../state.js';
 import { generateGun } from '../guns.js';
-import { next } from '../../core/rng.js';
 import { damagePlayer, onEnemyKilled } from '../combat.js';
 import { clearCampaignSpells, grantSpell } from '../spellbook.js';
 import { beginV2, noteV2Section, v2Post, v2Pre } from './v2.js';
@@ -429,7 +428,10 @@ function tickDuelBoss(state, e, dt) {
   const scale = e.boss.scripted && e.boss.attackScale ? e.boss.attackScale : 1;
   e.ai.atk = (def.attackEvery || 1.6) * scale;
   const attacks = e.boss.scripted && e.boss.attackList ? e.boss.attackList : def.attacks;
-  const name = attacks[Math.floor(float(state.rng) * attacks.length)];
+  const roll = e.boss.scripted ? next(state.rng) : float(state.rng);
+  const span = attacks && attacks.length ? attacks.length : 1;
+  const index = e.boss.scripted ? (span <= 1 ? 0 : roll % span) : Math.floor(roll * span);
+  const name = attacks[index];
   bossAttack(state, e, def, t, name);
 }
 
