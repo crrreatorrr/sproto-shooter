@@ -154,7 +154,7 @@ A squad whose type is in `BOSSES` spawns with `createBoss`, including the Hex. I
 
 A `target` with id `TOT-N-hp` tracks HP for the solid `TOT-N`. A bullet that hits that solid spends the HP (`bulletMul` scales gun damage). At 0 the solid is removed and both ids are marked destroyed.
 
-`noteV2Section` copies `navLinks`. A lockdown `room` or an encounter `lid` is a flyer lid for that section.
+`noteV2Section` copies `navLinks` and `voids` as stored (the level shifts them). A player who enters a void is sent to the last grounded point, or to `to` when `mode` is `fixed`. `penalty` is a fraction of max HP. `invuln` is seconds of invulnerability after the hit. Candle materials `candleUp` and `candleDown` are emissive green and red. `forceField` is see-through.
 
 A `hazard` with `enemyDps` hurts enemies in the box. Goo globs ignore it. `stripsBark` sets bark to stripped.
 

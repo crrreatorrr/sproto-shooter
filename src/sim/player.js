@@ -126,12 +126,20 @@ export function playerMovement(state, dt) {
         emit(state, 'land', { playerId: p.id, speed: 6 });
       }
       const hole = voidAt(p.pos, state.level.voids);
-      if (hole && hole.to) {
-        p.pos.x = hole.to[0]; p.pos.y = hole.to[1]; p.pos.z = hole.to[2];
-        p.vel.x = p.vel.y = p.vel.z = 0;
-        p.onGround = true;
-        if (hole.penalty) damagePlayer(state, p, { base: p.maxHp * hole.penalty, sourceKind: 'world', fromPos: p.pos });
-        emit(state, 'voidRescue', { id: hole.id || 'void', penalty: hole.penalty || 0 });
+      if (hole) {
+        const safe = state.level.safePos;
+        const useSafe = hole.mode !== 'fixed' && safe;
+        const dest = useSafe ? [safe.x, safe.y, safe.z] : hole.to;
+        if (dest) {
+          p.pos.x = dest[0]; p.pos.y = dest[1]; p.pos.z = dest[2];
+          p.vel.x = p.vel.y = p.vel.z = 0;
+          p.onGround = true;
+          if (hole.penalty) damagePlayer(state, p, { base: p.maxHp * hole.penalty, sourceKind: 'world', fromPos: p.pos });
+          if (hole.invuln) p.invulnT = Math.max(p.invulnT || 0, hole.invuln);
+          emit(state, 'voidRescue', { id: hole.id || 'void', penalty: hole.penalty || 0 });
+        }
+      } else if (p.onGround && state.level.voids) {
+        state.level.safePos = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
       }
     } else if (p.pos.y <= 0) {
       p.pos.y = 0;

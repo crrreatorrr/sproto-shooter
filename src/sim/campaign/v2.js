@@ -396,5 +396,7 @@ export function noteV2Section(state, sec, rt) {
   else if (state.level.flyerLids) delete state.level.flyerLids;
   if (sec && sec.navLinks) state.level.navLinks = sec.navLinks;
   else if (state.level.navLinks) delete state.level.navLinks;
+  if (sec && sec.voids && sec.voids.length) state.level.voids = sec.voids;
+  else if (state.level.voids) delete state.level.voids;
   if (sec) bindV2Section(state, sec);
 }
