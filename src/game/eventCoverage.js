@@ -50,6 +50,7 @@ export const EVENT_COVERAGE = {
   levelClear: ['audio', 'ui'],
   levelLost: ['audio', 'ui'],
   lockdown: ['audio', 'ui'],
+  lockdownReset: ['audio', 'ui'],
   squadSpawn: ['audio', 'ui'],
   partDestroyed: ['audio', 'ui'],
   levelUp: ['audio', 'vfx', 'ui'],

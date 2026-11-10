@@ -28,17 +28,17 @@ export function tickSwitch(state, p, m, dt) {
   const lv = state.level;
   if (lv.got[m.id]) return;
   const held = p.cmd && p.cmd.held && p.cmd.held.interact;
-  if (!m.needsHold) {
-    lv.got[m.id] = true;
-    emit(state, 'switch', { id: m.id });
-    return;
-  }
+  if (!m.needsHold) { finishSwitch(state, m); return; }
   if (!held) { m._hold = 0; return; }
   m._hold = (m._hold || 0) + dt;
-  if (m._hold >= (m.holdTime || 0.35)) {
-    lv.got[m.id] = true;
-    emit(state, 'switch', { id: m.id });
-  }
+  if (m._hold >= (m.holdTime || 0.35)) finishSwitch(state, m);
+}
+
+function finishSwitch(state, m) {
+  const lv = state.level;
+  lv.got[m.id] = true;
+  emit(state, 'switch', { id: m.id });
+  if (m.opens) lv.got[m.opens] = true;
 }
 
 export function onMover(p, m) {
