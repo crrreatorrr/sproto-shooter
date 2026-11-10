@@ -11,7 +11,7 @@ import { next } from '../../core/rng.js';
 import { damagePlayer } from '../combat.js';
 import { clearCampaignSpells, grantSpell } from '../spellbook.js';
 import { beginV2, noteV2Section, v2Post, v2Pre } from './v2.js';
-import { detonateBarrel, onMover, playerZoneSlow, publishSlowZones, slowEnemiesInHazard, tickGeyser, tickMover, tickSwitch, tickZoneDamage } from './mechanisms.js';
+import { detonateBarrel, isZone, onMover, playerZoneSlow, publishSlowZones, slowEnemiesInHazard, tickGeyser, tickMover, tickSwitch, tickZoneDamage } from './mechanisms.js';
 
 const snaps = new WeakMap();
 
@@ -70,7 +70,6 @@ export function campaignPre(state, dt) {
   if (!lv || lv.won || lv.lost) return;
   lv.time += dt;
   const p = state.players[state.localPlayerId];
-  p.hazardSlow = 1;
   if (p.padCd > 0) p.padCd -= dt;
   const sec = sectionById(lv.id, lv.section);
   if (!sec) return;
@@ -79,9 +78,22 @@ export function campaignPre(state, dt) {
     tickZoneDamage(state, p, m, dt);
     tickGeyser(state, p, m);
   }
-  state._campaignSection = sec;
-  p.hazardSlow = playerZoneSlow(lv, sec, p);
-  if (lv._zonesDirty || !lv.slowZones) publishSlowZones(lv, sec);
+  // Only levels that actually have a zone grow these fields. Boss goldens hash the whole state.
+  let zoned = false;
+  for (const m of sec.mechanisms || []) if (isZone(m)) { zoned = true; break; }
+  if (zoned) {
+    state._campaignSection = sec;
+    const slow = playerZoneSlow(lv, sec, p);
+    if (slow < 1) p.hazardSlow = slow;
+    else if (p.hazardSlow != null) delete p.hazardSlow;
+    if (lv._zonesDirty || lv._zoneSec !== sec.id) publishSlowZones(lv, sec);
+    lv._zoneSec = sec.id;
+  } else if (state._campaignSection || lv.slowZones || p.hazardSlow != null || lv._zoneSec) {
+    delete state._campaignSection;
+    delete lv.slowZones;
+    delete lv._zoneSec;
+    if (p.hazardSlow != null) delete p.hazardSlow;
+  }
   for (const w of sec.weapons || []) {
     if (lv.got[w.id]) continue;
     if (!nearPoint(w.at, p.pos.x, p.pos.y + 1, p.pos.z, 3.2)) continue;
