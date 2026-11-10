@@ -7,6 +7,7 @@ import { emit } from './events.js';
 import { clampToArena, pushOutOfBoxes, entityDef } from './collision.js';
 import { activeSolids, pushHorizontal, snapToGround } from './campaign/solids.js';
 import { sensePlayer } from './campaign/perception.js';
+import { clampFlyer, navWaypoint } from './campaign/nav.js';
 import { hitPlayerSphere, enemyAoE } from './combat.js';
 import { createProjectile, createHazard } from './state.js';
 
@@ -23,7 +24,8 @@ export function nearestPlayer(state, pos) {
 function setState(e, s) { e.state = s; e.stateT = 0; }
 
 function steer(state, e, target, w, invertSeek = false) {
-  let sx = target.pos.x - e.pos.x, sz = target.pos.z - e.pos.z;
+  const seek = !invertSeek && e.ai.navPoint ? e.ai.navPoint : target.pos;
+  let sx = seek.x - e.pos.x, sz = seek.z - e.pos.z;
   const sl = Math.hypot(sx, sz) || 1;
   sx /= sl; sz /= sl;
   if (invertSeek) { sx = -sx; sz = -sz; }
@@ -265,6 +267,10 @@ export function enemyAI(state, dt) {
     } else if (e.ai.alert && e.ai.alert !== 'alerted' && !sensePlayer(state, e, target)) {
       approachVel(e, { x: 0, z: 0 }, 0, 30, dt);
     } else {
+      if (state.mode === 'campaign' && state.level && state.level.useNav) {
+        const far = Math.hypot(target.pos.x - e.pos.x, target.pos.z - e.pos.z);
+        e.ai.navPoint = far > 2.5 ? navWaypoint(state, e.pos, target.pos) : null;
+      }
       if (e.state === 'idle' && e.type !== 'dummy') setState(e, 'chase');
       const slow = e.status.goo ? 1 - e.status.goo.slow : 1;
       const beh = BEHAVIORS[e.type] || BEHAVIORS[def.behavior];
@@ -278,6 +284,8 @@ export function enemyAI(state, dt) {
     if (solids && !def.flying) {
       pushHorizontal(e, solids, e.radius * e.scale, e.height * e.scale);
       snapToGround(e, solids, e.radius * e.scale);
+    } else if (def.flying && state.mode === 'campaign' && state.level && state.level.flyerVolume) {
+      clampFlyer(e, state.level.flyerVolume);
     } else {
       const floorY = def.flying ? 0.6 : 0;
       if (e.pos.y <= floorY) { e.pos.y = floorY; if (e.vel.y < 0) e.vel.y = 0; }
