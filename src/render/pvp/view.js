@@ -1,10 +1,16 @@
-// Free-arena view. Reuses the player model and the city floor. No new art.
+// Free-arena view. The selected skin is local and has no effect on the shared match.
 // SHOOTER-S3: the local player is drawn from the client's prediction, and its shots get a
 // cosmetic muzzle flash, tracer and camera recoil at once (fx.shots). Damage is never drawn here.
 import * as THREE from 'three';
 import { TUNING } from '../../data/tuning.js';
 import { dirFromYawPitch } from '../../core/math.js';
 import { ARENA_SOLIDS, ARENA_WALL_H } from '../../sim/pvp/arena.js';
+import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { ensureGunModel, instantiateGun, releaseAsset, retainAsset } from '../assets.js';
+import { loadPlayerModel } from '../firstPerson.js';
+import { PLAYER_CHARACTERS, selectedCharacter } from '../playerCharacters.js';
+import { GUN_MODEL_LEN, HAND_FRAC } from '../viewmodel/gunMesh.js';
+import { GUN_IDS, LOADOUT } from '../../sim/pvp/rules.js';
 import { chaseCamera } from './aim.js';
 
 export { chaseCamera };
@@ -15,8 +21,6 @@ function asset(path) {
   const base = import.meta.env && import.meta.env.BASE_URL ? import.meta.env.BASE_URL : './';
   return `${base}assets/${path}`;
 }
-
-let playerPromise = null;
 
 /** Cosmetic recoil kick per slot (radians of camera pitch) and how fast it settles. */
 export const RECOIL = Object.freeze({ kick: [0.012, 0.05, 0.08], tauMs: 90 });
@@ -36,21 +40,90 @@ export function recoilAt(shots, now) {
   return Math.min(0.25, kick);
 }
 
-function loadPlayer() {
-  if (!playerPromise) {
-    playerPromise = (async () => {
-      const [{ GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
-        import('three/examples/jsm/loaders/GLTFLoader.js'),
-        import('three/examples/jsm/libs/meshopt_decoder.module.js'),
-      ]);
-      const loader = new GLTFLoader();
-      loader.setMeshoptDecoder(MeshoptDecoder);
-      const gltf = await loader.loadAsync(asset('models/characters/sproto_player.' + 'glb'));
-      gltf.scene.traverse((obj) => { obj.frustumCulled = false; });
-      return gltf.scene;
-    })();
+const ARMS = /^(?:mixamorig)?(?:Left|Right)(?:Shoulder|Arm|ForeArm|Hand)|^weapon_/;
+
+function attachModel(body, source, path) {
+  const model = cloneSkeleton(source.scene);
+  model.traverse((obj) => { if (obj.isSkinnedMesh) obj.frustumCulled = false; });
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(model, true);
+  const height = box.getSize(new THREE.Vector3()).y || 1;
+  model.scale.setScalar(1.8 / height);
+  model.position.y = -box.min.y * model.scale.y;
+  body.group.add(model);
+  body.capsule.visible = false;
+  body.model = model;
+  body.path = path;
+  retainAsset(path);
+  const grip = model.getObjectByName('weapon_grip');
+  const aim = model.getObjectByName('weapon_aim');
+  if (!grip || !aim) return;
+  const mixer = new THREE.AnimationMixer(model);
+  const actions = {};
+  for (const clip of source.animations) {
+    const upper = ['ready', 'shoot', 'reload'].includes(clip.name);
+    const tracks = clip.tracks.filter((track) => ARMS.test(track.name) === upper);
+    actions[clip.name] = mixer.clipAction(new THREE.AnimationClip(clip.name, clip.duration, tracks)).play();
+    actions[clip.name].weight = Number(clip.name === 'idle' || clip.name === 'ready');
   }
-  return playerPromise;
+  const gun = new THREE.Group();
+  body.group.add(gun);
+  body.motion = { mixer, actions, grip, aim, gun, held: null, heldType: null };
+}
+
+function disposeModel(body) {
+  if (!body.model) return;
+  body.motion?.mixer.stopAllAction();
+  body.motion?.held?.userData.releaseAsset();
+  body.motion?.gun.removeFromParent();
+  body.model.traverse((obj) => { if (obj.isSkinnedMesh) obj.skeleton.dispose(); });
+  body.model.removeFromParent();
+  releaseAsset(body.path);
+  body.motion = body.model = null;
+}
+
+const gripAt = new THREE.Vector3(), aimAt = new THREE.Vector3();
+function poseModel(body, player, shotAge, dt) {
+  const motion = body.motion;
+  if (!motion) return;
+  const { actions, mixer, gun, grip, aim } = motion;
+  const speed = Math.hypot(player.vx || 0, player.vz || 0);
+  const gait = speed > 8 ? 'dash' : speed > 0.35 ? 'jog' : 'idle';
+  for (const name of ['idle', 'jog', 'dash']) {
+    const action = actions[name];
+    if (action) action.weight = THREE.MathUtils.damp(action.weight, name === gait ? 1 : 0, 18, dt);
+  }
+  const slot = GUN_IDS[player.slot] ? player.slot : 0;
+  const type = GUN_IDS[slot];
+  if (motion.heldType !== type) {
+    const inst = instantiateGun(type, GUN_MODEL_LEN[type] * 0.82);
+    if (inst) {
+      motion.held?.userData.releaseAsset();
+      gun.clear();
+      inst.root.position.fromArray(HAND_FRAC[type].grip).multiply(inst.size).negate();
+      gun.add(inst.root);
+      motion.muzzle = inst.muzzle;
+      motion.held = inst.root;
+      motion.heldType = type;
+    }
+  }
+  const shooting = shotAge >= 0 && shotAge < actions.shoot.getClip().duration * 1000;
+  const reloading = player.reloadT > 0;
+  actions.ready.weight = Number(!shooting && !reloading);
+  actions.shoot.weight = Number(shooting && !reloading);
+  actions.shoot.time = shooting ? shotAge / 1000 : 0;
+  actions.shoot.paused = true;
+  actions.reload.weight = Number(reloading);
+  const reloadTime = LOADOUT[slot].stats.reloadTime;
+  actions.reload.time = reloading ? actions.reload.getClip().duration * THREE.MathUtils.clamp(1 - player.reloadT / reloadTime, 0, 0.999) : 0;
+  actions.reload.paused = true;
+  mixer.update(dt);
+  body.group.updateMatrixWorld(true);
+  body.group.worldToLocal(grip.getWorldPosition(gripAt));
+  body.group.worldToLocal(aim.getWorldPosition(aimAt));
+  gun.position.copy(gripAt);
+  // The socket points +Z. Weapon meshes are authored with the barrel toward -Z.
+  gun.lookAt(body.group.localToWorld(aimAt.negate().addScaledVector(gripAt, 2)));
 }
 
 export function createArenaView(canvas) {
@@ -151,7 +224,7 @@ export function createArenaView(canvas) {
     tracers.push(line);
   }
 
-  function drawShots(shots, now) {
+  function drawShots(shots, now, seat) {
     flash.visible = false;
     for (const line of tracers) line.visible = false;
     if (!shots || !shots.length) return;
@@ -162,7 +235,11 @@ export function createArenaView(canvas) {
       if (age < 0 || age > TRACER_MS) continue;
       const dir = dirFromYawPitch(shot.yaw, shot.pitch);
       const eye = { x: shot.x, y: shot.y + TUNING.eyeHeight, z: shot.z };
-      const muzzle = { x: eye.x + dir.x * MUZZLE_AHEAD, y: eye.y + dir.y * MUZZLE_AHEAD, z: eye.z + dir.z * MUZZLE_AHEAD };
+      const weapon = bodies[seat]?.motion;
+      const from = weapon?.held && weapon.muzzle
+        ? weapon.held.localToWorld(weapon.muzzle.clone())
+        : null;
+      const muzzle = from || { x: eye.x + dir.x * MUZZLE_AHEAD, y: eye.y + dir.y * MUZZLE_AHEAD, z: eye.z + dir.z * MUZZLE_AHEAD };
       let len = TRACER_M;
       if (dir.y < -1e-6) len = Math.min(len, -eye.y / dir.y);
       const line = tracers[used++];
@@ -179,21 +256,31 @@ export function createArenaView(canvas) {
     }
   }
 
-  const ready = loadPlayer().then((source) => {
-    for (const body of bodies) {
-      const model = source.clone(true);
-      model.position.set(0, 0, 0);
-      model.scale.setScalar(1);
-      model.updateMatrixWorld(true);
-      const box = new THREE.Box3().setFromObject(model);
-      const height = box.getSize(new THREE.Vector3()).y || 1;
-      model.scale.setScalar(1.8 / height);
-      model.updateMatrixWorld(true);
-      model.position.y -= new THREE.Box3().setFromObject(model).min.y;
-      body.group.add(model);
-      body.capsule.visible = false;
+  const selection = selectedCharacter();
+  const stock = PLAYER_CHARACTERS[0];
+  let disposed = false;
+  let lastTime = null;
+  let lastShot = -Infinity;
+  let localSeat = -1;
+  const ready = Promise.all([loadPlayerModel(stock.model), loadPlayerModel(selection.model).catch(() => null)]).then(([source, selected]) => {
+    if (disposed) return;
+    if (source?.scene) for (const body of bodies) attachModel(body, source, stock.model);
+    if (selected?.scene && selection.id !== stock.id) {
+      for (const type of GUN_IDS) void ensureGunModel(type).catch(() => {});
+      setLocalSkin = (seat) => {
+        if (seat === localSeat) return;
+        if (localSeat >= 0) {
+          disposeModel(bodies[localSeat]);
+          if (source?.scene) attachModel(bodies[localSeat], source, stock.model);
+          else bodies[localSeat].capsule.visible = true;
+        }
+        disposeModel(bodies[seat]);
+        attachModel(bodies[seat], selected, selection.model);
+        localSeat = seat;
+      };
     }
   }).catch(() => {});
+  let setLocalSkin = () => {};
 
   function resize() {
     const w = Math.max(1, canvas.clientWidth || canvas.width || 640);
@@ -210,13 +297,20 @@ export function createArenaView(canvas) {
   function render(sample, seat, look = null, fx = null) {
     resize();
     const players = sample && sample.players;
+    const now = fx?.now ?? performance.now();
+    const dt = lastTime === null ? 1 / 60 : THREE.MathUtils.clamp((now - lastTime) / 1000, 0, 0.05);
+    lastTime = now;
+    if (players && (seat === 0 || seat === 1)) setLocalSkin(seat);
+    for (const shot of fx?.shots || []) lastShot = Math.max(lastShot, shot.at);
     for (let i = 0; i < 2; i++) {
       const p = players && players[i];
-      const body = bodies[i].group;
+      const entry = bodies[i], body = entry.group;
       if (!p) { body.visible = false; ropes[i].visible = false; continue; }
       body.visible = !!p.alive || p.hp > 0;
       body.position.set(p.x, p.y, p.z);
-      body.rotation.y = p.yaw;
+      body.rotation.y = i === seat && look ? look.yaw : p.yaw;
+      if (entry.motion) body.rotation.y += Math.PI;
+      poseModel(entry, p, now - lastShot, dt);
       const rope = ropes[i];
       const hook = p.grapple;
       if (hook) {
@@ -228,16 +322,17 @@ export function createArenaView(canvas) {
       } else rope.visible = false;
     }
     const me = players && players[seat] ? players[seat] : { x: 0, y: 0, z: 16, yaw: 0, pitch: 0 };
-    if (look && players && players[seat]) bodies[seat].group.rotation.y = look.yaw;
     const kick = fx ? recoilAt(fx.shots, fx.now) : 0;
     const cam = look ? chaseCamera(me, look.yaw, look.pitch + kick) : chaseCamera(me, me.yaw, me.pitch || 0);
-    drawShots(fx && fx.shots, fx ? fx.now : 0);
+    drawShots(fx && fx.shots, fx ? fx.now : 0, seat);
     camera.position.set(cam.position.x, cam.position.y, cam.position.z);
     camera.lookAt(cam.target.x, cam.target.y, cam.target.z);
     renderer.render(scene, camera);
   }
 
   function dispose() {
+    disposed = true;
+    for (const body of bodies) disposeModel(body);
     renderer.dispose();
     floor.geometry.dispose();
     ring.geometry.dispose();

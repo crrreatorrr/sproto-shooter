@@ -8,6 +8,8 @@ import { bossClipWant, enemyClipWant } from '../bossClips.js';
 import { createClock } from '../core/clock.js';
 import { assetsVersion } from '../assets.js';
 
+const NO_WEAPON_OFFSET = [0, 0, 0];
+
 export function mountPresent(env) {
   const { AMMO_COL, CONF_N, G, GUN_MODEL_LEN, PK, PK_COL, RES_COL, TRACER_N, VM_LAYER, VM_POSE, addTracer, applyStage, arenaBits, beginGpu, booms, boxView, boxViews, buildAlly, buildBoss, buildEnemy, buildGunMesh, buildGunModel, buildGunPickup, buildHazard, camera, cl, confetti, cp, cr, cv, disposeTree, dummy, endGpu, ensureProjectileModel, feel, flashLight, fp, inst, lerp, levelView, muzzleFlash, pollGpu, releaseUnseen, reloadHands, reloadOffsets, renderer, requestNeeds, scene, setVmLayer, syncView, tracerGeo, tracerPos, tracers, updateBeams, viewKey, vm, vmRoot, warmColliders } = env;
   let vmGun = null, vmGunKey = null;
@@ -90,10 +92,11 @@ export function mountPresent(env) {
       const r = reloadOffsets(vmGun.userData.type, p.reloadT, vm.reloadTime);
       const steady = 1 - 0.75 * vm.ads; // less sway and bob while aiming
       const ad = pose.ads;
+      const offset = fp.weaponOffset || NO_WEAPON_OFFSET;
       vmGun.position.set(
-        lerp(pose.rest[0], ad[0], vm.ads) + vm.swayX * steady + r.x,
-        lerp(pose.rest[1], ad[1], vm.ads) - vm.swayY * steady + r.y - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006 * steady,
-        lerp(pose.rest[2], ad[2], vm.ads) + vm.kick * 0.05 + r.z);
+        lerp(pose.rest[0], ad[0], vm.ads) + vm.swayX * steady + r.x + offset[0],
+        lerp(pose.rest[1], ad[1], vm.ads) - vm.swayY * steady + r.y - vm.swap * 0.25 + Math.sin(vm.bob * 2) * 0.006 * steady + offset[1],
+        lerp(pose.rest[2], ad[2], vm.ads) + vm.kick * 0.05 + r.z + offset[2]);
       vmGun.rotation.set(vm.kick * 0.25 + r.rx, pose.yaw * ia + vm.swayX * steady + r.ry, pose.roll * ia + r.rz);
       vmGun.updateMatrix();
       muzzleFlash.position.copy(vmGun.userData.muzzle).applyMatrix4(vmGun.matrix);

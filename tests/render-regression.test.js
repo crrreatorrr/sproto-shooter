@@ -40,6 +40,17 @@ describe('render structure', () => {
     expect(mg.materials).toEqual(['tripo_material_a4c1903b-26c4-42ce-8fa7-9708177cab02']);
   });
 
+  it('ships a complete Pepe rig, weapon socket and arena clip set for each selectable skin', () => {
+    for (const id of ['pepe', 'pepe-general', 'pepe-tux']) {
+      const rig = structureOf(glbJson(`public/assets/models/characters/${id}.glb`));
+      expect(rig.meshopt).toBe(true);
+      expect(rig.skins.length).toBe(1);
+      expect(rig.nodes).toEqual(expect.arrayContaining(['weapon_grip', 'weapon_aim']));
+      expect(rig.clips.map(({ name }) => name).sort()).toEqual(['dash', 'idle', 'jog', 'ready', 'reload', 'shoot']);
+      expect(rig.clips.every(({ channels }) => channels > 0)).toBe(true);
+    }
+  });
+
   it('ships the hands, reload, sniper, boss, and campaign shots', () => {
     for (const name of ['hands', 'reload', 'sniper', 'boss', 'campaign']) {
       const stat = fs.statSync(`tests/fixtures/screenshots/${name}.png`);

@@ -14,7 +14,7 @@ export const ASPIRATION = {
   titleShellGzipBytes: 150 * 1024,
   criticalTransferBytes: 6 * 1024 * 1024,
   criticalRequests: 20,
-  staticShipBytes: 25 * 1024 * 1024,
+  staticShipBytes: 28 * 1024 * 1024,
   glbBytes: 3 * 1024 * 1024,
   textureMaxEdge: 2048,
 };
@@ -25,8 +25,8 @@ export const ASPIRATION = {
 export const MEASURED = {
   staticShipBytes: 23217417,
   publicAssetBytes: 22065058,
-  // +428 KB (0.19%): straight-legged idle / walk / run clips for the shooter cast (no texture change).
-  decodedBytes: 230139382,
+  // Full-detail Pepe, General and Tux rigs add 12.2 MB decoded against current main.
+  decodedBytes: 236417668,
   titleShellGzipBytes: 6669,
   criticalTransferBytes: 3761311,
   criticalFirstPartyRequests: 13,

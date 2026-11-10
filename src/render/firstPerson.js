@@ -1,77 +1,42 @@
-// First-person body: the player's rigged Sproto (Mixamo skeleton) attached to the camera, holding the gun.
-// Every frame the arms are posed against the gun's own surface (a distance field from gunCollider.js):
-//   1. each hand has a grasp in gun space: an anchor inside the part it holds (pistol grip, handguard, or a
-//      reload target such as the magazine) and a hand frame (fingers / thumb directions). The palm is slid out
-//      of the gun along its normal until it rests on the surface, and the wrist is placed behind it.
-//   2. if the short cartoon arms can't reach, the shoulder blade swings forward toward the gun (and, as a last
-//      resort, the whole body leans a little; neither is visible in first person).
-//   3. two-bone IK places the elbow; the bend side is chosen so the thick sleeves clear the gun.
-//   4. fingers and thumb curl joint by joint until they touch the gun, so they wrap it instead of entering it.
-// Head and legs are collapsed so only the arms (and a bit of the vest when looking down) are seen. Hand targets
-// live on the gun mesh, so the arms follow recoil, sway, swap and reload automatically.
+// First-person Mixamo rig. Surface contacts place the palms against the held weapon.
+// Two-bone IK and shoulder protraction keep the elbows and sleeves outside the weapon.
+// Fingers curl to contact. Pepe rigs also probe their glove geometry and clear the torso and opposite arm.
+// The gun carries recoil, sway and reload targets, so the hands track its motion.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { colliderFor } from './gunCollider.js';
-import { enqueue, PRIORITY, retainAsset, peekAsset } from './assets.js';
-import { FP, cleanArmWeights } from './viewmodel/fpPose.js';
-export { FP, cleanArmWeights };
+import { createBodyClearance } from './viewmodel/armClearance.js';
+import { enqueue, PRIORITY, retainAsset, releaseAsset, peekAsset } from './assets.js';
+import { FP as STOCK_POSE } from './viewmodel/fpPose.js';
+import { aim, rotateWorld, handFrame, frame, specBasis } from './viewmodel/handFrame.js';
+import { preparePlayerBody, disposePlayerBody, firstPersonPose, PEPE_MG_SUPPORT } from './viewmodel/playerBody.js';
+export { FP, cleanArmWeights } from './viewmodel/fpPose.js';
 
-export const PLAYER_MODEL = 'models/characters/sproto_player.glb';
+import { PLAYER_CHARACTERS } from './playerCharacters.js';
+
+const STOCK_MODEL = PLAYER_CHARACTERS[0].model;
 const BASE = `${import.meta.env.BASE_URL}assets/`;
 
-const FINGERS = ['Index', 'Middle', 'Ring', 'Pinky'];
 const V = () => new THREE.Vector3();
 const _a = V(), _b = V(), _c = V(), _t = V(), _d = V(), _e = V(), _p = V();
-const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _pq = new THREE.Quaternion();
+const _q2 = new THREE.Quaternion(), _pq = new THREE.Quaternion();
 const _m = new THREE.Matrix4();
 
-/** Rotate `bone` (in world space) so the direction bone→`from` turns into bone→`to`. */
-function aim(bone, from, to) {
-  bone.getWorldPosition(_p);
-  _d.copy(from).sub(_p).normalize();
-  _e.copy(to).sub(_p).normalize();
-  if (_d.lengthSq() < 1e-8 || _e.lengthSq() < 1e-8) return;
-  _q.setFromUnitVectors(_d, _e);
-  rotateWorld(bone, _q);
+const armsLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+export function loadPlayerModel(path) {
+  return enqueue(path, () => armsLoader.loadAsync(BASE + path), PRIORITY.NOW);
 }
 
-/** Pre-multiply a world-space rotation onto a bone, then refresh its matrices. */
-function rotateWorld(bone, qWorld) {
-  bone.getWorldQuaternion(_q2);
-  _q2.premultiply(qWorld);
-  bone.parent.getWorldQuaternion(_pq);
-  bone.quaternion.copy(_pq.invert().multiply(_q2));
-  bone.updateMatrixWorld(true);
-}
-
-/** Orthonormal hand frame (fingers, thumbSide, normal = fingers × thumbSide) from bone positions, in world space. */
-function handFrame(hand, middle1, thumb1, out) {
-  hand.getWorldPosition(_a);
-  middle1.getWorldPosition(_b);
-  thumb1.getWorldPosition(_c);
-  const f = out.f.copy(_b).sub(_a).normalize();
-  const t = out.t.copy(_c).sub(_a);
-  t.sub(_d.copy(f).multiplyScalar(t.dot(f))).normalize();
-  out.n.crossVectors(f, t).normalize();
-  return out;
-}
-const frame = () => ({ f: V(), t: V(), n: V() });
-
-/** Orthonormal basis (f, t, n) from a { fingers, thumb } spec. */
-function specBasis(spec, out) {
-  out.f.fromArray(spec.fingers).normalize();
-  out.t.fromArray(spec.thumb);
-  out.t.sub(_d.copy(out.f).multiplyScalar(out.t.dot(out.f))).normalize();
-  out.n.crossVectors(out.f, out.t);
-  return out;
-}
-
-export function createFirstPerson(camera) {
+export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
   const root = new THREE.Group(); // child of camera
   root.visible = false;
   camera.add(root);
   let ready = false;
+  let FP = STOCK_POSE;
+  let protectBody = false;
+  const torsoCentre = V(), torsoHalf = V();
+  const bodyInverse = new THREE.Matrix4(), gunInverse = new THREE.Matrix4();
   let bones = {};
   let bind = new Map();
   let arms = null;
@@ -87,68 +52,50 @@ export function createFirstPerson(camera) {
     clipPlanes[1].setFromNormalAndCoplanarPoint(_cn.set(0, 0, -1).applyQuaternion(_cq), camera.localToWorld(_cp.set(0, 0, FP.clipZ)));
   }
 
-  const armsLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  let armsHeld = false;
-  function attachArms(g) {
-    if (ready || armsHeld || !g || !g.scene) return;
-    armsHeld = true;
-    retainAsset(PLAYER_MODEL);
-    const body = g.scene;
-    body.traverse((o) => {
-      if (o.isSkinnedMesh) {
-        o.frustumCulled = false; o.renderOrder = 2;
-        for (const m of [].concat(o.material)) { m.clippingPlanes = clipPlanes; m.clipIntersection = true; }
-        cleanArmWeights(o);
-      }
-      if (o.isBone) bones[o.name.replace(/^mixamorig:?/, '')] = o;
-    });
-    // fit to height
-    const box = new THREE.Box3().setFromObject(body, true);
-    const k = FP.height / Math.max(0.01, box.max.y - box.min.y);
-    body.scale.setScalar(k);
-    holder = new THREE.Group();
-    holder.add(body);
-    holder.rotation.y = Math.PI + FP.bodyYaw; // model faces +z; turn to face the camera's -z, plus a shooting stance
-    root.add(holder);
-    // hide head (we are inside it) and legs
-    for (const n of ['Neck', 'Head', 'LeftUpLeg', 'RightUpLeg']) if (bones[n]) bones[n].scale.setScalar(1e-4);
-    // place the head bone at FP.eye relative to the camera
-    root.updateMatrixWorld(true);
-    camera.updateMatrixWorld(true);
-    const head = bones.Neck || bones.Head; // the neck bone's position is kept even though its geometry is collapsed
-    const hw = head.getWorldPosition(V());
-    const local = camera.worldToLocal(hw.clone());
-    holder.position.set(FP.eye[0] - local.x, FP.eye[1] - local.y, FP.eye[2] - local.z);
-    holderBase.copy(holder.position);
-    root.updateMatrixWorld(true);
-    for (const b of Object.values(bones)) bind.set(b, b.quaternion.clone());
-    const side = (s) => ({
-      name: s,
-      clavicle: bones[`${s}Shoulder`], upper: bones[`${s}Arm`], lower: bones[`${s}ForeArm`], hand: bones[`${s}Hand`],
-      middle1: bones[`${s}HandMiddle1`], thumb1: bones[`${s}HandThumb1`],
-      fingers: FINGERS.map((f) => [1, 2, 3].map((i) => bones[`${s}Hand${f}${i}`]).filter(Boolean)).filter((c) => c.length),
-      thumb: [1, 2, 3].map((i) => bones[`${s}HandThumb${i}`]).filter(Boolean),
-      lenA: 0, lenB: 0, palmLen: 0,
-      palmSign: 1, // which side of the hand frame's normal the palm is on (mirrored between hands)
-      bend: 0, // smoothed elbow swing around the shoulder-wrist axis
-      frame: frame(),
-    });
-    arms = { Right: side('Right'), Left: side('Left') };
-    ready = !!(arms.Right.upper && arms.Left.upper && arms.Right.middle1 && arms.Left.middle1 && arms.Right.thumb1 && arms.Left.thumb1);
-    if (!ready) { console.warn('[firstPerson] player rig is missing arm bones; arms disabled'); return; }
-    for (const a of Object.values(arms)) {
-      a.lenA = a.upper.getWorldPosition(V()).distanceTo(a.lower.getWorldPosition(V()));
-      a.lenB = a.lower.getWorldPosition(V()).distanceTo(a.hand.getWorldPosition(V()));
-      a.palmLen = a.hand.getWorldPosition(V()).distanceTo(a.middle1.getWorldPosition(V()));
-      // fingers in the bind pose are slightly bent toward the palm: that tells which way the palm faces
-      const fr = handFrame(a.hand, a.middle1, a.thumb1, a.frame);
-      const tip = a.fingers[1] ? a.fingers[1][a.fingers[1].length - 1].getWorldPosition(V()) : a.middle1.getWorldPosition(V());
-      a.palmSign = tip.sub(a.middle1.getWorldPosition(V())).dot(fr.n) >= 0 ? 1 : -1;
+  let desiredPath = '';
+  let mountedPath = '';
+  let requested = 0;
+  let invalidPath = '';
+  function attachArms(g, path) {
+    if (mountedPath === path) return;
+    const nextPose = firstPersonPose(path);
+    const prepared = preparePlayerBody(g.scene, camera, root, nextPose, path !== STOCK_MODEL, clipPlanes);
+    if (!prepared) {
+      invalidPath = path;
+      console.warn('[firstPerson] player rig is missing arm bones', path);
+      return;
     }
+    if (holder) {
+      disposePlayerBody(holder);
+      releaseAsset(mountedPath);
+    }
+    retainAsset(path);
+    mountedPath = path;
+    protectBody = path !== STOCK_MODEL;
+    FP = nextPose;
+    ({ bones, bind, arms, holder } = prepared);
+    prepared.torso.getCenter(torsoCentre);
+    prepared.torso.getSize(torsoHalf).multiplyScalar(0.5);
+    holderBase.copy(holder.position);
+    lean.set(0, 0, 0);
+    root.userData.vmLayer = false;
+    ready = true;
   }
-  enqueue(PLAYER_MODEL, () => new Promise((resolve, reject) => {
-    armsLoader.load(BASE + PLAYER_MODEL, resolve, undefined, (err) => reject(err instanceof Error ? err : new Error('arms failed')));
-  }), PRIORITY.NOW).then((g) => attachArms(g)).catch((e) => console.warn('[firstPerson] could not load player model', e.message));
+  function selectModel(path) {
+    if (path === desiredPath) return;
+    desiredPath = path;
+    const request = ++requested;
+    loadPlayerModel(path).then((g) => {
+      if (request !== requested) return;
+      if (g?.scene) attachArms(g, path);
+      else if (!ready && path !== STOCK_MODEL) {
+        return loadPlayerModel(STOCK_MODEL).then((stock) => {
+          if (request === requested && !ready && stock?.scene) attachArms(stock, STOCK_MODEL);
+        });
+      }
+    }).catch((error) => console.warn('[firstPerson] could not load player model', error.message));
+  }
+  selectModel(initialModel);
 
   // ---------- grasp ----------
   const gq = new THREE.Quaternion();
@@ -170,6 +117,7 @@ export function createFirstPerson(camera) {
     _palm.addScaledVector(basis.f, -FP.palmCenter * a.palmLen * toLocal);
     outPos.copy(_palm);
     gun.localToWorld(outPos);
+    a.away.copy(_pn).negate().applyQuaternion(gq);
     // world hand frame → quaternion
     const wf = _a.copy(basis.f).applyQuaternion(gq), wt = _b.copy(basis.t).applyQuaternion(gq), wn = _c.crossVectors(wf, wt);
     outQ.setFromRotationMatrix(_m.makeBasis(wf, wt, wn));
@@ -177,16 +125,21 @@ export function createFirstPerson(camera) {
 
   /** Smallest clearance (world m) between the gun and points along segment p→q, from t0 to t1. */
   const _s = V();
+  const rightArm = [V(), V(), V()];
+  const supported = V(), shoulderAt = V();
+  const pepeBends = [0, .3, -.3, .6, -.6, .9, -.9, 1.25, -1.25, 1.6, -1.6, 2, -2, 2.4, -2.4, Math.PI];
   function segClear(p, q, t0, t1, n = 5) {
     let best = Infinity;
     for (let i = 0; i < n; i++) {
       const t = t0 + ((t1 - t0) * i) / (n - 1);
       _s.copy(p).lerp(q, t);
-      gun.worldToLocal(_s);
+      _s.applyMatrix4(gunInverse);
       best = Math.min(best, col.distance(_s) * gunWorldScale);
     }
     return best;
   }
+
+  const { rightArmClear, bodyClear } = createBodyClearance(torsoCentre, torsoHalf, bodyInverse, rightArm);
 
   const BENDS = [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.25, -1.25];
   const _sh = V(), _dir = V(), _pole = V(), _elbow = V(), _tgt = V(), _rot = new THREE.Quaternion();
@@ -205,15 +158,16 @@ export function createFirstPerson(camera) {
     _tgt.copy(_sh).addScaledVector(_dir, dist);
     let pick = 0, pickClear = -Infinity;
     if (col && h > 1e-3) {
-      for (const ang of BENDS) {
+      for (const ang of protectBody ? pepeBends : BENDS) {
         _rot.setFromAxisAngle(_dir, ang);
         _elbow.copy(_pole).applyQuaternion(_rot).multiplyScalar(h).addScaledVector(_dir, x).add(_sh);
-        const c = Math.min(segClear(_sh, _elbow, 0.35, 1), segClear(_elbow, _tgt, 0, 0.7));
+        const weapon = Math.min(segClear(_sh, _elbow, 0.35, 1), segClear(_elbow, _tgt, 0, protectBody ? 0.8 : 0.7));
+        const c = protectBody ? Math.min(weapon, bodyClear(_sh, _elbow, _tgt, a.name === 'Left')) : weapon;
         if (c >= FP.armRadius) { pick = ang; pickClear = c; break; }
         if (c > pickClear + 0.004) { pickClear = c; pick = ang; }
       }
     }
-    a.bend += (pick - a.bend) * Math.min(1, dt * 12);
+    a.bend += (pick - a.bend) * Math.min(1, dt * (protectBody ? 24 : 12));
     _rot.setFromAxisAngle(_dir, a.bend);
     _elbow.copy(_pole).applyQuaternion(_rot).multiplyScalar(h).addScaledVector(_dir, x).add(_sh);
     aim(a.upper, a.lower.getWorldPosition(_c), _elbow);
@@ -277,6 +231,35 @@ export function createFirstPerson(camera) {
     if (a.thumb.length > 1) curlChain(a.thumb, fr.f, a.palmSign, [0.35, FP.thumbMax, FP.thumbMax], 1);
   }
 
+  const glovePoint = V(), shifted = V(), separation = V(), localAway = V();
+  function poseGrasp(a, wrist, pole, orientation, dt, trigger) {
+    solveArm(a, wrist, pole, orientation, dt);
+    curlHand(a, trigger);
+    if (!protectBody || !col) return;
+    let clear = 0, bodyPush = 0;
+    localAway.copy(a.away).transformDirection(gunInverse);
+    for (let pass = 0; pass < 2; pass++) {
+      let push = 0, cross = 0;
+      for (const [mesh, vertex] of a.probes) {
+        mesh.getVertexPosition(vertex, glovePoint).applyMatrix4(mesh.matrixWorld);
+        if (!trigger) cross = Math.max(cross, .017 - rightArmClear(glovePoint));
+        glovePoint.applyMatrix4(gunInverse);
+        if (col.distance(glovePoint) * gunWorldScale < .009) {
+          const gap = col.clearAlong(glovePoint, localAway, .019 / gunWorldScale, .16 / gunWorldScale, col.cell);
+          push = Math.max(push, gap * gunWorldScale);
+        }
+      }
+      if ((!push || clear >= .16) && (!cross || bodyPush >= .24)) break;
+      clear = Math.min(.16, clear + push);
+      bodyPush = Math.min(.24, bodyPush + cross * 1.7);
+      shifted.copy(wrist).addScaledVector(a.away, clear);
+      shifted.addScaledVector(supported.set(-.68, -.72, 0).applyQuaternion(camera.getWorldQuaternion(_pq)), bodyPush);
+      for (const chain of [...a.fingers, a.thumb]) for (const bone of chain) bone.quaternion.copy(bind.get(bone));
+      solveArm(a, shifted, pole, orientation, dt);
+      curlHand(a, trigger);
+    }
+  }
+
   const posB = V(), qB = new THREE.Quaternion(), _kn = V(), _kb = V();
   const wristL = V(), wristR = V(), qL = new THREE.Quaternion(), qR = new THREE.Quaternion();
   const bodyOff = V(), _need = V();
@@ -321,6 +304,9 @@ export function createFirstPerson(camera) {
   return {
     root,
     get ready() { return ready; },
+    get modelPath() { return desiredPath; },
+    get weaponOffset() { return FP.weaponOffset; },
+    selectModel,
     /** The gun mesh currently held (a child of the viewmodel root) and its type. */
     setGun(mesh, type) {
       if (mesh !== gun) col = mesh ? colliderFor(mesh, mesh.userData.colliderKey) : null;
@@ -331,7 +317,8 @@ export function createFirstPerson(camera) {
      * move a hand off its default hold (reloads) }.
      */
     update(visible, opts = {}) {
-      if (!ready) attachArms(peekAsset(PLAYER_MODEL));
+      const cached = mountedPath !== desiredPath && invalidPath !== desiredPath && peekAsset(desiredPath);
+      if (cached?.scene) attachArms(cached, desiredPath);
       root.visible = ready && visible && !!gun && !(typeof window !== 'undefined' && window.__hideFP); // __hideFP: dev hook to inspect the gun alone
       if (!root.visible) return;
       const dt = Math.min(0.1, opts.dt ?? 1 / 60), ads = opts.ads || 0;
@@ -340,13 +327,17 @@ export function createFirstPerson(camera) {
       updateClip();
       gun.updateMatrixWorld(true);
       gun.getWorldQuaternion(gq);
+      gunInverse.copy(gun.matrixWorld).invert();
       gunWorldScale = gun.getWorldScale(_e).x;
       // a gun mesh can carry its own hand anchors (model guns do); otherwise use the per-type defaults
       const gripA = gun.userData.grip || FP.grip[gunType] || FP.grip.mg;
-      const foreA = gun.userData.fore || FP.fore[gunType] || FP.fore.mg;
+      let foreA = gun.userData.fore || FP.fore[gunType] || FP.fore.mg;
+      const mgSupport = protectBody && gunType === 'mg';
+      if (mgSupport) foreA = [foreA[0] - .052, foreA[1] - .079, foreA[2] + .07];
+      if (protectBody && gunType === 'duckgun') foreA = [foreA[0] - .025, foreA[1], foreA[2] - .023];
       // and its own hand frames (e.g. a vertical foregrip is held like a pistol grip, not cupped from below)
       target(arms.Right, gripA, gun.userData.rightSpec || FP.right, opts.right, wristR, qR);
-      target(arms.Left, foreA, gun.userData.leftSpec || FP.left, opts.left, wristL, qL);
+      target(arms.Left, foreA, mgSupport ? PEPE_MG_SUPPORT : gun.userData.leftSpec || FP.left, opts.left, wristL, qL);
       // body: stance turn and offset
       holder.rotation.y = Math.PI + FP.bodyYaw + (FP.bodyYawAds - FP.bodyYaw) * ads;
       bodyOff.fromArray(FP.bodyHip).lerp(_e.fromArray(FP.bodyAds), ads);
@@ -377,10 +368,28 @@ export function createFirstPerson(camera) {
       lean.lerp(want, Math.min(1, dt * 14));
       holder.position.copy(holderBase).add(bodyOff).add(lean);
       root.updateMatrixWorld(true);
-      solveArm(arms.Right, wristR, FP.poleRight, qR, dt);
-      solveArm(arms.Left, wristL, FP.poleLeft, qL, dt);
-      curlHand(arms.Right, true);
-      curlHand(arms.Left, false);
+      if (protectBody) bodyInverse.copy(holder.matrixWorld).invert();
+      poseGrasp(arms.Right, wristR, FP.poleRight, qR, dt, true);
+      if (protectBody) {
+        arms.Right.lower.getWorldPosition(rightArm[0]);
+        arms.Right.hand.getWorldPosition(rightArm[1]);
+        arms.Right.middle1.getWorldPosition(rightArm[2]);
+        // Keep the support hand on its side of the firing hand during crossing reload paths.
+        separation.subVectors(wristL, rightArm[1]);
+        const min = gunType === 'duckgun' ? .25 : opts.left?.w > 0.1 || opts.right?.w > 0.1 ? .23 : .15;
+        if (separation.lengthSq() < min * min) {
+          separation.addScaledVector(_a.set(-1, -.5, 0).applyQuaternion(camera.getWorldQuaternion(_pq)), .13);
+          wristL.copy(rightArm[1]).add(separation.setLength(min));
+        }
+        // Limit a left wrist target that still crosses the right forearm or palm.
+        arms.Left.upper.getWorldPosition(shoulderAt);
+        for (let i = 0; i < 3; i++) {
+          const at = supported.copy(shoulderAt).lerp(wristL, .8 + i*.1);
+          const overlap = .055 - rightArmClear(at);
+          if (overlap > 0) wristL.addScaledVector(_a.set(-.55, -.83, 0).applyQuaternion(camera.getWorldQuaternion(_pq)), overlap);
+        }
+      }
+      poseGrasp(arms.Left, wristL, FP.poleLeft, qL, dt, false);
     },
     /** Dev: rig internals for tuning tools. */
     debug: () => ({ bones, arms, lean: lean.clone(), collider: col, FP }),

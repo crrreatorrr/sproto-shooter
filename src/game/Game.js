@@ -29,6 +29,7 @@ import { NAV_KEYS, keyLabel } from '../input/input.js';
 import { padGlyph } from '../input/gamepad.js';
 import { PAD_BINDINGS } from '../input/padConfig.js';
 import { createMenuNav } from '../ui/menuNav.js';
+import { PLAYER_CHARACTERS, saveCharacter, selectedCharacter } from '../render/playerCharacters.js';
 
 const MAX_FRAME = 0.25, MAX_TICKS = 5;
 
@@ -55,7 +56,8 @@ export class Game {
     this.crash = crashGuard;
 
     const app = document.getElementById('app');
-    this.renderer = createRenderer(app.querySelector('#view'), this.bus);
+    this.character = selectedCharacter();
+    this.renderer = createRenderer(app.querySelector('#view'), this.bus, this.character.model);
     this.input = createInput(this.renderer.canvas);
     this.audio = createAudio(this.bus);
     this.ui = createUI(app.querySelector('#ui'), { input: this.input, bus: this.bus, project: (p) => this.renderer.project(p), game: this });
@@ -201,11 +203,24 @@ export class Game {
           <button class="btn big alt" data-go="bossSelect">👑 Boss Fight <small>pick a boss to fight</small></button>
           <button class="btn big" data-go="campaignSelect">🗺 Campaign <small>The Great Sproto Audit</small></button>
           <button class="btn big alt" data-go="pvp">Play free <small>equal guns, no Tickets</small></button>
+          <button class="btn alt" data-go="characters">Character <small>${this.character.name}</small></button>
           <span data-wager-slot></span>
           <button class="btn alt" data-go="hub">${this.hubReturnLabel()}</button>
           <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
         </div>
         ${controlsHtml(this.input.device, this.padStyle)}</div>`;
+    } else if (kind === 'characters') {
+      const asset = `${import.meta.env.BASE_URL}assets/`;
+      const cards = PLAYER_CHARACTERS.map(({ id, name, portrait }) => {
+        const selected = id === this.character.id;
+        const art = portrait ? `<img src="${asset}${portrait}" alt="" width="256" height="256">` : '<span class="character-emblem" aria-hidden="true">S</span>';
+        return `<button class="btn alt character-card" data-go="character" data-character="${id}" aria-pressed="${selected}" ${selected ? 'data-nav-default' : ''}>
+          ${art}<b>${name}</b><small>${selected ? 'Equipped' : 'Equip'}</small></button>`;
+      }).join('');
+      body = `<div class="title character-select"><h1>CHOOSE <span>CHARACTER</span></h1>
+        <p class="tag">Choose who you see in the arena and behind the trigger.</p>
+        <div class="character-grid">${cards}</div>
+        <div class="menu"><button class="btn alt" data-go="title" data-nav-back>← Back</button></div></div>`;
     } else if (kind === 'bossSelect') {
       const cards = Object.entries(BOSSES).filter(([, b]) => !b.campaign).map(([id, b]) => `<button class="btn boss-card" data-go="boss" data-boss="${id}" style="--c:#${b.color.toString(16).padStart(6, '0')}">
           <b>${b.name}</b><small>${b.tag === 'magic' ? '🔮 Magic' : '💪 Physical'} · ${b.hp.toLocaleString()} HP</small><span>${BOSS_BLURB[id] || ''}</span></button>`).join('');
@@ -280,7 +295,13 @@ export class Game {
       if (go === 'continue') { this.hideScreen(); this.paused = false; this.input.lock(); return; }
       if (go === 'pvp') { this.openPvp(); return; }
       if (go === 'wager') { void this.openWagerDesk(); return; }
-      if (go === 'title' || go === 'bossSelect' || go === 'campaignSelect') { this.showScreen(go); return; }
+      if (go === 'character') {
+        this.character = saveCharacter(b.dataset.character);
+        this.renderer.firstPerson.selectModel(this.character.model);
+        this.showScreen('characters');
+        return;
+      }
+      if (go === 'title' || go === 'characters' || go === 'bossSelect' || go === 'campaignSelect') { this.showScreen(go); return; }
       if (go === 'checkpoint') { restoreCheckpoint(this.state); this._campaignShown = false; this.hideScreen(); this.paused = false; this.input.lock(); return; }
       const tier = b.dataset.tier ? +b.dataset.tier : +(this.screen.querySelector('#tier-sel')?.value || s.tier);
       const extra = {};
