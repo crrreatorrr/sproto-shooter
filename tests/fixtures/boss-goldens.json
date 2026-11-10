@@ -1,5 +1,5 @@
 {
-  "contentFingerprint": "4ae191d6",
+  "contentFingerprint": "0ebc3c6d",
   "runs": {
     "sahil-success": {
       "boss": "sahil",
@@ -8,7 +8,7 @@
       "tick": 1289,
       "frames": 1289,
       "bytes": 20624,
-      "stateHash": "8a28b0ed",
+      "stateHash": "a6831862",
       "outcome": "clear",
       "reason": "boss_clear",
       "eligible": true,
@@ -21,7 +21,7 @@
       "tick": 1247,
       "frames": 1247,
       "bytes": 19952,
-      "stateHash": "cee13e9f",
+      "stateHash": "8094621a",
       "outcome": "fail",
       "reason": "player_down",
       "eligible": false,
@@ -34,7 +34,7 @@
       "tick": 1124,
       "frames": 1124,
       "bytes": 17984,
-      "stateHash": "4b6750af",
+      "stateHash": "8b4b8ece",
       "outcome": "assisted",
       "reason": "assisted",
       "eligible": false,
@@ -47,7 +47,7 @@
       "tick": 2460,
       "frames": 2460,
       "bytes": 39360,
-      "stateHash": "aa047e77",
+      "stateHash": "8907f24e",
       "outcome": "clear",
       "reason": "boss_clear",
       "eligible": true,

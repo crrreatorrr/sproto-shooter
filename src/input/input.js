@@ -12,7 +12,8 @@ import { SPELL_IDS } from '../data/skills.js';
 
 export const BIND = {
   forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
-  sprint: ['ShiftLeft', 'ShiftRight'], jump: ['Space'], slide: ['KeyC', 'ControlLeft'], dash: ['AltLeft', 'KeyV'],
+  sprint: ['ShiftLeft', 'ShiftRight'], jump: ['Space'], slide: ['KeyC'], crouch: ['ControlLeft', 'ControlRight'],
+  grapple: ['KeyB'], dash: ['AltLeft', 'KeyV'],
   reload: ['KeyR'], interact: ['KeyE', 'KeyG'], medkit: ['KeyH'],
   gooBolt: [], chainZap: ['KeyY'], swarm: ['KeyZ'], manaShield: ['KeyX'], meteor: ['KeyT'], // Goo Bolt: select it and right-click
   spellSelect: ['KeyQ'], // next unlocked spell; right-click casts the selected one
@@ -35,7 +36,8 @@ export const NAV_KEYS = {
 export function createInput(canvas) {
   const held = new Set();
   const latch = {};
-  let mouseL = false, wheel = 0, slot = -1;
+  let mouseL = false, mouseG = false, wheel = 0, slot = -1;
+  let crouchWas = false;
   let aimToggled = false;
   let zoomStep = 1; // 1 or 2; only guns with two zoom levels (sniper) use 2
   let spell = SPELL_IDS[0]; // the spell right-click / LT casts
@@ -114,7 +116,7 @@ export function createInput(canvas) {
     },
     setRelay(fn) { relay = typeof fn === 'function' ? fn : null; },
     on(type, fn) { (listeners[type] ||= []).push(fn); },
-    setEnabled(v) { enabled = v; if (!v) { mouseL = false; aimToggled = false; zoomStep = 1; held.clear(); reloadHold.reset(); } },
+    setEnabled(v) { enabled = v; if (!v) { mouseL = false; mouseG = false; aimToggled = false; zoomStep = 1; held.clear(); reloadHold.reset(); } },
     get enabled() { return enabled; },
     lock() { try { const r = lockEl.requestPointerLock({ unadjustedMovement: false }); if (r && r.catch) r.catch(() => {}); } catch { /* ignore */ } },
     unlock() { if (document.pointerLockElement) document.exitPointerLock(); },
@@ -125,6 +127,9 @@ export function createInput(canvas) {
       const has = (k) => BIND[k].some((c) => held.has(c));
       const pressed = {};
       for (const k of LATCHED) { pressed[k] = !!latch[k]; latch[k] = false; }
+      const crouchSprint = enabled && has('crouch') && has('sprint');
+      if (crouchSprint && !crouchWas) pressed.slide = true;
+      crouchWas = crouchSprint;
       let moveX = enabled ? (has('right') ? 1 : 0) - (has('left') ? 1 : 0) : 0;
       let moveZ = enabled ? (has('forward') ? 1 : 0) - (has('back') ? 1 : 0) : 0;
       if (enabled && pad) {
@@ -138,6 +143,7 @@ export function createInput(canvas) {
           fire: enabled && ((mouseL && api.locked) || !!(padHeld && pad.fire)),
           zoom: api.aiming,
           sprint: enabled && (has('sprint') || !!(padHeld && pad.sprint)),
+          grapple: enabled && (has('grapple') || mouseG || !!(padHeld && pad.grapple)),
         },
         pressed: enabled ? pressed : { skip: pressed.skip },
         slot: enabled ? slot : -1, wheel: enabled ? wheel : 0,
@@ -152,6 +158,7 @@ export function createInput(canvas) {
     api.setDevice('kbm');
     if (!api.locked) { emit('clickUnlocked', e); return; }
     if (e.button === 0) mouseL = true;
+    if (e.button === 3 || e.button === 4) mouseG = true;
     if (e.button === 1) { e.preventDefault(); api.toggleAim(); }
     if (e.button === 2) api.castSpell();
   }
@@ -178,9 +185,12 @@ export function createInput(canvas) {
     if (BIND.sprint.includes(e.code)) api.dropAim(); // sprinting drops a toggled aim
   });
   window.addEventListener('keyup', (e) => { held.delete(e.code); if (e.code === 'AltLeft') e.preventDefault(); emit('keyup', e); });
-  window.addEventListener('blur', () => { held.clear(); mouseL = false; aimToggled = false; zoomStep = 1; reloadHold.reset(); });
+  window.addEventListener('blur', () => { held.clear(); mouseL = false; mouseG = false; aimToggled = false; zoomStep = 1; reloadHold.reset(); });
   canvas.addEventListener('mousedown', onMouseDown);
-  window.addEventListener('mouseup', (e) => { if (e.button === 0) mouseL = false; });
+  window.addEventListener('mouseup', (e) => {
+    if (e.button === 0) mouseL = false;
+    if (e.button === 3 || e.button === 4) mouseG = false;
+  });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   window.addEventListener('wheel', (e) => {
     if (!api.locked || !enabled) return;
