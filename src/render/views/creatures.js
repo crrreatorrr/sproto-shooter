@@ -6,6 +6,7 @@ import { createClipLayer } from '../clipLayer.js';
 import { createDragonRig } from '../dragonRig.js';
 import { createHumanoidRig } from '../humanoidRig.js';
 import { createViewRegistry } from './ViewRegistry.js';
+import { buildLookGroup } from '../level/levelView.js';
 
 export function mountCreatures(env) {
   const { E, G, M, MAT, scene } = env;
@@ -41,6 +42,7 @@ export function mountCreatures(env) {
     if (def.model) ch = instantiateCharacter(def.model, enemyStage(e), def.height);
     if (ch) { g.add(ch.root); parts.char = ch; if (!def.clips) ch.play('idle'); }
     if (ch && def.clips) { parts.clips = createClipLayer(ch); parts.clipsOnly = !!parts.clips; } // every state is an authored clip
+    else if (def.look) { g.add(buildLookGroup(def.look)); parts.look = true; }
     else { const f = buildFallback(def.color, def.height, def.radius); g.add(f); Object.assign(parts, f.userData); }
     if (e.type === 'bigObama') {
       const shield = new THREE.Mesh(G.box, MAT.shield); shield.scale.set(1.8, 1.9, 0.14); shield.position.set(0, 1.3, 1.0);
