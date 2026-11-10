@@ -137,6 +137,8 @@ export function raySolids(solids, origin, dir, maxDist, allow = null) {
   for (let i = 0; i < solids.length; i++) {
     const s = solids[i];
     if (allow && !allow(s)) continue;
+    const thin = s.max[1] - s.min[1] <= 0.6;
+    if (thin && s.max[1] <= origin.y + 0.05) continue;
     const t = rayAabb(origin, dir, s.min, s.max, maxDist);
     if (t < 0) continue;
     if (best < 0 || t < best) best = t;

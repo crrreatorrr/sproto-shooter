@@ -72,6 +72,7 @@ export const EVENT_COVERAGE = {
   reroll: ['audio', 'ui'],
   salvage: ['audio', 'ui'],
   secret: ['audio', 'ui'],
+  shrine: ['audio', 'ui'],
   sectionExit: ['audio', 'ui'],
   shieldBroken: ['audio', 'ui'],
   shieldRegenStart: ['audio', 'ui'],

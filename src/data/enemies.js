@@ -119,6 +119,11 @@ Object.assign(ENEMIES, {
   jetObama: dress('flyingMidget', { name: 'Jet Obama', hp: 55, color: 0x7fd34e, model: 'obama', stage: 2, weakMultOverride: 2.5, archetype: { thruster: true } }),
   balloonMidget: dress('flyingMidget', { name: 'Balloon Midget', hp: 28, color: 0xff8ad4, model: 'midget', archetype: { deathBlast: { radius: 2.6, damage: 18 } } }),
   miniTinubu: dress('midget', { name: 'Mini Tinubu', hp: 90, speed: 6.4, color: 0xff6a3d, model: 'tinubu', radius: 0.55, height: 1.8, archetype: { charge: { every: 3, duration: 0.4, speed: 14 } } }),
+  gateGenerator: dress('midget', { name: 'Gate Generator', hp: 200, speed: 0, accel: 0, damage: 0, color: 0x66ffcc, model: 'robotLaser' }),
+  gatekeeper: dress('bigObama', {
+    name: 'The Gatekeeper', hp: 1600, speed: 2.4, color: 0xd4af37, radius: 1.35, height: 3.9,
+    archetype: { audit: true },
+  }),
 });
 
 export const ELITE = { hpMult: 2.5, dmgMult: 1.3, speedMult: 1.1, scale: 1.25, poiseMult: 2, dropMult: 2, gunMult: 3, xpMult: 3 };

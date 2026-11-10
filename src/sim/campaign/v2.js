@@ -33,6 +33,15 @@ export function beginV2(state) {
 
 function squadKey(squad, i) { return squad.id || String(i); }
 
+function noteKills(state, enc, prog) {
+  if (!prog.seen) prog.seen = {};
+  for (const e of state.enemies) {
+    if (!e.dead || e.campaignEnc !== enc.id || prog.seen[e.id]) continue;
+    prog.seen[e.id] = true;
+    prog.kills++;
+  }
+}
+
 function aliveOf(state, encId) {
   let n = 0;
   for (const e of state.enemies) if (!e.dead && e.campaignEnc === encId) n++;
@@ -71,6 +80,8 @@ function spawnOne(state, enc, squad, at) {
   e.pos.y = pos[1] || 0;
   e.campaignEnc = enc.id;
   e.spawnMethod = squad.method || 'placed';
+  if (enc.noAmmoDrop) e.noAmmoDrop = true;
+  if (at.partId) e.partId = at.partId;
   if (boss) emit(state, 'bossSpawn', { id: e.id, bossType: type });
   return e;
 }
@@ -84,7 +95,7 @@ function trySpawn(state, enc, squad, key) {
   for (const u of squad.units || []) {
     for (let n = 0; n < u.count; n++) {
       const at = (squad.at && squad.at[Math.min(i, squad.at.length - 1)]) || [0, 0, 0];
-      spots.push({ type: u.type, pos: at });
+      spots.push({ type: u.type, pos: at, partId: u.partId || null });
       i++;
     }
   }
@@ -147,8 +158,7 @@ export function v2Pre(state, dt) {
       }
     }
     if (!prog.started || lv.cleared[enc.id]) continue;
-    prog.kills = 0;
-    for (const e of state.enemies) if (e.dead && e.campaignEnc === enc.id) prog.kills++;
+    noteKills(state, enc, prog);
     if (enc.lockdown && !prog.sealed && enc.lockdown.threshold && inBox(enc.lockdown.threshold, p.pos.x, p.pos.y, p.pos.z)) seal(state, rt, enc);
     prog.t += dt;
     if (enc.objective && enc.objective.kind === 'hold' && enc.hold && inBox(enc.hold, p.pos.x, p.pos.y, p.pos.z)) {
@@ -200,9 +210,7 @@ export function v2Post(state, dt) {
   for (const enc of sec.encounters || []) {
     const prog = encState(lv, enc.id);
     if (!prog.started || lv.cleared[enc.id]) continue;
-    let kills = 0;
-    for (const e of state.enemies) if (e.dead && e.campaignEnc === enc.id) kills++;
-    prog.kills = kills;
+    noteKills(state, enc, prog);
     if (objectiveDone(state, enc, prog)) {
       lv.cleared[enc.id] = true;
       unseal(state, enc);
@@ -234,5 +242,8 @@ export function v2Post(state, dt) {
 export function noteV2Section(state, sec, rt) {
   state._v2section = sec;
   state._v2runtime = rt;
+  state.level.useNav = !!(sec && sec.navBounds);
+  state.level.navBounds = sec && sec.navBounds;
+  state.level.flyerVolume = sec && sec.flyerVolume;
   if (sec) bindV2Section(state, sec);
 }

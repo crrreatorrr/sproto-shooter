@@ -89,6 +89,7 @@ export function createEnemy(state, type, { tier = state.tier, elite = false, pos
   };
   e.maxHp = Math.round(def.hp * tm * (elite ? ELITE.hpMult : 1) * state.tuning.enemyHpMult);
   e.hp = e.maxHp;
+  if (def.archetype && def.archetype.audit) e.ai.audit = true;
   if (elite) {
     const resist = pick(state.rng, AFFINITY_POOL);
     const weaks = AFFINITY_POOL.filter((a) => a !== resist);

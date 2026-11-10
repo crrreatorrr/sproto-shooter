@@ -7,6 +7,14 @@ function add(at, origin) {
   return [at[0] + origin[0], (at[1] || 0) + (origin[1] || 0), at[2] + origin[2]];
 }
 
+function shiftNav(bounds, origin) {
+  if (!bounds) return null;
+  return {
+    min: [bounds.min[0] + origin[0], bounds.min[1] + origin[2]],
+    max: [bounds.max[0] + origin[0], bounds.max[1] + origin[2]],
+  };
+}
+
 function shiftBox(box, origin) {
   if (!box || !box.min || !box.max) return box;
   return { min: add(box.min, origin), max: add(box.max, origin) };
@@ -46,8 +54,17 @@ export function makeV2Level(def) {
       origin,
       geometry,
       encounters,
-      mechanisms: (sec.mechanisms || []).map((m) => ({ ...m, at: m.at ? add(m.at, origin) : m.at })),
-      weapons: sec.weapons || [],
+      mechanisms: (sec.mechanisms || []).map((m) => ({
+        ...m,
+        at: m.at ? add(m.at, origin) : m.at,
+        from: m.from ? add(m.from, origin) : m.from,
+        to: m.to ? add(m.to, origin) : m.to,
+        min: m.min ? add(m.min, origin) : m.min,
+        max: m.max ? add(m.max, origin) : m.max,
+      })),
+      weapons: (sec.weapons || []).map((w) => ({ ...w, at: w.at ? add(w.at, origin) : w.at })),
+      navBounds: shiftNav(sec.navBounds, origin),
+      flyerVolume: shiftBox(sec.flyerVolume, origin),
       checkpoints: (sec.checkpoints || []).map((c) => ({ ...c, at: add(c.at, origin) })),
       start: add(sec.start || [2, 0, 2], origin),
       yaw: sec.yaw || 0,
@@ -75,6 +92,8 @@ export function makeV2Level(def) {
     gravityMult: def.gravityMult || 1,
     lighting: def.lighting || null,
     maxAlive: def.maxAlive || 8,
+    useNav: !!def.useNav,
+    startAmmo: def.startAmmo || null,
     bounds: def.bounds || { min: [-10, -25, -10], max: [maxX + 10, 48, maxZ + 10] },
     sections,
     modifiers: def.modifiers || [],

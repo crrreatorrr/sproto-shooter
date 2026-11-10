@@ -5,11 +5,11 @@ import { yawTo } from '../../core/math.js';
 import { BOSSES } from '../../data/enemies.js';
 import { getLevelRuntime, sectionById, inBox, nearPoint } from '../level/runtime.js';
 import { emit } from '../events.js';
-import { createEnemy, createBoss, createProjectile, nextId } from '../state.js';
+import { createEnemy, createBoss, createPickup, createProjectile, nextId } from '../state.js';
 import { generateGun } from '../guns.js';
 import { next } from '../../core/rng.js';
 import { damagePlayer } from '../combat.js';
-import { clearCampaignSpells } from '../spellbook.js';
+import { clearCampaignSpells, grantSpell } from '../spellbook.js';
 import { beginV2, noteV2Section, v2Post, v2Pre } from './v2.js';
 import { detonateBarrel, onMover, slowEnemiesInHazard, tickMover, tickSwitch } from './mechanisms.js';
 
@@ -34,6 +34,9 @@ export function startCampaign(state, p, levelId) {
   };
   p.unlockedSlots = 4;
   clearCampaignSpells(state, p);
+  if (rt.startAmmo) {
+    for (const k of Object.keys(rt.startAmmo)) p.ammo[k] = rt.startAmmo[k];
+  }
   p.jetpack = jet;
   p.campaignSpeed = 1;
   p.pos = { x: first.start[0], y: first.start[1], z: first.start[2] };
@@ -173,7 +176,7 @@ function flagOn(lv, when) {
 function touchMechanism(state, p, lv, sec, m, dt) {
   const x = p.pos.x, y = p.pos.y, z = p.pos.z;
   if (m.kind === 'switch' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.5)) tickSwitch(state, p, m, dt);
-  if (m.kind === 'door' && !lv.got[m.id] && flagOn(lv, m.opens)) {
+  if (m.kind === 'door' && m.opens && !lv.got[m.id] && flagOn(lv, m.opens)) {
     lv.got[m.id] = true;
     emit(state, 'door', { id: m.id, open: true });
   }
@@ -198,10 +201,29 @@ function touchMechanism(state, p, lv, sec, m, dt) {
     lv.got[m.id] = true;
     grantModifier(state, p, m.modifier);
   }
+  if (m.kind === 'shrine' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 2.2)) {
+    lv.got[m.id] = true;
+    grantSpell(state, p, m.spell || 'gooBolt');
+    p.mana = p.maxMana;
+    emit(state, 'shrine', { id: m.id, spell: m.spell || 'gooBolt' });
+  }
+  if (m.kind === 'ammo' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.4)) {
+    lv.got[m.id] = true;
+    createPickup(state, {
+      kind: 'ammo', ammoType: m.ammoType || 'bullets', amount: m.amount || 60,
+      pos: { x: m.at[0], y: (m.at[1] || 0) + 0.4, z: m.at[2] },
+    });
+  }
+  if (m.kind === 'chest' && !lv.got[m.id] && flagOn(lv, m.opens) && nearPoint(m.at, x, y + 1, z, 2.2)) {
+    lv.got[m.id] = true;
+    giveWorldGun(state, p, m.gun || 'mg');
+  }
   if (m.kind === 'secret' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.7)) {
     lv.got[m.id] = true;
-    grantModifier(state, p, m.modifier);
-    emit(state, 'secret', { id: m.id, modifier: m.modifier });
+    if (m.modifier) grantModifier(state, p, m.modifier);
+    if (m.tickets) p.tickets += m.tickets;
+    if (m.mana) { p.maxMana += m.mana; p.mana = p.maxMana; }
+    emit(state, 'secret', { id: m.id, modifier: m.modifier || null });
   }
   if (m.kind === 'portal' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.4)) {
     lv.got[m.id] = true;
