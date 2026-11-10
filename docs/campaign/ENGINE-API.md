@@ -34,6 +34,8 @@ Those lines stay. Replace the folder, not the import.
 | `sections` | Ordered. Only the current section is simulated. |
 | `jetpack` | `true` starts with fuel. |
 
+Holding jump in the air spends fuel at 10 per second and holds altitude. C drops. Fuel regens at 25 per second on the ground, and a `fuelPad` refills at 40 per second (`safe: true` records a void-rescue point). A second `jetpack` with `skipIfOwned` does nothing if the player already has one. A `power` modifier `fuel` is infinite fuel for 20 seconds. The jetpack cannot climb within 2 m of a flyer lid. A door with `opens: 'p.jet.has'` is solid until the player has a jetpack.
+
 ## Section
 
 Local coordinates. `origin: [x, y, z]` is the section's north-west corner in the world. `+x` east, `+z` south, `y` up. Yaw degrees about Y, 0 faces `+z`.
