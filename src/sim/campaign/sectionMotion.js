@@ -56,7 +56,7 @@ export function noteSafeGround(state, sec) {
   const v = sec && sec.voidRescue;
   const lv = state.level;
   if (!v) {
-    if (lv.safePos) delete lv.safePos;
+    if (lv.safePos && !lv.padSafe) delete lv.safePos;
     return;
   }
   const p = state.players[state.localPlayerId];

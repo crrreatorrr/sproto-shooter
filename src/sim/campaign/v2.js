@@ -261,6 +261,14 @@ function refreshDoors(state, sec) {
   const doors = [];
   for (const m of (sec && sec.mechanisms) || []) {
     if (m.kind !== 'door') continue;
+    if (m.opens === 'p.jet.has') {
+      const who = state.players[state.localPlayerId];
+      if (!who || !who.jetpack) {
+        const gate = doorBox(m);
+        if (gate) doors.push(gate);
+      }
+      continue;
+    }
     if (!sealed[m.id] && !(switched[m.id] && !lv.got[m.id])) continue;
     const box = doorBox(m);
     if (box) doors.push(box);
