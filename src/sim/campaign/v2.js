@@ -398,5 +398,9 @@ export function noteV2Section(state, sec, rt) {
   else if (state.level.navLinks) delete state.level.navLinks;
   if (sec && sec.voids && sec.voids.length) state.level.voids = sec.voids;
   else if (state.level.voids) delete state.level.voids;
+  if (sec && sec.noGrapple && sec.noGrapple.length) state.level.noGrapple = sec.noGrapple;
+  else if (state.level.noGrapple) delete state.level.noGrapple;
+  if (sec && sec.grappleAnchors && sec.grappleAnchors.length) state.level.grappleAnchors = sec.grappleAnchors;
+  else if (state.level.grappleAnchors) delete state.level.grappleAnchors;
   if (sec) bindV2Section(state, sec);
 }

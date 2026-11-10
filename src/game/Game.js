@@ -1038,7 +1038,7 @@ function controlsHtml(device = 'kbm', style = 'xbox') {
   const k = (a, b) => `<div><kbd>${a}</kbd><span>${b}</span></div>`;
   const kb = `<div class="controls" data-device="kbm">
     ${k('WASD / Arrows', 'Move')}${k('Mouse', 'Look · LMB fire')}${k('F / middle-click', 'Aim toggle: aim · sniper: zoom closer · off')}${k('Wheel while zoomed', 'Sniper zoom 1 / 2')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
-    ${k('C', 'Slide (Ctrl works, but Ctrl+W closes the tab!)')}${k('V / Alt', 'Dash')}${k('R', 'Reload · hold: pick up gun / open Weapon Box (E works too)')}${k('1-4 · L / Wheel', 'Switch gun (L = legendary slot)')}
+    ${k('C', 'Slide')}${k('Ctrl + Shift', 'Crouch-slide from a sprint')}${k('G / mouse back', 'Grapple')}${k('V / Alt', 'Dash')}${k('R', 'Reload · hold: pick up gun / open Weapon Box (E works too)')}${k('1-4 · L / Wheel', 'Switch gun (L = legendary slot)')}
     ${k('RMB', 'Cast the selected spell')}${k(keyLabel('spellSelect'), 'Next spell')}${k(['chainZap', 'swarm', 'manaShield', 'meteor'].map(keyLabel).join(' '), 'Quick cast: Chain Zap · Swarm · Mana Shield · Meteor')}${k('H', 'Use medkit')}
     ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('5', 'Stats & powers')}${k('Enter', 'Ready / skip break')}${k('Esc', 'Pause · back in menus')}
     ${k('Arrows / WS · Enter', 'Menus: move · confirm')}${k('`', 'Debug panel')}${k('F3', 'Frame stats')}${k('M', 'Mute')}${k('P', 'God mode (health stays at 99)')}

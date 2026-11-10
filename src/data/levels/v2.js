@@ -99,6 +99,8 @@ export function makeV2Level(def) {
         to: g.to ? add(g.to, origin) : g.to,
       })),
       carpets: (sec.carpets || []).map((c) => ({ ...c, from: add(c.from, origin), to: add(c.to, origin) })),
+      noGrapple: (sec.noGrapple || []).map((z) => ({ ...z, min: add(z.min, origin), max: add(z.max, origin) })),
+      grappleAnchors: (sec.grappleAnchors || []).map((a) => ({ ...a, at: add(a.at, origin) })),
       links: (sec.links || []).map((link) => ({
         ...link,
         at: link.at ? add(link.at, origin) : link.at,

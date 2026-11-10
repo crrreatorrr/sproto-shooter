@@ -43,9 +43,10 @@ function aim(st) {
   pl._px = pl.pos.x; pl._pz = pl.pos.z;
   pl._stuck = moved < 0.02 && dist > 1.4 ? stuck + 1 : 0;
   const sidestep = pl._stuck > 40;
+  const hop = !!(lv.voids && lv.voids.length) && pl._stuck > 24;
   return cmd({
     yaw, pitch, moveZ: dist > 1.1 ? 1 : 0, moveX: sidestep ? 1 : 0,
-    held: { fire: !!(best && best.state !== 'spawning'), sprint: true },
+    held: { fire: !!(best && best.state !== 'spawning'), sprint: true, jump: hop, grapple: hop },
   });
 }
 

@@ -36,6 +36,8 @@ export const EVENT_COVERAGE = {
   explosion: ['audio', 'vfx'],
   geyser: ['audio', 'vfx'],
   hazardSet: ['none'],
+  grapple: ['audio', 'vfx'],
+  grappleRelease: ['audio'],
   gunDropped: ['none'],
   gunPickedUp: ['audio', 'vfx', 'ui'],
   impact: ['audio', 'vfx'],

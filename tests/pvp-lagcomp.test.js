@@ -825,7 +825,7 @@ describe('review fixes (SHOOTER-S2b)', () => {
 });
 
 describe('pins that S2b must not move', () => {
-  it('keeps the campaign fingerprint 4ae191d6', () => {
-    expect(contentFingerprint(1)).toBe('4ae191d6');
+  it('keeps the campaign fingerprint 0ebc3c6d', () => {
+    expect(contentFingerprint(1)).toBe('0ebc3c6d');
   });
 });

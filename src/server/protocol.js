@@ -20,6 +20,7 @@ export const BUTTONS = Object.freeze([
   'fire', 'zoom', 'sprint',
   'jump', 'dash', 'slide', 'reload', 'interact', 'medkit', 'skip',
   'gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor',
+  'grapple',
 ]);
 
 const FRAME_BYTES = 12;
@@ -316,7 +317,7 @@ export function decodeFrames(text, n, actions) {
     if (q.yaw < -32767 || q.yaw > 32767 || q.pitch < -32767 || q.pitch > 32767) return { error: 'malformed' };
     if (q.moveX < -127 || q.moveX > 127 || q.moveZ < -127 || q.moveZ > 127) return { error: 'malformed' };
     if (q.slot < -1 || q.slot > 4 || q.wheel < -4 || q.wheel > 4) return { error: 'malformed' };
-    if (q.held > 0x7fff || q.pressed > 0x7fff) return { error: 'malformed' };
+    if (q.held > 0xffff || q.pressed > 0xffff) return { error: 'malformed' };
     commands[i] = dequantizeCommand(q);
   }
   return { commands };
