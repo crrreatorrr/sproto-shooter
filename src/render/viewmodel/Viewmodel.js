@@ -4,7 +4,7 @@ import { colliderFor } from '../gunCollider.js';
 import { fxRandom } from '../core/fxRandom.js';
 import { TUNING } from '../../data/tuning.js';
 
-export function mountViewmodel(env) {
+export function mountViewmodel(env, playerModel) {
   const { E, ELEM_COL, G, GUN_MODEL_LEN, HAND_FRAC, LEFT_SPEC, RAY_COL, VM_LAYER, addBeam, addBoom, addTracer, buildGunModel, burstConfetti, bus, camera, flashLight } = env;
   const vmRoot = new THREE.Group();
   camera.add(vmRoot);
@@ -34,7 +34,7 @@ export function mountViewmodel(env) {
     // legendary Duck Gun: a stocked rifle with a duck head on the front
     duckgun: { len: 0.72, rest: [0.2, -0.19, -0.5], ads: [0, -0.25, -0.47], yaw: 0.07, roll: -0.03, scale: 1 },
   };
-  const fp = createFirstPerson(camera); // first-person arms (main): drawn in the viewmodel pass with the gun
+  const fp = createFirstPerson(camera, playerModel); // first-person arms (main): drawn in the viewmodel pass with the gun
   // The arms' gun collider takes ~50 ms to build per model: build it in idle time for every gun carried, so
   // switching to one doesn't hitch.
   const warmed = new Set();
@@ -80,7 +80,7 @@ export function mountViewmodel(env) {
     // swing the back of the gun round in front, swap the power cell there, then a charge-up twirl
     raygun: (t, e) => ({
       x: -0.05 * e, y: -0.03 * e, z: -0.05 * e,
-      rx: 0.15 * e, ry: -0.6 * e, rz: 0.25 * e + 0.6 * pulse(t, 0.84, 0.05),
+      rx: 0.15 * e, ry: -0.6 * e, rz: 0.25 * e + (fp.weaponOffset ? 0.22 : 0.6) * pulse(t, 0.84, 0.05),
     }),
     // roll the drum toward the left hand, thumb in four big rounds (a nudge per round), flick the drum shut
     bigbullets: (t, e) => {
@@ -161,8 +161,15 @@ export function mountViewmodel(env) {
     // left hand pulls the power cell out of the back, fetches a fresh one from below, plugs it in
     raygun: (t) => {
       const cell = [0, 0.2, 0.5], out = [-0.4, 0.35, 0.95], low = [-1.3, -0.7, 0.4];
-      return { left: { spec: PUSH_FWD_L, w: track(t, [[0.08, 0], [0.2, 1], [0.74, 1], [0.86, 0]]),
-        at: track(t, [[0.2, cell], [0.3, cell], [0.4, out], [0.5, low], [0.6, out], [0.68, cell], [0.74, cell]]) } };
+      const path = [[0.2, cell], [0.3, cell], [0.4, out], [0.5, low], [0.6, out], [0.68, cell], [0.74, cell]];
+      const weights = [[0.08, 0], [0.2, 1], [0.74, 1], [0.86, 0]];
+      if (fp.weaponOffset) {
+        // The Pepe support hand exits under the emitter while it rolls back toward aim.
+        path.unshift([0.08, [-0.75, -0.85, -0.22]], [0.15, low]);
+        path.push([0.80, [-1.05, -0.8, 0.2]], [0.90, [-0.6, -0.95, -0.18]]);
+        weights.splice(0, 4, [0.11, 0], [0.21, 1], [0.90, 1], [0.98, 0]);
+      }
+      return { left: { spec: PUSH_FWD_L, w: track(t, weights), at: track(t, path) } };
     },
     // left hand on the side of the drum, pushing a round in per nudge (out to fetch the next between)
     bigbullets: (t) => {

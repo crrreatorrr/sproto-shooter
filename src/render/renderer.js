@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { ARENA_R } from '../data/tuning.js';
 import { BOSSES, ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { stageFor, levelAssets } from '../data/stages.js';
-import { PLAYER_MODEL } from './firstPerson.js';
 import { GUN_MODELS, pendingDownloads, PRIORITY, ensureGunModel, ensureStage, stageReady, ensureCharacter, characterReady, stagePaths, characterPath, setAssetDemand, loadReport, retryFailed } from './assets.js';
 import { createRenderContext } from './core/RenderContext.js';
 import { createMaterials } from './materials/geometries.js';
@@ -19,7 +18,7 @@ import { mountPresent } from './frame/present.js';
 const lerp = (a, b, t) => a + (b - a) * t;
 const ELEM_COL = { none: 0xffe9a8, fire: 0xff7a1a, shock: 0x4fe3ff, goo: 0x9be33b };
 
-export function createRenderer(container, bus) {
+export function createRenderer(container, bus, playerModel) {
   const env = { bus, lerp, ELEM_COL, ARENA_R, ...createRenderContext(container), ...createMaterials() };
   env.stageOverride = null;
   mountStage(env);
@@ -28,7 +27,7 @@ export function createRenderer(container, bus) {
   mountProjectiles(env);
   mountGuns(env);
   mountVfx(env);
-  mountViewmodel(env);
+  mountViewmodel(env, playerModel);
   const demandNow = [];
   const demandLater = [];
   function requestNeeds(state) {
@@ -37,7 +36,7 @@ export function createRenderer(container, bus) {
     demandLater.length = 0;
     const stageId = stageFor(state, env.stageOverride);
     ensureStage(stageId, NOW);
-    demandNow.push(...stagePaths(stageId), PLAYER_MODEL);
+    demandNow.push(...stagePaths(stageId), env.fp.modelPath);
     for (const g of state.players[state.localPlayerId].guns) if (g && GUN_MODELS[g.type]) {
       ensureGunModel(g.type, NOW);
       demandNow.push(GUN_MODELS[g.type].path);

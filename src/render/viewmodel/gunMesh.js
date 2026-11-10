@@ -2,28 +2,29 @@ import * as THREE from 'three';
 import { MANUFACTURERS_BY_ID, QUALITIES_BY_ID } from '../../data/guns.js';
 import { instantiateGun } from '../assets.js';
 
+// Gun with a 3D model (e.g. the toy machine gun): model + element gem. Null if the type has none / not loaded yet.
+export const GUN_MODEL_LEN = { mg: 0.7, shotgun: 0.75, sniper: 0.8, bazooka: 0.9, raygun: 0.62, bigbullets: 0.78, duckgun: 0.8 };
+// Where the hands hold each model: anchors inside the part each hand grabs, as fractions of the model's size
+// [x (+ = right), y (from the center, + = up), z (+ = back)]. The first-person rig slides each palm out of the
+// gun from its anchor until it rests on the surface, so anchors sit inside the grip / handguard, not on it.
+// Hand frames: `rake` tilts the right hand's fingers down around a raked pistol grip (`thumb` < 0 wraps the
+// thumb over the grip instead of laying it along the right side); `left` picks how the
+// support hand holds: 'cup' (palm up under a handguard) or 'foregrip' (wrapped around a vertical grip or the
+// side of the handguard, thumb up). Calibrated with dev/fpLab.js (no hand, arm or finger more than 1 cm inside
+// the gun at hip or aim).
+export const HAND_FRAC = {
+  mg: { grip: [0, -0.26, 0.23], fore: [0, 0.02, -0.25], left: 'cup', rake: -0.6 },
+  shotgun: { grip: [0, -0.29, 0.373], fore: [0, -0.041, -0.373], left: 'cup', rake: -0.6 },
+  sniper: { grip: [0, -0.4, 0.1375], fore: [0.108, 0.067, -0.175], left: 'foregrip', rake: -0.35 },
+  bazooka: { grip: [0, -0.415, 0.208], fore: [0, -0.32, -0.042], left: 'foregrip', rake: -0.35 },
+  // boss pistols: right hand wrapped round the grip's middle, left hand cupped under the front of the body
+  raygun: { grip: [0, -0.298, 0.31], fore: [-0.113, -0.059, -0.13], left: 'cup', rake: -1.2 },
+  bigbullets: { grip: [0, -0.401, 0.405], fore: [-0.09, -0.294, -0.206], left: 'cup', rake: -1.2, thumb: -0.3 },
+  duckgun: { grip: [0, -0.4, 0.219], fore: [0, -0.258, -0.125], left: 'cup', rake: -0.6 },
+};
+
 export function mountGuns(env) {
   const { E, ELEM_COL, G, M } = env;
-  // Gun with a 3D model (e.g. the toy machine gun): model + element gem. Null if the type has none / not loaded yet.
-  const GUN_MODEL_LEN = { mg: 0.7, shotgun: 0.75, sniper: 0.8, bazooka: 0.9, raygun: 0.62, bigbullets: 0.78, duckgun: 0.8 };
-  // Where the hands hold each model: anchors inside the part each hand grabs, as fractions of the model's size
-  // [x (+ = right), y (from the center, + = up), z (+ = back)]. The first-person rig slides each palm out of the
-  // gun from its anchor until it rests on the surface, so anchors sit inside the grip / handguard, not on it.
-  // Hand frames: `rake` tilts the right hand's fingers down around a raked pistol grip (`thumb` < 0 wraps the
-  // thumb over the grip instead of laying it along the right side); `left` picks how the
-  // support hand holds: 'cup' (palm up under a handguard) or 'foregrip' (wrapped around a vertical grip or the
-  // side of the handguard, thumb up). Calibrated with dev/fpLab.js (no hand, arm or finger more than 1 cm inside
-  // the gun at hip or aim).
-  const HAND_FRAC = {
-    mg: { grip: [0, -0.26, 0.23], fore: [0, 0.02, -0.25], left: 'cup', rake: -0.6 },
-    shotgun: { grip: [0, -0.29, 0.373], fore: [0, -0.041, -0.373], left: 'cup', rake: -0.6 },
-    sniper: { grip: [0, -0.4, 0.1375], fore: [0.108, 0.067, -0.175], left: 'foregrip', rake: -0.35 },
-    bazooka: { grip: [0, -0.415, 0.208], fore: [0, -0.32, -0.042], left: 'foregrip', rake: -0.35 },
-    // boss pistols: right hand wrapped round the grip's middle, left hand cupped under the front of the body
-    raygun: { grip: [0, -0.298, 0.31], fore: [-0.113, -0.059, -0.13], left: 'cup', rake: -1.2 },
-    bigbullets: { grip: [0, -0.401, 0.405], fore: [-0.09, -0.294, -0.206], left: 'cup', rake: -1.2, thumb: -0.3 },
-    duckgun: { grip: [0, -0.4, 0.219], fore: [0, -0.258, -0.125], left: 'cup', rake: -0.6 },
-  };
   const LEFT_SPEC = {
     cup: { fingers: [1, 0.25, 0.15], thumb: [0, 0.2, -1] },
     foregrip: { fingers: [0, -0.25, -1], thumb: [0.15, 1, 0.1] },

@@ -37,6 +37,23 @@
     },
     {
       "clips": [
+        "dash",
+        "idle",
+        "jog",
+        "ready",
+        "reload",
+        "shoot"
+      ],
+      "joints": 56,
+      "nodes": 72,
+      "paths": [
+        "models/characters/pepe-general.glb",
+        "models/characters/pepe-tux.glb",
+        "models/characters/pepe.glb"
+      ]
+    },
+    {
+      "clips": [
         "cast",
         "cast_big",
         "defeat",
@@ -60,15 +77,15 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 58,
-    "runtimeBytes": 23759354,
-    "decodedBytes": 224271084,
-    "referenced": 58,
+    "runtimeFiles": 64,
+    "runtimeBytes": 25189336,
+    "decodedBytes": 236417668,
+    "referenced": 64,
     "dynamic": 39,
     "missing": 0,
     "unused": 0,
     "duplicateImageGroups": 0,
-    "duplicateRigGroups": 2
+    "duplicateRigGroups": 3
   },
   "missing": [],
   "unused": [],
@@ -200,6 +217,27 @@
       ]
     },
     {
+      "path": "models/characters/pepe-general.glb",
+      "kind": "static",
+      "from": [
+        "src/render/playerCharacters.js"
+      ]
+    },
+    {
+      "path": "models/characters/pepe-tux.glb",
+      "kind": "static",
+      "from": [
+        "src/render/playerCharacters.js"
+      ]
+    },
+    {
+      "path": "models/characters/pepe.glb",
+      "kind": "static",
+      "from": [
+        "src/render/playerCharacters.js"
+      ]
+    },
+    {
       "path": "models/characters/robot_laser.glb",
       "kind": "static+dynamic",
       "from": [
@@ -245,7 +283,7 @@
       "path": "models/characters/sproto_player.glb",
       "kind": "static",
       "from": [
-        "src/render/firstPerson.js"
+        "src/render/playerCharacters.js"
       ]
     },
     {
@@ -539,6 +577,27 @@
       "from": [
         "src/data/duelBosses.js",
         "src/data/enemies.js"
+      ]
+    },
+    {
+      "path": "ui/characters/pepe-general.webp",
+      "kind": "static",
+      "from": [
+        "src/render/playerCharacters.js"
+      ]
+    },
+    {
+      "path": "ui/characters/pepe-tux.webp",
+      "kind": "static",
+      "from": [
+        "src/render/playerCharacters.js"
+      ]
+    },
+    {
+      "path": "ui/characters/pepe.webp",
+      "kind": "static",
+      "from": [
+        "src/render/playerCharacters.js"
       ]
     }
   ],
@@ -1121,6 +1180,201 @@
       }
     },
     {
+      "path": "models/characters/pepe-general.glb",
+      "bytes": 531796,
+      "sha256": "3a5190e0fa9f21d70441cef4a98550b27936849957316af4c14456329650fdb2",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/playerCharacters.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 17589,
+      "meshoptDecodedBytes": 722778,
+      "imageDecodedBytes": 3145728,
+      "decodedBytes": 3868506,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "military_frog_3d_model_Clone1_normal.jpg",
+          "mime": "image/jpeg",
+          "encodedBytes": 63408,
+          "sha256": "688eddaa174d7807aa0d831cea8e8af6fe4a627507dd6684da4cae3f373a4cbc",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "military_frog_3d_model_Clone1_basecolor.jpg",
+          "mime": "image/jpeg",
+          "encodedBytes": 71769,
+          "sha256": "d53a2bc2a131987bf456853f530db075152982960a0708e3ac4ee1be194888e5",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "military_frog_3d_model_Clone1_rm.png",
+          "mime": "image/jpeg",
+          "encodedBytes": 52043,
+          "sha256": "25cdc11e7be8b2955a4ced299e73868ae9b232f55a92b00313ac7ec9e516b97a",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "dash",
+          "idle",
+          "jog",
+          "ready",
+          "reload",
+          "shoot"
+        ],
+        "skins": 1,
+        "joints": 56,
+        "nodes": 72,
+        "materials": [
+          "Material",
+          "tripo_node_7487109b-4461-4e04-94c7-0f67f30f3f5c_material.003"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/pepe-tux.glb",
+      "bytes": 452704,
+      "sha256": "6fab4f856f27d1d01068587785eb4f41f3c4fb174c657d04cbb1717a37991ada",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/playerCharacters.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 16897,
+      "meshoptDecodedBytes": 601866,
+      "imageDecodedBytes": 3145728,
+      "decodedBytes": 3747594,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "pepe_frog_3d_model_normal.jpg",
+          "mime": "image/jpeg",
+          "encodedBytes": 43646,
+          "sha256": "95fd4e5122281f695e65b08ebfdbaeab53206178d72ec8266ee323b8c22859a4",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "pepe_frog_3d_model_basecolor.jpg",
+          "mime": "image/jpeg",
+          "encodedBytes": 62448,
+          "sha256": "fbe691180f01b34c8a75998ae30468416f5b1cde364d2b5ba1f9ef34ba5e9132",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "pepe_frog_3d_model_rm.png",
+          "mime": "image/jpeg",
+          "encodedBytes": 41165,
+          "sha256": "e8f57cd7d58f936edbd6c5173f9e628027df75ee300fd379c36dada6e73da3d8",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "dash",
+          "idle",
+          "jog",
+          "ready",
+          "reload",
+          "shoot"
+        ],
+        "skins": 1,
+        "joints": 56,
+        "nodes": 72,
+        "materials": [
+          "Material",
+          "tripo_node_057ac19f-e034-4464-9d0f-1f04e80bd668_material.004"
+        ]
+      }
+    },
+    {
+      "path": "models/characters/pepe.glb",
+      "bytes": 413876,
+      "sha256": "b0ee387b858cb9193cf0b5d2d16c7bad42347c57b4521c7fd89083a622635f9d",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/playerCharacters.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": true,
+      "triangles": 17730,
+      "meshoptDecodedBytes": 598324,
+      "imageDecodedBytes": 3145728,
+      "decodedBytes": 3744052,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [
+        {
+          "name": "frog_character_3d_model_Clone1_normal.jpg",
+          "mime": "image/jpeg",
+          "encodedBytes": 38252,
+          "sha256": "32aa8cc75f96c5009bf56ff15fb3be7ce043f56ee0f818c3d288fd1be57d1067",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "frog_character_3d_model_Clone1_basecolor.jpg",
+          "mime": "image/jpeg",
+          "encodedBytes": 63667,
+          "sha256": "70f5c42b9e0e5cfd16404f03e66a145afc31c0b4e35ebbf269800bf20c909d56",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        },
+        {
+          "name": "frog_character_3d_model_Clone1_rm.png",
+          "mime": "image/jpeg",
+          "encodedBytes": 21133,
+          "sha256": "c484fd3553b2b936c33750c0b07cc1063bb7cf32da4fe91bf83a9dfb6840b37a",
+          "width": 512,
+          "height": 512,
+          "decodedBytes": 1048576
+        }
+      ],
+      "rig": {
+        "clips": [
+          "dash",
+          "idle",
+          "jog",
+          "ready",
+          "reload",
+          "shoot"
+        ],
+        "skins": 1,
+        "joints": 56,
+        "nodes": 72,
+        "materials": [
+          "Material",
+          "tripo_node_6204a5d7-1bd0-414e-bd52-4b5f317987c6_material.003"
+        ]
+      }
+    },
+    {
       "path": "models/characters/robot_laser.glb",
       "bytes": 1006684,
       "sha256": "3e4e7d19f08e790aadb11bf1bc8c80578fdde0a7fe672ba652a3e075890fa45e",
@@ -1476,7 +1730,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/firstPerson.js"
+        "src/render/playerCharacters.js"
       ],
       "kind": "glb",
       "width": null,
@@ -2899,6 +3153,51 @@
       "width": 512,
       "height": 512,
       "decodedBytes": 1048576,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "ui/characters/pepe-general.webp",
+      "bytes": 10712,
+      "sha256": "6a7349af46aa774ad60b97b057dadceee0e0a763cb8f2f5257be579b0fb3e091",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/playerCharacters.js"
+      ],
+      "kind": "image",
+      "width": 256,
+      "height": 256,
+      "decodedBytes": 262144,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "ui/characters/pepe-tux.webp",
+      "bytes": 10076,
+      "sha256": "6eaf0d14957d0c957643a99685934fa0ae6ab4fb7226b10c4938e16b2cbf4ed7",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/playerCharacters.js"
+      ],
+      "kind": "image",
+      "width": 256,
+      "height": 256,
+      "decodedBytes": 262144,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "ui/characters/pepe.webp",
+      "bytes": 10818,
+      "sha256": "f94b88955e656d6e8c60b4ecef578c50d872b0f6d3bbe4c053d2de3d64e541c3",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/playerCharacters.js"
+      ],
+      "kind": "image",
+      "width": 256,
+      "height": 256,
+      "decodedBytes": 262144,
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     }
   ],

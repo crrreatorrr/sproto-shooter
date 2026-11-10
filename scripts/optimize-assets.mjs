@@ -111,7 +111,7 @@ export async function transcodeImage(buf, { maxEdge, palette = false, mime = '' 
   const meta = await sharp(buf, { failOn: 'none' }).metadata();
   if (!meta.width || !meta.height) return null;
   const edge = Math.max(meta.width, meta.height);
-  const wantsPalette = palette && !pngIndexed(buf);
+  const wantsPalette = palette && (meta.format === 'png' || mime === 'image/png') && !pngIndexed(buf);
   if (edge <= maxEdge && !wantsPalette) return null;
   let pipeline = sharp(buf, { failOn: 'none' }).resize({
     width: maxEdge,
