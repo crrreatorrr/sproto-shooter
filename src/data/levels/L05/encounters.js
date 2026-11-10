@@ -51,7 +51,7 @@ export const E2 = {
     squad('E2-a', { type: 'onEnter' }, [u('spotterDrone', 1)], [[80, 8, 256]], 'air', {
       patrol: { loop: [[80, 8, 256], [235, 8, 256]], speed: 8, period: 39 },
     }),
-    squad('E2-b', { type: 'onEnter' }, [u('midget', 4)], [[165, 0, 265]], 'placed', { asleep: true, hearing: 12 }),
+    squad('E2-b', { type: 'onEnter' }, [u('midget', 4)], [[150, 0, 274]], 'placed', { asleep: true, hearing: 12 }),
     squad('E2-c', { type: 'onAlert', zBelow: -266 }, [u('frostHound', 2)], [[205, 0, 285], [205, 0, 285]], 'door', { delay: 1.5 }),
     alarm('E2-R', 'S1-drone', [u('midget', 3), u('robotLaser', 1)], [[150, 0, 275]], 'drop'),
   ],
@@ -89,10 +89,10 @@ export const E4 = {
   activate: zone(0, 260, 0, 380, -8, 20),
   zone: zone(110, 150, 180, 200, -2, 6),
   squads: [
-    squad('E4-a', { type: 'onEnter' }, [u('miningRig', 2)], [[100, 0, 196], [160, 0, 196]], 'placed', {
+    squad('E4-a', { type: 'onEnter' }, [u('miningRig', 2)], [[130, 0, 172], [130, 0, 176]], 'placed', {
       overheatOffset: 3, openFire: 90,
     }),
-    squad('E4-b', { type: 'onEnter' }, [u('auditSniper', 2)], [[60, 12, 198], [200, 12, 198]], 'placed', {
+    squad('E4-b', { type: 'onEnter' }, [u('auditSniper', 2)], [[130, 0, 100], [130, 0, 108]], 'placed', {
       perches: [[60, 12, 203], [85, 12, 203], [200, 12, 203], [175, 12, 203]],
     }),
     squad('E4-c', { type: 'onEnter' }, [u('spotterDrone', 2)], [[100, 9, 110], [150, 9, 70]], 'air', {
@@ -102,12 +102,12 @@ export const E4 = {
       ],
       ringsAlarm: 'S2-alarm4',
     }),
-    squad('E4-d', { type: 'onEnter' }, [u('midget', 3)], [[70, 0, 150]], 'placed', { asleep: true }),
-    squad('E4-e', { type: 'onEnter' }, [u('obama', 2)], [[118, 0, 150]], 'placed', {
-      patrol: { loop: [[118, 0, 150], [112, 0, 112], [118, 0, 150]], period: 40 },
+    squad('E4-d', { type: 'onEnter' }, [u('midget', 3)], [[130, 0, 196]], 'placed', { asleep: true, hearing: 0.01 }),
+    squad('E4-e', { type: 'onEnter' }, [u('obama', 2)], [[130, 0, 148]], 'placed', {
+      patrol: { loop: [[130, 0, 148], [130, 0, 130], [130, 0, 148]], period: 40 },
     }),
     squad('E4-f', { type: 'onEnter' }, [u('balloonMidget', 2)], [[200, 4, 95], [225, 5, 135]], 'placed', { tethered: true }),
-    squad('E4-g', { type: 'onAlert', zBelow: -150 }, [u('frostHound', 2)], [[75, 0, 198]], 'door', { delay: 1 }),
+    squad('E4-g', { type: 'onAlert', zBelow: -150 }, [u('frostHound', 2)], [[130, 0, 160]], 'door', { delay: 1 }),
     alarm('E4-R', 'S2-alarm4', [u('midget', 4), u('obama', 2)], [[130, 0, 160]], 'drop'),
   ],
 };
@@ -119,7 +119,7 @@ export const E5 = {
   objective: { kind: 'destroy', ids: ['BW-gen-body', 'BE-gen-body'], text: 'Destroy both generators' },
   activate: zone(80, 180, 198, 240, -2, 12),
   squads: [
-    squad('E5-a', { type: 'onAlert', box: zone(96, 104, 198, 206, -2, 6) }, [u('riotMidget', 3)], [[100, 0, 210]], 'placed'),
+    squad('E5-a', { type: 'onEnter' }, [u('riotMidget', 3)], [[130, 0, 208]], 'placed'),
     squad('E5-b', { type: 'onAlert', box: zone(86, 114, 214, 236, -2, 8) }, [u('midget', 2)], [[108, 0, 208]], 'door', { delay: 1 }),
     alarm('E5-RW', 'S2-alarm5W', [u('midget', 2), u('riotMidget', 1)], [[100, 0, 235]]),
     squad('E5-c', { type: 'onAlert', box: zone(156, 164, 198, 206, -2, 6) }, [

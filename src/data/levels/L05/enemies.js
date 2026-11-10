@@ -39,6 +39,9 @@ export const SPOTTER_DRONE = {
   ],
 };
 
+// The live body is ENEMIES.frostHound. Its lunge is speed 20 inside range 9,
+// crouch 0.5, recover 0.9, knockback 6, patch 2.5 for 6 s. Alpha's second
+// lunge is not on that body.
 export const FROST_HOUND = {
   id: 'frostHound',
   name: 'Frost Hound',

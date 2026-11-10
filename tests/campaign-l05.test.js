@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { validateLevel } from '../src/data/levels/kit.js';
 import { L05 } from '../src/data/levels/L05/index.js';
+import { ENEMIES } from '../src/data/enemies.js';
 import { DECOY, FROST_HOUND, SIGHT, SPOTTER_DRONE } from '../src/data/levels/L05/enemies.js';
 import { createGameState } from '../src/sim/state.js';
 import { simulate } from '../src/sim/simulate.js';
@@ -71,6 +72,14 @@ describe('L05 Frostspire Black Site', () => {
     expect(SPOTTER_DRONE.hpTier).toBe(79);
     expect(FROST_HOUND.hp).toBe(55);
     expect(FROST_HOUND.elite.name).toBe('Alpha');
+    expect(ENEMIES.frostHound.lunge).toBe(FROST_HOUND.lunge.speed);
+    expect(ENEMIES.frostHound.range).toBe(FROST_HOUND.lunge.range);
+    expect(ENEMIES.frostHound.windup).toBe(FROST_HOUND.lunge.crouch);
+    expect(ENEMIES.frostHound.active).toBe(0.2);
+    expect(ENEMIES.frostHound.recover).toBe(FROST_HOUND.lunge.recover);
+    expect(ENEMIES.frostHound.knockback).toBe(FROST_HOUND.lunge.knockback);
+    expect(ENEMIES.frostHound.run).toBe(FROST_HOUND.run);
+    expect(ENEMIES.frostHound.patch).toMatchObject({ radius: FROST_HOUND.patch.radius, seconds: FROST_HOUND.patch.seconds });
     expect(SIGHT.auditSniper.inCone).toBe(140);
     expect(SIGHT.blizzardCap).toBe(40);
     const e1 = L05.sections[0].encounters.find((e) => e.id === 'S1-E1');
