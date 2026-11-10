@@ -66,6 +66,7 @@ export const EVENT_COVERAGE = {
   noMana: ['audio', 'ui'],
   perkUnlocked: ['audio', 'ui'],
   pickup: ['audio', 'ui'],
+  plateBreak: ['audio', 'vfx'],
   playerDamaged: ['audio'],
   playerDied: ['none'],
   playerDowned: ['audio'],

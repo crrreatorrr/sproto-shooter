@@ -9,6 +9,7 @@ import { rollDrops, spawnDrops } from './drops.js';
 import { createEnemy, createHazard, nextId } from './state.js';
 import { archetypeDamageMul, archetypeDeathBlast, sourceTakenMul } from './campaign/archetypes.js';
 import { markPartDestroyed } from './campaign/v2.js';
+import { applyPlates } from './campaign/plates.js';
 
 export function healPlayer(p, amount) {
   if (p.dead) return 0;
@@ -44,6 +45,20 @@ export function damageEnemy(state, e, hit) {
   if (taken <= 0) return 0;
   dmg *= taken;
   dmg = Math.max(1, Math.round(dmg));
+  const plated = applyPlates(state, e, hit, dmg);
+  if (plated != null) {
+    const soaked = dmg - plated;
+    if (p && soaked > 0) state.run.damageDealt += soaked;
+    if (plated <= 0) {
+      e.hitFlash = 0.08;
+      emit(state, 'damage', {
+        sourceId: hit.sourceId, targetId: e.id, amount: dmg, element: el, isCrit: false, isWeak: false, zone: 'plate',
+        pos: hit.point, sourceKind: hit.sourceKind, killed: false, pellet: !!hit.pellet,
+      });
+      return dmg;
+    }
+    dmg = plated;
+  }
   if (e.type === 'dummy' && state.tuning.dummyInfinite) e.hp = e.maxHp + dmg;
   if (e.boss && e.boss.scriptHold && e.hp - dmg <= 0) {
     const dealt = Math.max(0, e.hp - 1);

@@ -147,6 +147,8 @@ These ids have an `archetype` and run it on top of the enemy they are dressed as
 
 An unaware enemy sees 30 m inside a 120° cone and hears a shot inside 16 m. `asleep: true` on a squad removes that sight and hears a shot inside `hearing` (default 12). A mining rig sees 90 m all round, except a player within 15 m who is tucked under the wall it stands on.
 
+A campaign `monster` (the Auditor) wears three plates. The brow has 250 HP and covers the head, so a head shot does not reach the body until it breaks. The chest and the back have 400 HP each and cover the front and rear 180°. A body shot on a live plate deals 10% to the body and the rest to that plate. All three scale with the tier multiplier (437 and 700 at tier 5). Wave Mode's monster has no plates.
+
 A `kind: 'weather'` mechanism times a whiteout from when the section is entered. `windows` are `[start, end]` pairs. The same gap then repeats: `period` seconds (default 90) after each start, for `whiteout` seconds (default 20). `warning` seconds before a window sets `level.whiteoutWarn`. While it is on, `level.whiteout` is set, sight other than a hound's is capped at `sightCap` (default 40), and the fog pulls in to `viewCap` (default 40).
 
 ## Mechanisms
