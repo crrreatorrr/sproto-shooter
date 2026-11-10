@@ -117,6 +117,11 @@ export function tickBossScript(state, enc, dt) {
   prog.partT += dt;
   if (!prog.center) prog.center = { x: boss.pos.x, z: boss.pos.z };
   const last = prog.part >= script.parts.length - 1;
+  if (part.hp && prog.hpFor !== prog.part) {
+    prog.hpFor = prog.part;
+    boss.maxHp = part.hp;
+    boss.hp = part.hp;
+  }
   boss.boss.scripted = true;
   boss.boss.attackList = Array.isArray(part.attacks) ? part.attacks : null;
   boss.boss.attackScale = part.attacks && part.attacks.bolts === 'half' ? 2 : 1;
