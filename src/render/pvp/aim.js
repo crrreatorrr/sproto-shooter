@@ -9,6 +9,8 @@
 // stays the look yaw (movement is unchanged); only the pitch converges.
 import { TUNING } from '../../data/tuning.js';
 import { rayCapsule } from '../../sim/pvp/hit.js';
+import { ARENA_SOLIDS, ARENA_WALL_H } from '../../sim/pvp/arena.js';
+import { firstSolid } from '../../sim/campaign/solids.js';
 
 export const CAM = Object.freeze({ back: 11, up: 5.5, ahead: 8, eye: 1.1 });
 /** Crosshair rays that meet nothing converge at this range. */
@@ -78,8 +80,13 @@ export function convergeAim(me, look, opponent = null) {
     const tg = -o.y / d.y;
     if (tg > past && tg < t) { t = tg; hit = 'ground'; }
   }
+  const cover = firstSolid(ARENA_SOLIDS, o, d, t, null, true);
+  if (cover && cover.t > past && cover.t < t) { t = cover.t; hit = 'solid'; }
   const tw = wallDistance(o, d, TUNING.arenaRadius);
-  if (tw > past && tw < t) { t = tw; hit = 'wall'; }
+  if (tw > past && tw < t) {
+    const y = o.y + d.y * tw;
+    if (y >= 0 && y <= ARENA_WALL_H) { t = tw; hit = 'wall'; }
+  }
   const point = { x: o.x + d.x * t, y: o.y + d.y * t, z: o.z + d.z * t };
   const eye = { x: me.x, y: me.y + TUNING.eyeHeight, z: me.z };
   const dx = point.x - eye.x;

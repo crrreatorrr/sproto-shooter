@@ -2,6 +2,7 @@
 import { TUNING } from '../../data/tuning.js';
 import { GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, QUALITIES_BY_ID } from '../../data/guns.js';
 import { fnv1a, stableStringify } from '../hash.js';
+import { ARENA_SOLIDS, ARENA_WALL_H } from './arena.js';
 
 export const PVP_PROTOCOL_VERSION = 2;
 /** Sim 2 (SHOOTER-S2b): history ring + viewTick rewind, split spawn/combat seed, crits off. */
@@ -168,6 +169,41 @@ export function contentBody() {
     // sha256 commit, reveal in RESULT; the RNG takes 128 bits of sha256(seed).
     combatSeed: 'commit-reveal-sha256-128',
     stakes: false,
+    // Both seats share these. A hook lands on arenaSolids or the wall, never the floor.
+    movement: {
+      walk: TUNING.walkSpeed,
+      sprint: TUNING.sprintSpeed,
+      gravity: TUNING.gravity,
+      jump: TUNING.jumpVel,
+      air: TUNING.airAccel,
+      ground: TUNING.groundAccel,
+      friction: TUNING.friction,
+      slide: {
+        min: TUNING.slideMinSpeed,
+        boost: TUNING.slideBoost,
+        cruise: TUNING.slideCruise,
+        drag: TUNING.slideDrag,
+        time: TUNING.slideTime,
+        cd: TUNING.slideCd,
+        hopCd: TUNING.slideHopCd,
+        hop: TUNING.slideHopBoost,
+        stamina: TUNING.slideStamina,
+      },
+      stamina: {
+        sprint: TUNING.staminaSprint,
+        delay: TUNING.staminaRegenDelay,
+        regen: TUNING.staminaRegen,
+        refill: TUNING.staminaRefill,
+      },
+      grapple: {
+        range: TUNING.grappleRange,
+        cd: TUNING.grappleCd,
+        pull: TUNING.grapplePull,
+        arrive: TUNING.grappleArrive,
+      },
+    },
+    arenaSolids: ARENA_SOLIDS,
+    arenaWall: ARENA_WALL_H,
   };
 }
 

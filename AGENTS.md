@@ -10,12 +10,13 @@ are the hub contracts.
 - `src/sim` and `src/data` stay pure: no `three`, no DOM, no `Math.random`, `Date.now` or
   `performance.now`. `tests/architecture.test.js` checks this.
 - Pins and tripwires. Change these numbers only on purpose, and say so in the PR:
-  - Campaign content fingerprint `0ebc3c6d` (`contentFingerprint(1)` in
+  - Campaign content fingerprint `9ec1c6ea` (`contentFingerprint(1)` in
     `src/data/serverManifest.js`; `tests/pvp-sim.test.js`, `tests/fixtures/boss-goldens.json`). It
     covers boss, encounter, gun, part, element, spell and tuning data.
-  - PvP content fingerprint `17d87c54` (`CONTENT_FINGERPRINT` in `src/sim/pvp/rules.js`).
-  - PvP golden state hash `6545ca0a` (`scriptedMatch(7, 180)`, `GOLDEN_HASH` in
-    `tests/pvp-sim.test.js`).
+  - PvP content fingerprint `b33eada6` (`CONTENT_FINGERPRINT` in `src/sim/pvp/rules.js`).
+    Was `17d87c54` until both seats got slide, momentum grapple and sprint stamina.
+  - PvP golden state hash `532a562e` (`scriptedMatch(7, 180)`, `GOLDEN_HASH` in
+    `tests/pvp-sim.test.js`). Was `6545ca0a`. The director golden is `55419e4e` (was `b661a684`).
   - Wave Mode and Sandbox hashes in `tests/fixtures/baseline-hashes.json`
     (`tests/levels/baseline.test.js`).
 - Never edit `src/sim/pvp/`, `src/net/inputCodec.js`, `src/net/protocol.js` or `src/server/`

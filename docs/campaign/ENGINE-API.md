@@ -174,7 +174,7 @@ The old `kind: 'hazard'` brake is unchanged.
 
 ## Movement
 
-Campaign, Wave Mode and Sandbox share this. PvP does not.
+Campaign, Wave Mode, Sandbox and Free 1v1 share slide, sprint stamina and the momentum grapple. In the arena the hook lands only on the four pillars or the boundary wall (`src/sim/pvp/arena.js`), never on the floor or the other player. Both seats run the same step, and the grapple bit is in the PvP input log so a replay stays authoritative. Letting go, or arriving, keeps the full velocity.
 
 Sprint lasts `staminaSprint` seconds (4.5). The bar then regens after `staminaRegenDelay` (0.55 s) and fills in `staminaRegen` seconds (1.7). Sprint stays off until the bar reaches `staminaRefill` (0.28). Slide spends `slideStamina` (0.14). Grapple spends none.
 

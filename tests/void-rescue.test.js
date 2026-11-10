@@ -42,6 +42,6 @@ describe('section voids', () => {
 
   it('does not move the campaign or PvP pins', () => {
     expect(contentFingerprint(1)).toBe('9ec1c6ea');
-    expect(CONTENT_FINGERPRINT).toBe('17d87c54');
+    expect(CONTENT_FINGERPRINT).toBe('b33eada6');
   });
 });
