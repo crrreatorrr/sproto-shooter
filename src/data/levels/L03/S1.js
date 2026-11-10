@@ -35,7 +35,8 @@ export const S1 = {
   intro: { title: 'The Vegetable Grove', lines: ['The Cabal grows it here.', 'Bullets are a second opinion. Bring spells.'] },
   geometry: [
     box({ id: 'S1-FL', at: [130, -0.25, -80], size: [260, 0.5, 160], mat: 'grass' }),
-    { kind: 'terrain', id: 'S1-T', origin: [0, 0, -160], size: [260, 160], cell: 2, seed: 301, mat: 'grass', noise: { amp: 0.4, freq: 0.03, octaves: 1 } },
+    // `at` is only so the level view can skip this. It reads at[1] before the kind, and terrain has no mesh yet.
+    { kind: 'terrain', id: 'S1-T', at: [130, 0, -80], origin: [0, 0, -160], size: [260, 160], cell: 2, seed: 301, mat: 'grass', noise: { amp: 0.4, freq: 0.03, octaves: 1 } },
     box({ id: 'S1-WN', at: [130, 3, -159], size: [260, 6, 2], mat: 'hedge' }),
     box({ id: 'S1-WS', at: [130, 3, -1], size: [260, 6, 2], mat: 'hedge' }),
     box({ id: 'S1-WW', at: [1, 3, -80], size: [2, 6, 160], mat: 'hedge' }),

@@ -14,6 +14,10 @@ Numbers are tier-1 unless noted. L03 tier is 3, so enemy HP and damage, and spel
 section, so bullets can kill a Bark Brute. Delete them when Goo or Yeet opens bark. The real pools
 still do 12 dps to the player and 40 to enemies.
 
+The level view throws on a terrain piece that has no `at` (`primitiveGeometry` reads `at[1]` before
+the kind). `S1-T` carries an `at` so the view skips it. The walk slab `S1-FL` is the ground until
+terrain has a mesh.
+
 ## E8 — still short of the doc
 
 | Id | HP | Speed | Body | Damage taken | Attack |
