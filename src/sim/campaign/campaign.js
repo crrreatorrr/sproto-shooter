@@ -228,6 +228,7 @@ function flagOn(lv, when) {
   if (!when) return true;
   if (when.endsWith('.cleared')) return !!lv.cleared[when.slice(0, -'.cleared'.length)];
   if (when.endsWith('.fled')) return !!(lv.fled && lv.fled[when.slice(0, -'.fled'.length)]);
+  if (when.endsWith('.destroyed')) return !!(lv.v2 && lv.v2.parts && lv.v2.parts[when.slice(0, -'.destroyed'.length)]);
   if (when.startsWith('switch:')) return !!lv.got[when.slice('switch:'.length)];
   return !!lv.got[when];
 }
