@@ -83,10 +83,11 @@ export function scriptShields(state, solidId) {
   const book = state.level && state.level.scripts;
   if (!book || !solidId) return false;
   for (const prog of Object.values(book)) {
-    for (const id of Object.keys(prog.targets)) {
+    const targets = prog.targets || {};
+    for (const id of Object.keys(targets)) {
       const spec = (prog.specs || {})[id];
       if (!spec || !spec.shields || spec.shields.indexOf(solidId) < 0) continue;
-      const e = state.enemies.find((en) => en.id === prog.targets[id]);
+      const e = state.enemies.find((en) => en.id === targets[id]);
       if (e && !e.dead) return true;
     }
   }
