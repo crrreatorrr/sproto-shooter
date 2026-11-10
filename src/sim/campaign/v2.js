@@ -133,7 +133,23 @@ function triggerReady(state, enc, squad, prog) {
     const prev = prog.squads[tr.after];
     return !!prev && prog.t - prev.at >= (tr.delay || 0);
   }
+  if (tr.type === 'onAlarm') {
+    const at = state.level.alarms && state.level.alarms[tr.alarm];
+    if (at == null) return false;
+    const delay = squad.delay != null ? squad.delay : (tr.delay || 0);
+    return (state.level.time || 0) - at >= delay;
+  }
   return false;
+}
+
+/** Ring an alarm once. Optional `onAlarm` squads spawn `delay` seconds later. */
+export function ringAlarm(state, id) {
+  if (!id) return;
+  const lv = state.level;
+  if (!lv.alarms) lv.alarms = {};
+  if (lv.alarms[id] != null) return;
+  lv.alarms[id] = lv.time || 0;
+  emit(state, 'alarm', { id });
 }
 
 /** Seconds after the previous squad before the next `onRemain` squad may open anyway. */
@@ -361,10 +377,11 @@ function retirePartSquads(state, enc, prog) {
 
 function objectiveDone(state, enc, prog) {
   const kind = (enc.objective && enc.objective.kind) || 'clearAll';
-  const spawned = Object.keys(prog.squads).length;
-  const pending = (enc.squads || []).length;
   const alive = aliveOf(state, enc.id);
-  if (kind === 'clearAll' || kind === 'boss') return prog.started && spawned >= pending && alive === 0 && !(prog.queue && prog.queue.length);
+  if (kind === 'clearAll' || kind === 'boss') {
+    const accounted = (enc.squads || []).every((sq, i) => prog.squads[squadKey(sq, i)] || sq.optional);
+    return prog.started && accounted && alive === 0 && !(prog.queue && prog.queue.length);
+  }
   if (kind === 'reach' || kind === 'escape' || kind === 'switch') {
     const p = state.players[state.localPlayerId];
     return !!(enc.zone && inBox(enc.zone, p.pos.x, p.pos.y, p.pos.z));
