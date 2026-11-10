@@ -2,7 +2,31 @@
 
 The Blockchain Void clears on the god-mode autopilot in `tests/levels/campaign.test.js`
 after the merge of main (`c932fb95`). Census stays 152 enemies plus Bitcoin Obama and
-The Midget. Nothing below blocks that clear. Shared engine code was not edited.
+The Midget. Shared engine code was not edited. CI on this branch is red until the
+pins below move. Those files are outside this level.
+
+## CI is red on the campaign pin
+
+`contentFingerprint(1)` is `cea1f88b`. The pin on main is `9ec1c6ea`. The hash covers
+the payable Obama encounter (`encounterFacts`: id, section start, squad units). Main's
+corridor placeholder resolves to legacy `S3-E3` with only the two Duo parts. This
+level's fight is `SB-BOSS`, so the hash moves. Thirty-eight tests, `tests/fixtures/boss-goldens.json`,
+and the pvp bundle's `campaignContentFingerprint` still expect `9ec1c6ea`.
+
+`tests/server-sim.test.js` expects `resolveCanonicalEncounter(obama).encounter.id`
+to be `S3-E3`. The manifest prefers `SB-BOSS` when that encounter exists, and it
+now does. `legacyEncounterId` is only the fallback for a tree that has not landed
+this level.
+
+`tests/run-validation.test.js` re-records `obama-success` and expects state hash
+`8907f24e`. The fresh recording is rejected at tick 36 with reason `teleport`.
+The scripted issuer walks from the Exchange vestibule to the Duo, dies, and
+`restoreCheckpoint` copies the vestibule snapshot back onto the live state
+(`Object.assign` in `campaign.js`). That snap is about 60 m. `movementDelta`
+rejects any step over `LIMITS.maxStepMeters` (15). A bankable Obama clear needs
+the verifier to allow a checkpoint restore, and then a new golden.
+
+PvP fingerprint `17d87c54` and golden `6545ca0a` did not move.
 
 ## A Duo script and a target solid crash the sim
 
