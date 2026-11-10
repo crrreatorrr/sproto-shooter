@@ -42,11 +42,18 @@ function aim(st) {
   const moved = Math.hypot(pl.pos.x - (pl._px ?? pl.pos.x), pl.pos.z - (pl._pz ?? pl.pos.z));
   pl._px = pl.pos.x; pl._pz = pl.pos.z;
   pl._stuck = moved < 0.02 && dist > 1.4 ? stuck + 1 : 0;
-  const sidestep = pl._stuck > 40;
+  const sidestep = pl._stuck > 30;
   const hop = !!(lv.voids && lv.voids.length) && pl._stuck > 24;
   return cmd({
-    yaw, pitch, moveZ: dist > 1.1 ? 1 : 0, moveX: sidestep ? 1 : 0,
-    held: { fire: !!(best && best.state !== 'spawning'), sprint: true, jump: hop, grapple: hop },
+    yaw, pitch,
+    moveZ: sidestep ? 0 : (dist > 1.1 ? 1 : 0),
+    moveX: sidestep ? (Math.floor(pl._stuck / 18) % 2 === 0 ? 1 : -1) : 0,
+    held: {
+      fire: !!(best && best.state !== 'spawning'),
+      sprint: !sidestep,
+      jump: hop || pl._stuck > 50,
+      grapple: hop,
+    },
   });
 }
 
@@ -84,7 +91,8 @@ describe('campaign levels', () => {
       }
       const lv = s.level;
       const open = Object.entries(lv.cleared).filter(([, v]) => !v).map(([k]) => k);
-      expect({ id, won: lv.won, lost: lv.lost, section: lv.section, open, tick: s.tick, pos: s.players[s.localPlayerId].pos }, id).toMatchObject({ won: true });
+      const where = JSON.stringify({ id, won: lv.won, lost: lv.lost, section: lv.section, open, tick: s.tick, pos: s.players[s.localPlayerId].pos });
+      expect(lv.won, where).toBe(true);
       expect(n).toBeLessThan(cap);
     }
   }, 120000);
