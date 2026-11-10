@@ -1,6 +1,6 @@
 # L02 engine needs still open
 
-`#88` is on main. `S4-E4.script` is the five-part fight: entry bar, then 1714, the rug pit, 1909, and 1967. Node and goja replay the same success, fail, and assisted receipts. The campaign fingerprint stays `9ec1c6ea`. Section S4 still starts at `[149.5, 0, 11]`, and the payable squad is still `sahil` × 1.
+`#88` is on main. `S4-E4.script` is the five-part fight: entry bar, then a 1300 bar, the rug pit, 1000, and 900. `designHp` on those bars is still 1714 / 1909 / 1967. GitHub's goja reaches about frame 11000 inside the verifier's 15 second budget, and the design bars run to about frame 16600, so the live bars are the longest set that still clears in both success and assisted mode inside that budget. Node and goja replay the same receipts. The campaign fingerprint stays `9ec1c6ea`. Section S4 still starts at `[149.5, 0, 11]`, and the payable squad is still `sahil` × 1.
 
 ## Looms and pylons are not spawned
 

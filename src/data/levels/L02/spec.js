@@ -117,7 +117,7 @@ export const BOSS_SCRIPT = {
       ],
     },
     {
-      id: 2, kind: 'phase', seconds: 55, hp: 1714, duelStage: 1,
+      id: 2, kind: 'phase', seconds: 55, hp: 1300, designHp: 1714, duelStage: 1,
       attacks: ['bolt', 'carpetSweep'],
       adds: [
         { onBossHp: 65, from: ['sh-SW', 'sh-SE'], units: [['midget', 2], ['midget', 2]] },
@@ -139,7 +139,7 @@ export const BOSS_SCRIPT = {
       ],
     },
     {
-      id: 4, kind: 'phase', seconds: 60, hp: 1909, duelStage: 2,
+      id: 4, kind: 'phase', seconds: 60, hp: 1000, designHp: 1909, duelStage: 2,
       ring: 26.8,
       adds: [
         { onBossHp: 70, from: ['sh-NE', 'sh-SW'], units: [['midget', 2], ['midget', 1]] },
@@ -147,7 +147,7 @@ export const BOSS_SCRIPT = {
       ],
     },
     {
-      id: 5, kind: 'phase', seconds: 65, hp: 1967, duelStage: 3,
+      id: 5, kind: 'phase', seconds: 65, hp: 900, designHp: 1967, duelStage: 3,
       ring: 25.5,
       adds: [
         { onBossHp: 75, from: ['sh-NW'], units: [['riotMidget', 1, { elite: true, name: 'Head of Rug Security', hp: 173 }], ['midget', 3]] },
