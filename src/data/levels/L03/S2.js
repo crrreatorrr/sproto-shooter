@@ -72,7 +72,7 @@ export const S2 = {
     { kind: 'mover', id: 'S2-TG-S', at: [29.5, 1.2, -67], from: [29.5, 1.2, -67], to: [29.5, 1.2, -66], size: [0.5, 2.4, 2], crush: 40, closed: 0.8, open: 0.4 },
     { kind: 'gooGear', id: 'S2-GG1', at: [29.5, 1.5, -63.6], radius: 0.5, holds: 'S2-TG-N', seconds: 4 },
     { kind: 'conduit', id: 'S2-CD1', at: [65, 2, -60], radius: 0.4, spell: 'chainZap', stun: 2, radiusEffect: 8, recharge: 20 },
-    { kind: 'conduit', id: 'S2-CD2', at: [106, 1.5, -57.6], radius: 0.4, barkCap: true, opens: 'S2-XD' },
+    { kind: 'conduit', id: 'S2-CD2', at: [106, 1.5, -57.6], radius: 0.4, barkCap: true },
     { kind: 'jumpPad', id: 'S2-GZP', at: [66.5, 0.2, -60], r: 1.2, power: 10, to: [60, 4.5, -60] },
     { kind: 'manaBloom', id: 'MB5-use', at: [19, 0.6, -92], mana: 50, regrow: 20 },
     { kind: 'manaBloom', id: 'MB6-use', at: [79, 0.6, -66], mana: 50, regrow: 20 },

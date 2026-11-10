@@ -78,7 +78,7 @@ it knows, `ammo`, `chest`, `secret` (including `mana`), `depot` as a pickup poin
 | `manaBloom` | MB1–MB20 including MB6b (21) | 50 mana, regrow 20 s. Easy 12 s, Heroic 30 s |
 | `gooGear` | `S2-GG1` | Goo holds the trimmer open 4 s. Blades `S2-TG-N` and `S2-TG-S`, crush 40, knockback 8, closed 0.8 s, open 0.4 s |
 | `conduit` | `S2-CD1` | Chain Zap: stun every enemy within 8 m for 2 s, recharge 20 s |
-| `conduit` `barkCap` | `S2-CD2` | Goo softens 4 s, then Chain Zap opens `S2-XD` |
+| `conduit` `barkCap` | `S2-CD2` | Goo softens 4 s, then Chain Zap opens `S2-XD`. The door's `opens` is `S2-CD2`. The conduit does not set `opens` itself: a conduit `opens` holds that door solid, and nothing fires a conduit yet, so the exit would stay shut |
 | `pressurePlate` | `S3-PP0` r 1.2 | Player or a parked Swarm buddy. Holds `S3-BG`. Shuts 0.3 s after it empties. A buddy on a plate does not age (max 30 s) |
 | `pressurePlate` | `S3-PP1`, `S3-PP2`, 55 m apart | Both held 1 s grows `S3-BR3` for good |
 | `ropeBridge` | `S3-BR2-mech` | `collapseOn: 'x>114'`. 1 s shake, planks drop from the west every 0.15 s. Resets 4 s after a void rescue. The slab `S3-BR2` is the deck until that exists |
