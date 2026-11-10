@@ -8,6 +8,7 @@ import { distToCapsule, entityDef, sphereHitsPlayer } from './collision.js';
 import { rollDrops, spawnDrops } from './drops.js';
 import { createHazard, nextId } from './state.js';
 import { archetypeDamageMul, archetypeDeathBlast } from './campaign/archetypes.js';
+import { markPartDestroyed } from './campaign/v2.js';
 
 export function healPlayer(p, amount) {
   if (p.dead) return 0;
@@ -17,7 +18,7 @@ export function healPlayer(p, amount) {
 }
 
 export function damageEnemy(state, e, hit) {
-  if (e.dead || e.state === 'spawning' || (e.boss && e.boss.invuln) || (e.ai && e.ai.buried > 0)) return 0;
+  if (e.dead || e.state === 'spawning' || (e.boss && e.boss.invuln) || (e.ai && (e.ai.buried > 0 || e.ai.audit))) return 0;
   let dmg = hit.base;
   const p = state.players[hit.sourceId];
   if (p) {
@@ -126,6 +127,7 @@ export function onEnemyKilled(state, e) {
     sourceKind: lh.sourceKind ?? null, element: lh.element ?? 'none', wasCrit: !!lh.isCrit, wasWeak: !!lh.isWeak,
     pos: centerOf(e), tier: e.tier, summoned: e.summoned, isDummy: e.type === 'dummy',
   });
+  if (e.partId) markPartDestroyed(state, e.partId);
   if (e.type === 'dummy') return;
   state.run.kills++;
   if (e.elite) state.run.eliteKills++;
@@ -149,8 +151,10 @@ export function onEnemyKilled(state, e) {
   const p = state.players[state.localPlayerId];
   // ammo drops only for guns that use spare ammo (boss weapons never run out)
   const ctx = { elite: e.elite, tier: e.tier, playerGunTypes: p.guns.filter((g) => g && !GUN_TYPES_BY_ID[g.type].bossOnly).map((g) => g.ammoType), summoned: e.summoned, boss: !!e.boss };
-  const specs = rollDrops(state.rng, e.type, ctx);
-  spawnDrops(state, specs, centerOf(e));
+  if (!e.noAmmoDrop) {
+    const specs = rollDrops(state.rng, e.type, ctx);
+    spawnDrops(state, specs, centerOf(e));
+  }
 }
 
 export function revivePlayer(state, p) {

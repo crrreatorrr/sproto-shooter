@@ -100,6 +100,9 @@ export function tickArchetype(state, e, target, dt) {
       e.vel.z += dz * 0.4 * dt;
     }
   }
+  if (a.audit) {
+    e.ai.audit = state.enemies.some((o) => !o.dead && o.type === 'gateGenerator' && o.campaignEnc && o.campaignEnc === e.campaignEnc);
+  }
   if (a.flash) {
     ai.flashCd = (ai.flashCd == null ? a.flash.every : ai.flashCd) - dt;
     const d = Math.hypot(target.pos.x - e.pos.x, target.pos.z - e.pos.z);

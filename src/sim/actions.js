@@ -11,6 +11,8 @@ import { onEnemyKilled, GOD_HP } from './combat.js';
 import { respawn, godTopUp } from './player.js';
 import { startWaves } from './waves.js';
 import { startCampaign, transitionDone } from './campaign/campaign.js';
+import { noteV2Section } from './campaign/v2.js';
+import { getLevelRuntime } from './level/runtime.js';
 import { TUNING } from '../data/tuning.js';
 import { BOSSES } from '../data/enemies.js';
 import { LEGENDARY_SLOT } from '../data/guns.js';
@@ -214,6 +216,21 @@ export function debugOp(state, p, op, args) {
       const gun = generateGun({ seed: next(state.rng), level: args.level || state.tier, forced });
       gun.id = nextId(state);
       spawnGunPickup(state, gun, aheadOf(p, 3), 'debug');
+      break;
+    }
+    case 'campaignSection': {
+      const rt = getLevelRuntime(state.level.id);
+      const sec = rt.sectionById[args.id];
+      if (!sec) break;
+      state.level.section = sec.id;
+      state.level.intro = null;
+      state.level.transition = null;
+      if (state.level.format === 'v2') noteV2Section(state, sec, rt);
+      if (args.x != null) {
+        p.pos.x = args.x; p.pos.y = args.y || 0; p.pos.z = args.z || 0;
+        p.prevPos = { ...p.pos };
+        p.vel = { x: 0, y: 0, z: 0 };
+      }
       break;
     }
     case 'killAll':
