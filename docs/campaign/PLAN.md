@@ -770,7 +770,7 @@ Each need below came out of a level's design. It extends the engine item named; 
 |---|---|---|
 | Campaign content fingerprint `bfe99bf4` (was `3c657fb5`; E16 removed `weaponBoxes` from `TUNING` and the Magic and Crafting skills) | Boss encounter ids, section starts or units change; boss HP changes; any spell number changes (`SPELLS` is in `contentBody`); `TUNING` changes; gun definitions change (`infiniteReserve` removed from the Machine Gun and boss guns) | Update `CANONICAL_BOSSES` in `src/data/serverManifest.js`, `tests/pvp-sim.test.js`, `tests/fixtures/boss-goldens.json`, `docs/shooter-server-contract.md`; run `npm run build:server-sim`; re-vendor in metaverse-hub |
 | Wave Mode and Sandbox hashes | **Once**, in the E16 PR: crafting, Weapon Boxes, resources and the Magic skill leave the arena state; finite Machine Gun ammo changes Wave Mode play | Re-pin `tests/fixtures/baseline-hashes.json` in that PR and say so. After it, they must not move: new player and level state is created lazily in campaign mode only |
-| PvP fingerprint `f5949631` and golden `ce272de1` | Must **not** move | Do not touch `src/sim/pvp/`. If a shared `src/sim` module must change, prove the PvP goldens still pass |
+| PvP fingerprint `17d87c54` and golden `6545ca0a` | Must **not** move. These replaced `f5949631` and `ce272de1` in the S2 sim revisions; the older pair was already stale in this table | Do not touch `src/sim/pvp/`. If a shared `src/sim` module must change, prove the PvP goldens still pass |
 
 Every boss level keeps a dedicated boss section named **`SB`** with one boss encounter **`SB-BOSS`**,
 so the canonical table changes once and then stays put.
