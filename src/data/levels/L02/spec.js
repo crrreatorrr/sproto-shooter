@@ -110,8 +110,7 @@ export const BOSS_SCRIPT = {
     {
       id: 1, kind: 'entry', seconds: 30,
       designTargets: [{ id: 'loom-E', hp: 161, at: [58, 0, 70] }, { id: 'loom-W', hp: 161, at: [22, 0, 70] }],
-      // One attack name. A longer list makes Math.floor(rng * length) pick differently in goja.
-      attacks: ['bolt'],
+      attacks: { bolts: 'half' },
       adds: [
         { t: 2, from: ['sh-NW', 'sh-NE'], units: [['midget', 3], ['midget', 3]] },
         { on: 'firstLoom', from: ['sh-SE'], units: [['boomMidget', 2]], gap: 1.5 },
@@ -119,7 +118,7 @@ export const BOSS_SCRIPT = {
     },
     {
       id: 2, kind: 'phase', seconds: 55, hp: 1714, duelStage: 1,
-      attacks: ['bolt'],
+      attacks: ['bolt', 'carpetSweep'],
       adds: [
         { onBossHp: 65, from: ['sh-SW', 'sh-SE'], units: [['midget', 2], ['midget', 2]] },
         { onBossHp: 30, from: ['sh-NW'], units: [['boomMidget', 2]] },
@@ -141,7 +140,6 @@ export const BOSS_SCRIPT = {
     },
     {
       id: 4, kind: 'phase', seconds: 60, hp: 1909, duelStage: 2,
-      attacks: ['bolt'],
       ring: 26.8,
       adds: [
         { onBossHp: 70, from: ['sh-NE', 'sh-SW'], units: [['midget', 2], ['midget', 1]] },
@@ -150,7 +148,6 @@ export const BOSS_SCRIPT = {
     },
     {
       id: 5, kind: 'phase', seconds: 65, hp: 1967, duelStage: 3,
-      attacks: ['bolt'],
       ring: 25.5,
       adds: [
         { onBossHp: 75, from: ['sh-NW'], units: [['riotMidget', 1, { elite: true, name: 'Head of Rug Security', hp: 173 }], ['midget', 3]] },
