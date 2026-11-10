@@ -2,7 +2,7 @@
 // The boulevard, mall, roof and plaza are playable floors with the design's
 // encounters, lockdowns and finale. Prop dressing that is not on the route
 // (every car, bench and kiosk) is still a placeholder.
-import { box, cone, cylinder, disc, sphere } from '../kit.js';
+import { box, cone, cylinder, disc, ramp, sphere } from '../kit.js';
 import { registerLevel } from '../register.js';
 import { makeV2Level } from '../v2.js';
 
@@ -35,8 +35,16 @@ function door(id, at) {
 }
 
 const S1 = {
-  id: 'S1', name: 'Drop Zone', origin: [0, 0, 0], start: [8, 0, 16], yaw: -Math.PI / 2,
-  intro: card('SPROTO LANDING', ['Los Angeles. Dusk.', 'The Bitcoin Tax Empire has shut the city gate.', 'You have one machine gun and a bad attitude.']),
+  id: 'S1', name: 'Drop Zone', origin: [0, 0, 0], start: [8, 0, 10], yaw: -Math.PI / 2,
+  // North lane (z 10) is the lesson. South of z 12 the road is flat, so a walk
+  // with an empty stamina bar still reaches every fight.
+  intro: card('SPROTO LANDING', [
+    'Los Angeles. Dusk.',
+    'The Bitcoin Tax Empire has shut the city gate.',
+    'You have one machine gun and a bad attitude.',
+    'Sprint the lane. Slide under the truck. Hook the gold ring, then let go.',
+  ]),
+  grappleAnchors: [{ id: 'S1-hook', at: [30, 5.6, 10], r: 2.2 }],
   navBounds: { min: [0, 2], max: [200, 30] },
   exit: zone(190, 200),
   geometry: [
@@ -48,6 +56,28 @@ const S1 = {
     sphere({ id: 'S1-tinubu', at: [40, 14, 48], r: 8, mat: 'gold' }),
     cone({ id: 'S1-tinubu-hat', at: [40, 22, 48], r: 5, h: 8, mat: 'gold' }),
     box({ id: 'S1-sign', at: [20, 6, -6], size: [14, 2, 0.6], mat: 'neon' }),
+    // Sprint lane. Discs only: the bar on the HUD is the lesson, and walking
+    // the same lane still reaches the truck.
+    disc({ id: 'S1-sprint-a', at: [11, 0.06, 10], r: 1.15, mat: 'neon' }),
+    disc({ id: 'S1-sprint-b', at: [13.5, 0.06, 10], r: 0.7, mat: 'neon' }),
+    disc({ id: 'S1-sprint-c', at: [16, 0.06, 10], r: 0.7, mat: 'neon' }),
+    cylinder({ id: 'S1-lane-n', at: [12, 0, 7.2], r: 0.35, h: 1.2, mat: 'neon' }),
+    cylinder({ id: 'S1-lane-s', at: [12, 0, 12.8], r: 0.35, h: 1.2, mat: 'neon' }),
+    // Slide truck. Underside y 1.15 blocks a standing body (1.8) and lets a
+    // slide (height 1.0) through. South of z 11.4 the road is open.
+    box({ id: 'S1-slide-body', at: [20, 2.25, 7.2], size: [4.2, 2.2, 8.4], mat: 'metal' }),
+    box({ id: 'S1-slide-cab', at: [20, 0.55, 3.8], size: [4.2, 1.1, 1.6], mat: 'metal' }),
+    disc({ id: 'S1-slide-pad', at: [16.2, 0.06, 10], r: 1.15, mat: 'neon' }),
+    disc({ id: 'S1-walk-pad', at: [20, 0.06, 18], r: 0.85, mat: 'neon' }),
+    // First hook. Hold the ring for about a third of a second, then let go.
+    // The pull stays on you and throws you over the wall toward the party.
+    // The south road walks around it, and an empty stamina bar still can.
+    box({ id: 'S1-hook-wall', at: [30, 2, 7.8], size: [1.2, 4, 9.6], mat: 'concrete' }),
+    cylinder({ id: 'S1-hook-post-n', at: [30, 4, 8.4], r: 0.3, h: 2.6, mat: 'gold' }),
+    cylinder({ id: 'S1-hook-post-s', at: [30, 4, 11.6], r: 0.3, h: 2.6, mat: 'gold' }),
+    box({ id: 'S1-hook-bar', at: [30, 6.45, 10], size: [0.6, 0.5, 3.8], mat: 'gold' }),
+    sphere({ id: 'S1-hook-ring', at: [30, 5.6, 10], r: 0.55, mat: 'gold' }),
+    disc({ id: 'S1-hook-pad', at: [25.2, 0.06, 10], r: 1.15, mat: 'neon' }),
   ],
   weapons: [],
   checkpoints: [
@@ -96,12 +126,21 @@ const S2 = {
   id: 'S2', name: 'Alley and Fire Escapes', origin: [185, 0, 0],
   navBounds: { min: [0, 2], max: [180, 30] },
   exit: zone(168, 180),
+  // Crown of the north slide. The alley at z 16 stays flat.
+  grappleAnchors: [{ id: 'S2-hook', at: [30, 4.6, 8], r: 1.8 }],
   geometry: [
     floor('S2-floor', 180),
     box({ id: 'S2-alley-n', at: [40, 2, 4], size: [70, 4, 1], mat: 'concrete' }),
     box({ id: 'S2-alley-s', at: [40, 2, 28], size: [70, 4, 1], mat: 'concrete' }),
     cylinder({ id: 'S2-pillar', at: [78, 0, 12], r: 0.5, h: 4, mat: 'stone' }),
     box({ id: 'S2-tank', at: [130, 1.2, 16], size: [3, 2.4, 3], mat: 'metal' }),
+    // Walk up, or hook the crown and let go. Slide down the far side.
+    ramp({ id: 'S2-slide-up', at: [22, 1.1, 8], size: [3.2, 2.2, 12], yaw: 90, mat: 'metal' }),
+    box({ id: 'S2-slide-crown', at: [30, 1.95, 8], size: [4, 0.5, 3.2], mat: 'metal' }),
+    ramp({ id: 'S2-slide-down', at: [38, 1.1, 8], size: [3.2, 2.2, 12], yaw: 270, mat: 'metal' }),
+    sphere({ id: 'S2-hook-ring', at: [30, 4.6, 8], r: 0.5, mat: 'gold' }),
+    disc({ id: 'S2-hook-pad', at: [14, 0.06, 8], r: 1.0, mat: 'neon' }),
+    disc({ id: 'S2-slide-pad', at: [30, 2.28, 8], r: 0.75, mat: 'neon' }),
   ],
   weapons: [{ id: 'S2-rack-sg', at: [22, 0.5, 16], gun: 'shotgun', why: 'E3 corridor swarm' }],
   checkpoints: [{ id: 'CP3', at: [78, 0, 16] }],
@@ -156,11 +195,17 @@ const S3 = {
   navBounds: { min: [0, 2], max: [90, 30] },
   flyerVolume: { min: [0, 0, 2], max: [90, 12, 30] },
   exit: zone(84, 90),
+  // North balcony. One hook during the lockdown, or the ramp. The floor at z 16 is the fight.
+  grappleAnchors: [{ id: 'S3-hook', at: [58, 6.2, 5], r: 1.8 }],
   geometry: [
     floor('S3-floor', 90),
     box({ id: 'S3-kiosk', at: [40, 1, 8], size: [3, 2, 3], mat: 'neon' }),
     cylinder({ id: 'S3-pillar-w', at: [28, 0, 10], r: 0.6, h: 6, mat: 'stone' }),
     cylinder({ id: 'S3-pillar-e', at: [52, 0, 22], r: 0.6, h: 6, mat: 'stone' }),
+    ramp({ id: 'S3-balc-ramp', at: [48, 1.825, 5], size: [3, 3.65, 12], yaw: 90, mat: 'metal' }),
+    box({ id: 'S3-balc', at: [58, 3.4, 5], size: [8, 0.5, 3], mat: 'metal' }),
+    sphere({ id: 'S3-hook-ring', at: [58, 6.2, 5], r: 0.5, mat: 'gold' }),
+    disc({ id: 'S3-hook-pad', at: [40, 0.06, 5], r: 0.9, mat: 'neon' }),
   ],
   weapons: [],
   checkpoints: [
@@ -277,7 +322,15 @@ const S5 = {
     floor('S5-floor', 140),
     box({ id: 'S5-toll', at: [52, 1.2, 8], size: [1, 2.4, 4], mat: 'metal' }),
     box({ id: 'S5-canopy', at: [52, 4.5, 16], size: [8, 0.5, 12], mat: 'concrete' }),
+    box({ id: 'S5-rail-n', at: [52, 5.35, 9.7], size: [8.4, 1.2, 0.8], mat: 'concrete' }),
     box({ id: 'S5-car', at: [30, 0.7, 10], size: [3, 1.4, 1.6], mat: 'metal' }),
+    // Stair up to the mana battery, then a catwalk and a downhill slide back
+    // to the road. The deck at z 16 stays a flat walk under the canopy.
+    box({ id: 'S5-stair-pad', at: [52, -0.25, 32.5], size: [8, 0.5, 8], mat: 'concrete' }),
+    ramp({ id: 'S5-stair', at: [52, 2.375, 28.7], size: [4, 4.75, 8.6], yaw: 180, mat: 'concrete' }),
+    box({ id: 'S5-cat', at: [67.15, 4.5, 23], size: [34.3, 0.5, 2.8], mat: 'metal' }),
+    ramp({ id: 'S5-slide', at: [92.15, 2.375, 23], size: [2.8, 4.75, 16.3], yaw: 270, mat: 'concrete' }),
+    disc({ id: 'S5-slide-pad', at: [84, 4.82, 23], r: 0.7, mat: 'neon' }),
   ],
   weapons: [],
   checkpoints: [],
@@ -315,6 +368,9 @@ const S6 = {
     box({ id: 'S6-stand', at: [40, 1.2, 8], size: [6, 2.4, 4], mat: 'stone' }),
     box({ id: 'S6-gate-l', at: [96, 6, 6], size: [2, 12, 2], mat: 'gold' }),
     box({ id: 'S6-gate-r', at: [96, 6, 26], size: [2, 12, 2], mat: 'gold' }),
+    // Walk-up perch for the flying adds. No hook: a fling here leaves the floor.
+    ramp({ id: 'S6-perch-ramp', at: [52, 1.6, 24], size: [3, 3.2, 14], yaw: 90, mat: 'metal' }),
+    box({ id: 'S6-perch', at: [62, 3.2, 24], size: [6, 0.5, 3], mat: 'metal' }),
   ],
   weapons: [
     { id: 'S6-rack-sg', at: [16, 0.5, 12], gun: 'shotgun', why: 'finale tower doors' },
