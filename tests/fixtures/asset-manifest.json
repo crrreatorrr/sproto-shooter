@@ -2911,6 +2911,10 @@
       {
         "path": "art/blender/new_enemies.blend",
         "bytes": 43503325
+      },
+      {
+        "path": "art/blender/weapon_animations.blend",
+        "bytes": 48173942
       }
     ],
     "shippedInPublic": false,
