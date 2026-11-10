@@ -1,5 +1,5 @@
 export const PLAYER_CHARACTERS = Object.freeze([
-  { id: 'sproto', name: 'Sproto Soldier', model: 'models/characters/sproto_player.glb' },
+  { id: 'sproto', name: 'Sproto Soldier', model: 'models/characters/sproto_player.glb', portrait: 'ui/characters/sproto-soldier.webp' },
   { id: 'pepe', name: 'Pepe', model: 'models/characters/pepe.glb', portrait: 'ui/characters/pepe.webp' },
   { id: 'pepe-general', name: 'Pepe General', model: 'models/characters/pepe-general.glb', portrait: 'ui/characters/pepe-general.webp' },
   { id: 'pepe-tux', name: 'Pepe Tux', model: 'models/characters/pepe-tux.glb', portrait: 'ui/characters/pepe-tux.webp' },

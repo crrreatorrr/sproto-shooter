@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 64,
-    "runtimeBytes": 25189336,
-    "decodedBytes": 236417668,
-    "referenced": 64,
+    "runtimeFiles": 65,
+    "runtimeBytes": 25198360,
+    "decodedBytes": 236679812,
+    "referenced": 65,
     "dynamic": 39,
     "missing": 0,
     "unused": 0,
@@ -595,6 +595,13 @@
     },
     {
       "path": "ui/characters/pepe.webp",
+      "kind": "static",
+      "from": [
+        "src/render/playerCharacters.js"
+      ]
+    },
+    {
+      "path": "ui/characters/sproto-soldier.webp",
       "kind": "static",
       "from": [
         "src/render/playerCharacters.js"
@@ -3189,6 +3196,21 @@
       "path": "ui/characters/pepe.webp",
       "bytes": 10818,
       "sha256": "f94b88955e656d6e8c60b4ecef578c50d872b0f6d3bbe4c053d2de3d64e541c3",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/playerCharacters.js"
+      ],
+      "kind": "image",
+      "width": 256,
+      "height": 256,
+      "decodedBytes": 262144,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "ui/characters/sproto-soldier.webp",
+      "bytes": 9024,
+      "sha256": "db3f7e7a438d38bfcd422dd369b1051538af7ef7a85be07a0f9408a34bf0730c",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
