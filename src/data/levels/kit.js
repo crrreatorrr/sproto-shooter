@@ -32,10 +32,11 @@ export function disc({ id, at, r, mat = 'neon', tag } = {}) {
   return { kind: 'disc', id, at: at.slice(), r, mat, tag };
 }
 
-export function terrain({ id, origin, size, cell = 2, seed = 1, noise = {}, mat = 'rock' } = {}) {
+export function terrain({ id, origin, size, cell = 2, seed = 1, noise = {}, mat = 'rock', flat = [] } = {}) {
   return {
     kind: 'terrain', id, origin: origin.slice(), size: size.slice(), cell, seed, mat,
     noise: { amp: noise.amp ?? 0, freq: noise.freq ?? 0.02, octaves: noise.octaves ?? 1 },
+    flat: (flat || []).map((f) => ({ ...f })),
   };
 }
 
