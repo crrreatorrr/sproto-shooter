@@ -209,7 +209,7 @@ const BEHAVIORS = {
       approachVel(e, { x: wx / wl, z: wz / wl }, speed, def.accel, dt);
       e.vel.y += ((ai.alt - e.pos.y) * 3 - e.vel.y) * Math.min(1, 4 * dt);
       faceToward(e, t, deg(720), dt);
-      ai.shooting = enemyGun(state, e, t, def.gun, dt, true);
+      ai.shooting = def.gun ? enemyGun(state, e, t, def.gun, dt, true) : false;
     },
   },
   bigObama: {
@@ -289,7 +289,16 @@ export function enemyAI(state, dt) {
     else e.vel.y -= 30 * dt;
     e.pos.x += e.vel.x * dt; e.pos.y += e.vel.y * dt; e.pos.z += e.vel.z * dt;
     const solids = activeSolids(state);
-    if (solids && !def.flying) {
+    if (def.ghost) {
+      if (state.mode === 'campaign' && state.level && state.level.navBounds) {
+        const b = state.level.navBounds;
+        if (e.pos.x < b.min[0]) e.pos.x = b.min[0];
+        if (e.pos.x > b.max[0]) e.pos.x = b.max[0];
+        if (e.pos.z < b.min[1]) e.pos.z = b.min[1];
+        if (e.pos.z > b.max[1]) e.pos.z = b.max[1];
+      }
+      if (!def.flying && solids) snapToGround(e, solids, e.radius * e.scale);
+    } else if (solids && !def.flying) {
       pushHorizontal(e, solids, e.radius * e.scale, e.height * e.scale);
       snapToGround(e, solids, e.radius * e.scale);
     } else if (def.flying && state.mode === 'campaign' && state.level && state.level.flyerVolume) {

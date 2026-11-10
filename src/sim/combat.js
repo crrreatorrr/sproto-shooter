@@ -6,8 +6,8 @@ import { ELEMENTS_BY_ID, GUN_TYPES_BY_ID } from '../data/guns.js';
 import { TUNING } from '../data/tuning.js';
 import { distToCapsule, entityDef, sphereHitsPlayer } from './collision.js';
 import { rollDrops, spawnDrops } from './drops.js';
-import { createHazard, nextId } from './state.js';
-import { archetypeDamageMul, archetypeDeathBlast } from './campaign/archetypes.js';
+import { createEnemy, createHazard, nextId } from './state.js';
+import { archetypeDamageMul, archetypeDeathBlast, sourceTakenMul } from './campaign/archetypes.js';
 import { markPartDestroyed } from './campaign/v2.js';
 
 export function healPlayer(p, amount) {
@@ -40,6 +40,9 @@ export function damageEnemy(state, e, hit) {
     if (e.affinity.weak === el) dmg *= 1.5;
     if (e.affinity.resist === el) dmg *= 0.5;
   }
+  const taken = sourceTakenMul(e, hit);
+  if (taken <= 0) return 0;
+  dmg *= taken;
   dmg = Math.max(1, Math.round(dmg));
   if (e.type === 'dummy' && state.tuning.dummyInfinite) e.hp = e.maxHp + dmg;
   e.hp -= dmg;
@@ -128,6 +131,14 @@ export function onEnemyKilled(state, e) {
     pos: centerOf(e), tier: e.tier, summoned: e.summoned, isDummy: e.type === 'dummy',
   });
   if (e.partId) markPartDestroyed(state, e.partId);
+  const split = ENEMIES[e.type] && ENEMIES[e.type].split;
+  if (split) {
+    for (let i = 0; i < 2; i++) {
+      const baby = createEnemy(state, split, { pos: { x: e.pos.x + (i === 0 ? -0.6 : 0.6), z: e.pos.z }, summoned: true });
+      baby.campaignEnc = e.campaignEnc;
+      baby.state = 'chase';
+    }
+  }
   if (e.type === 'dummy') return;
   state.run.kills++;
   if (e.elite) state.run.eliteKills++;
