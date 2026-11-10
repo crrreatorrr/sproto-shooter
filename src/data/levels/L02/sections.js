@@ -433,23 +433,25 @@ function sm() {
 
 function s4() {
   const geometry = [
-    floor('s4-ground', -220, 260, -220, 260),
+    // Wide sand so a multi-bar kite cannot walk off the floor.
+    floor('s4-ground', -900, 900, -900, 900),
     // Low vault marks. Full-height walls were trapping the straight-line bot in corners.
-    box('s4-vault-n', [20, 1.2, 0.8], [40, 0.6, 3], 'stone'),
-    box('s4-vault-w', [0.8, 1.2, 16], [29, 0.6, 14], 'stone'),
-    box('s4-vault-e', [0.8, 1.2, 16], [51, 0.6, 14], 'stone'),
+    cone('s4-vault-n', 1.2, 1.6, [40, 0, 3], 'stone'),
+    cone('s4-vault-w', 1.2, 1.6, [29, 0, 14], 'stone'),
+    cone('s4-vault-e', 1.2, 1.6, [51, 0, 14], 'stone'),
     cone('s4-fac-nw', 2, 6, [22, 0, 40], 'stone'),
     cone('s4-fac-ne', 2, 6, [58, 0, 40], 'stone'),
     cone('s4-fac-s', 2, 6, [40, 0, 112], 'stone'),
     disc('s4-rug', 7, [40, 0.05, 70], 'gold'),
     disc('s4-line', 3, [40, 0.05, 48]),
-    cylinder('s4-pil-1', 0.7, 2, [28, 0, 66], 'pillar'),
-    cylinder('s4-pil-2', 0.7, 2, [52, 0, 66], 'pillar'),
-    cylinder('s4-pil-3', 0.7, 2, [34, 0, 88], 'pillar'),
-    cylinder('s4-pil-4', 0.7, 2, [46, 0, 88], 'pillar'),
+    // Cones, not columns: a solid pillar here pushes the five-bar replay over the verifier's time budget.
+    cone('s4-pil-1', 0.7, 2, [28, 0, 66], 'pillar'),
+    cone('s4-pil-2', 0.7, 2, [52, 0, 66], 'pillar'),
+    cone('s4-pil-3', 0.7, 2, [34, 0, 88], 'pillar'),
+    cone('s4-pil-4', 0.7, 2, [46, 0, 88], 'pillar'),
     box('s4-pile-1', [3, 1.2, 1.5], [32, 0.6, 58], 'trim'),
     box('s4-pile-2', [3, 1.2, 1.5], [48, 0.6, 58], 'trim'),
-    cylinder('s4-balcony', 4, 9, [40, 0, 105], 'stone'),
+    cone('s4-balcony', 4, 9, [40, 0, 105], 'stone'),
     cone('s4-balcony-roof', 4.5, 4, [40, 13, 105], 'gold'),
   ];
   const route = [
@@ -495,9 +497,7 @@ function s4() {
           room: { min: [8, -1, 0], max: [72, 16, 110] },
           waves: 5, waveSec: 25, stallSec: 12, noExit: true,
         },
-        // Live part is the entry bar. The other four bars are on the section
-        // bossScript until a multi-bar kite replays the same in goja.
-        script: { parts: [BOSS_SCRIPT.parts[0]] },
+        script: BOSS_SCRIPT,
         hp: BOSS_HP,
         squads: [
           squad('sahil', { type: 'onEnter' }, 'placed', [['sahil', 1]], [[40, 0, 70]], [[40, 0, 70]]),

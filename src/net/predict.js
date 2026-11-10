@@ -43,6 +43,16 @@ export function quantizePlayer(p) {
   p.dashCd = q4(Math.max(0, p.dashCd));
   p.invuln = q4(Math.max(0, p.invuln));
   p.shieldDelay = q4(Math.max(0, p.shieldDelay));
+  if (typeof p.stamina === 'number') p.stamina = q4(Math.max(0, p.stamina));
+  if (typeof p.staminaDelay === 'number') p.staminaDelay = q4(Math.max(0, p.staminaDelay));
+  if (typeof p.slideT === 'number') p.slideT = q4(Math.max(0, p.slideT));
+  if (typeof p.slideCd === 'number') p.slideCd = q4(Math.max(0, p.slideCd));
+  if (typeof p.grappleCd === 'number') p.grappleCd = q4(Math.max(0, p.grappleCd));
+  if (p.grapple) {
+    p.grapple.x = q4(p.grapple.x);
+    p.grapple.y = q4(p.grapple.y);
+    p.grapple.z = q4(p.grapple.z);
+  }
 }
 
 /** players[seat] + you.private -> a whole player (no RNG: spread is the server's). */
@@ -60,6 +70,7 @@ export function playerFromSnapshot(pub, priv) {
 export function clonePlayer(p) {
   const out = { ...p };
   if (Array.isArray(p.mag)) out.mag = p.mag.slice();
+  if (p.grapple) out.grapple = { ...p.grapple };
   return out;
 }
 
@@ -91,6 +102,8 @@ export function holdWish(w) {
     jump: false,
     dash: false,
     reload: false,
+    slide: false,
+    grapple: !!w.grapple,
     slot: -1,
   };
 }
@@ -108,6 +121,8 @@ export function neutralWish(w) {
     jump: false,
     dash: false,
     reload: false,
+    slide: false,
+    grapple: false,
     slot: -1,
   };
 }

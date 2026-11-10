@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getLevelRuntime } from '../../sim/level/runtime.js';
+import { solidTerrain, terrainGrid } from '../../sim/campaign/terrain.js';
 
 export const LEVEL_COLOR = {
   stone: 0x6e675f, sand: 0xc6a56e, dirt: 0x6d4b2c, hedge: 0x3f7a34, metal: 0x5c6772,
@@ -30,6 +31,7 @@ export function levelMaterial(name, cache) {
 }
 
 function primitiveGeometry(g) {
+  if (!g || g.kind === 'terrain' || !g.at) return null;
   let geo = null;
   let y = g.at[1];
   if (g.kind === 'box' || g.kind === 'ramp') geo = new THREE.BoxGeometry(g.size[0], g.size[1], g.size[2]);
@@ -65,6 +67,17 @@ export function buildSectionMeshes(geometry, materials) {
     meshes.push(mesh);
   }
   return meshes;
+}
+
+function terrainMesh(field, materials) {
+  const grid = terrainGrid(field);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(grid.positions, 3));
+  geo.setIndex(grid.indices);
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, levelMaterial(field.mat || 'rock', materials));
+  mesh.castShadow = mesh.receiveShadow = true;
+  return mesh;
 }
 
 /** Primitive placeholder for an enemy that has no model. `look` is a list of primitives. */
@@ -109,9 +122,12 @@ export function createLevelView() {
     const rt = getLevelRuntime(lv.id);
     const sec = rt.sectionById[lv.section];
     if (!sec) return;
-    const geometry = (sec.geometry || []).slice();
+    const field = solidTerrain(sec);
+    const geometry = (sec.geometry || []).filter((g) => !(field && g.tag === 'terrainStandIn'));
     for (const door of doors) geometry.push(aabbBox(door));
     for (const mesh of buildSectionMeshes(geometry, mats)) group.add(mesh);
+    if (field) group.add(terrainMesh(field, mats));
+    for (const g of sec.geometry || []) if (g.kind === 'terrain') group.add(terrainMesh(g, mats));
     for (const m of sec.mechanisms || []) addMarker(m);
     for (const w of sec.weapons || []) addMarker({ ...w, kind: 'rack' });
   }

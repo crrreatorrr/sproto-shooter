@@ -3,7 +3,7 @@ import { INPUT_LIMITS, REWIND } from '../sim/pvp/rules.js';
 
 export const FRAME_BYTES = INPUT_LIMITS.frameBytes;
 
-const BUTTONS = Object.freeze(['fire', 'zoom', 'sprint', 'jump', 'dash', 'reload', 'slide']);
+const BUTTONS = Object.freeze(['fire', 'zoom', 'sprint', 'jump', 'dash', 'reload', 'slide', 'grapple']);
 
 export class PvpInputError extends Error {
   constructor(reason) {
@@ -118,7 +118,6 @@ export function decodeInput(buf) {
   if (!(buf instanceof Uint8Array) || buf.length !== FRAME_BYTES) fail('malformed');
   const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
   const buttons = view.getUint8(14);
-  if (buttons & 0x80) fail('malformed');
   const slot = view.getInt8(15);
   if (slot < -1 || slot > 2) fail('malformed');
   const yawQ = view.getInt16(8, true);
@@ -170,6 +169,7 @@ export function wishFromCommand(cmd, seq, frame, slotNow = 0, view = null) {
     dash: !!pressed.dash,
     reload: !!pressed.reload,
     slide: !!pressed.slide,
+    grapple: !!held.grapple,
     slot,
     ...(view ? { viewTick: view.viewTick, viewFrac: view.viewFrac } : {}),
   };

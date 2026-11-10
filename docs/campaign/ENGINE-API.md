@@ -185,9 +185,11 @@ The same behaviour runs from section fields, shifted by the section origin. `haz
 
 The old `kind: 'hazard'` brake is unchanged.
 
+`section.terrain` is a heightfield (`origin`, `size`, `cell`, `seed`, `noise.amp`, `noise.freq`, `noise.octaves`). `makeV2Level` shifts its origin with the section. The same sampler feeds collision and the mesh, so a primitive without `at` is not required. A `flat` entry `{ n0, n1 }` or `{ x0, x1, n0, n1 }` is measured in metres north from the field's south edge and stays at the origin height. A geometry piece tagged `terrainStandIn` is neither drawn nor collided while that field is present. A slope steeper than the step pushes the body downhill.
+
 ## Movement
 
-Campaign, Wave Mode and Sandbox share this. PvP does not.
+Campaign, Wave Mode, Sandbox and Free 1v1 share slide, sprint stamina and the momentum grapple. In the arena the hook lands only on the four pillars or the boundary wall (`src/sim/pvp/arena.js`), never on the floor or the other player. Both seats run the same step, and the grapple bit is in the PvP input log so a replay stays authoritative. Letting go, or arriving, keeps the full velocity.
 
 Sprint lasts `staminaSprint` seconds (4.5). The bar then regens after `staminaRegenDelay` (0.55 s) and fills in `staminaRegen` seconds (1.7). Sprint stays off until the bar reaches `staminaRefill` (0.28). Slide spends `slideStamina` (0.14). Grapple spends none.
 

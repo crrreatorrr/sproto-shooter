@@ -43,19 +43,61 @@ function aim(st) {
   pl._px = pl.pos.x; pl._pz = pl.pos.z;
   pl._stuck = moved < 0.02 && dist > 1.4 ? stuck + 1 : 0;
   const sidestep = pl._stuck > 30;
+  const hook = pl._stuck > 70 ? anchorAim(pl, lv.grappleAnchors, { x: tx, z: tz }) : null;
+  const pull = hook && (pl._stuck % 36) < 14;
   const gap = !!(lv.voids && lv.voids.length) && pl._stuck > 16;
-  const fling = gap && (pl._stuck % 36) < 14;
+  const fling = !pull && gap && (pl._stuck % 36) < 14;
+  let aimYaw = yaw;
+  let aimPitch = fling ? 0.65 : pitch;
+  if (pull) {
+    aimYaw = Math.atan2(-hook.dx, -hook.dz);
+    aimPitch = Math.atan2(hook.dy, Math.hypot(hook.dx, hook.dz) || 1);
+  }
   return cmd({
-    yaw, pitch: fling ? 0.65 : pitch,
+    yaw: aimYaw, pitch: aimPitch,
     moveZ: sidestep ? 0 : (dist > 1.1 ? 1 : 0),
     moveX: sidestep ? (Math.floor(pl._stuck / 18) % 2 === 0 ? 1 : -1) : 0,
     held: {
       fire: !!(best && best.state !== 'spawning'),
       sprint: !sidestep,
       jump: pl._stuck > 50,
-      grapple: fling,
+      grapple: !!(pull || fling),
     },
+    // Slide-tagged decks are for the player. Taking them leaves the lane.
+    pressed: {},
   });
+}
+
+function anchorAim(pl, anchors, goal) {
+  let best = null;
+  let bd = 28;
+  const gx = goal ? goal.x - pl.pos.x : 0;
+  const gz = goal ? goal.z - pl.pos.z : 0;
+  const gl = Math.hypot(gx, gz) || 1;
+  for (const a of anchors || []) {
+    if (!a.at) continue;
+    const dx = a.at[0] - pl.pos.x;
+    const dy = (a.at[1] || 0) - pl.pos.y;
+    const dz = a.at[2] - pl.pos.z;
+    const flat = Math.hypot(dx, dz) || 1;
+    const d = Math.hypot(dx, dy, dz);
+    if (d > 28 || d < 1.5 || dy < 1.2) continue;
+    if (goal && (dx * gx + dz * gz) / (flat * gl) < 0.15) continue;
+    if (d < bd) { bd = d; best = { dx, dy, dz, d }; }
+  }
+  return best;
+}
+
+function onSlideTag(sec, pl) {
+  for (const g of (sec && sec.geometry) || []) {
+    if (g.tag !== 'slide' || !g.at) continue;
+    const dx = g.at[0] - pl.pos.x;
+    const dz = g.at[2] - pl.pos.z;
+    const sx = (g.size && g.size[0]) || 4;
+    const sz = (g.size && g.size[2]) || 4;
+    if (Math.hypot(dx, dz) < Math.max(sx, sz) * 0.55 + 1.5 && Math.abs((g.at[1] || 0) - pl.pos.y) < 3) return true;
+  }
+  return false;
 }
 
 function boot(seed, level) {
@@ -106,6 +148,28 @@ describe('campaign levels', () => {
     expect(stateHash(a)).toBe(stateHash(c));
     run(b, 400, aim);
     expect(stateHash(a)).not.toBe(stateHash(b));
+  });
+
+  it('grapples an anchor when stuck and notices a slide tag', () => {
+    const s = createGameState({ seed: 1 });
+    const sec = getLevelRuntime('L01').sectionById.S1;
+    const enc = sec.encounters[0];
+    const gx = (enc.activate.min[0] + enc.activate.max[0]) / 2;
+    const gz = (enc.activate.min[2] + enc.activate.max[2]) / 2;
+    const gl = Math.hypot(gx, gz) || 1;
+    s.level = {
+      id: 'L01', section: 'S1', cleared: {},
+      grappleAnchors: [{ id: 'hook', at: [(gx / gl) * 6, 6, (gz / gl) * 6], r: 1.5 }],
+    };
+    const p = s.players[s.localPlayerId];
+    p.pos = { x: 0, y: 0, z: 0 };
+    p._px = 0; p._pz = 0; p._stuck = 80;
+    const c = aim(s);
+    expect(c.held.grapple).toBe(true);
+    expect(c.pitch).toBeGreaterThan(0.4);
+    const ramp = { tag: 'slide', at: [2, 1, 0], size: [8, 2, 6] };
+    expect(onSlideTag({ geometry: [ramp] }, p)).toBe(true);
+    expect(onSlideTag({ geometry: [{ tag: 'floor', at: [2, 0, 0], size: [4, 1, 4] }] }, p)).toBe(false);
   });
 
   it('a secret grants a modifier and does not touch gun stats', () => {

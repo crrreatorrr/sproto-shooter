@@ -1,8 +1,8 @@
 {
-  "comment": "SHOOTER-S2b director golden (sim 2): tests/fixtures/director-golden.js against the protocol 2 director with lag compensation, the split seed (128-bit combat RNG from sha256), view continuity and hit events. Node, goja and Chromium must all report this. (Before the S2b review fixes: 078282e5, 6 hits / 54000. S2a, sim 1: e421cba8.)",
+  "comment": "Director golden after arena slide, grapple and stamina. Outcome, tick, hits and damage match the previous pin b661a684; the state hash moved because both players now carry that movement. Before that: S2b review b661a684, earlier 078282e5, sim 1 e421cba8.",
   "phase": "done",
   "tick": 892,
-  "stateHash": "b661a684",
+  "stateHash": "55419e4e",
   "outcome": "forfeit",
   "winner": 0,
   "reason": "stall",
@@ -14,7 +14,7 @@
   "replay": {
     "verified": true,
     "tick": 892,
-    "stateHash": "b661a684"
+    "stateHash": "55419e4e"
   },
   "hits": 7,
   "hitDamage": 62876,

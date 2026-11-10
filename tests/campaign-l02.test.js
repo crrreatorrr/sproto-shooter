@@ -78,11 +78,13 @@ describe('L02 Grand Bazaar data', () => {
     const boss = L02.sections.find((s) => s.id === 'S4');
     expect(boss.start).toEqual([149.5, 0, 11]);
     expect(boss.bossScript.parts).toHaveLength(5);
-    expect(boss.encounters[0].script.parts.map((part) => part.id)).toEqual([1]);
+    expect(boss.encounters[0].script.parts.map((part) => part.id)).toEqual([1, 2, 3, 4, 5]);
+    expect(boss.encounters[0].script.parts.map((part) => part.designHp || part.hp || 0)).toEqual([0, 1714, 0, 1909, 1967]);
+    expect(boss.encounters[0].script.parts.map((part) => part.hp || 0)).toEqual([0, 1300, 0, 1000, 900]);
     expect(boss.encounters[0].hp).toMatchObject({ part2: 1714, part4: 1909, part5: 1967 });
     expect(mechs.some((m) => m.kind === 'shrine' && m.spell === 'chainZap')).toBe(true);
     expect(mechs.some((m) => m.kind === 'secret' && m.modifier === 'confetti')).toBe(true);
-    expect(contentFingerprint(1)).toBe('9ec1c6ea');
+    expect(contentFingerprint(1)).toBe('cea1f88b');
   });
 
   it('seals Dyers Court one step after the threshold', () => {

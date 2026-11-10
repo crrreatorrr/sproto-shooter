@@ -17,6 +17,8 @@ import { sha256Hex } from '../../core/sha256.js';
 import { dirFromYawPitch, deg, yawTo } from '../../core/math.js';
 import { quantizeForHash, stableStringify, verifyStateHash } from '../hash.js';
 import { rayCapsule } from './hit.js';
+import { ARENA_SOLIDS, arenaHook, arenaOccludes } from './arena.js';
+import { snapToGround, firstSolid } from '../campaign/solids.js';
 import {
   DT, LOADOUT, MATCH_TICKS, RESERVE, REWIND, SPAWN_RADIUS, STAGE_ID,
 } from './rules.js';
@@ -74,6 +76,9 @@ function makePlayer(seat, pos, yaw, rng) {
     onGround: true,
     invuln: 0,
     dashT: 0, dashCd: 0, dashX: 0, dashZ: 0,
+    stamina: 1, staminaDelay: 0, staminaLock: false,
+    slideT: 0, slideCd: 0,
+    grappleCd: 0, grapple: null,
     slot: 0,
     mag: LOADOUT.map((gun) => gun.stats.magSize),
     shells: RESERVE.shells,
@@ -158,6 +163,8 @@ export function normalizeWish(player, raw, tick = 0) {
     jump: !!wish.jump,
     dash: !!wish.dash,
     reload: !!wish.reload,
+    slide: !!wish.slide,
+    grapple: !!wish.grapple,
     slot,
     rewind: view.back,
     viewFrac: view.frac,
@@ -201,13 +208,115 @@ export function historyAt(state, seat, at) {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t, invuln: a.invuln, alive: a.alive };
 }
 
+function ensureMove(p) {
+  if (p.stamina != null) return;
+  p.stamina = 1;
+  p.staminaDelay = 0;
+  p.staminaLock = false;
+  p.slideT = 0;
+  p.slideCd = 0;
+  p.grappleCd = 0;
+  p.grapple = null;
+}
+
+function eyeOf(p) {
+  const h = p.slideT > 0 ? TUNING.slideEye : TUNING.eyeHeight;
+  return { x: p.x, y: p.y + h, z: p.z };
+}
+
+function pushOut(x, z, s, radius) {
+  const cx = Math.max(s.min[0], Math.min(x, s.max[0]));
+  const cz = Math.max(s.min[2], Math.min(z, s.max[2]));
+  const dx = x - cx;
+  const dz = z - cz;
+  const dist = Math.hypot(dx, dz);
+  if (dist >= radius) return null;
+  // Deep inside, the nearest face is the way out. A partial nudge leaves the body inside.
+  if (dist < 1e-6) {
+    const left = x - s.min[0];
+    const right = s.max[0] - x;
+    const back = z - s.min[2];
+    const fwd = s.max[2] - z;
+    const m = Math.min(left, right, back, fwd);
+    const pad = radius + 1e-4;
+    if (m === left) return { x: s.min[0] - pad, z };
+    if (m === right) return { x: s.max[0] + pad, z };
+    if (m === back) return { x, z: s.min[2] - pad };
+    return { x, z: s.max[2] + pad };
+  }
+  const k = (radius - dist) / dist + 1e-4;
+  return { x: x + dx * k, z: z + dz * k };
+}
+
+/** Push a body out of the pillars. The floor and the rim are handled by the caller. */
+export function pushArena(p) {
+  const height = p.slideT > 0 ? 1 : TUNING.playerHeight;
+  const feet = p.y;
+  const head = feet + height;
+  const step = 0.4;
+  for (let n = 0; n < 4; n++) {
+    for (let i = 0; i < ARENA_SOLIDS.length; i++) {
+      const s = ARENA_SOLIDS[i];
+      if (s.max[1] <= feet + step + 0.02) continue;
+      if (head <= s.min[1] + 0.01 || feet + step >= s.max[1]) continue;
+      const next = pushOut(p.x, p.z, s, TUNING.playerRadius);
+      if (!next) continue;
+      p.x = next.x;
+      p.z = next.z;
+    }
+  }
+}
+
 /**
- * Movement for one player and one tick: look, gun swap, dash, ground/air control, jump,
- * gravity and the arena wall. Pure: it only reads `wish` and mutates `p`. The caller
- * normalizes the wish (normalizeWish) and skips dead players. Client prediction (S3) runs the
- * same function on its local copy.
+ * While the hook is held, accelerate toward the anchor and do not touch that
+ * velocity on release or on arrival. A miss still spends the cooldown.
+ */
+function tickArenaGrapple(p, wish, dt) {
+  if (p.grappleCd > 0) p.grappleCd = Math.max(0, p.grappleCd - dt);
+  if (!wish.grapple) {
+    p.grapple = null;
+    return;
+  }
+  if (!p.grapple) {
+    if (p.grappleCd > 0) return;
+    const hook = arenaHook(eyeOf(p), dirFromYawPitch(p.yaw, p.pitch));
+    p.grappleCd = TUNING.grappleCd;
+    if (!hook) return;
+    p.grapple = hook;
+  }
+  const hook = p.grapple;
+  const eye = eyeOf(p);
+  const ex = hook.x - eye.x;
+  const ey = hook.y - eye.y;
+  const ez = hook.z - eye.z;
+  const ed = Math.hypot(ex, ey, ez) || 1;
+  if (arenaOccludes(eye, { x: ex / ed, y: ey / ed, z: ez / ed }, ed - 0.35, hook.id)) {
+    p.grapple = null;
+    return;
+  }
+  const oy = p.y + 0.9;
+  const px = hook.x - p.x;
+  const py = hook.y - oy;
+  const pz = hook.z - p.z;
+  const pd = Math.hypot(px, py, pz) || 1;
+  if (pd < TUNING.grappleArrive) {
+    p.grapple = null;
+    return;
+  }
+  const pull = TUNING.grapplePull * dt;
+  p.vx += (px / pd) * pull;
+  p.vy += (py / pd) * pull;
+  p.vz += (pz / pd) * pull;
+}
+
+/**
+ * Movement for one player and one tick: look, gun swap, stamina, dash, slide,
+ * grapple, ground/air control, jump, gravity and the arena. Pure: it only reads
+ * `wish` and mutates `p`. Both seats call this. Client prediction runs the same
+ * function on its local copy.
  */
 export function movePlayer(p, wish, dt) {
+  ensureMove(p);
   p.yaw = q4(wish.yaw);
   p.pitch = q4(Math.max(-1.5, Math.min(1.5, wish.pitch)));
   if (wish.slot >= 0 && wish.slot !== p.slot) {
@@ -221,8 +330,20 @@ export function movePlayer(p, wish, dt) {
   let wz = -cy * wish.moveZ - sy * wish.moveX;
   const wl = Math.hypot(wx, wz);
   if (wl > 1) { wx /= wl; wz /= wl; }
-  const maxSpeed = wish.sprint && wish.moveZ > 0 ? TUNING.sprintSpeed : TUNING.walkSpeed;
+  const wantSprint = wish.sprint && wish.moveZ > 0 && !p.staminaLock && p.stamina > 0;
+  let sprinting = wantSprint;
+  if (sprinting) {
+    p.stamina = Math.max(0, p.stamina - dt / TUNING.staminaSprint);
+    p.staminaDelay = TUNING.staminaRegenDelay;
+    if (p.stamina <= 0) { p.staminaLock = true; sprinting = false; }
+  } else {
+    if (p.staminaDelay > 0) p.staminaDelay = Math.max(0, p.staminaDelay - dt);
+    else if (p.stamina < 1) p.stamina = Math.min(1, p.stamina + dt / TUNING.staminaRegen);
+    if (p.staminaLock && p.stamina >= TUNING.staminaRefill) p.staminaLock = false;
+  }
+  const maxSpeed = sprinting ? TUNING.sprintSpeed : TUNING.walkSpeed;
   p.dashCd = Math.max(0, p.dashCd - dt);
+  p.slideCd = Math.max(0, p.slideCd - dt);
   p.invuln = Math.max(0, p.invuln - dt);
   if (wish.dash && p.dashCd <= 0) {
     const dl = Math.hypot(wx, wz);
@@ -231,28 +352,54 @@ export function movePlayer(p, wish, dt) {
     p.dashT = TUNING.dashTime;
     p.dashCd = TUNING.dashCd;
     p.invuln = Math.max(p.invuln, TUNING.dashInvuln);
+    p.slideT = 0;
   }
+  const hs = Math.hypot(p.vx, p.vz);
+  if (p.onGround && p.slideT <= 0 && p.slideCd <= 0 && wish.slide && (hs > TUNING.slideMinSpeed || sprinting)) {
+    const dirx = hs > 0.4 ? p.vx / hs : -sy;
+    const dirz = hs > 0.4 ? p.vz / hs : -cy;
+    const boost = Math.max(hs, TUNING.slideBoost);
+    p.vx = dirx * boost;
+    p.vz = dirz * boost;
+    p.slideT = TUNING.slideTime;
+    p.dashT = 0;
+    p.stamina = Math.max(0, p.stamina - TUNING.slideStamina);
+    p.staminaDelay = TUNING.staminaRegenDelay;
+    if (p.stamina <= 0) p.staminaLock = true;
+  }
+  // Friction and the air speed cap stay off while the rope is held, so the pull can build speed.
+  const hooked = !!(p.grapple) || !!wish.grapple;
   if (p.dashT > 0) {
     p.dashT -= dt;
     p.vx = p.dashX * TUNING.dashSpeed;
     p.vz = p.dashZ * TUNING.dashSpeed;
     p.vy = Math.max(p.vy, 0);
     if (p.dashT < 0) p.dashT = 0;
-  } else if (p.onGround) {
+  } else if (p.slideT > 0 && !hooked) {
+    p.slideT -= dt;
+    if (wl > 0.2) { p.vx += wx * 10 * dt; p.vz += wz * 10 * dt; }
+    let sp = Math.hypot(p.vx, p.vz) || 0.0001;
+    const next = sp + (TUNING.slideCruise - sp) * Math.min(1, TUNING.slideDrag * dt);
+    const k = Math.max(0, next) / sp;
+    p.vx *= k;
+    p.vz *= k;
+    if (p.slideT <= 0 || next < TUNING.walkSpeed * 0.9 || !p.onGround) {
+      p.slideT = 0;
+      p.slideCd = TUNING.slideCd;
+    }
+  } else if (p.onGround && !hooked) {
     const tx = wx * maxSpeed;
     const tz = wz * maxSpeed;
     const dx = tx - p.vx;
     const dz = tz - p.vz;
     const dl = Math.hypot(dx, dz);
-    const hs = Math.hypot(p.vx, p.vz);
     const acc = (wl > 0.01 ? TUNING.groundAccel : TUNING.friction * Math.max(hs, 2)) * dt;
     if (dl > 0) {
       const k = Math.min(1, acc / dl);
       p.vx += dx * k;
       p.vz += dz * k;
     }
-  } else {
-    const hs = Math.hypot(p.vx, p.vz);
+  } else if (!hooked) {
     const cap = Math.max(hs, TUNING.walkSpeed);
     p.vx += wx * TUNING.airAccel * dt;
     p.vz += wz * TUNING.airAccel * dt;
@@ -262,12 +409,36 @@ export function movePlayer(p, wish, dt) {
   if (wish.jump && p.onGround) {
     p.vy = TUNING.jumpVel;
     p.onGround = false;
+    if (p.slideT > 0) {
+      const sp = Math.hypot(p.vx, p.vz);
+      if (sp > 0.1) {
+        const boosted = sp * TUNING.slideHopBoost;
+        p.vx = (p.vx / sp) * boosted;
+        p.vz = (p.vz / sp) * boosted;
+      }
+      p.slideT = 0;
+      p.slideCd = TUNING.slideHopCd;
+    }
   }
+  tickArenaGrapple(p, wish, dt);
   if (p.dashT <= 0) p.vy -= TUNING.gravity * dt;
+  const prevY = p.y;
   p.x += p.vx * dt;
   p.y += p.vy * dt;
   p.z += p.vz * dt;
-  if (p.y <= 0) {
+  pushArena(p);
+  const body = {
+    pos: { x: p.x, y: p.y, z: p.z },
+    prevPos: { y: prevY },
+    vel: { y: p.vy },
+    onGround: false,
+  };
+  snapToGround(body, ARENA_SOLIDS, TUNING.playerRadius, 0.4);
+  if (body.onGround) {
+    p.y = body.pos.y;
+    p.vy = body.vel.y;
+    p.onGround = true;
+  } else if (p.y <= 0) {
     p.y = 0;
     if (p.vy < 0) p.vy = 0;
     p.onGround = true;
@@ -313,6 +484,16 @@ function snap(p) {
   p.dashCd = q4(Math.max(0, p.dashCd));
   p.invuln = q4(Math.max(0, p.invuln));
   p.shieldDelay = q4(Math.max(0, p.shieldDelay));
+  if (typeof p.stamina === 'number') p.stamina = q4(Math.max(0, p.stamina));
+  if (typeof p.staminaDelay === 'number') p.staminaDelay = q4(Math.max(0, p.staminaDelay));
+  if (typeof p.slideT === 'number') p.slideT = q4(Math.max(0, p.slideT));
+  if (typeof p.slideCd === 'number') p.slideCd = q4(Math.max(0, p.slideCd));
+  if (typeof p.grappleCd === 'number') p.grappleCd = q4(Math.max(0, p.grappleCd));
+  if (p.grapple) {
+    p.grapple.x = q4(p.grapple.x);
+    p.grapple.y = q4(p.grapple.y);
+    p.grapple.z = q4(p.grapple.z);
+  }
 }
 
 function reserveOf(p, gun) {
@@ -368,13 +549,15 @@ export function traceShots(p, target, wish) {
   const gun = LOADOUT[p.slot];
   const pellets = gun.stats.pellets || 1;
   const spread = deg(wish.zoom ? gun.stats.adsSpread : gun.stats.spread);
-  const eye = { x: p.x, y: p.y + TUNING.eyeHeight, z: p.z };
+  const eye = eyeOf(p);
   for (let i = 0; i < pellets; i++) {
     const jy = (float(p.rng) - 0.5) * spread;
     const jp = (float(p.rng) - 0.5) * spread;
     const dir = dirFromYawPitch(p.yaw + jy, p.pitch + jp);
     const dist = rayCapsule(eye, dir, target.x, target.z, target.y, target.y + TUNING.playerHeight, TUNING.playerRadius);
     if (dist < 0) continue;
+    const cover = firstSolid(ARENA_SOLIDS, eye, dir, dist, null, true);
+    if (cover && cover.t < dist) continue;
     const fall = rangeFalloff(gun.range, dist);
     if (fall <= 0) continue;
     const raw = gun.stats.damage * fall;
@@ -462,6 +645,7 @@ export function step(state, wishes, events = null) {
   ];
   for (let i = 0; i < 2; i++) if (state.players[i].alive) movePlayer(state.players[i], wish[i], DT);
   separate(state.players);
+  for (const p of state.players) pushArena(p);
   for (const p of state.players) snap(p);
   // This tick's positions go into history first, so rewind 0 can interpolate toward them.
   record(state, frame + 1);
@@ -544,6 +728,7 @@ export function snapshotOf(state) {
       hp: p.hp, shield: p.shield,
       alive: p.alive,
       slot: p.slot,
+      grapple: p.grapple ? { x: p.grapple.x, y: p.grapple.y, z: p.grapple.z, id: p.grapple.id } : null,
     })),
   };
 }

@@ -53,7 +53,7 @@ describe('issued v2 section', () => {
     simulate(state, { [state.localPlayerId]: { yaw: 0, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [] } });
     expect(state.enemies.some((e) => e.type === 'sahil' && e.boss && !e.dead)).toBe(true);
     expect(p.pos.y).toBeGreaterThan(-1);
-    expect(contentFingerprint(1)).toBe('9ec1c6ea');
-    expect(CONTENT_FINGERPRINT).toBe('17d87c54');
+    expect(contentFingerprint(1)).toBe('cea1f88b');
+    expect(CONTENT_FINGERPRINT).toBe('b33eada6');
   });
 });

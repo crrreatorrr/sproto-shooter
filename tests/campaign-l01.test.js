@@ -40,9 +40,9 @@ function place(p, sec, x, z, y = 0) {
 describe('L01 movement course', () => {
   it('keeps the pins and teaches slide, hook and stamina without a required sprint', () => {
     expect(validateLevel(L01).errors).toEqual([]);
-    expect(contentFingerprint(1)).toBe('9ec1c6ea');
-    expect(CONTENT_FINGERPRINT).toBe('17d87c54');
-    expect(golden.pvpGolden).toBe('6545ca0a');
+    expect(contentFingerprint(1)).toBe('cea1f88b');
+    expect(CONTENT_FINGERPRINT).toBe('b33eada6');
+    expect(golden.pvpGolden).toBe('532a562e');
     const ids = L01.sections.flatMap((s) => (s.grappleAnchors || []).map((a) => a.id));
     expect(ids).toEqual(['S1-hook', 'S2-hook', 'S3-hook']);
     expect(L01.sections.every((s) => !s.voidRescue)).toBe(true);
