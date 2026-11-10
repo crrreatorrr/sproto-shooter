@@ -118,6 +118,21 @@ Object.assign(ENEMIES, {
   bitbug: dress('flyingMidget', { name: 'Bitbug', hp: 18, color: 0xb07cff, model: 'midget', archetype: { flock: true } }),
   jetObama: dress('flyingMidget', { name: 'Jet Obama', hp: 55, color: 0x7fd34e, model: 'obama', stage: 2, weakMultOverride: 2.5, archetype: { thruster: true } }),
   balloonMidget: dress('flyingMidget', { name: 'Balloon Midget', hp: 28, color: 0xff8ad4, model: 'midget', archetype: { deathBlast: { radius: 2.6, damage: 18 } } }),
+  flakPod: {
+    name: 'Gas Fee Flak Pod', hp: 160, speed: 0, accel: 0, radius: 1.3, height: 2.6, damage: 0,
+    poiseMax: 1e9, staggerTime: 0, color: 0xb26bff, affinity: { resist: null, weak: null },
+    behavior: 'midget',
+    look: [
+      { kind: 'cylinder', at: [0, 0, 0], r: 1.3, h: 1, mat: 'metal' },
+      { kind: 'sphere', at: [0, 1.7, 0], r: 0.85, mat: 'neon' },
+      { kind: 'box', at: [0, 0.8, -1.2], size: [0.5, 0.5, 0.3], mat: 'metal' },
+    ],
+    hitboxes: [
+      { type: 'capsule', zone: 'body', r: 1.3, y0: 0, y1: 1 },
+      { type: 'sphere', zone: 'armor', r: 0.85, x: 0, y: 1.7, z: 0 },
+      { type: 'sphere', zone: 'weak', r: 0.4, x: 0, y: 0.8, z: -1.2 },
+    ],
+  },
   miniTinubu: dress('midget', { name: 'Mini Tinubu', hp: 90, speed: 6.4, color: 0xff6a3d, model: 'tinubu', radius: 0.55, height: 1.8, archetype: { charge: { every: 3, duration: 0.4, speed: 14 } } }),
   gateGenerator: dress('midget', { name: 'Gate Generator', hp: 200, speed: 0, accel: 0, damage: 0, color: 0x66ffcc, model: 'robotLaser' }),
   gatekeeper: dress('bigObama', {
