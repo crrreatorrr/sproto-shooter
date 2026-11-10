@@ -13,8 +13,8 @@ import { SPELL_IDS } from '../data/skills.js';
 export const BIND = {
   forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
   sprint: ['ShiftLeft', 'ShiftRight'], jump: ['Space'], slide: ['KeyC'], crouch: ['ControlLeft', 'ControlRight'],
-  grapple: ['KeyG'], dash: ['AltLeft', 'KeyV'],
-  reload: ['KeyR'], interact: ['KeyE'], medkit: ['KeyH'],
+  grapple: ['KeyB'], dash: ['AltLeft', 'KeyV'],
+  reload: ['KeyR'], interact: ['KeyE', 'KeyG'], medkit: ['KeyH'],
   gooBolt: [], chainZap: ['KeyY'], swarm: ['KeyZ'], manaShield: ['KeyX'], meteor: ['KeyT'], // Goo Bolt: select it and right-click
   spellSelect: ['KeyQ'], // next unlocked spell; right-click casts the selected one
   aimToggle: ['KeyF'], // aim -> (sniper) zoom 2 -> off; middle-click does the same

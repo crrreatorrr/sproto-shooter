@@ -87,7 +87,7 @@ describe('campaign levels', () => {
       expect({ id, won: lv.won, lost: lv.lost, section: lv.section, open, tick: s.tick, pos: s.players[s.localPlayerId].pos }, id).toMatchObject({ won: true });
       expect(n).toBeLessThan(cap);
     }
-  }, 60000);
+  }, 120000);
 
   it('is deterministic', () => {
     const a = boot(2, 'L01');

@@ -180,7 +180,7 @@ Sprint lasts `staminaSprint` seconds (4.5). The bar then regens after `staminaRe
 
 Slide is C, or Ctrl held while sprinting. It boosts to at least `slideBoost` (16 m/s), eases toward `slideCruise` (8), and gains speed when the ground ahead is lower (`slideSlope`). The capsule and the camera drop (`slideEye` 0.72). Jumping out of a slide keeps the speed times `slideHopBoost` and sets `slideHopCd` (0.85 s) so the hop cannot be chained. A slide that just ends uses the shorter `slideCd` (0.22 s).
 
-Grapple is G, or a mouse back button. It is not a gun slot. The hook is a hit-scan up to `grappleRange` (30 m) on solids and the ground, never on enemies or bosses. It pulls at `grapplePull` and lets go at `grappleArrive`. Releasing early keeps the momentum (a small fling). The recharge is `grappleCd` (6 s), including a miss. A sealed lockdown room rejects a hook outside that room, and the player is held inside it. Solids block the line.
+Grapple is B, or a mouse back button. It is not a gun slot. The hook is a hit-scan up to `grappleRange` (30 m) on solids and the ground, never on enemies or bosses. It pulls at `grapplePull` and lets go at `grappleArrive`. Releasing early keeps the momentum (a small fling). The recharge is `grappleCd` (6 s), including a miss. A sealed lockdown room rejects a hook outside that room, and the player is held inside it. Solids block the line.
 
 `noGrapple` is a list of `{ min, max }` boxes. A hook point inside one is a miss. `grappleAnchors` is a list of `{ id, at, r }`. A ray that passes within `r` of an anchor snaps to it, which is how a level marks a grapple point. `makeV2Level` shifts both by the section origin. Ramps and slopes are already slide-friendly: the slide samples the ground ahead and speeds up when it drops.
 
