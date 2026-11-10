@@ -101,6 +101,9 @@ export const EVENT_COVERAGE = {
   waveCleared: ['audio', 'ui'],
   wavePre: ['audio', 'ui'],
   waveStart: ['audio', 'ui'],
+  whiteout: ['audio', 'vfx', 'ui'],
+  whiteoutLift: ['audio', 'ui'],
+  whiteoutWarn: ['audio', 'ui'],
   worldGun: ['audio', 'ui'],
   xpGain: ['none'],
 };

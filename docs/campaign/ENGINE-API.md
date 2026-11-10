@@ -140,10 +140,14 @@ These ids have an `archetype` and run it on top of the enemy they are dressed as
 | `bitbug` | Drifts toward other bitbugs. |
 | `jetObama` | A weak spot that takes 2.5×. |
 | `spotterDrone` | Flies the midget orbit at 8–9 m, radius 7–14 m. Tier-1 HP 45 (79 at tier 5). The lamp is the weak spot. |
-| `frostHound` | Chases on the ground. Tier-1 HP 55 (96 at tier 5). The head is the weak spot. |
+| `frostHound` | Scents 45 m through walls, and a whiteout does not shorten that. Tier-1 HP 55 (96 at tier 5). The head is the weak spot. |
 | `miniTinubu` | Charges. |
 
 `midget`, `flyingMidget`, `obama`, `bigObama`, `robotLaser` and `robotShooter` are unchanged.
+
+An unaware enemy sees 30 m inside a 120° cone and hears a shot inside 16 m. `asleep: true` on a squad removes that sight and hears a shot inside `hearing` (default 12). A mining rig sees 90 m all round, except a player within 15 m who is tucked under the wall it stands on.
+
+A `kind: 'weather'` mechanism times a whiteout from when the section is entered. `windows` are `[start, end]` pairs. The same gap then repeats: `period` seconds (default 90) after each start, for `whiteout` seconds (default 20). `warning` seconds before a window sets `level.whiteoutWarn`. While it is on, `level.whiteout` is set, sight other than a hound's is capped at `sightCap` (default 40), and the fog pulls in to `viewCap` (default 40).
 
 ## Mechanisms
 

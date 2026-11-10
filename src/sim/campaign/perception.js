@@ -30,7 +30,7 @@ export function coverNear(solids, x, z, radius = 1.6) {
 
 function capSight(state, range, uncapped) {
   if (uncapped) return range;
-  if (state.level && state.level.whiteout) return Math.min(range, 40);
+  if (state.level && state.level.whiteout) return Math.min(range, state.level.sightCap || 40);
   return range;
 }
 
