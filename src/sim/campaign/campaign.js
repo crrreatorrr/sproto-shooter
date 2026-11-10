@@ -12,6 +12,7 @@ import { damagePlayer, onEnemyKilled } from '../combat.js';
 import { clearCampaignSpells, grantSpell } from '../spellbook.js';
 import { beginV2, noteV2Section, v2Post, v2Pre } from './v2.js';
 import { detonateBarrel, isZone, onMover, playerZoneSlow, publishSlowZones, slowEnemiesInHazard, tickGeyser, tickMover, tickRising, tickSwitch, tickZoneDamage } from './mechanisms.js';
+import { tickAlarms } from './alarms.js';
 import { noteSafeGround, tickRides, tickVoid } from './sectionMotion.js';
 
 const snaps = new WeakMap();
@@ -74,6 +75,7 @@ export function campaignPre(state, dt) {
   if (p.padCd > 0) p.padCd -= dt;
   const sec = sectionById(lv.id, lv.section);
   if (!sec) return;
+  tickAlarms(state, dt);
   for (const m of sec.mechanisms || []) {
     touchMechanism(state, p, lv, sec, m, dt);
     tickZoneDamage(state, p, m, dt);

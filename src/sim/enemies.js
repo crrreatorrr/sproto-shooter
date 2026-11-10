@@ -10,6 +10,7 @@ import { sensePlayer } from './campaign/perception.js';
 import { clampFlyer, navWaypoint } from './campaign/nav.js';
 import { tickArchetype } from './campaign/archetypes.js';
 import { enemyZoneSlow } from './campaign/mechanisms.js';
+import { runnerSteer } from './campaign/alarms.js';
 import { hitPlayerSphere, enemyAoE } from './combat.js';
 import { createProjectile, createHazard } from './state.js';
 
@@ -283,8 +284,13 @@ export function enemyAI(state, dt) {
       const slow = e.status.goo ? 1 - e.status.goo.slow : 1;
       const zone = state.mode === 'campaign' ? enemyZoneSlow(state.level, state._campaignSection, e) : 1;
       const rush = e.ai.charge ? 1.8 : 1;
-      const beh = BEHAVIORS[e.type] || BEHAVIORS[def.behavior];
-      beh.update(state, e, target, def, def.speed * e.speedMult * slow * zone * rush, dt);
+      const speed = def.speed * e.speedMult * slow * zone * rush;
+      const steer = state.mode === 'campaign' ? runnerSteer(state, e, dt) : null;
+      if (steer) approachVel(e, steer, steer.wait ? 0 : speed, 20, dt);
+      else {
+        const beh = BEHAVIORS[e.type] || BEHAVIORS[def.behavior];
+        beh.update(state, e, target, def, speed, dt);
+      }
       if (e.ai.bubble > 0) e.ai.bubble -= dt;
       tickArchetype(state, e, target, dt);
     }
