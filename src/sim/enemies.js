@@ -11,7 +11,7 @@ import { clampFlyer, navWaypoint } from './campaign/nav.js';
 import { tickArchetype } from './campaign/archetypes.js';
 import { enemyZoneSlow } from './campaign/mechanisms.js';
 import { runnerSteer } from './campaign/alarms.js';
-import { hitPlayerSphere, enemyAoE } from './combat.js';
+import { hitPlayerSphere, enemyAoE, knockPlayer } from './combat.js';
 import { createProjectile, createHazard } from './state.js';
 
 export function nearestPlayer(state, pos) {
@@ -25,6 +25,20 @@ export function nearestPlayer(state, pos) {
 }
 
 function setState(e, s) { e.state = s; e.stateT = 0; }
+
+function finite(v, fallback) {
+  return Number.isFinite(v) ? v : fallback;
+}
+
+function weightsOf(def) {
+  const w = (def && def.weights) || {};
+  return {
+    seek: finite(w.seek, 1),
+    sep: finite(w.sep, 1.2),
+    wall: finite(w.wall, 2),
+    strafe: finite(w.strafe, 0.25),
+  };
+}
 
 function steer(state, e, target, w, invertSeek = false) {
   const seek = !invertSeek && e.ai.navPoint ? e.ai.navPoint : target.pos;
@@ -44,8 +58,9 @@ function steer(state, e, target, w, invertSeek = false) {
   let wx = 0, wz = 0;
   if (state.mode !== 'campaign' && r > ARENA_R - 3) { const k = (r - (ARENA_R - 3)) / 3; wx = (-e.pos.x / r) * k; wz = (-e.pos.z / r) * k; }
   const stx = -sz * e.ai.strafeDir, stz = sx * e.ai.strafeDir;
-  let dx = w.seek * sx + w.sep * px + w.wall * wx + w.strafe * stx;
-  let dz = w.seek * sz + w.sep * pz + w.wall * wz + w.strafe * stz;
+  const weights = weightsOf({ weights: w });
+  let dx = weights.seek * sx + weights.sep * px + weights.wall * wx + weights.strafe * stx;
+  let dz = weights.seek * sz + weights.sep * pz + weights.wall * wz + weights.strafe * stz;
   const dl = Math.hypot(dx, dz) || 1;
   return { x: dx / dl, z: dz / dl };
 }
@@ -134,26 +149,48 @@ const BEHAVIORS = {
   midget: {
     update(state, e, t, def, speed, dt) {
       const d = Math.hypot(t.pos.x - e.pos.x, t.pos.z - e.pos.z);
+      const range = finite(def.range, 1.3);
+      const windup = finite(def.windup, 0.25);
+      const active = finite(def.active, 0.15);
+      const recover = finite(def.recover, 0.45);
+      const dash = finite(def.lunge, 4);
       if (e.state === 'chase') {
         faceToward(e, t, deg(720), dt);
-        approachVel(e, steer(state, e, t, def.weights), speed, def.accel, dt);
-        if (d < def.range + e.radius * e.scale + TUNING.playerRadius) {
+        approachVel(e, steer(state, e, t, def.weights), speed, finite(def.accel, 40), dt);
+        if (d < range + e.radius * e.scale + TUNING.playerRadius) {
           setState(e, 'attack'); e.attack = { phase: 'windup', t: 0, hasHit: false };
           emit(state, 'enemyAttack', { id: e.id, enemyType: e.type });
         }
       } else if (e.state === 'attack') {
         const a = e.attack; a.t += dt;
         faceToward(e, t, deg(300), dt);
-        if (a.phase === 'windup') { approachVel(e, { x: 0, z: 0 }, 0, 30, dt); if (a.t >= def.windup) { a.phase = 'active'; a.t = 0; } }
+        if (a.phase === 'windup') { approachVel(e, { x: 0, z: 0 }, 0, 30, dt); if (a.t >= windup) { a.phase = 'active'; a.t = 0; } }
         else if (a.phase === 'active') {
           const fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw);
-          e.vel.x = fx * 4; e.vel.z = fz * 4;
+          e.vel.x = fx * dash; e.vel.z = fz * dash;
           if (!a.hasHit) {
             const c = { x: e.pos.x + fx * 0.9 * e.scale, y: e.pos.y + 0.8, z: e.pos.z + fz * 0.9 * e.scale };
-            if (hitPlayerSphere(state, c, 0.9 * e.scale, def.damage * e.dmgMult, 'enemy', e.pos)) a.hasHit = true;
+            let bite = finite(def.damage, 9) * e.dmgMult;
+            if (Number.isFinite(def.lunge)) bite = Math.round(bite);
+            const hit = hitPlayerSphere(state, c, 0.9 * e.scale, bite, 'enemy', e.pos);
+            if (hit) {
+              a.hasHit = true;
+              const kb = finite(def.knockback, 0);
+              if (kb > 0) knockPlayer(hit, e.pos, kb, 3);
+            }
           }
-          if (a.t >= def.active) { a.phase = 'recover'; a.t = 0; }
-        } else { approachVel(e, { x: 0, z: 0 }, 0, 20, dt); if (a.t >= def.recover) setState(e, 'chase'); }
+          if (a.t >= active) {
+            a.phase = 'recover'; a.t = 0;
+            const patch = def.patch;
+            if (patch && !a.patched) {
+              a.patched = true;
+              const radius = finite(patch.radius, 2.5);
+              const pos = { x: e.pos.x, y: 0.05, z: e.pos.z };
+              createHazard(state, { kind: 'icePatch', pos, radius, ttl: finite(patch.seconds, 6), slow: finite(patch.slow, 0.15) });
+              emit(state, 'icePatch', { pos, radius });
+            }
+          }
+        } else { approachVel(e, { x: 0, z: 0 }, 0, 20, dt); if (a.t >= recover) setState(e, 'chase'); }
       }
     },
   },
@@ -161,13 +198,15 @@ const BEHAVIORS = {
     update(state, e, t, def, speed, dt) {
       const d = Math.hypot(t.pos.x - e.pos.x, t.pos.z - e.pos.z);
       faceToward(e, t, deg(360), dt);
-      const w = { ...def.weights };
+      const w = weightsOf(def);
       let inv = false;
-      if (d < def.keepMin) inv = true;
-      else if (d < def.keepMax) w.seek = 0.1;
-      const shooting = enemyGun(state, e, t, def.gun, dt, true);
+      const keepMin = finite(def.keepMin, 8);
+      const keepMax = finite(def.keepMax, 18);
+      if (d < keepMin) inv = true;
+      else if (d < keepMax) w.seek = 0.1;
+      const shooting = def.gun ? enemyGun(state, e, t, def.gun, dt, true) : false;
       e.ai.shooting = shooting;
-      approachVel(e, steer(state, e, t, w, inv), shooting ? speed * 0.35 : speed, def.accel, dt);
+      approachVel(e, steer(state, e, t, w, inv), shooting ? speed * 0.35 : speed, finite(def.accel, 22), dt);
     },
   },
   // Two weapons: regular arm-gun bursts, and a charged special (def.special) on its own cooldown. Only one fires
@@ -176,17 +215,19 @@ const BEHAVIORS = {
     update(state, e, t, def, speed, dt) {
       const d = Math.hypot(t.pos.x - e.pos.x, t.pos.z - e.pos.z);
       faceToward(e, t, deg(300), dt);
-      const w = { ...def.weights };
+      const w = weightsOf(def);
       let inv = false;
-      if (d < def.keepMin) inv = true;
-      else if (d < def.keepMax) w.seek = 0.1;
+      const keepMin = finite(def.keepMin, 8);
+      const keepMax = finite(def.keepMax, 18);
+      if (d < keepMin) inv = true;
+      else if (d < keepMax) w.seek = 0.1;
       const ai = e.ai;
       const regularBusy = ai.aimT > 0 || ai.burstLeft > 0;
-      const special = enemyGun(state, e, t, def.special, dt, !regularBusy, 'sp');
-      const regular = special ? false : enemyGun(state, e, t, def.gun, dt, true);
+      const special = def.special ? enemyGun(state, e, t, def.special, dt, !regularBusy, 'sp') : false;
+      const regular = special || !def.gun ? false : enemyGun(state, e, t, def.gun, dt, true);
       ai.special = special;
       ai.shooting = special || regular;
-      approachVel(e, steer(state, e, t, w, inv), special ? 0 : regular ? speed * 0.35 : speed, def.accel, dt);
+      approachVel(e, steer(state, e, t, w, inv), special ? 0 : regular ? speed * 0.35 : speed, finite(def.accel, 16), dt);
     },
   },
   flyingMidget: {
@@ -230,27 +271,28 @@ const BEHAVIORS = {
     update(state, e, t, def, speed, dt) {
       const d = Math.hypot(t.pos.x - e.pos.x, t.pos.z - e.pos.z);
       if (e.state === 'chase') {
-        faceToward(e, t, deg(def.turnRate), dt);
+        faceToward(e, t, deg(finite(def.turnRate, 70)), dt);
         const fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw);
-        const shooting = enemyGun(state, e, t, def.gun, dt, d > 5);
+        const shooting = def.gun ? enemyGun(state, e, t, def.gun, dt, d > 5) : false;
         e.ai.shooting = shooting;
-        approachVel(e, { x: fx, z: fz }, d > 2 && !shooting ? speed : 0, def.accel, dt);
+        approachVel(e, { x: fx, z: fz }, d > 2 && !shooting ? speed : 0, finite(def.accel, 8), dt);
         const ang = Math.abs(angleWrap(yawTo(e.pos, t.pos) - e.yaw));
-        if (!shooting && d < def.range && ang < deg(30)) {
+        if (!shooting && d < finite(def.range, 3.5) && ang < deg(30)) {
           setState(e, 'attack'); e.attack = { phase: 'windup', t: 0, hasHit: false };
           emit(state, 'enemyAttack', { id: e.id, enemyType: e.type });
         }
       } else if (e.state === 'attack') {
         const a = e.attack; a.t += dt;
         approachVel(e, { x: 0, z: 0 }, 0, 20, dt);
-        if (a.phase === 'windup' && a.t >= def.windup) {
+        if (a.phase === 'windup' && a.t >= finite(def.windup, 0.9)) {
           a.phase = 'recover'; a.t = 0;
           const fx = -Math.sin(e.yaw), fz = -Math.cos(e.yaw);
           const c = { x: e.pos.x + fx * 1.2, y: 0, z: e.pos.z + fz * 1.2 };
-          createHazard(state, { kind: 'stompRing', pos: { ...c, y: 0.05 }, radius: def.poundRadius, maxRadius: def.poundRadius, ttl: 0.4 });
-          enemyAoE(state, c, def.poundRadius, def.damage * e.dmgMult, 'enemy', 1.5);
+          const pound = finite(def.poundRadius, 3.2);
+          createHazard(state, { kind: 'stompRing', pos: { ...c, y: 0.05 }, radius: pound, maxRadius: pound, ttl: 0.4 });
+          enemyAoE(state, c, pound, finite(def.damage, 25) * e.dmgMult, 'enemy', 1.5);
           emit(state, 'pound', { id: e.id, pos: c });
-        } else if (a.phase === 'recover' && a.t >= def.recover) setState(e, 'chase');
+        } else if (a.phase === 'recover' && a.t >= finite(def.recover, 1.2)) setState(e, 'chase');
       }
     },
   },
@@ -279,7 +321,7 @@ export function enemyAI(state, dt) {
     } else if (e.state === 'stagger') {
       e.ai.burstLeft = 0; e.ai.aimT = 0;
       approachVel(e, { x: 0, z: 0 }, 0, 25, dt);
-      if (e.stateT >= def.staggerTime) setState(e, 'chase');
+      if (e.stateT >= finite(def.staggerTime, 0.4)) setState(e, 'chase');
     } else if (e.ai.scriptTarget) {
       approachVel(e, { x: 0, z: 0 }, 0, 30, dt);
     } else if (e.ai.buried > 0) {
@@ -297,7 +339,8 @@ export function enemyAI(state, dt) {
       const slow = e.status.goo ? 1 - e.status.goo.slow : 1;
       const zone = state.mode === 'campaign' ? enemyZoneSlow(state.level, state._campaignSection, e) : 1;
       const rush = e.ai.charge ? 1.8 : 1;
-      const speed = def.speed * e.speedMult * slow * zone * rush;
+      const pace = finite(def.run, finite(def.speed, 5));
+      const speed = pace * e.speedMult * slow * zone * rush;
       const steer = state.mode === 'campaign' ? runnerSteer(state, e, dt) : null;
       if (steer) approachVel(e, steer, steer.wait ? 0 : speed, 20, dt);
       else {
