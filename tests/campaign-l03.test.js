@@ -5,6 +5,8 @@ import { EXPECTED_COUNTS } from '../src/data/levels/L03/encounters.js';
 import { createGameState } from '../src/sim/state.js';
 import { simulate } from '../src/sim/simulate.js';
 import { getLevelRuntime } from '../src/sim/level/runtime.js';
+import { noteV2Section } from '../src/sim/campaign/v2.js';
+import { TUNING } from '../src/data/tuning.js';
 
 const cmd = (o = {}) => ({ yaw: 0, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [], ...o });
 
@@ -74,5 +76,57 @@ describe('L03 Vegetable Grove', () => {
     expect(rt.sectionById.S1.geometry.some((g) => g.id === 'S1-FL')).toBe(true);
     expect(p.pos.x).toBeCloseTo(18, 0);
     expect(p.pos.z).toBeCloseTo(-80, 0);
+  });
+
+  it('marks grapple points and keeps the escape walkable without sprint', () => {
+    const anchors = L03.sections.flatMap((s) => s.grappleAnchors || []);
+    expect(anchors.map((a) => a.id)).toEqual([
+      'S1-GA-GATE', 'S1-GA-LEAF', 'S1-GA-CROWN',
+      'S2-GA-GZ',
+      'S4-GA-CAT',
+      'S5-GA-N', 'S5-GA-E', 'S5-GA-S', 'S5-GA-W',
+      'S6-GA-T1', 'S6-GA-T2', 'S6-GA-TRK',
+    ]);
+    const room = L03.sections.find((s) => s.id === 'S5').encounters[0].lockdown.room;
+    for (const a of L03.sections.find((s) => s.id === 'S5').grappleAnchors) {
+      const [x, y, z] = a.at;
+      expect(x).toBeGreaterThan(room.min[0]);
+      expect(x).toBeLessThan(room.max[0]);
+      expect(y).toBeGreaterThan(room.min[1]);
+      expect(y).toBeLessThan(room.max[1]);
+      expect(z).toBeGreaterThan(room.min[2]);
+      expect(z).toBeLessThan(room.max[2]);
+    }
+    const bowl = [48, 0, -40];
+    const truck = [134, 9, -44];
+    const dist = Math.hypot(truck[0] - bowl[0], truck[1] - bowl[1], truck[2] - bowl[2]);
+    expect(dist / TUNING.walkSpeed).toBeLessThan(47);
+    expect(L03.sections.find((s) => s.id === 'S6').geometry.some((g) => g.id === 'S6-SLIDE')).toBe(true);
+
+    const s = createGameState({ seed: 1 });
+    const p = s.players[s.localPlayerId];
+    simulate(s, { [p.id]: cmd({ actions: [{ type: 'startMode', mode: 'campaign', level: 'L03' }] }) });
+    const x0 = p.pos.x;
+    let locked = false;
+    for (let i = 0; i < 360; i++) {
+      simulate(s, { [p.id]: cmd({ yaw: -Math.PI / 2, moveZ: 1, held: { sprint: true } }) });
+      if (p.staminaLock) locked = true;
+    }
+    expect(locked).toBe(true);
+    expect(p.pos.x).toBeGreaterThan(x0 + TUNING.walkSpeed * 4);
+
+    const rt = getLevelRuntime('L03');
+    const sec = rt.sectionById.S5;
+    noteV2Section(s, sec, rt);
+    const hook = sec.grappleAnchors.find((a) => a.id === 'S5-GA-N');
+    p.pos = { x: hook.at[0], y: 0, z: hook.at[2] + 16 };
+    p.prevPos = { ...p.pos };
+    p.vel = { x: 0, y: 0, z: 0 };
+    p.grapple = null;
+    p.grappleCd = 0;
+    const yaw = 0;
+    const pitch = Math.atan2(hook.at[1] - 1.6, 16);
+    simulate(s, { [p.id]: cmd({ yaw, pitch, held: { grapple: true } }) });
+    expect(p.grapple && p.grapple.id).toBe('S5-GA-N');
   });
 });

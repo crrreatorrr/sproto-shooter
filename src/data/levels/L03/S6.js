@@ -3,6 +3,13 @@ import { box, cylinder, disc, polar, place, ramp, sphere } from './prim.js';
 import { manaBloom, mound, podStump, truck } from './prefabs.js';
 import { ENCOUNTERS } from './encounters.js';
 
+// The chase climbs east. Hooks are above each lip. The south chute is the way back down.
+const CHASE_ANCHORS = [
+  { id: 'S6-GA-T1', at: [64, 5.5, -40], r: 2.2 },
+  { id: 'S6-GA-T2', at: [96, 8.5, -40], r: 2.2 },
+  { id: 'S6-GA-TRK', at: [134, 13, -44], r: 2.4 },
+];
+
 const planterBearings = [0, 60, 120, 180, 240, 300];
 
 export const S6 = {
@@ -47,6 +54,8 @@ export const S6 = {
     ramp({ id: 'S6-R1', at: [55, 1.5, -56], size: [10, 3, 5], yaw: 90, mat: 'wood' }),
     ramp({ id: 'S6-R2', at: [85, 4.5, -24], size: [10, 3, 5], yaw: 90, mat: 'wood' }),
     ramp({ id: 'S6-R3', at: [115, 7.5, -56], size: [10, 3, 5], yaw: 90, mat: 'wood' }),
+    // Yaw 90 rises toward +x, so this chute drops from terrace 2's south edge to the ground.
+    ramp({ id: 'S6-SLIDE', at: [84, 3, -18], size: [24, 6, 8], yaw: 90, mat: 'wood' }),
     box({ id: 'S6-HCB', at: [79, 4, -24], size: [1, 2, 5], mat: 'sand', tag: 'target' }),
     ...place(podStump(), { at: [64, 3, -48], id: 'S6-POD1' }),
     ...place(podStump(), { at: [68, 3, -30], id: 'S6-POD2' }),
@@ -63,6 +72,7 @@ export const S6 = {
     ...place(manaBloom(), { at: [16, 0, -40], id: 'MB20' }),
     disc({ id: 'S6-MP1-pad', at: [86, 3.05, -54], r: 1.2, mat: 'neon' }),
     disc({ id: 'S6-MP2-pad', at: [116, 6.05, -26], r: 1.2, mat: 'neon' }),
+    ...CHASE_ANCHORS.map((a) => sphere({ id: `${a.id}-mark`, at: a.at, r: 0.45, mat: 'neon' })),
   ],
   weapons: [],
   checkpoints: [],
@@ -81,6 +91,7 @@ export const S6 = {
     { kind: 'ammo', id: 'AB22', at: [36, 0.4, -8], ammoType: 'bullets', amount: 60 },
   ],
   encounters: [ENCOUNTERS.F2, ENCOUNTERS.F3],
+  grappleAnchors: CHASE_ANCHORS,
   navLinks: [
     { from: { x: 86, z: -54 }, to: { x: 93, z: -54 }, kind: 'pad' },
     { from: { x: 116, z: -26 }, to: { x: 123, z: -28 }, kind: 'pad' },

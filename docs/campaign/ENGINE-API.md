@@ -34,6 +34,8 @@ Those lines stay. Replace the folder, not the import.
 | `sections` | Ordered. Only the current section is simulated. |
 | `jetpack` | `true` starts with fuel. |
 
+Holding jump in the air spends fuel at 10 per second and holds altitude. C drops. Fuel regens at 25 per second on the ground, and a `fuelPad` refills at 40 per second (`safe: true` records a void-rescue point). A second `jetpack` with `skipIfOwned` does nothing if the player already has one. A `power` modifier `fuel` is infinite fuel for 20 seconds. The jetpack cannot climb within 2 m of a flyer lid. A door with `opens: 'p.jet.has'` is solid until the player has a jetpack.
+
 ## Section
 
 Local coordinates. `origin: [x, y, z]` is the section's north-west corner in the world. `+x` east, `+z` south, `y` up. Yaw degrees about Y, 0 faces `+z`.
@@ -102,7 +104,7 @@ Local coordinates. `origin: [x, y, z]` is the section's north-west corner in the
 | `onBossHp` | The encounter's boss is at or below `p` percent health. |
 | `onPartDestroyed` | `id` was marked destroyed. |
 | `with` | Squad `after` has spawned and `delay` seconds have passed. |
-| `onAlarm` | `ringAlarm(state, alarm)` has been called and `delay` seconds (on the squad) have passed. |
+| `onAlarm` | `ringAlarm(state, alarm)` has been called and `delay` seconds (on the squad) have passed. A runner (`role: 'runner'`, `alarm`) stands at the alarm box for `runner` seconds (default 1.5) to ring it. Shooting the box (`hp`, default 40) or the cable (`cableHp`, default 20) cuts it, and the runner then waits `wonder` seconds (default 3) without ringing. A searchlight holds the player in its beam for `hold` seconds (default 2) and rings `alarm`. Its lamp (`lamp` HP, default 30) can be shot out. A spotter whose squad sets `ringsAlarm` rings that alarm after 1.5 s of line of sight inside 35 m. |
 
 `clearAll` and `boss` ignore a squad marked `optional: true` until it spawns. A quiet run does not wait on an alarm pack that never rings. Once it spawns, it still has to die. An objective may also set `also: { kind: 'hold', seconds }`. The exit waits for the waves and for that many seconds inside `hold`. The clock runs only while the player or an ally stands in `hold`. Enemies in the ring do not pause it. After the waves are dead it runs at three times speed. `strikes: [8, 22, ...]` and `strikeEvery` launch a drone strike on that clock: it tracks for 1.8 s, locks for 0.75 s, then deals 30 to the player and 120 to enemies inside 2.6 m. Extra enemies wait while the encounter is at `maxAlive`. `flockUnit: 6` counts six living bitbugs as one of those units. When a script part ends, a `part` squad that never spawned is skipped, and anyone it already spawned leaves with no drop and no kill credit.
 
@@ -132,12 +134,12 @@ These ids have an `archetype` and run it on top of the enemy they are dressed as
 | `floretSprout` | Lobs a mortar. |
 | `hexAcolyte` | Puts a bubble on the nearest ally. Bubble hits deal half damage. |
 | `glowieAgent` | Slows the player for one step when close. It does not take the controls. |
-| `auditSniper` | Sidesteps on a timer. |
+| `auditSniper` | Sees 140 m inside a 30° cone that sweeps 60° over 6 s, and 60 m outside it. A whiteout (`level.whiteout`) caps that at 40 m. |
 | `miningRig` | Stays planted. |
 | `daycare` | The nest spawn that was already there. |
 | `bitbug` | Drifts toward other bitbugs. |
 | `jetObama` | A weak spot that takes 2.5×. |
-| `spotterDrone` | Flies. Tier-1 HP 45 (79 at tier 5). The lamp is the weak spot. |
+| `spotterDrone` | Flies the midget orbit at 8–9 m, radius 7–14 m. Tier-1 HP 45 (79 at tier 5). The lamp is the weak spot. |
 | `frostHound` | Chases on the ground. Tier-1 HP 55 (96 at tier 5). The head is the weak spot. |
 | `miniTinubu` | Charges. |
 
@@ -154,6 +156,8 @@ A squad whose type is in `BOSSES` spawns with `createBoss`, including the Hex. I
 `fleeAt` on a v2 encounter marks the boss `fled`, emits `bossEscape`, and does not add a boss kill. `lv.fled[encounterId]` is set, so a door with `opens: 'S6-F2.fled'` opens. A `risingHazard` with `starts: 'S6-F2.fled'` then lifts its surface at `rate` metres per second.
 
 `enc.script.parts` is an optional boss script. It does not add squads, so a `sameParts` encounter can stay `sahil` × 1. An `immune` part with `targets` takes no boss damage until those targets die. A target `{ id, hp, at, shields, rise }` is a stationary body. `rise` (1.5 s when the id starts with `pylon`) blocks damage while it counts down. A living target whose `shields` lists a solid id blocks damage to that solid. A phase part refills `hp` when the bar would hit zero, until the last part. `adds` spawn on `t` seconds, `on` (`firstLoom`, `secondPylon`), or `onBossHp` (percent of the current bar). `pit`, `pools` and `vents` are `{ at, r, slow, dps, period, offset }` in section-local coordinates. `ring` burns 12 once when the player crosses it. `attacks: { bolts: 'half' }` doubles the attack gap. `attacks` as a list replaces the boss attack list (`carpetSweep` is the low sweep). `kind: 'entry'` stuns the boss for 3 s when the part ends. `duelStage` selects the portrait phase. Target `at`, pit, pool and vent positions are shifted by the section origin.
+
+An encounter `parts` list with `obamaDuo` and `midgetDuo` runs the Duo clock. Part 1 (`kind: 'entry'`) holds both under a Price Shield until `sb.py1`, `sb.py2` and `sb.py3` are destroyed. Part 2 ends when either fighter empties his second bar. Part 3 (`intermission`) raises the shield again until `sb.cb1` and `sb.cb2` are destroyed. Part 4 ends when Obama is down and the Midget is on his third bar. Part 5 ends when the Midget is down. Bars are Obama 578 / 669 / 760 and the Midget 684 / 783 / 852. The Midget's last bar stays shielded, and he only casts Pig Rain, while Obama is still up. These bars are not the hashed duel HP, so the corridor fight stays on 760 and 520.
 
 A `target` with id `TOT-N-hp` tracks HP for the solid `TOT-N`. A bullet that hits that solid spends the HP (`bulletMul` scales gun damage). At 0 the solid is removed and both ids are marked destroyed.
 

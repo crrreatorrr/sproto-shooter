@@ -7,6 +7,7 @@ import { damagePlayer } from '../combat.js';
 import { inBox } from '../level/runtime.js';
 import { solidFromPrimitive, solidsFromGeometry } from './solids.js';
 import { tickBossScript } from './bossScript.js';
+import { tickDuo } from './duo.js';
 
 function book(lv) {
   if (!lv.v2) lv.v2 = { enc: {}, parts: {}, doorOpen: {} };
@@ -147,6 +148,7 @@ function triggerReady(state, enc, squad, prog) {
 export function ringAlarm(state, id) {
   if (!id) return;
   const lv = state.level;
+  if (lv.alarmsCut && lv.alarmsCut[id]) return;
   if (!lv.alarms) lv.alarms = {};
   if (lv.alarms[id] != null) return;
   lv.alarms[id] = lv.time || 0;
@@ -176,6 +178,13 @@ function spawnOne(state, enc, squad, at) {
   if (enc.noAmmoDrop) e.noAmmoDrop = true;
   if (at.partId) e.partId = at.partId;
   if (at.flockPart != null) e.flockPart = at.flockPart;
+  if (at.role) e.role = at.role;
+  if (at.alarm) e.alarm = at.alarm;
+  if (at.ringsAlarm) e.ringsAlarm = at.ringsAlarm;
+  if (at.asleep) {
+    e.ai.alert = 'asleep';
+    e.ai.hearing = at.hearing || 12;
+  }
   if (bossDef) {
     if (enc.arena) e.boss.arena = enc.arena;
     emit(state, 'bossSpawn', { id: e.id, bossType: type });
@@ -192,7 +201,11 @@ function trySpawn(state, enc, squad, key) {
   for (const u of squad.units || []) {
     for (let n = 0; n < u.count; n++) {
       const at = (squad.at && squad.at[Math.min(i, squad.at.length - 1)]) || [0, 0, 0];
-      spots.push({ type: u.type, pos: at, partId: u.partId || null, elite: !!u.elite, flockPart });
+      spots.push({
+        type: u.type, pos: at, partId: u.partId || null, elite: !!u.elite, flockPart,
+        role: u.role || null, alarm: u.alarm || null, ringsAlarm: squad.ringsAlarm || u.ringsAlarm || null,
+        asleep: !!(squad.asleep || u.asleep), hearing: squad.hearing || u.hearing || null,
+      });
       i++;
     }
   }
@@ -253,6 +266,14 @@ function refreshDoors(state, sec) {
   const doors = [];
   for (const m of (sec && sec.mechanisms) || []) {
     if (m.kind !== 'door') continue;
+    if (m.opens === 'p.jet.has') {
+      const who = state.players[state.localPlayerId];
+      if (!who || !who.jetpack) {
+        const gate = doorBox(m);
+        if (gate) doors.push(gate);
+      }
+      continue;
+    }
     if (!sealed[m.id] && !(switched[m.id] && !lv.got[m.id])) continue;
     const box = doorBox(m);
     if (box) doors.push(box);
@@ -478,6 +499,7 @@ export function v2Post(state, dt) {
     const prog = encState(lv, enc.id);
     if (!prog.started || lv.cleared[enc.id]) continue;
     tickBossScript(state, enc, dt);
+    tickDuo(state, enc, dt);
     retirePartSquads(state, enc, prog);
     noteKills(state, enc, prog);
     if (enc.fleeAt) {
