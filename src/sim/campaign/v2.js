@@ -39,7 +39,7 @@ function squadKey(squad, i) { return squad.id || String(i); }
 function noteKills(state, enc, prog) {
   if (!prog.seen) prog.seen = {};
   for (const e of state.enemies) {
-    if (!e.dead || e.campaignEnc !== enc.id || prog.seen[e.id]) continue;
+    if (!e.dead || e.dismissed || e.campaignEnc !== enc.id || prog.seen[e.id]) continue;
     prog.seen[e.id] = true;
     prog.kills++;
   }
@@ -51,20 +51,57 @@ function aliveOf(state, encId) {
   return n;
 }
 
+/** Bitbugs in a flock count as one unit per `flockUnit` bodies. Everyone else is one. */
+function unitOf(enc, type) {
+  const size = enc && enc.flockUnit;
+  if (size > 0 && type === 'bitbug') return 1 / size;
+  return 1;
+}
+
+function aliveUnits(state, enc) {
+  let n = 0;
+  for (const e of state.enemies) {
+    if (e.dead || e.campaignEnc !== enc.id) continue;
+    n += unitOf(enc, e.type);
+  }
+  return n;
+}
+
+function capOf(state, enc) {
+  return enc.maxAlive || state.level.maxAlive || 8;
+}
+
+function roomFor(state, enc, type) {
+  return aliveUnits(state, enc) + unitOf(enc, type) <= capOf(state, enc) + 1e-9;
+}
+
+/** Boss-script part clock. Part numbers in squad triggers are 1-based. */
+function partClock(state, enc) {
+  const book = state.level.scripts && state.level.scripts[enc.id];
+  if (!book) return null;
+  return { n: (book.part || 0) + 1, t: book.partT || 0 };
+}
+
 function triggerReady(state, enc, squad, prog) {
   const tr = squad.trigger || { type: 'onEnter' };
   if (tr.type === 'onEnter') return prog.started;
-  if (tr.type === 'time') return prog.t >= (tr.t || 0);
+  if (tr.type === 'time') {
+    if (tr.part != null) {
+      const clock = partClock(state, enc);
+      return !!clock && clock.n === tr.part && clock.t >= (tr.t || 0);
+    }
+    return prog.t >= (tr.t || 0);
+  }
   if (tr.type === 'onKills') return prog.kills >= (tr.n || 1);
   if (tr.type === 'onRemain') {
     const byCount = prog.started && aliveOf(state, enc.id) <= (tr.n ?? 2) && Object.keys(prog.squads).length > 0;
     if (byCount) return true;
-    const waveSec = enc.lockdown && enc.lockdown.waveSec;
-    if (!waveSec || !prog.started) return false;
+    const wait = waveWait(enc, squad);
+    if (wait == null || wait <= 0 || !prog.started) return false;
     const keys = Object.keys(prog.squads);
     if (!keys.length) return false;
     const last = prog.squads[keys[keys.length - 1]];
-    if (prog.t - (last.at || 0) < waveSec) return false;
+    if (prog.t - (last.at || 0) < wait) return false;
     for (let i = 0; i < (enc.squads || []).length; i++) {
       const sq = enc.squads[i];
       if (prog.squads[squadKey(sq, i)]) continue;
@@ -99,6 +136,16 @@ function triggerReady(state, enc, squad, prog) {
   return false;
 }
 
+/** Seconds after the previous squad before the next `onRemain` squad may open anyway. */
+function waveWait(enc, squad) {
+  if (squad && squad.fallbackSec != null) return squad.fallbackSec;
+  const lock = enc.lockdown;
+  if (!lock) return null;
+  if (lock.waveSec != null) return lock.waveSec;
+  if (lock.fallbackSec != null) return lock.fallbackSec;
+  return null;
+}
+
 function spawnOne(state, enc, squad, at) {
   const type = at.type;
   const pos = at.pos;
@@ -111,6 +158,7 @@ function spawnOne(state, enc, squad, at) {
   e.spawnMethod = squad.method || 'placed';
   if (enc.noAmmoDrop) e.noAmmoDrop = true;
   if (at.partId) e.partId = at.partId;
+  if (at.flockPart != null) e.flockPart = at.flockPart;
   if (bossDef) {
     if (enc.arena) e.boss.arena = enc.arena;
     emit(state, 'bossSpawn', { id: e.id, bossType: type });
@@ -121,21 +169,21 @@ function spawnOne(state, enc, squad, at) {
 function trySpawn(state, enc, squad, key) {
   const lv = state.level;
   const prog = encState(lv, enc.id);
-  const cap = enc.maxAlive || lv.maxAlive || 8;
   const spots = [];
   let i = 0;
+  const flockPart = squad.trigger && squad.trigger.part != null ? squad.trigger.part : null;
   for (const u of squad.units || []) {
     for (let n = 0; n < u.count; n++) {
       const at = (squad.at && squad.at[Math.min(i, squad.at.length - 1)]) || [0, 0, 0];
-      spots.push({ type: u.type, pos: at, partId: u.partId || null, elite: !!u.elite });
+      spots.push({ type: u.type, pos: at, partId: u.partId || null, elite: !!u.elite, flockPart });
       i++;
     }
   }
   const born = [];
   for (const spot of spots) {
-    if (aliveOf(state, enc.id) >= cap) {
+    if (!roomFor(state, enc, spot.type)) {
       prog.queue = prog.queue || [];
-      prog.queue.push({ encId: enc.id, squad: key, spot });
+      prog.queue.push({ encId: enc.id, squad: key, spot, part: spot.flockPart });
       continue;
     }
     born.push(spawnOne(state, enc, squad, spot));
@@ -277,11 +325,37 @@ export function v2Pre(state, dt) {
       if (!triggerReady(state, enc, squad, prog)) return;
       trySpawn(state, enc, squad, key);
     });
-    if (prog.queue && prog.queue.length && aliveOf(state, enc.id) < (enc.maxAlive || lv.maxAlive || 8)) {
-      const job = prog.queue.shift();
-      const squad = (enc.squads || []).find((s, i) => squadKey(s, i) === job.squad) || { method: 'door' };
-      spawnOne(state, enc, squad, job.spot);
+    if (prog.queue && prog.queue.length) {
+      const job = prog.queue[0];
+      const clock = partClock(state, enc);
+      if (job.part != null && clock && clock.n !== job.part) prog.queue.shift();
+      else if (roomFor(state, enc, job.spot.type)) {
+        prog.queue.shift();
+        const squad = (enc.squads || []).find((s, i) => squadKey(s, i) === job.squad) || { method: 'door' };
+        spawnOne(state, enc, squad, job.spot);
+      }
     }
+  }
+}
+
+function retirePartSquads(state, enc, prog) {
+  const clock = partClock(state, enc);
+  if (!clock) return;
+  if (prog.partSeen == null) { prog.partSeen = clock.n; return; }
+  if (prog.partSeen === clock.n) return;
+  const ended = prog.partSeen;
+  prog.partSeen = clock.n;
+  (enc.squads || []).forEach((squad, i) => {
+    if (!squad.trigger || squad.trigger.part !== ended) return;
+    const key = squadKey(squad, i);
+    if (!prog.squads[key]) prog.squads[key] = { at: prog.t, count: 0, skipped: true };
+  });
+  if (prog.queue) prog.queue = prog.queue.filter((job) => job.part !== ended);
+  for (const e of state.enemies) {
+    if (e.dead || e.campaignEnc !== enc.id || e.flockPart !== ended) continue;
+    e.dead = true;
+    e.hp = 0;
+    e.dismissed = true;
   }
 }
 
@@ -318,6 +392,7 @@ export function v2Post(state, dt) {
     const prog = encState(lv, enc.id);
     if (!prog.started || lv.cleared[enc.id]) continue;
     tickBossScript(state, enc, dt);
+    retirePartSquads(state, enc, prog);
     noteKills(state, enc, prog);
     if (enc.fleeAt) {
       for (const e of state.enemies) {
