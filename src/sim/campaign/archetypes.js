@@ -8,6 +8,18 @@ export function archetypeOf(e) {
   return def && def.archetype;
 }
 
+export function sourceTakenMul(e, hit) {
+  const def = ENEMIES[e.type];
+  if (!def) return 1;
+  if (hit.zone === 'weak' && def.weakIgnoresArmour) return 1;
+  const name = e.ai && e.ai.armour;
+  const table = name && def.armour ? def.armour[name] : null;
+  const spec = table || def.taken;
+  if (!spec) return 1;
+  const key = hit.sourceKind === 'spell' ? 'spell' : (hit.isSplash || hit.sourceKind === 'world') ? 'explosive' : 'bullet';
+  return spec[key] == null ? 1 : spec[key];
+}
+
 export function archetypeDamageMul(e, from) {
   const a = archetypeOf(e);
   let mul = e.ai && e.ai.bubble > 0 ? 0.5 : 1;
@@ -98,6 +110,27 @@ export function tickArchetype(state, e, target, dt) {
       const dx = sx / n - e.pos.x, dz = sz / n - e.pos.z;
       e.vel.x += dx * 0.4 * dt;
       e.vel.z += dz * 0.4 * dt;
+    }
+  }
+  if (a.bark && e.ai.armour !== 'stripped') {
+    e.ai.armour = e.status && e.status.goo ? 'softened' : (e.ai.armour === 'softened' ? 'hard' : (e.ai.armour || 'hard'));
+  }
+  if (a.leech && target) {
+    const d = Math.hypot(target.pos.x - e.pos.x, target.pos.z - e.pos.z);
+    if (d < (a.leech.range || 10)) target.mana = Math.max(0, target.mana - (a.leech.drain || 8) * dt);
+  }
+  if (a.wisp && target) {
+    e.ai.wispCd = (e.ai.wispCd == null ? a.wisp.every : e.ai.wispCd) - dt;
+    if (e.ai.wispCd <= 0) {
+      e.ai.wispCd = a.wisp.every;
+      const dx = target.pos.x - e.pos.x, dz = target.pos.z - e.pos.z;
+      const dist = Math.hypot(dx, dz) || 1;
+      createProjectile(state, {
+        kind: 'bullet', faction: 'enemy', ownerId: e.id, sourceKind: 'enemy',
+        pos: { x: e.pos.x, y: e.pos.y + 0.6, z: e.pos.z },
+        vel: { x: (dx / dist) * a.wisp.speed, y: 0, z: (dz / dist) * a.wisp.speed },
+        damage: a.wisp.damage, ttl: 4, radius: 0.25,
+      });
     }
   }
   if (a.audit) {

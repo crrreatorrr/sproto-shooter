@@ -9,6 +9,8 @@ import { activeSolids, pushHorizontal, snapToGround } from './campaign/solids.js
 import { sensePlayer } from './campaign/perception.js';
 import { clampFlyer, navWaypoint } from './campaign/nav.js';
 import { tickArchetype } from './campaign/archetypes.js';
+import { enemyZoneSlow } from './campaign/mechanisms.js';
+import { runnerSteer } from './campaign/alarms.js';
 import { hitPlayerSphere, enemyAoE } from './combat.js';
 import { createProjectile, createHazard } from './state.js';
 
@@ -190,25 +192,38 @@ const BEHAVIORS = {
   flyingMidget: {
     update(state, e, t, def, speed, dt) {
       const ai = e.ai;
-      ai.jinkT = (ai.jinkT ?? 0) - dt;
+      const span = (lo, hi, fallbackLo, fallbackHi) => {
+        const a = Number.isFinite(lo) ? lo : fallbackLo;
+        const b = Number.isFinite(hi) ? hi : fallbackHi;
+        return a <= b ? [a, b] : [b, a];
+      };
+      ai.jinkT = (Number.isFinite(ai.jinkT) ? ai.jinkT : 0) - dt;
       if (ai.jinkT <= 0) {
-        ai.jinkT = range(state.rng, def.jinkMin, def.jinkMax);
+        const [jLo, jHi] = span(def.jinkMin, def.jinkMax, 0.5, 1.2);
+        const [aLo, aHi] = span(def.altMin, def.altMax, 3, 6.5);
+        const [oLo, oHi] = span(def.orbitMin, def.orbitMax, 7, 14);
+        ai.jinkT = range(state.rng, jLo, jHi);
         ai.orbitDir = float(state.rng) < 0.5 ? -1 : 1;
-        ai.alt = range(state.rng, def.altMin, def.altMax);
-        ai.orbitR = range(state.rng, def.orbitMin, def.orbitMax);
+        ai.alt = range(state.rng, aLo, aHi);
+        ai.orbitR = range(state.rng, oLo, oHi);
       }
+      const orbitR = Number.isFinite(ai.orbitR) ? ai.orbitR : 10;
+      const orbitDir = ai.orbitDir === -1 ? -1 : 1;
+      const alt = Number.isFinite(ai.alt) ? ai.alt : (Number.isFinite(e.pos.y) ? e.pos.y : 0);
       const dx = t.pos.x - e.pos.x, dz = t.pos.z - e.pos.z;
       const d = Math.hypot(dx, dz) || 1;
       const nx = dx / d, nz = dz / d;
-      const radial = Math.max(-1, Math.min(1, (d - ai.orbitR) / 4));
-      let wx = nx * radial + -nz * ai.orbitDir, wz = nz * radial + nx * ai.orbitDir;
+      const radial = Math.max(-1, Math.min(1, (d - orbitR) / 4));
+      let wx = nx * radial + -nz * orbitDir, wz = nz * radial + nx * orbitDir;
       const r = Math.hypot(e.pos.x, e.pos.z);
       if (r > ARENA_R - 4) { wx -= e.pos.x / r; wz -= e.pos.z / r; }
       const wl = Math.hypot(wx, wz) || 1;
-      approachVel(e, { x: wx / wl, z: wz / wl }, speed, def.accel, dt);
-      e.vel.y += ((ai.alt - e.pos.y) * 3 - e.vel.y) * Math.min(1, 4 * dt);
+      approachVel(e, { x: wx / wl, z: wz / wl }, speed, Number.isFinite(def.accel) ? def.accel : 20, dt);
+      if (!Number.isFinite(e.pos.y)) e.pos.y = 0;
+      if (!Number.isFinite(e.vel.y)) e.vel.y = 0;
+      e.vel.y += ((alt - e.pos.y) * 3 - e.vel.y) * Math.min(1, 4 * dt);
       faceToward(e, t, deg(720), dt);
-      ai.shooting = enemyGun(state, e, t, def.gun, dt, true);
+      ai.shooting = def.gun ? enemyGun(state, e, t, def.gun, dt, true) : false;
     },
   },
   bigObama: {
@@ -265,20 +280,30 @@ export function enemyAI(state, dt) {
       e.ai.burstLeft = 0; e.ai.aimT = 0;
       approachVel(e, { x: 0, z: 0 }, 0, 25, dt);
       if (e.stateT >= def.staggerTime) setState(e, 'chase');
+    } else if (e.ai.scriptTarget) {
+      approachVel(e, { x: 0, z: 0 }, 0, 30, dt);
     } else if (e.ai.buried > 0) {
       e.ai.buried -= dt;
       approachVel(e, { x: 0, z: 0 }, 0, 30, dt);
-    } else if (e.ai.alert && e.ai.alert !== 'alerted' && !sensePlayer(state, e, target)) {
+    } else if (e.ai.alert && e.ai.alert !== 'alerted' && !e.ai.charge && !sensePlayer(state, e, target)) {
       approachVel(e, { x: 0, z: 0 }, 0, 30, dt);
     } else {
+      if (e.ai.charge) e.ai.alert = 'alerted';
       if (state.mode === 'campaign' && state.level && state.level.useNav) {
         const far = Math.hypot(target.pos.x - e.pos.x, target.pos.z - e.pos.z);
         e.ai.navPoint = far > 2.5 ? navWaypoint(state, e.pos, target.pos) : null;
       }
       if (e.state === 'idle' && e.type !== 'dummy') setState(e, 'chase');
       const slow = e.status.goo ? 1 - e.status.goo.slow : 1;
-      const beh = BEHAVIORS[e.type] || BEHAVIORS[def.behavior];
-      beh.update(state, e, target, def, def.speed * e.speedMult * slow, dt);
+      const zone = state.mode === 'campaign' ? enemyZoneSlow(state.level, state._campaignSection, e) : 1;
+      const rush = e.ai.charge ? 1.8 : 1;
+      const speed = def.speed * e.speedMult * slow * zone * rush;
+      const steer = state.mode === 'campaign' ? runnerSteer(state, e, dt) : null;
+      if (steer) approachVel(e, steer, steer.wait ? 0 : speed, 20, dt);
+      else {
+        const beh = BEHAVIORS[e.type] || BEHAVIORS[def.behavior];
+        beh.update(state, e, target, def, speed, dt);
+      }
       if (e.ai.bubble > 0) e.ai.bubble -= dt;
       tickArchetype(state, e, target, dt);
     }
@@ -287,9 +312,20 @@ export function enemyAI(state, dt) {
     else e.vel.y -= 30 * dt;
     e.pos.x += e.vel.x * dt; e.pos.y += e.vel.y * dt; e.pos.z += e.vel.z * dt;
     const solids = activeSolids(state);
-    if (solids && !def.flying) {
+    if (def.ghost) {
+      if (state.mode === 'campaign' && state.level && state.level.navBounds) {
+        const b = state.level.navBounds;
+        if (e.pos.x < b.min[0]) e.pos.x = b.min[0];
+        if (e.pos.x > b.max[0]) e.pos.x = b.max[0];
+        if (e.pos.z < b.min[1]) e.pos.z = b.min[1];
+        if (e.pos.z > b.max[1]) e.pos.z = b.max[1];
+      }
+      if (!def.flying && solids) snapToGround(e, solids, e.radius * e.scale);
+    } else if (solids && !def.flying) {
       pushHorizontal(e, solids, e.radius * e.scale, e.height * e.scale);
       snapToGround(e, solids, e.radius * e.scale);
+    } else if (def.flying && state.mode === 'campaign' && state.level && state.level.flyerLids) {
+      for (let i = 0; i < state.level.flyerLids.length; i++) clampFlyer(e, state.level.flyerLids[i]);
     } else if (def.flying && state.mode === 'campaign' && state.level && state.level.flyerVolume) {
       clampFlyer(e, state.level.flyerVolume);
     } else {

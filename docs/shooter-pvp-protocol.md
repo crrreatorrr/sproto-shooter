@@ -2,7 +2,7 @@
 
 This is the contract H3-S implements for a Nakama authoritative match. The arena is free. The bundle does not stake, settle, refund, or mint Tickets. A later escrow may move existing Tickets between the two accounts. It must not create any.
 
-Campaign verification is a different artifact. It stays protocol **1**, content fingerprint **bfe99bf4**, global `SprotoShooterSim`, entry `verifyRunJSON`. Do not point the campaign verifier at this bundle.
+Campaign verification is a different artifact. It stays protocol **1**, content fingerprint **9ec1c6ea**, global `SprotoShooterSim`, entry `verifyRunJSON`. Do not point the campaign verifier at this bundle.
 
 Protocol 2 (director v2) replaced protocol 1 in SHOOTER-S2a. It is a deliberate pin bump: a protocol 1 client gets `version` on HELLO and never matchmakes with a protocol 2 client. The S2a sim did not change (golden `ce272de1`).
 
@@ -17,7 +17,7 @@ npm run build:server-sim
 | File | Role |
 |---|---|
 | `build/shooter-sim.js` | Unchanged campaign verifier. Global `SprotoShooterSim`. |
-| `build/shooter-sim.pin.json` | Campaign pin. `protocol` 1, `contentFingerprint` `bfe99bf4`. |
+| `build/shooter-sim.pin.json` | Campaign pin. `protocol` 1, `contentFingerprint` `9ec1c6ea`. |
 | `build/shooter-pvp-sim.js` | Free arena. Global `SprotoShooterPvp`. |
 | `build/shooter-pvp-sim.pin.json` | Arena pin. `protocol` 2, `sim` 2, `contentFingerprint` `17d87c54`, `directorState` 3, `replayVersion` 2, `rewind` (the REWIND table), `replayLimits`, `crits` false, `combatSeed` `"sha256-commit-reveal-128"`. |
 

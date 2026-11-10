@@ -6,8 +6,8 @@ import { ELEMENTS_BY_ID, GUN_TYPES_BY_ID } from '../data/guns.js';
 import { TUNING } from '../data/tuning.js';
 import { distToCapsule, entityDef, sphereHitsPlayer } from './collision.js';
 import { rollDrops, spawnDrops } from './drops.js';
-import { createHazard, nextId } from './state.js';
-import { archetypeDamageMul, archetypeDeathBlast } from './campaign/archetypes.js';
+import { createEnemy, createHazard, nextId } from './state.js';
+import { archetypeDamageMul, archetypeDeathBlast, sourceTakenMul } from './campaign/archetypes.js';
 import { markPartDestroyed } from './campaign/v2.js';
 
 export function healPlayer(p, amount) {
@@ -18,7 +18,7 @@ export function healPlayer(p, amount) {
 }
 
 export function damageEnemy(state, e, hit) {
-  if (e.dead || e.state === 'spawning' || (e.boss && e.boss.invuln) || (e.ai && (e.ai.buried > 0 || e.ai.audit))) return 0;
+  if (e.dead || e.state === 'spawning' || (e.boss && e.boss.invuln) || (e.ai && (e.ai.buried > 0 || e.ai.audit || e.ai.riseT > 0))) return 0;
   let dmg = hit.base;
   const p = state.players[hit.sourceId];
   if (p) {
@@ -40,8 +40,28 @@ export function damageEnemy(state, e, hit) {
     if (e.affinity.weak === el) dmg *= 1.5;
     if (e.affinity.resist === el) dmg *= 0.5;
   }
+  const taken = sourceTakenMul(e, hit);
+  if (taken <= 0) return 0;
+  dmg *= taken;
   dmg = Math.max(1, Math.round(dmg));
   if (e.type === 'dummy' && state.tuning.dummyInfinite) e.hp = e.maxHp + dmg;
+  if (e.boss && e.boss.scriptHold && e.hp - dmg <= 0) {
+    const dealt = Math.max(0, e.hp - 1);
+    e.hp = 1;
+    e.boss.barEmpty = true;
+    e.hitFlash = 0.08;
+    e.lastHit = { sourceId: hit.sourceId, sourceKind: hit.sourceKind, element: el, isCrit, isWeak, gunId: hit.gunId ?? null, wacky: hit.wacky ?? null };
+    if (p) {
+      state.run.damageDealt += dealt;
+      state.run.bestHit = Math.max(state.run.bestHit, dealt);
+    }
+    emit(state, 'damage', {
+      sourceId: hit.sourceId, targetId: e.id, amount: dealt, element: el, isCrit, isWeak, zone: hit.zone,
+      pos: hit.point || { x: e.pos.x, y: e.pos.y + 1, z: e.pos.z },
+      sourceKind: hit.sourceKind, killed: false, pellet: !!hit.pellet,
+    });
+    return dealt;
+  }
   e.hp -= dmg;
   e.poise += dmg;
   e.hitFlash = 0.08;
@@ -128,6 +148,14 @@ export function onEnemyKilled(state, e) {
     pos: centerOf(e), tier: e.tier, summoned: e.summoned, isDummy: e.type === 'dummy',
   });
   if (e.partId) markPartDestroyed(state, e.partId);
+  const split = ENEMIES[e.type] && ENEMIES[e.type].split;
+  if (split) {
+    for (let i = 0; i < 2; i++) {
+      const baby = createEnemy(state, split, { pos: { x: e.pos.x + (i === 0 ? -0.6 : 0.6), z: e.pos.z }, summoned: true });
+      baby.campaignEnc = e.campaignEnc;
+      baby.state = 'chase';
+    }
+  }
   if (e.type === 'dummy') return;
   state.run.kills++;
   if (e.elite) state.run.eliteKills++;

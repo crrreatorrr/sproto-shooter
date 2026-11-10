@@ -1,10 +1,11 @@
 // Server-issued campaign run. This module never credits Tickets.
 import { createGameState } from '../sim/state.js';
 import { startCampaign } from '../sim/campaign/campaign.js';
+import { noteV2Section } from '../sim/campaign/v2.js';
 import { verifyStateHash } from '../sim/hash.js';
-import { sectionById } from '../sim/level/runtime.js';
+import { getLevelRuntime, sectionById } from '../sim/level/runtime.js';
 import {
-  bossById, rejectedBossReason, contentFingerprint, findEncounter,
+  bossById, rejectedBossReason, contentFingerprint, resolveCanonicalEncounter,
 } from '../data/serverManifest.js';
 import { PROTOCOL_VERSION, LIMITS, validDay, validId, inspectValue } from './protocol.js';
 import { grantSpell } from '../sim/spellbook.js';
@@ -65,6 +66,7 @@ export function buildIssuedState(issuance) {
   state.level.transition = null;
   state.level.won = false;
   state.level.lost = false;
+  if (state.level.format === 'v2') noteV2Section(state, section, getLevelRuntime(boss.levelId));
   p.pos = { x: section.start[0], y: section.start[1], z: section.start[2] };
   p.prevPos = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
   p.vel = { x: 0, y: 0, z: 0 };
@@ -96,7 +98,7 @@ export function buildIssuance(input) {
   if (typeof input.seed !== 'number' || !Number.isInteger(input.seed) || input.seed < 1 || input.seed > 0xffffffff) {
     return reject(input.seed < 0 ? 'negative' : 'malformed');
   }
-  const found = findEncounter(boss.levelId, boss.encounterId);
+  const found = resolveCanonicalEncounter(boss);
   if (!found) return reject('malformed');
   const issuance = {
     v: PROTOCOL_VERSION,
@@ -108,7 +110,7 @@ export function buildIssuance(input) {
     seed: input.seed,
     levelId: boss.levelId,
     sectionId: found.section.id,
-    encounterId: boss.encounterId,
+    encounterId: found.encounter.id,
     canonicalBoss: boss.id,
     parts: boss.parts.slice(),
     countAs: 1,

@@ -19,7 +19,7 @@ Outputs:
 
 `sourceCommit` is `git rev-parse HEAD` baked into the bundle before the sha256. Rebuild on the merged shooter SHA and vendor both files. Refuse to boot if `bundleSha256` or `contentFingerprint` disagrees with the running copy. A stale pin is not accepted.
 
-Measured on this phase's build host: the bundle is about 277 KB. Content fingerprint for protocol 1 is `bfe99bf4`. The sha256 changes with the commit baked into the file, so read it from the pin of the build you vendor.
+Measured on this phase's build host: the bundle is about 277 KB. Content fingerprint for protocol 1 is `9ec1c6ea`. The sha256 changes with the commit baked into the file, so read it from the pin of the build you vendor.
 
 Entry points:
 
@@ -50,7 +50,7 @@ Payable ids, one each. A flee is not a kill. `obamaDuo` and `midgetDuo` are part
 | Canonical id | Duel id | Level | Encounter | Parts | Not this |
 |---|---|---|---|---|---|
 | `sahil` | `sahil` | L02 | S4-E4 | sahil | |
-| `obama` | `obama` | L04 | S3-E3 | obamaDuo + midgetDuo | issuing `obamaDuo` or `midgetDuo` returns `obama_is_one` |
+| `obama` | `obama` | L04 | `SB-BOSS` (corridor still resolves `S3-E3`) | obamaDuo + midgetDuo, once each. Extra squads on that encounter are adds, not a second boss | issuing `obamaDuo` or `midgetDuo` returns `obama_is_one`. Still one payable boss |
 | `broccoli` | `broccoli` | L06 | S4-E4 | broccoli | L03 S4-E4 flees at half health and is not issuable |
 | `glowie` | none | L08 | S4-E4 | glowie | Duel's `agent`, and the enemy `glowieAgent`, return `glowie_not_agent` |
 | `tinubu` | `tinubu` | L10 | S3-E3 | tinubu | L09 S3-E4 flees at 0.7 and is not issuable |
@@ -79,7 +79,7 @@ H2-S stores this. The client never supplies it.
   "parts": ["sahil"],
   "countAs": 1,
   "loadout": "canonical-start",
-  "contentFingerprint": "bfe99bf4",
+  "contentFingerprint": "9ec1c6ea",
   "maxFrames": 162000,
   "duelId": "sahil",
   "distinctFrom": [],
@@ -170,7 +170,7 @@ Check order inside `verifyRun`, before the sim loop: shape, hostile keys, versio
   "tick": 2491,
   "frames": 2491,
   "protocol": 1,
-  "contentFingerprint": "bfe99bf4",
+  "contentFingerprint": "9ec1c6ea",
   "sourceCommit": "40 hex chars or null in unpacked source",
   "logDigest": "8 hex chars",
   "bindingHash": "8 hex chars",

@@ -8,10 +8,12 @@ import { emit } from '../events.js';
 import { createEnemy, createBoss, createPickup, createProjectile, nextId } from '../state.js';
 import { generateGun } from '../guns.js';
 import { next } from '../../core/rng.js';
-import { damagePlayer } from '../combat.js';
+import { damagePlayer, onEnemyKilled } from '../combat.js';
 import { clearCampaignSpells, grantSpell } from '../spellbook.js';
 import { beginV2, noteV2Section, v2Post, v2Pre } from './v2.js';
-import { detonateBarrel, onMover, slowEnemiesInHazard, tickMover, tickSwitch } from './mechanisms.js';
+import { detonateBarrel, isZone, onMover, playerZoneSlow, publishSlowZones, slowEnemiesInHazard, tickGeyser, tickMover, tickRising, tickSwitch, tickZoneDamage } from './mechanisms.js';
+import { tickAlarms } from './alarms.js';
+import { noteSafeGround, tickRides, tickVoid } from './sectionMotion.js';
 
 const snaps = new WeakMap();
 
@@ -69,11 +71,43 @@ export function campaignPre(state, dt) {
   const lv = state.level;
   if (!lv || lv.won || lv.lost) return;
   lv.time += dt;
+  if (lv.fuelTimer > 0) {
+    lv.fuelTimer -= dt;
+    if (lv.fuelTimer <= 0) {
+      lv.fuelTimer = 0;
+      if (lv.modifiers) lv.modifiers.fuelInfinite = false;
+    }
+  }
   const p = state.players[state.localPlayerId];
   if (p.padCd > 0) p.padCd -= dt;
   const sec = sectionById(lv.id, lv.section);
   if (!sec) return;
-  for (const m of sec.mechanisms || []) touchMechanism(state, p, lv, sec, m, dt);
+  tickAlarms(state, dt);
+  for (const m of sec.mechanisms || []) {
+    touchMechanism(state, p, lv, sec, m, dt);
+    tickZoneDamage(state, p, m, dt);
+    tickGeyser(state, p, m);
+    tickRising(state, p, m, dt);
+  }
+  for (const g of sec.geysers || []) tickGeyser(state, p, g.kind ? g : { ...g, kind: 'geyser' });
+  noteSafeGround(state, sec);
+  // Only levels that actually have a zone grow these fields. Boss goldens hash the whole state.
+  let zoned = false;
+  for (const m of sec.mechanisms || []) if (isZone(m)) { zoned = true; break; }
+  if (!zoned && sec.hazards && sec.hazards.length) zoned = true;
+  if (zoned) {
+    state._campaignSection = sec;
+    const slow = playerZoneSlow(lv, sec, p);
+    if (slow < 1) p.hazardSlow = slow;
+    else if (p.hazardSlow != null) delete p.hazardSlow;
+    if (lv._zonesDirty || lv._zoneSec !== sec.id) publishSlowZones(lv, sec);
+    lv._zoneSec = sec.id;
+  } else if (state._campaignSection || lv.slowZones || p.hazardSlow != null || lv._zoneSec) {
+    delete state._campaignSection;
+    delete lv.slowZones;
+    delete lv._zoneSec;
+    if (p.hazardSlow != null) delete p.hazardSlow;
+  }
   for (const w of sec.weapons || []) {
     if (lv.got[w.id]) continue;
     if (!nearPoint(w.at, p.pos.x, p.pos.y + 1, p.pos.z, 3.2)) continue;
@@ -98,15 +132,46 @@ export function campaignPre(state, dt) {
   lv.objective = objectiveText(lv, sec);
 }
 
+function hurtEnemiesInHazard(state, p, m, dt) {
+  for (const e of state.enemies) {
+    if (e.dead || e.type === 'gooGlob' || (e.type && e.type.startsWith('gooGlob'))) continue;
+    if (!inBox(m, e.pos.x, e.pos.y, e.pos.z)) continue;
+    e.hp -= m.enemyDps * dt;
+    if (m.stripsBark && e.ai && e.ai.armour && e.ai.armour !== 'stripped') e.ai.armour = 'stripped';
+    if (e.hp <= 0) {
+      e.lastHit = { sourceId: p.id, sourceKind: 'world', element: 'none' };
+      onEnemyKilled(state, e);
+    }
+  }
+}
+
 export function campaignPost(state, dt) {
   const lv = state.level;
   if (!lv || lv.won || lv.lost) return;
-  if (lv.format === 'v2') { v2Post(state, dt); return; }
-  const p = state.players[state.localPlayerId];
+  const motionSec = sectionById(lv.id, lv.section);
+  if (motionSec) {
+    tickVoid(state, motionSec);
+    tickRides(state, motionSec, dt);
+  }
   for (const e of state.enemies) {
     if (e.dead || !e.boss || !BOSSES[e.type] || !BOSSES[e.type].campaign) continue;
     tickDuelBoss(state, e, dt);
   }
+  if (lv.format === 'v2') {
+    v2Post(state, dt);
+    const again = state.level;
+    if (again && again._rewind) {
+      const encounter = again._rewind;
+      delete again._rewind;
+      if (restoreCheckpoint(state)) emit(state, 'lockdownReset', { encounter });
+      else {
+        state.level.lost = true;
+        emit(state, 'levelLost', { level: state.level.id });
+      }
+    }
+    return;
+  }
+  const p = state.players[state.localPlayerId];
   for (const e of state.enemies) {
     if (e.dead || e.type !== 'daycare') continue;
     e.ai.nestT = (e.ai.nestT || 1.2) - dt;
@@ -127,6 +192,8 @@ export function campaignPost(state, dt) {
         if (e.hp / e.maxHp <= enc.fleeAt) {
           e.dead = true;
           e.fled = true;
+          if (!lv.fled) lv.fled = {};
+          lv.fled[enc.id] = true;
           emit(state, 'bossEscape', { id: e.id, bossType: e.type });
         }
       }
@@ -169,6 +236,8 @@ function objectiveText(lv, sec) {
 function flagOn(lv, when) {
   if (!when) return true;
   if (when.endsWith('.cleared')) return !!lv.cleared[when.slice(0, -'.cleared'.length)];
+  if (when.endsWith('.fled')) return !!(lv.fled && lv.fled[when.slice(0, -'.fled'.length)]);
+  if (when.endsWith('.destroyed')) return !!(lv.v2 && lv.v2.parts && lv.v2.parts[when.slice(0, -'.destroyed'.length)]);
   if (when.startsWith('switch:')) return !!lv.got[when.slice('switch:'.length)];
   return !!lv.got[when];
 }
@@ -176,7 +245,17 @@ function flagOn(lv, when) {
 function touchMechanism(state, p, lv, sec, m, dt) {
   const x = p.pos.x, y = p.pos.y, z = p.pos.z;
   if (m.kind === 'switch' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.5)) tickSwitch(state, p, m, dt);
-  if (m.kind === 'door' && m.opens && !lv.got[m.id] && flagOn(lv, m.opens)) {
+  if (m.kind === 'depot' && m.at && nearPoint(m.at, x, y + 1, z, 2.4)) {
+    if (p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + 30 * dt);
+    for (const type of Object.keys(p.ammo)) {
+      const cap = p.ammoCap[type];
+      if (p.ammo[type] < cap) p.ammo[type] = Math.min(cap, p.ammo[type] + 40 * dt);
+    }
+    for (const g of p.guns) {
+      if (g && g.stats && g.ammoInMag < g.stats.magSize) g.ammoInMag = g.stats.magSize;
+    }
+  }
+  if (m.kind === 'door' && m.opens && m.opens !== 'p.jet.has' && !lv.got[m.id] && flagOn(lv, m.opens)) {
     lv.got[m.id] = true;
     emit(state, 'door', { id: m.id, open: true });
   }
@@ -190,12 +269,20 @@ function touchMechanism(state, p, lv, sec, m, dt) {
     if (m.dps) damagePlayer(state, p, { base: m.dps * dt, sourceKind: 'world', fromPos: { x: m.min[0], y: 0, z: m.min[2] } });
     if (m.slow) { const k = m.slow; p.vel.x *= k; p.vel.z *= k; }
     slowEnemiesInHazard(state, m);
+    if (m.enemyDps) hurtEnemiesInHazard(state, p, m, dt);
   }
-  if ((m.kind === 'jetpack' || m.kind === 'fuel') && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.8)) {
+  if ((m.kind === 'jetpack' || m.kind === 'fuel') && !lv.got[m.id] && !(m.skipIfOwned && p.jetpack) && nearPoint(m.at, x, y + 1, z, 1.8)) {
     lv.got[m.id] = true;
     p.jetpack = true;
-    lv.fuel = Math.max(lv.fuel, m.kind === 'fuel' ? 100 : 80);
+    lv.fuel = Math.max(lv.fuel || 0, m.kind === 'fuel' ? 100 : 80);
     emit(state, 'jetpack', { id: m.id });
+  }
+  if (m.kind === 'fuelPad' && m.at && nearPoint(m.at, x, y + 1, z, 1.6)) {
+    lv.fuel = Math.min(100, (lv.fuel || 0) + 40 * dt);
+    if (m.safe) {
+      lv.padSafe = true;
+      lv.safePos = { x: m.at[0], y: m.at[1] || 0, z: m.at[2] };
+    }
   }
   if (m.kind === 'power' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.8)) {
     lv.got[m.id] = true;
@@ -257,7 +344,12 @@ function grantModifier(state, p, id) {
   emit(state, 'modifier', { id });
   if (MOD_SPEED[id]) p.campaignSpeed = (p.campaignSpeed || 1) * MOD_SPEED[id];
   if (id === 'moonBoots') state.level.gravityMult = 0.6;
-  if (id === 'fuel') { p.jetpack = true; state.level.fuel = 100; state.level.modifiers.fuelInfinite = true; }
+  if (id === 'fuel') {
+    p.jetpack = true;
+    state.level.fuel = 100;
+    state.level.modifiers.fuelInfinite = true;
+    state.level.fuelTimer = 20;
+  }
   if (id === 'overshield' || id === 'ironSproto') {
     p.maxShield += id === 'ironSproto' ? 80 : 40;
     p.shield = p.maxShield;
@@ -310,8 +402,15 @@ function spawnSquad(state, enc) {
 
 function tickDuelBoss(state, e, dt) {
   const def = BOSSES[e.type];
+  if (e.boss.stunT > 0) {
+    e.boss.stunT -= dt;
+    e.vel.x = 0;
+    e.vel.z = 0;
+    if (e.boss.stunT <= 0 && e.boss.action && e.boss.action.id === 'stunned') e.boss.action = { id: 'idle', t: 0 };
+    return;
+  }
   const frac = e.hp / e.maxHp;
-  e.boss.phaseIdx = frac <= 0.33 ? 2 : frac <= 0.66 ? 1 : 0;
+  if (!e.boss.scripted) e.boss.phaseIdx = frac <= 0.33 ? 2 : frac <= 0.66 ? 1 : 0;
   const t = livingPlayer(state);
   if (t) {
     const dx = t.pos.x - e.pos.x, dz = t.pos.z - e.pos.z;
@@ -325,8 +424,10 @@ function tickDuelBoss(state, e, dt) {
   e.pos.z += e.vel.z * dt;
   e.ai.atk = (e.ai.atk == null ? 0.8 : e.ai.atk) - dt;
   if (e.ai.atk > 0 || !t) return;
-  e.ai.atk = def.attackEvery || 1.6;
-  const name = def.attacks[Math.floor(float(state.rng) * def.attacks.length)];
+  const scale = e.boss.scripted && e.boss.attackScale ? e.boss.attackScale : 1;
+  e.ai.atk = (def.attackEvery || 1.6) * scale;
+  const attacks = e.boss.scripted && e.boss.attackList ? e.boss.attackList : def.attacks;
+  const name = attacks[Math.floor(float(state.rng) * attacks.length)];
   bossAttack(state, e, def, t, name);
 }
 
@@ -353,6 +454,11 @@ function bossAttack(state, e, def, t, name) {
     }
     return;
   }
+  if (name === 'carpetSweep') {
+    const d = Math.hypot(t.pos.x - e.pos.x, t.pos.z - e.pos.z);
+    if (d < 15) damagePlayer(state, t, { base: 14, sourceKind: 'boss', fromPos: e.pos });
+    return;
+  }
   if (name === 'slam' || name === 'rugSlam') {
     damagePlayer(state, t, { base: 18 * (Math.hypot(t.pos.x - e.pos.x, t.pos.z - e.pos.z) < 4.5 ? 1 : 0), sourceKind: 'boss', fromPos: e.pos });
     return;
@@ -364,6 +470,10 @@ function bossAttack(state, e, def, t, name) {
   if (name === 'drone') { shot(16, 8, { homing: 1.2, homingSpeed: 16 }); return; }
   if (name === 'blast' || name === 'cloud' || name === 'breath') { shot(22, 12, { radius: 0.4 }); return; }
   if (name === 'fly') { e.pos.y = 1.2; return; }
+  if (name === 'pigRain') {
+    for (let i = 0; i < 4; i++) shot(18, 6, { homing: 0.4, homingSpeed: 14 });
+    return;
+  }
   shot(26, 7);
 }
 

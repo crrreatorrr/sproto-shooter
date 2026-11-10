@@ -12,8 +12,9 @@ import { nearestPlayer, resolveOverlaps } from './enemies.js';
 function start(e, id, data = {}) { e.boss.action = { id, t: 0, data }; }
 
 function nextAction(state, e, def) {
-  const phase = def.phases[e.boss.phaseIdx];
-  const id = phase.pattern[e.boss.patternIdx++ % phase.pattern.length];
+  const scripted = e.boss.scripted && Array.isArray(e.boss.attackList) && e.boss.attackList.length;
+  const pattern = scripted ? e.boss.attackList : def.phases[e.boss.phaseIdx].pattern;
+  const id = pattern[e.boss.patternIdx++ % pattern.length];
   start(e, id);
 }
 
@@ -29,7 +30,8 @@ export function bosses(state, dt) {
     // phase transitions
     const frac = e.hp / e.maxHp;
     const nxt = def.phases[b.phaseIdx + 1];
-    if (nxt && frac <= nxt.hpBelow && !b.transitioning) {
+    // A v2 script owns the parts and the adds. The wave phase change would summon into an empty list.
+    if (!b.scripted && nxt && frac <= nxt.hpBelow && !b.transitioning) {
       b.transitioning = true; b.invuln = true;
       start(e, 'transition', { duration: 2 });
       emit(state, 'bossPhase', { id: e.id, bossType: e.type, phaseIdx: b.phaseIdx + 1 });
@@ -42,7 +44,7 @@ export function bosses(state, dt) {
     if (done) {
       if (a.id === 'transition') {
         b.phaseIdx++; b.transitioning = false; b.invuln = false; b.patternIdx = 0;
-        if (impl === MEGA && b.phaseIdx === 1) summonGrunts(state, e);
+        if (impl === MEGA && b.phaseIdx === 1 && !b.scripted) summonGrunts(state, e);
       }
       nextAction(state, e, def);
     }
@@ -61,9 +63,11 @@ export function bosses(state, dt) {
 
 function summonGrunts(state, e) {
   const n = state.tier >= 5 ? 10 : 6;
-  const pts = state.spawnPoints.slice().sort((p1, p2) => Math.hypot(p1.x - e.pos.x, p1.z - e.pos.z) - Math.hypot(p2.x - e.pos.x, p2.z - e.pos.z));
+  const pts = (state.spawnPoints || []).slice().sort((p1, p2) => Math.hypot(p1.x - e.pos.x, p1.z - e.pos.z) - Math.hypot(p2.x - e.pos.x, p2.z - e.pos.z));
+  if (!pts.length) return;
   for (let i = 0; i < n; i++) {
     const pt = pts[i % 4];
+    if (!pt) continue;
     if (i < 4) createHazard(state, { kind: 'spawnPortal', pos: { x: pt.x, y: 0, z: pt.z }, radius: 1.2, ttl: 0.8 });
     createEnemy(state, 'midget', { pos: { x: pt.x + range(state.rng, -1, 1), z: pt.z + range(state.rng, -1, 1) }, summoned: true });
   }
@@ -261,7 +265,7 @@ function MEGA(state, e, a, dt, def, t) {
       if (!a.data.done) {
         a.data.done = true;
         const alive = state.enemies.filter((o) => !o.dead && o.summoned).length;
-        if (alive < 10) summonGrunts(state, e);
+        if (!e.boss.scripted && alive < 10) summonGrunts(state, e);
       }
       return a.t > 1.2;
     }
@@ -303,7 +307,16 @@ function HEX(state, e, a, dt, def, t) {
     const gx = goal.x - e.pos.x, gz = goal.z - e.pos.z, gl = Math.hypot(gx, gz);
     const sp = def.speed * (e.status.goo ? 1 - e.status.goo.slow : 1);
     if (gl > 0.5) { e.pos.x += (gx / gl) * Math.min(gl, sp * dt); e.pos.z += (gz / gl) * Math.min(gl, sp * dt); }
-    const r = Math.hypot(e.pos.x, e.pos.z); if (r > ARENA_R - 4) { e.pos.x *= (ARENA_R - 4) / r; e.pos.z *= (ARENA_R - 4) / r; }
+    if (state.mode !== 'campaign') {
+      const r = Math.hypot(e.pos.x, e.pos.z);
+      if (r > ARENA_R - 4) { e.pos.x *= (ARENA_R - 4) / r; e.pos.z *= (ARENA_R - 4) / r; }
+    } else if (e.boss.arena) {
+      const c = e.boss.arena;
+      const ax = e.pos.x - c.x, az = e.pos.z - c.z;
+      const ar = Math.hypot(ax, az);
+      const limit = Math.max(1, (c.radius || 30) - 4);
+      if (ar > limit) { e.pos.x = c.x + (ax / ar) * limit; e.pos.z = c.z + (az / ar) * limit; }
+    }
     e.yaw = yawTo(e.pos, t.pos);
   }
   // aura: drains mana

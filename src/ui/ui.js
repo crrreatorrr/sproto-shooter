@@ -10,6 +10,7 @@ import { nearBox } from '../sim/economy.js';
 import { PAD_BINDINGS } from '../input/padConfig.js';
 import { padGlyph } from '../input/gamepad.js';
 import { keyLabel } from '../input/input.js';
+import { TUNING } from '../data/tuning.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -31,6 +32,8 @@ export function createUI(root, { input, bus, project, game }) {
     <div id="crosshair"><i></i><i></i><i></i><i></i></div>
     <div id="hitmarker"></div>
     <div id="vitals">
+      <div class="bar stamina"><b></b><span></span></div>
+      <div class="bar grapple"><b></b><span></span></div>
       <div class="bar shield"><b></b><span></span></div>
       <div class="bar health"><b></b><span></span></div>
       <div class="bar mana"><b></b><span></span></div>
@@ -69,7 +72,9 @@ export function createUI(root, { input, bus, project, game }) {
   const els = {
     wave: $('#wave-info', root), tickets: $('#tickets', root), resources: $('#resources', root), bossbars: $('#bossbars', root),
     cross: $('#crosshair', root), hit: $('#hitmarker', root),
-    shield: $('.bar.shield', root), health: $('.bar.health', root), mana: $('.bar.mana', root), skills: $('#skills-mini', root),
+    shield: $('.bar.shield', root), health: $('.bar.health', root), mana: $('.bar.mana', root),
+    stamina: $('.bar.stamina', root), grapple: $('.bar.grapple', root),
+    skills: $('#skills-mini', root),
     spells: $('#spells', root), gunName: $('#gun-name', root), mag: $('#mag', root), reserve: $('#reserve', root), slots: $('#slots', root), medkits: $('#medkits', root),
     prompt: $('#prompt', root), loot: $('#lootcard', root), banners: $('#banners', root), toasts: $('#toasts', root), feed: $('#feed', root),
     downed: $('#downed', root), downedT: $('#downed-t', root), vignette: $('#vignette', root),
@@ -423,6 +428,16 @@ export function createUI(root, { input, bus, project, game }) {
     updateNums(dt);
 
     // vitals
+    if (p.stamina != null) {
+      const gLeft = p.grapple ? 1 : (p.grappleCd > 0 ? 1 - p.grappleCd / TUNING.grappleCd : 1);
+      bar(els.stamina, 'sta', p.stamina, p.staminaLock ? 'STAMINA' : 'Sprint');
+      bar(els.grapple, 'grp', Math.max(0, Math.min(1, gLeft)), p.grapple ? 'HOOK' : (p.grappleCd > 0 ? 'Grapple' : 'G'));
+      els.stamina.hidden = false;
+      els.grapple.hidden = false;
+    } else {
+      els.stamina.hidden = true;
+      els.grapple.hidden = true;
+    }
     bar(els.shield, 'sh', p.maxShield ? p.shield / p.maxShield : 0, `${Math.ceil(p.shield)} / ${p.maxShield}`);
     bar(els.health, 'hp', p.hp / p.maxHp, `${Math.ceil(p.hp)} / ${p.maxHp}`);
     bar(els.mana, 'mp', p.mana / p.maxMana, `${Math.floor(p.mana)} / ${p.maxMana}${p.spells.manaShieldOn ? ' ◈' : ''}`);

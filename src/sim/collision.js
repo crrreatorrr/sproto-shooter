@@ -85,7 +85,11 @@ export function worldHitboxes(e, out = []) {
   // local +z forward -> world forward = (-sin yaw, -cos yaw)
   const toWorld = (lx, lz) => ({ x: e.pos.x + (-sy * lz + cy * lx), z: e.pos.z + (-cy * lz - sy * lx) });
   for (const hb of def.hitboxes) {
-    if (hb.onlyWhen && !(e.boss && e.boss.action.id === hb.onlyWhen)) continue;
+    if (hb.onlyWhen) {
+      const bossWhen = !!(e.boss && e.boss.action && e.boss.action.id === hb.onlyWhen);
+      const exposed = !!(e.ai && e.ai.exposed === hb.onlyWhen);
+      if (!bossWhen && !exposed) continue;
+    }
     let r = hb.r * sc;
     if (hb.zone === 'weak' && e.bigHeadT > 0) r *= 1.8;
     if (hb.type === 'capsule') {

@@ -8,9 +8,10 @@ export const LEVEL_COLOR = {
   ice: 0xd5e4ef, rock: 0x4e3c34, crate: 0x8d5e34, pillar: 0x9a9188, trim: 0xff5ec4,
   concrete: 0x9a9590, wood: 0x8a5a32, glass: 0xb7e0ea, neon: 0x39ffb0, gold: 0xe6c15a,
   toxic: 0x7cff4a, grass: 0x4f8f3a, snow: 0xf4f7fb, water: 0x3a7ca5, lava: 0xff5a1f,
+  candleUp: 0x3dff7a, candleDown: 0xff3b3b, forceField: 0x9fd6ff,
 };
 
-const EMISSIVE = new Set(['neon', 'toxic', 'lava', 'gold']);
+const EMISSIVE = new Set(['neon', 'toxic', 'lava', 'gold', 'candleUp', 'candleDown']);
 
 export function levelMaterial(name, cache) {
   if (cache.has(name)) return cache.get(name);
@@ -21,8 +22,8 @@ export function levelMaterial(name, cache) {
     metalness: name === 'metal' || name === 'gold' ? 0.45 : 0.02,
     emissive: EMISSIVE.has(name) ? color : 0x000000,
     emissiveIntensity: EMISSIVE.has(name) ? 0.35 : 0,
-    transparent: name === 'glass',
-    opacity: name === 'glass' ? 0.4 : 1,
+    transparent: name === 'glass' || name === 'forceField',
+    opacity: name === 'forceField' ? 0.28 : name === 'glass' ? 0.4 : 1,
   });
   cache.set(name, mat);
   return mat;
