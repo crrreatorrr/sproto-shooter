@@ -55,9 +55,10 @@ const BUILT = makeV2Level({
 
 for (const sec of BUILT.sections) {
   const origin = sec.origin;
+  if (sec.terrain && sec.terrain.origin) {
+    sec.terrain = { ...sec.terrain, origin: add(sec.terrain.origin, origin) };
+  }
   for (const enc of sec.encounters || []) {
-    if (enc.arena) enc.arena = { x: enc.arena.x + origin[0], z: enc.arena.z + origin[2], radius: enc.arena.radius };
-    if (enc.lockdown && enc.lockdown.room) enc.lockdown.room = shiftBox(enc.lockdown.room, origin);
     for (const sq of enc.squads || []) {
       const tr = sq.trigger;
       if (!tr) continue;
@@ -65,6 +66,7 @@ for (const sec of BUILT.sections) {
       if (tr.zBelow != null) tr.zBelow += origin[2];
       if (tr.zAbove != null) tr.zAbove += origin[2];
     }
+    // makeV2Level shifts target marks. Adds stay in design (x, y, north) until here.
     const script = enc.script;
     if (!script) continue;
     for (const part of script.parts || []) {
@@ -73,7 +75,6 @@ for (const sec of BUILT.sections) {
           addSpec.at = addSpec.at.map((p) => shiftDesign(p, origin));
         } else addSpec.at = shiftDesign(addSpec.at, origin);
       }
-      for (const target of part.targets || []) target.at = shiftDesign(target.at, origin);
     }
   }
 }

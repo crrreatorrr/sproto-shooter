@@ -33,9 +33,9 @@ export const E1 = {
       u('obama', 1, { role: 'runner', alarm: 'S1-alarm1' }),
       u('obama', 1),
     ], [[120, 2.5, 186], [122, 2.5, 186]], 'placed'),
-    squad('E1-c', { type: 'onAlert', box: zone(140, 180, 155, 180, -2, 6) }, [
+    squad('E1-c', { type: 'onEnter' }, [
       u('sewerMidget', 2),
-    ], [[150, 0, 165], [172, 0, 166]], 'burrow', { delay: 0.6 }),
+    ], [[150, 0, 165], [172, 0, 166]], 'burrow', { delay: 0.6, near: 'the campfire, 20 m' }),
     alarm('E1-R', 'S1-alarm1', [u('midget', 4), u('boomMidget', 2)], [[12, 0, 215]]),
   ],
 };
@@ -45,7 +45,7 @@ export const E2 = {
   name: 'Frozen Creek',
   maxAlive: 7,
   objective: { kind: 'reach', text: 'Reach the north bank' },
-  activate: zone(12, 288, 230, 300, -4, 16),
+  activate: zone(12, 288, 200, 356, -4, 16),
   zone: zone(12, 288, 266, 290, -2, 8),
   squads: [
     squad('E2-a', { type: 'onEnter' }, [u('spotterDrone', 1)], [[80, 8, 256]], 'air', {
@@ -74,7 +74,7 @@ export const E3 = {
     squad('E3-c', { type: 'onKills', n: 2 }, [
       u('auditSniper', 1, { elite: true, name: 'the Head Auditor' }),
     ], [[150, 22, 445]], 'hidden', { delay: 2, perches: ['P4', 'P1', 'P3'] }),
-    squad('E3-d', { type: 'onAlert', box: zone(100, 200, 420, 520, -2, 8) }, [
+    squad('E3-d', { type: 'onAlert', box: zone(100, 200, 400, 530, -2, 8) }, [
       u('miningRig', 1),
     ], [[150, 0, 512]], 'placed'),
     alarm('E3-R', 'S1-alarm3', [u('midget', 3), u('riotMidget', 2)], [[220, 0, 433]]),
@@ -86,7 +86,7 @@ export const E4 = {
   name: 'The Kill Zone',
   maxAlive: 12,
   objective: { kind: 'reach', text: 'Reach the gate apron' },
-  activate: whole(210, 260, 20),
+  activate: zone(0, 260, 0, 380, -8, 20),
   zone: zone(110, 150, 180, 200, -2, 6),
   squads: [
     squad('E4-a', { type: 'onEnter' }, [u('miningRig', 2)], [[100, 8, 203], [160, 8, 203]], 'placed', {
@@ -138,7 +138,7 @@ export const E6 = {
   name: 'Intake',
   maxAlive: 7,
   objective: { kind: 'reach', text: 'Reach Lift A' },
-  activate: zone(20, 60, 10, 70, -2, 8),
+  activate: zone(20, 60, 14, 110, -2, 8),
   zone: zone(32, 48, 56, 68, -2, 8),
   squads: [
     squad('E6-a', { type: 'onAlert', zBelow: -14 }, [u('riotMidget', 3)], [[40, 0, 52]], 'placed'),
@@ -225,8 +225,8 @@ export const F1 = {
         immune: true,
         attacks: ['missiles'],
         targets: [
-          { id: 'S3-genNW', hp: 500, at: [17, 5, 91] },
-          { id: 'S3-genNE', hp: 500, at: [83, 5, 91] },
+          { id: 'S3-genNW', hp: 500, at: P(17, 5, 91) },
+          { id: 'S3-genNE', hp: 500, at: P(83, 5, 91) },
         ],
         adds: [
           { t: 0, at: spN[0], method: 'drop', spawn: 'SP-N', units: [['glowieAgent', 3, { flashbang: 1 }]] },

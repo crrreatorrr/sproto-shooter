@@ -61,11 +61,11 @@ export const S2 = {
   routeM: 438,
   flyerVolume: { min: [0, -8, -250], max: [260, 24, 0] },
   exit: zone(126, 134, 206, 214, -2, 8),
+  terrain: terrain({
+    id: 'S2-ground', origin: [0, 0, -200], size: [170, 200], cell: 4, seed: 502, mat: 'snow',
+    noise: { amp: 0.8, freq: 0.015, octaves: 1 },
+  }),
   geometry: [
-    terrain({
-      id: 'S2-ground', origin: [0, 0, -200], size: [170, 200], cell: 4, seed: 502, mat: 'snow',
-      noise: { amp: 0.8, freq: 0.015, octaves: 1 },
-    }),
     slab('S2-floor', 85, -0.25, 100, [170, 0.5, 200], 'snow', { tag: 'terrainStandIn' }),
     slab('S2-yard', 130, -0.25, 219, [240, 0.5, 42], 'concrete'),
     slab('S2-cliffW', 5, 7, 125, [10, 14, 250], 'rock'),
