@@ -44,4 +44,3 @@ export function specBasis(spec, out) {
   out.n.crossVectors(out.f, out.t);
   return out;
 }
-
