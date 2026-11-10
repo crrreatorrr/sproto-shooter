@@ -134,12 +134,8 @@ export function tickGrapple(state, p, dt) {
   const c = p.cmd || {};
   const held = !!(c.held && c.held.grapple);
   if (!held || p.downed) {
+    // Release keeps the velocity the pull already built. Gravity and air control take over next.
     if (p.grapple) {
-      const sp = Math.hypot(p.vel.x, p.vel.y, p.vel.z);
-      if (sp > 1) {
-        const k = Math.min(TUNING.grappleMaxSpeed, sp * 1.08) / sp;
-        p.vel.x *= k; p.vel.y *= k; p.vel.z *= k;
-      }
       emit(state, 'grappleRelease', { playerId: p.id });
       p.grapple = null;
     }
@@ -155,6 +151,7 @@ export function tickGrapple(state, p, dt) {
   }
   const hook = p.grapple;
   if (!stillClear(state, p, hook)) {
+    emit(state, 'grappleRelease', { playerId: p.id });
     p.grapple = null;
     return;
   }
@@ -162,6 +159,8 @@ export function tickGrapple(state, p, dt) {
   const dx = hook.x - p.pos.x, dy = hook.y - originY, dz = hook.z - p.pos.z;
   const dist = Math.hypot(dx, dy, dz) || 1;
   if (dist < TUNING.grappleArrive) {
+    // Arrival keeps the speed you came in with, so you fly past the anchor.
+    emit(state, 'grappleRelease', { playerId: p.id });
     p.grapple = null;
     return;
   }
@@ -169,11 +168,6 @@ export function tickGrapple(state, p, dt) {
   p.vel.x += (dx / dist) * pull;
   p.vel.y += (dy / dist) * pull;
   p.vel.z += (dz / dist) * pull;
-  const sp = Math.hypot(p.vel.x, p.vel.y, p.vel.z);
-  if (sp > TUNING.grappleMaxSpeed) {
-    const k = TUNING.grappleMaxSpeed / sp;
-    p.vel.x *= k; p.vel.y *= k; p.vel.z *= k;
-  }
   const room = sealOf(state, p);
   if (room) {
     const pad = 0.45;

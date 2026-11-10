@@ -43,16 +43,17 @@ function aim(st) {
   pl._px = pl.pos.x; pl._pz = pl.pos.z;
   pl._stuck = moved < 0.02 && dist > 1.4 ? stuck + 1 : 0;
   const sidestep = pl._stuck > 30;
-  const hop = !!(lv.voids && lv.voids.length) && pl._stuck > 24;
+  const gap = !!(lv.voids && lv.voids.length) && pl._stuck > 16;
+  const fling = gap && (pl._stuck % 36) < 14;
   return cmd({
-    yaw, pitch,
+    yaw, pitch: fling ? 0.65 : pitch,
     moveZ: sidestep ? 0 : (dist > 1.1 ? 1 : 0),
     moveX: sidestep ? (Math.floor(pl._stuck / 18) % 2 === 0 ? 1 : -1) : 0,
     held: {
       fire: !!(best && best.state !== 'spawning'),
       sprint: !sidestep,
-      jump: hop || pl._stuck > 50,
-      grapple: hop,
+      jump: pl._stuck > 50,
+      grapple: fling,
     },
   });
 }

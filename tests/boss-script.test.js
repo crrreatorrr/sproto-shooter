@@ -127,7 +127,7 @@ describe('boss part script', () => {
   });
 
   it('does not move the campaign or PvP pins', () => {
-    expect(contentFingerprint(1)).toBe('0ebc3c6d');
+    expect(contentFingerprint(1)).toBe('9ec1c6ea');
     expect(CONTENT_FINGERPRINT).toBe('17d87c54');
   });
 });
