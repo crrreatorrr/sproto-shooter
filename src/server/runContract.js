@@ -5,7 +5,7 @@ import { noteV2Section } from '../sim/campaign/v2.js';
 import { verifyStateHash } from '../sim/hash.js';
 import { getLevelRuntime, sectionById } from '../sim/level/runtime.js';
 import {
-  bossById, rejectedBossReason, contentFingerprint, findEncounter,
+  bossById, rejectedBossReason, contentFingerprint, resolveCanonicalEncounter,
 } from '../data/serverManifest.js';
 import { PROTOCOL_VERSION, LIMITS, validDay, validId, inspectValue } from './protocol.js';
 import { grantSpell } from '../sim/spellbook.js';
@@ -98,7 +98,7 @@ export function buildIssuance(input) {
   if (typeof input.seed !== 'number' || !Number.isInteger(input.seed) || input.seed < 1 || input.seed > 0xffffffff) {
     return reject(input.seed < 0 ? 'negative' : 'malformed');
   }
-  const found = findEncounter(boss.levelId, boss.encounterId);
+  const found = resolveCanonicalEncounter(boss);
   if (!found) return reject('malformed');
   const issuance = {
     v: PROTOCOL_VERSION,
@@ -110,7 +110,7 @@ export function buildIssuance(input) {
     seed: input.seed,
     levelId: boss.levelId,
     sectionId: found.section.id,
-    encounterId: boss.encounterId,
+    encounterId: found.encounter.id,
     canonicalBoss: boss.id,
     parts: boss.parts.slice(),
     countAs: 1,
