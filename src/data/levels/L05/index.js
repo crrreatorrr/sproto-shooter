@@ -55,9 +55,8 @@ const BUILT = makeV2Level({
 
 for (const sec of BUILT.sections) {
   const origin = sec.origin;
-  if (sec.terrain && sec.terrain.origin) {
-    sec.terrain = { ...sec.terrain, origin: add(sec.terrain.origin, origin) };
-  }
+  // makeV2Level already moved section.terrain. Shifting it again parks S2's
+  // ground 520 m south of the floor, and the bot falls through the pass.
   for (const enc of sec.encounters || []) {
     for (const sq of enc.squads || []) {
       const tr = sq.trigger;

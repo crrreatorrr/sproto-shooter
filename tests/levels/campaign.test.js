@@ -47,7 +47,6 @@ function aim(st) {
   const pull = hook && (pl._stuck % 36) < 14;
   const gap = !!(lv.voids && lv.voids.length) && pl._stuck > 16;
   const fling = !pull && gap && (pl._stuck % 36) < 14;
-  const slide = onSlideTag(sec, pl) && !sidestep;
   let aimYaw = yaw;
   let aimPitch = fling ? 0.65 : pitch;
   if (pull) {
@@ -64,7 +63,8 @@ function aim(st) {
       jump: pl._stuck > 50,
       grapple: !!(pull || fling),
     },
-    pressed: slide ? { slide: true } : {},
+    // Slide-tagged decks are for the player. Taking them leaves the lane.
+    pressed: {},
   });
 }
 

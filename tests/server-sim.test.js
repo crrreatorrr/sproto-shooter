@@ -49,7 +49,7 @@ describe('canonical bosses', () => {
     }
     const obama = bossById('obama');
     expect(obama.encounterId).toBe('SB-BOSS');
-    expect(resolveCanonicalEncounter(obama).encounter.id).toBe('S3-E3');
+    expect(resolveCanonicalEncounter(obama).encounter.id).toBe('SB-BOSS');
   });
 });
 

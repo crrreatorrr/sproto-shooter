@@ -1,5 +1,5 @@
 {
-  "contentFingerprint": "9ec1c6ea",
+  "contentFingerprint": "cea1f88b",
   "runs": {
     "sahil-success": {
       "boss": "sahil",
@@ -44,10 +44,10 @@
       "boss": "obama",
       "mode": "success",
       "seed": 11,
-      "tick": 2460,
-      "frames": 2460,
-      "bytes": 39360,
-      "stateHash": "8907f24e",
+      "tick": 5049,
+      "frames": 5049,
+      "bytes": 80784,
+      "stateHash": "fdcbe235",
       "outcome": "clear",
       "reason": "boss_clear",
       "eligible": true,

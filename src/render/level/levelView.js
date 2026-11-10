@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getLevelRuntime } from '../../sim/level/runtime.js';
-import { terrainGrid } from '../../sim/campaign/terrain.js';
+import { solidTerrain, terrainGrid } from '../../sim/campaign/terrain.js';
 
 export const LEVEL_COLOR = {
   stone: 0x6e675f, sand: 0xc6a56e, dirt: 0x6d4b2c, hedge: 0x3f7a34, metal: 0x5c6772,
@@ -122,10 +122,11 @@ export function createLevelView() {
     const rt = getLevelRuntime(lv.id);
     const sec = rt.sectionById[lv.section];
     if (!sec) return;
-    const geometry = (sec.geometry || []).filter((g) => !(sec.terrain && g.tag === 'terrainStandIn'));
+    const field = solidTerrain(sec);
+    const geometry = (sec.geometry || []).filter((g) => !(field && g.tag === 'terrainStandIn'));
     for (const door of doors) geometry.push(aabbBox(door));
     for (const mesh of buildSectionMeshes(geometry, mats)) group.add(mesh);
-    if (sec.terrain) group.add(terrainMesh(sec.terrain, mats));
+    if (field) group.add(terrainMesh(field, mats));
     for (const g of sec.geometry || []) if (g.kind === 'terrain') group.add(terrainMesh(g, mats));
     for (const m of sec.mechanisms || []) addMarker(m);
     for (const w of sec.weapons || []) addMarker({ ...w, kind: 'rack' });

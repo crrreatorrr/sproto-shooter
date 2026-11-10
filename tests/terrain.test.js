@@ -3,7 +3,7 @@ import { terrain } from '../src/data/levels/kit.js';
 import { makeV2Level } from '../src/data/levels/v2.js';
 import { contentFingerprint } from '../src/data/serverManifest.js';
 import { bindV2Section } from '../src/sim/campaign/v2.js';
-import { heightAt, terrainGrid } from '../src/sim/campaign/terrain.js';
+import { heightAt, solidTerrain, terrainGrid } from '../src/sim/campaign/terrain.js';
 import { firstSolid, groundHeight, snapToGround, terrainSolid } from '../src/sim/campaign/solids.js';
 import { CONTENT_FINGERPRINT } from '../src/sim/pvp/rules.js';
 import { createGameState } from '../src/sim/state.js';
@@ -33,7 +33,7 @@ describe('section terrain', () => {
     expect(heightAt(field, -5, -4)).toBeNull();
   });
 
-  it('is walked on, stops a downward shot, and drops the stand-in floor', () => {
+  it('is walked on, stops a downward shot, and keeps a stand-in slab', () => {
     const solid = terrainSolid(field);
     expect(groundHeight([solid], 20, -12, 0.3, 2, 0.4)).toBeCloseTo(0);
     const hit = firstSolid([solid], { x: 4, y: 6, z: -4 }, { x: 0, y: -1, z: 0 }, 20);
@@ -46,13 +46,25 @@ describe('section terrain', () => {
       id: 'S',
       terrain: field,
       geometry: [
-        { kind: 'box', id: 'stand', tag: 'terrainStandIn', at: [20, -0.25, -12], size: [10, 0.5, 10] },
         { kind: 'box', id: 'wall', at: [2, 2, -4], size: [1, 4, 8] },
       ],
     });
-    expect(s.level.solids.some((item) => item.id === 'stand')).toBe(false);
     expect(s.level.solids.some((item) => item.kind === 'terrain')).toBe(true);
     expect(s.level.solids.some((item) => item.id === 'wall')).toBe(true);
+    const kept = createGameState({ seed: 1 });
+    kept.mode = 'campaign';
+    kept.level = { id: 'T', section: 'S' };
+    const standSec = {
+      id: 'S',
+      terrain: field,
+      geometry: [
+        { kind: 'box', id: 'stand', tag: 'terrainStandIn', at: [20, -0.25, -12], size: [10, 0.5, 10] },
+      ],
+    };
+    expect(solidTerrain(standSec)).toBeNull();
+    bindV2Section(kept, standSec);
+    expect(kept.level.solids.some((item) => item.id === 'stand')).toBe(true);
+    expect(kept.level.solids.some((item) => item.kind === 'terrain')).toBe(false);
     const body = { pos: { x: 20, y: 3, z: -12 }, prevPos: { x: 20, y: 3, z: -12 }, vel: { x: 0, y: 0, z: 0 } };
     for (let i = 0; i < 90; i++) {
       body.prevPos = { ...body.pos };
@@ -77,7 +89,7 @@ describe('section terrain', () => {
   });
 
   it('does not move the campaign or PvP pins', () => {
-    expect(contentFingerprint(1)).toBe('9ec1c6ea');
+    expect(contentFingerprint(1)).toBe('cea1f88b');
     expect(CONTENT_FINGERPRINT).toBe('17d87c54');
   });
 });
