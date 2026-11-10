@@ -124,7 +124,7 @@ export function gazebo() {
     }));
   }
   return [
-    cylinder({ id: 'base', at: [0, 0, 0], r: 5, h: 0.5, mat: 'stone' }),
+    cylinder({ id: 'base', at: [0, -0.15, 0], r: 5, h: 0.5, mat: 'stone' }),
     ...pillars,
     cylinder({ id: 'roof', at: [0, 4, 0], r: 5.5, h: 0.5, mat: 'wood' }),
     cone({ id: 'spire', at: [0, 4.5, 0], r: 1.5, h: 2, mat: 'wood' }),

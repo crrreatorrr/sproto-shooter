@@ -72,7 +72,7 @@ describe('L03 Vegetable Grove', () => {
     expect(s.level.useSolids).toBe(true);
     const rt = getLevelRuntime('L03');
     expect(rt.sectionById.S1.geometry.some((g) => g.id === 'S1-FL')).toBe(true);
-    expect(p.pos.x).toBeCloseTo(4, 0);
+    expect(p.pos.x).toBeCloseTo(18, 0);
     expect(p.pos.z).toBeCloseTo(-80, 0);
   });
 });

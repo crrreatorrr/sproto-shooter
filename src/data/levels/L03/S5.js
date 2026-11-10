@@ -1,6 +1,6 @@
 // S5 The Rootway. Arena centre C = (45, 0, -80). Bearings are clockwise from north.
-import { box, cylinder, disc, polar, place, rotY } from './prim.js';
-import { manaBloom, mound, podStump, rootArch, totem } from './prefabs.js';
+import { box, cylinder, disc, polar, place, rotY, sphere } from './prim.js';
+import { manaBloom, mound, podStump, rootArch } from './prefabs.js';
 import { ENCOUNTERS } from './encounters.js';
 
 function arenaWalls() {
@@ -71,7 +71,7 @@ export const S5 = {
   exit: { min: [41, -1, -120], max: [49, 6, -114] },
   intro: { title: 'The Compost Hex', lines: ['Sahil left a shade to guard the crop.', 'It eats mana. Feed it its own orbs.'] },
   geometry: [
-    box({ id: 'S5-FL', at: [45, -0.25, -60], size: [90, 0.5, 120], mat: 'dirt' }),
+    box({ id: 'S5-FL', at: [45, -0.25, -60], size: [400, 0.5, 400], mat: 'dirt' }),
     box({ id: 'S5-HW1', at: [34, 2.5, -8], size: [2, 5, 16], mat: 'wood' }),
     box({ id: 'S5-HW2', at: [56, 2.5, -8], size: [2, 5, 16], mat: 'wood' }),
     box({ id: 'S5-HW3a', at: [38, 2.5, -17], size: [8, 5, 2], mat: 'wood' }),
@@ -83,10 +83,13 @@ export const S5 = {
     ...place(rootArch(), { at: [45, 0, -40], id: 'S5-AR3' }),
     ...arenaWalls(),
     disc({ id: 'S5-LID', at: [45, 12, -80], r: 35, mat: 'glass' }),
-    cylinder({ id: 'S5-HEAP', at: [45, 0, -80], r: 6, h: 0.5, mat: 'dirt' }),
-    ...place(totem(), { at: [45, 0, -102], id: 'TOT-N' }),
-    ...place(totem(), { at: [64.1, 0, -69], id: 'TOT-SE' }),
-    ...place(totem(), { at: [25.9, 0, -69], id: 'TOT-SW' }),
+    cylinder({ id: 'S5-HEAP', at: [45, -0.2, -80], r: 6, h: 0.5, mat: 'dirt' }),
+    cylinder({ id: 'TOT-N', at: [45, 0, -102], r: 0.8, h: 4, mat: 'wood' }),
+    sphere({ id: 'TOT-N-eye', at: [45, 4.4, -102], r: 0.7, mat: 'neon' }),
+    cylinder({ id: 'TOT-SE', at: [64.1, 0, -69], r: 0.8, h: 4, mat: 'wood' }),
+    sphere({ id: 'TOT-SE-eye', at: [64.1, 4.4, -69], r: 0.7, mat: 'neon' }),
+    cylinder({ id: 'TOT-SW', at: [25.9, 0, -69], r: 0.8, h: 4, mat: 'wood' }),
+    sphere({ id: 'TOT-SW-eye', at: [25.9, 4.4, -69], r: 0.7, mat: 'neon' }),
     ...boulderBearings.map((b, i) => {
       const at = polar(45, -80, 14, b, 1.4);
       return { kind: 'sphere', id: `S5-B${i}`, at, r: 2, mat: 'rock' };
@@ -114,6 +117,8 @@ export const S5 = {
     { kind: 'target', id: 'TOT-N-hp', at: [45, 2, -102], hp: 240, bark: true },
     { kind: 'target', id: 'TOT-SE-hp', at: [64.1, 2, -69], hp: 240, bark: true },
     { kind: 'target', id: 'TOT-SW-hp', at: [25.9, 2, -69], hp: 240, bark: true },
+    { kind: 'hazard', id: 'TOT-SW-HZ', min: [22, -1, -73], max: [30, 3, -65], dps: 12, enemyDps: 40, stripsBark: true, element: 'toxic' },
+    { kind: 'hazard', id: 'S5-BARK', min: [-4, -2, -124], max: [94, 8, 8], dps: 0, enemyDps: 0.01, stripsBark: true, element: 'toxic' },
     ...podBearings.map((b, i) => ({
       kind: 'seedPod', id: `S5-POD-use${i + 1}`, at: polar(45, -80, 18, b, 1.1), regrow: 12, damage: 150, radius: 4,
     })),

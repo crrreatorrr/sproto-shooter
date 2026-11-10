@@ -83,15 +83,17 @@ export function hedgeRing(id, { a, b, h, west, north, east, south }) {
 
 function splitWall(out, _id, gap, from, to, make) {
   if (!(to - from >= 0.5)) return;
-  if (!gap) {
-    out.push(make(span(from, to), ''));
-    return;
+  const gaps = !gap ? [] : (Array.isArray(gap) ? gap : [gap]);
+  const cuts = gaps
+    .map((g) => ({ a: g.at - (g.width || 4) / 2, b: g.at + (g.width || 4) / 2 }))
+    .sort((p, q) => p.a - q.a);
+  let cursor = from;
+  let n = 0;
+  for (const cut of cuts) {
+    if (cut.a - cursor >= 0.5) out.push(make(span(cursor, cut.a), String(n++)));
+    cursor = Math.max(cursor, cut.b);
   }
-  const half = (gap.width || 4) / 2;
-  const cut0 = gap.at - half;
-  const cut1 = gap.at + half;
-  if (cut0 - from >= 0.5) out.push(make(span(from, cut0), 'a'));
-  if (to - cut1 >= 0.5) out.push(make(span(cut1, to), 'b'));
+  if (to - cursor >= 0.5) out.push(make(span(cursor, to), gaps.length ? String(n) : ''));
 }
 
 export function hazardBox(id, min, max, extra = {}) {

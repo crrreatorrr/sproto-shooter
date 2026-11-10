@@ -1,39 +1,20 @@
 # L03 engine needs
 
-Vegetable Grove is authored against `docs/campaign/ENGINE-API.md` (E1–E7 as they landed with L01).
-Everything below is required by `docs/campaign/levels/L03-vegetable-grove.md` and is **not** implemented
-on main. Level data already carries the ids, positions and parameters. Do not change L03's census
-to paper over these.
+Landed on main and wired in this level: the four bodies, Hex `arena: { x: 45, z: -80, radius: 34 }`,
+`fleeAt: 0.5` on `S6-F2` with `S6-LG` `opens: 'S6-F2.fled'` and `S6-RISE` `starts: 'S6-F2.fled'`,
+targets `S1-LB-hp` (bulletMul 0.2), `S6-HCB-hp`, and `TOT-N-hp` / `TOT-SE-hp` / `TOT-SW-hp`.
+
+Still open, with the numbers the grove doc asks for. A guns-only god-mode bot can clear the level
+without these. Do not change the census to paper over them.
 
 Numbers are tier-1 unless noted. L03 tier is 3, so enemy HP and damage, and spell damage, scale by
 1.32 (1.15²). Player hazard damage does not scale.
 
-## Blocking a clear on today's director
+`S3-BARK`, `S4-BARK` and `S5-BARK` are temporary: `enemyDps: 0.01` and `stripsBark: true` over the
+section, so bullets can kill a Bark Brute. Delete them when Goo or Yeet opens bark. The real pools
+still do 12 dps to the player and 40 to enemies.
 
-1. **E8 placeholders are not enemies.** `hexWisp`, `barkBrute`, `manaLeech` and `gooGlob` are squad
-   units. `createEnemy` reads `ENEMIES[type]` and throws on the first of these (E2, two Hex Wisps).
-   Stat blocks and primitive looks are in `enemies.js` (`L03_ARCHETYPES`). Wire `look` the way
-   `buildLookGroup` already draws.
-2. **`hexAuditor` is not spawnable from a v2 squad.** `spawnOne` calls `createBoss` only when
-   `BOSSES[type].campaign` is set. The Hex is a wave boss, so the director calls `createEnemy` and
-   throws. Spawn it with `createBoss`, and do not run `HEX()`'s arena clamp (`ARENA_R` about the
-   world origin). The fight's centre is section-local `(45, 0, -80)`, radius 34, and the body stays
-   inside radius 30 (24 after the flood).
-3. **v2 never ticks a campaign boss and never reads `fleeAt`.** `v2Post` returns before
-   `tickDuelBoss` and before the flee check. `S6-F2` is Broccoli Head, stage 1 only, `fleeAt: 0.5`
-   (550 of 1,100 with today's bar). On flee: set `dead` and `fled`, emit `bossEscape`, do **not**
-   record a boss kill, open `S6-LG` (`opens: 'S6-F2.fled'`), and start `S6-RISE`. He keeps 9–14 m,
-   bolts are floret-skinned at `4 × 0.76`, and the Floret Mortar is 8 circles of r 2 over 2.4 s
-   with 1 s warning, every 14 s.
-4. **Destructible solids never leave.** `S1-LB` (200 HP, bullets ×0.2, two seed-pod blasts) plus
-   the two fences seal x = 64 from z = -158 to z = -2. A gun-only bot cannot walk past it, so the
-   shared campaign autopilot cannot finish L03. Same rule for `S6-HCB` (150 HP, one pod or 8 s of
-   bullets) and the three Root Totems (240 HP, bark states, root boxes take bullets at 20%).
-   Removing the solid is the missing piece. `onPartDestroyed` id for the first totem is `TOT-N`
-   (squad `F1-p2d`). Until that fires, `S5-F1` cannot complete: a boss objective waits until every
-   squad has spawned.
-
-## E8 — the four new bodies
+## E8 — still short of the doc
 
 | Id | HP | Speed | Body | Damage taken | Attack |
 |---|---|---|---|---|---|
@@ -45,7 +26,7 @@ Numbers are tier-1 unless noted. L03 tier is 3, so enemy HP and damage, and spel
 `barkBrute` states: **Hard** bullets 0, explosives 0.25, spells 1. **Softened** (Goo, 4 s) bullets 1.
 **Cracked** (Chain Zap, 6 s) bullets 1 and staggered 0.8 s. **Stripped** (Goo then Zap inside 4 s,
 toxic runoff, or a seed pod) for good, bullets 1.25. Yeet moves it 5 m, or 8 m once the bark is open.
-The F1 brute at `TOT-SW` is `elite: true`. `spawnOne` drops that flag today.
+The F1 brute at `TOT-SW` is `elite: true`. The director keeps that flag.
 
 `gooGlob` Chain Zap always jumps 9 m between Glob bodies and does +50%.
 
@@ -57,8 +38,8 @@ the lid: Gazebo Court y ≤ 9, Hothouse y ≤ 8, Rootway arena y ≤ 12. `flyerV
 section, so a court lid cannot be the whole of S2. Per-encounter lids are the missing hook.
 `S5-LID` is a disc (drawn, not a solid) of r 35 at y 12.
 
-`navLinks` are on each section and shifted into world space. `noteV2Section` does not copy them
-onto `state.level`, so pads are not links yet.
+`navLinks` are copied onto the level. A lockdown room is the flyer lid. Passing through solids,
+and a lid that is not the lockdown room, are still open.
 
 ## E7 / E8 — damage by source, bark, `onlyWhen`
 
@@ -93,7 +74,6 @@ it knows, `ammo`, `chest`, `secret` (including `mana`), `depot` as a pickup poin
 
 | Kind | Ids | Behaviour |
 |---|---|---|
-| `target` | `S1-LB-hp` 200 HP, scarecrows 1 HP, `TOT-*-hp` 240 HP, `S6-HCB-hp` 150 HP | HP, then delete the matching solid and `markPartDestroyed` |
 | `seedPod` | S1 ×3, S4 ×2, S5 ×6, S6 ×2 | Yeet launches at 22 m/s along aim. Impact 150 in r 4, 25 to the player, strips bark. Regrow 12 s |
 | `manaBloom` | MB1–MB20 including MB6b (21) | 50 mana, regrow 20 s. Easy 12 s, Heroic 30 s |
 | `gooGear` | `S2-GG1` | Goo holds the trimmer open 4 s. Blades `S2-TG-N` and `S2-TG-S`, crush 40, knockback 8, closed 0.8 s, open 0.4 s |
@@ -103,9 +83,9 @@ it knows, `ammo`, `chest`, `secret` (including `mana`), `depot` as a pickup poin
 | `pressurePlate` | `S3-PP1`, `S3-PP2`, 55 m apart | Both held 1 s grows `S3-BR3` for good |
 | `ropeBridge` | `S3-BR2-mech` | `collapseOn: 'x>114'`. 1 s shake, planks drop from the west every 0.15 s. Resets 4 s after a void rescue. The slab `S3-BR2` is the deck until that exists |
 | `energyBridge` | `S3-BR3-mech` | Absent until the plates latch, then a vine grows in 1 s. The slab `S3-BR3` is present so the section is not a hole; hide it until the latch |
-| `hazard` enemy damage | every toxic pool and the canal | Player 12 dps (already, via `dps`). Enemies 40 dps, and bark strips at once. Goo Globs are immune. `enemyDps: 40` is on the mechanism and ignored |
+| `hazard` bark from Goo | the same pools | `enemyDps` and `stripsBark` already run while the player is in the box, and Goo is immune. A Goo puddle is still what should soften bark without a player standing in the pool |
 | `hazardSet` | `S5-FLD00`–`S5-FLD15` | 16 zones, r 31, size 13 × 1 × 6, `enabled: false`. At Hex HP ≤ 25% turn them on (outer ring r 28–34). Boss stays inside r 24. Blooms at r 24 stay dry |
-| `risingHazard` | `S6-RISE` | On `S6-F2.fled`, y 0 → 8.5 at 0.18 m/s (Easy 0.14, Heroic 0.22). Reaches y 3 at 17 s, y 6 at 33 s, stops at 47 s. Not kind `hazard`, so it does not hurt yet |
+| `risingHazard` difficulty | `S6-RISE` | The rise is wired (`starts: 'S6-F2.fled'`, 0.18 m/s). Easy 0.14 and Heroic 0.22 are not read |
 | `killZone` / voids | `S3` `voids` | Creek below y -6.5: rescue the player to `(20, 0, -60)` at 15% max HP, kill enemies. `state.level.voids` is never copied off the section |
 | `shrine` | `SH-YEET-use` spell `yeet` | Grants Yeet, refills mana, saves. `yeet` is not in `SPELL_IDS`, so `syncSpellbook` cannot turn it on. `SH-SWARM-use` is `swarm`, which exists |
 | `power` | `PU2`, `PU3` modifier `manaSurge` | 20 s of 4× mana regen, and it breaks every Leech latch. `PU3` appears on the heap when Part 2 starts |
@@ -153,9 +133,11 @@ Mana Surge: 20 s, regen ×4, breaks every latch.
 
 ## E12 — Compost Hex parts
 
-Wave Mode `hexAuditor` data stays: 3,000 HP, r 0.7, hover 1.6, orb 8, tax bolt 12, aura 9 m
-(13 m in the last phase) at 15 mana/s, weak spot orbit 1.9 m at 120°/s (200°/s in the last phase),
-2 mana orbs of 25 per 10% HP lost. The part script wraps that. It must not change the wave boss.
+The Hex now spawns in the grove arena and is not pulled to the origin. Wave Mode data stays:
+3,000 HP, r 0.7, hover 1.6, orb 8, tax bolt 12, aura 9 m (13 m in the last phase) at 15 mana/s,
+weak spot orbit 1.9 m at 120°/s (200°/s in the last phase), 2 mana orbs of 25 per 10% HP lost.
+There is still no part script. `F1-p2d` uses `onBossHp` 60 so a fast kill cannot skip the squad;
+the design trigger remains "the first totem dies" (`TOT-N`). It must not change the wave boss.
 
 | Part | HP | What the script adds | Ends |
 |---|---|---|---|
@@ -169,16 +151,17 @@ Part 1 from CP9. CP10 saves when the Hex dies, at local `(45, -116)`.
 ## E15 — flee id
 
 `docs/shooter-server-contract.md` still says the L03 flee is `S4-E4` and is not issuable. The flee
-is now encounter **`S6-F2`** in section `S6`. It is still not a payable kill. L03 has no canonical
-boss, so this text change does not move the campaign fingerprint by itself. Please update the
-contract in the engine batch. This folder does not edit it.
+is encounter **`S6-F2`** in section `S6`. It is still not a payable kill. `tests/server-sim.test.js`
+accepts either id. L03 has no canonical boss, so the contract text does not move the campaign
+fingerprint by itself. This folder does not edit the contract.
 
 ## E14 — pacing and the bot
 
 The beat table sums to **1,287 s** (21:27), inside 18:00–22:00. `L03.estimateSeconds` is that sum.
 The validator does not estimate pacing, check reachability, or run a nav bot. `L03.botRoute` is the
-route in §15. The shared autopilot walks at the nearest enemy in a straight line, so it stops on
-`S1-LB` and never enters the maze.
+route in §15. The shared god-mode autopilot clears the level. It walks a straight lane, so west
+hedge rings have an extra gap at z = -60, spawns sit on that lane, and the design positions stay
+in each squad's `design` string.
 
 ## E17 — loot already described, not rolled
 
@@ -201,5 +184,7 @@ runoff 0.22 m/s, wave fallback 20 s.
 
 Format v2, solids, doors that seal a lockdown, squads, `onEnter` / `time` / `onKills` / `onRemain` /
 `onBossHp` / `onPartDestroyed` / `with`, objectives `clearAll`, `boss` and `escape`, shrines for a
-known spell, ammo pickups, secrets, jump pads, player hazard damage, nav bounds, and the re-skins
-`floretSprout`, `sewerMidget`, `daycare`, `boomMidget`, `riotMidget`, `hexAcolyte`.
+known spell, ammo pickups, secrets, jump pads, player and enemy hazard damage, `risingHazard`,
+destructible targets, a boss `arena`, `fleeAt`, copied `navLinks`, a lockdown flyer lid, and the
+re-skins `floretSprout`, `sewerMidget`, `daycare`, `boomMidget`, `riotMidget`, `hexAcolyte`,
+`hexWisp`, `barkBrute`, `manaLeech`, `gooGlob`.

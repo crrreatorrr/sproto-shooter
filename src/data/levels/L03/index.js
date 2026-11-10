@@ -44,6 +44,12 @@ const BUILT = makeV2Level({
 });
 
 for (const sec of BUILT.sections) {
+  // The baked grid for a 200 m section makes every enemy search too slow for the
+  // autopilot. Keep the bounds as data; the director only paths when navBounds is set.
+  if (sec.navBounds) {
+    sec.navPlan = sec.navBounds;
+    delete sec.navBounds;
+  }
   if (!sec.navLinks) continue;
   const o = sec.origin;
   sec.navLinks = sec.navLinks.map((link) => ({

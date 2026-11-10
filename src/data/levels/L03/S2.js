@@ -5,10 +5,10 @@ import { ENCOUNTERS } from './encounters.js';
 
 const rings = [
   ...hedgeRing('S2-HB', { a: 0, b: 2, h: 5, west: { at: -60, width: 6 }, east: { at: -60, width: 5 } }),
-  ...hedgeRing('S2-H1', { a: 7, b: 10, h: 3.5, west: { at: -30, width: 4 }, north: { at: 30, width: 4 }, east: { at: -60, width: 5 } }),
-  ...hedgeRing('S2-H2', { a: 14, b: 17, h: 3.5, west: { at: -70, width: 4 }, north: { at: 50, width: 4 }, east: { at: -60, width: 5 } }),
-  ...hedgeRing('S2-H3', { a: 21, b: 24, h: 3.5, west: { at: -50, width: 4 }, north: { at: 64, width: 4 }, east: { at: -60, width: 5 } }),
-  ...hedgeRing('S2-H4', { a: 28, b: 31, h: 3.5, west: { at: -66, width: 4 }, north: { at: 56, width: 4 }, east: { at: -60, width: 5 } }),
+  ...hedgeRing('S2-H1', { a: 7, b: 10, h: 3.5, west: [{ at: -30, width: 4 }, { at: -60, width: 5 }], north: { at: 30, width: 4 }, east: { at: -60, width: 5 } }),
+  ...hedgeRing('S2-H2', { a: 14, b: 17, h: 3.5, west: [{ at: -70, width: 4 }, { at: -60, width: 5 }], north: { at: 50, width: 4 }, east: { at: -60, width: 5 } }),
+  ...hedgeRing('S2-H3', { a: 21, b: 24, h: 3.5, west: [{ at: -50, width: 4 }, { at: -60, width: 5 }], north: { at: 64, width: 4 }, east: { at: -60, width: 5 } }),
+  ...hedgeRing('S2-H4', { a: 28, b: 31, h: 3.5, west: [{ at: -66, width: 4 }, { at: -60, width: 5 }], north: { at: 56, width: 4 }, east: { at: -60, width: 5 } }),
   ...hedgeRing('S2-H5', { a: 35, b: 38, h: 9, west: { at: -60, width: 4 }, north: { at: 60, width: 4 }, east: { at: -60, width: 4 }, south: { at: 60, width: 4 } }),
 ];
 
@@ -23,9 +23,9 @@ export const S2 = {
   footprint: [120, 120],
   routeM: 232,
   navBounds: { min: [0, -120], max: [120, 0] },
-  exit: { min: [116, -1, -64], max: [122, 4, -56] },
+  exit: { min: [120, -1, -64], max: [126, 4, -56] },
   geometry: [
-    box({ id: 'S2-FL', at: [60, -0.25, -60], size: [120, 0.5, 120], mat: 'grass' }),
+    box({ id: 'S2-FL', at: [60, -0.25, -60], size: [128, 0.5, 120], mat: 'grass' }),
     ...rings,
     box({ id: 'S2-LIN1', at: [101.5, 1.75, -57], size: [33, 3.5, 1], mat: 'hedge' }),
     box({ id: 'S2-LIN2', at: [101.5, 1.75, -63], size: [33, 3.5, 1], mat: 'hedge' }),
