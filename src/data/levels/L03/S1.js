@@ -1,6 +1,6 @@
 // S1 Crop Fields. Local metres, north is -z. Terrain is visual; S1-FL is the
 // walkable slab until terrain collision exists.
-import { box, cylinder, cone, disc, place, stairs } from './prim.js';
+import { box, cylinder, cone, disc, place, sphere, stairs } from './prim.js';
 import { beanstalk, manaBloom, podStump, scarecrow, scarecrowTower, shed, shrine, tractor, tree, truck } from './prefabs.js';
 import { ENCOUNTERS } from './encounters.js';
 
@@ -90,6 +90,9 @@ export const S1 = {
     disc({ id: 'S1-MP1-pad', at: [95, 0.05, -54], r: 1.2, mat: 'neon' }),
     disc({ id: 'S1-MP2-pad', at: [123, 0.05, -108], r: 1.2, mat: 'neon' }),
     disc({ id: 'S1-MP3-pad', at: [149, 0.05, -80], r: 1.2, mat: 'neon' }),
+    sphere({ id: 'S1-GA-GATE-mark', at: [232, 6, -80], r: 0.45, mat: 'neon' }),
+    sphere({ id: 'S1-GA-LEAF-mark', at: [240.5, 6.2, -142], r: 0.45, mat: 'neon' }),
+    sphere({ id: 'S1-GA-CROWN-mark', at: [240, 22, -145], r: 0.45, mat: 'neon' }),
     disc({ id: 'S1-MP4-pad', at: [165, 0.05, -84], r: 1.2, mat: 'neon' }),
     ...trees,
   ],
@@ -130,6 +133,12 @@ export const S1 = {
     { kind: 'secret', id: 'S1-AF1', at: [100, 6.2, -50], tickets: 15, story: 'Invoice: 400 scarecrows. None of them scare.' },
   ],
   encounters: [ENCOUNTERS.E1, ENCOUNTERS.E2],
+  // Optional swings. The lane and the beanstalk pads still work at a walk.
+  grappleAnchors: [
+    { id: 'S1-GA-GATE', at: [232, 6, -80], r: 2.2 },
+    { id: 'S1-GA-LEAF', at: [240.5, 6.2, -142], r: 1.8 },
+    { id: 'S1-GA-CROWN', at: [240, 22, -145], r: 2 },
+  ],
   navLinks: [
     { from: { x: 95, z: -54 }, to: { x: 100, z: -50 }, kind: 'pad' },
     { from: { x: 123, z: -108 }, to: { x: 128, z: -112 }, kind: 'pad' },
