@@ -134,7 +134,7 @@ These ids have an `archetype` and run it on top of the enemy they are dressed as
 | `floretSprout` | Lobs a mortar. |
 | `hexAcolyte` | Puts a bubble on the nearest ally. Bubble hits deal half damage. |
 | `glowieAgent` | Slows the player for one step when close. It does not take the controls. |
-| `auditSniper` | Sidesteps on a timer. |
+| `auditSniper` | Sees 140 m inside a 30° cone that sweeps 60° over 6 s, and 60 m outside it. A whiteout (`level.whiteout`) caps that at 40 m. |
 | `miningRig` | Stays planted. |
 | `daycare` | The nest spawn that was already there. |
 | `bitbug` | Drifts toward other bitbugs. |
