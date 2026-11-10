@@ -11,6 +11,7 @@ import { next } from '../../core/rng.js';
 import { damagePlayer } from '../combat.js';
 import { clearCampaignSpells } from '../spellbook.js';
 import { beginV2, noteV2Section, v2Post, v2Pre } from './v2.js';
+import { detonateBarrel, onMover, slowEnemiesInHazard, tickMover, tickSwitch } from './mechanisms.js';
 
 const snaps = new WeakMap();
 
@@ -171,10 +172,7 @@ function flagOn(lv, when) {
 
 function touchMechanism(state, p, lv, sec, m, dt) {
   const x = p.pos.x, y = p.pos.y, z = p.pos.z;
-  if (m.kind === 'switch' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.5)) {
-    lv.got[m.id] = true;
-    emit(state, 'switch', { id: m.id });
-  }
+  if (m.kind === 'switch' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.5)) tickSwitch(state, p, m, dt);
   if (m.kind === 'door' && !lv.got[m.id] && flagOn(lv, m.opens)) {
     lv.got[m.id] = true;
     emit(state, 'door', { id: m.id, open: true });
@@ -188,6 +186,7 @@ function touchMechanism(state, p, lv, sec, m, dt) {
   if (m.kind === 'hazard' && inBox(m, x, y, z)) {
     if (m.dps) damagePlayer(state, p, { base: m.dps * dt, sourceKind: 'world', fromPos: { x: m.min[0], y: 0, z: m.min[2] } });
     if (m.slow) { const k = m.slow; p.vel.x *= k; p.vel.z *= k; }
+    slowEnemiesInHazard(state, m);
   }
   if ((m.kind === 'jetpack' || m.kind === 'fuel') && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.8)) {
     lv.got[m.id] = true;
@@ -216,17 +215,14 @@ function touchMechanism(state, p, lv, sec, m, dt) {
   if (m.kind === 'rail' && Math.abs(p.pos.z - m.from[2]) < 2 && p.pos.x >= m.from[0] && p.pos.x <= m.to[0]) {
     p.vel.x += (m.speed || 10) * dt * 3;
   }
-  if (m.kind === 'mover' && Math.abs(p.pos.x - m.from[0]) < 1.6) {
-    p.vel.x += (m.speed || 2) * dt;
-  }
+  if (m.kind === 'mover' && m.from && onMover(p, m)) tickMover(state, p, m, dt);
   if (m.kind === 'laser' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.3)) {
     damagePlayer(state, p, { base: (m.dps || 12) * dt, sourceKind: 'world', fromPos: { x: m.at[0], y: m.at[1], z: m.at[2] } });
   }
   if (m.kind === 'barrel' && !lv.got[m.id]) {
     const hit = state.enemies.some((e) => e.dead && e.campaignEnc && Math.hypot(e.pos.x - m.at[0], e.pos.z - m.at[2]) < 2.2);
     if (hit || nearPoint(m.at, x, y + 1, z, 1.2) && p.cmd && p.cmd.held && p.cmd.held.fire) {
-      lv.got[m.id] = true;
-      emit(state, 'barrel', { id: m.id, pos: { x: m.at[0], y: m.at[1], z: m.at[2] } });
+      detonateBarrel(state, sec, m);
     }
   }
 }
