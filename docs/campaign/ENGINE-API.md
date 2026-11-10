@@ -185,6 +185,8 @@ The same behaviour runs from section fields, shifted by the section origin. `haz
 
 The old `kind: 'hazard'` brake is unchanged.
 
+`section.terrain` is a heightfield (`origin`, `size`, `cell`, `seed`, `noise.amp`, `noise.freq`, `noise.octaves`). `makeV2Level` shifts its origin with the section. The same sampler feeds collision and the mesh, so a primitive without `at` is not required. A `flat` entry `{ n0, n1 }` or `{ x0, x1, n0, n1 }` is measured in metres north from the field's south edge and stays at the origin height. A geometry piece tagged `terrainStandIn` is neither drawn nor collided while that field is present. A slope steeper than the step pushes the body downhill.
+
 ## Movement
 
 Campaign, Wave Mode and Sandbox share this. PvP does not.
