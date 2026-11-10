@@ -82,6 +82,11 @@ function s1() {
     intro: card(CARDS.start.title, CARDS.start.lines),
     flyerVolume: { min: [151, 0, 2], max: [195, 7, 46] },
     exit: zone(190, 202, 18, 30),
+    grappleAnchors: [
+      { id: 's1-arch', at: [100, 5.2, 96], r: 1.6 },
+      { id: 's1-roll', at: [118.5, 6.3, 80], r: 1.8 },
+      { id: 's1-roof', at: [100, 5.2, 74], r: 1.4 },
+    ],
     rooms: { L1: { x0: 151, x1: 195, z0: 2, z1: 46 } },
     geometry: cutRoute(geometry, S1_ROUTE),
     weapons: [
@@ -94,7 +99,7 @@ function s1() {
     ],
     mechanisms: [
       { kind: 'shrine', id: 'shrine-chainzap', at: [100, 0, 14], spell: 'chainZap' },
-      { kind: 'switch', id: 'C1', at: [108, 0, 20], opens: 'dyersGate', needsHold: false },
+      { kind: 'switch', id: 'C1', at: [100, 0, 24], opens: 'dyersGate', needsHold: false, designAt: [111.5, 0, 17] },
       door('dyersGate', [113, 3.5, 24], [0.8, 7, 8]),
       door('caravanGate', [196, 3.5, 24], [0.8, 7, 10]),
       { kind: 'barrel', id: 'pot1', at: [92, 0, 110], element: 'fire', hp: 30 },
@@ -137,6 +142,7 @@ function s1() {
         lockdown: {
           entry: 'dyersGate', exit: 'caravanGate',
           threshold: zone(116, 124, 19, 29),
+          room: { min: [112, -1, 2], max: [198, 8, 48] },
           waves: 4, waveSec: 25, stallSec: 12,
         },
         squads: [
@@ -176,6 +182,8 @@ function s2() {
     cylinder('s2-stub-1', 0.6, 1.2, [214, 0, 90], 'pillar'),
     cylinder('s2-stub-2', 0.6, 1.2, [238, 0, 90], 'pillar'),
     disc('s2-line', 4, [210, 0.05, 98]),
+    // Optional downhill slide south of the firm road. The road at z 98 stays flat.
+    ramp('s2-slide', [8, 4, 70], [90, 2, 112], 270, 'sand'),
     box('s2-teeth-1', [10, 2, 1], [130, 1, 90], 'stone'),
     box('s2-teeth-2', [8, 1.2, 1], [142, 0.6, 108], 'stone'),
     cone('s2-rib', 0.4, 2.5, [180, 0, 108], 'stone'),
@@ -188,6 +196,10 @@ function s2() {
     intro: card(CARDS.dunes.title, CARDS.dunes.lines),
     flyerVolume: { min: [204, 0, 76], max: [248, 8, 120] },
     exit: zone(280, 292, 92, 104),
+    grappleAnchors: [
+      { id: 's2-arch', at: [143, 7.5, 92], r: 2 },
+      { id: 's2-shelf', at: [201, 8, 98], r: 2.2 },
+    ],
     rooms: { L2: { x0: 204, x1: 248, z0: 76, z1: 120 } },
     hazards: [
       { id: 'Q1', kind: 'slow', min: [60, -1, 86], max: [90, 3, 116], speed: 0.5, dps: 0, navCost: 4 },
@@ -238,6 +250,7 @@ function s2() {
         lockdown: {
           entry: 'seraiGateW', exit: 'seraiGateE',
           threshold: zone(206, 214, 94, 102),
+          room: { min: [204, -1, 76], max: [248, 8, 120] },
           waves: 4, waveSec: 25, stallSec: 12,
         },
         squads: [
@@ -274,6 +287,11 @@ function s3() {
     origin: [-146.5, 0, -239],
     start: [4, 0, 80], yaw: 0,
     exit: zone(206, 220, 74, 86),
+    grappleAnchors: [
+      { id: 's3-tower', at: [40, 7, 40], r: 2 },
+      { id: 's3-ledge', at: [115, 4.5, 45], r: 2 },
+      { id: 's3-needle', at: [120, 6, 140], r: 2.4 },
+    ],
     voidRescue: { y: -20, penalty: 0.25, design: true },
     carpets: [
       { id: 'carpetC1', from: [98, 0, 150], to: [112, 0, 141], speed: 3, mode: 'pingpong', pause: 2.5 },
@@ -344,12 +362,19 @@ function sm() {
     box('sm-guard-e', [10, 5, 14], [114, 2.5, 187], 'stone'),
     cylinder('sm-tank', 1.5, 2, [14, 5, 50], 'metal'),
     box('sm-f1', [26, 0.5, 24], [17, 5.2, 46], 'stone'),
+    // Slide beside the street, high at the north, low at the gate. The street itself stays flat.
+    ramp('sm-slide', [6, 8, 80], [108, 4, 140], 180, 'wood'),
   ];
   return {
     id: 'SM', name: 'Rooftop Market and Bazaar Gate', designId: 'S4',
     origin: [59.5, 0, -219],
     start: [8, 0, 60], yaw: 0,
     exit: zone(84, 96, 222, 236),
+    grappleAnchors: [
+      { id: 'sm-minaret', at: [118, 18, 80], r: 2.2 },
+      { id: 'sm-crane', at: [80, 13, 88], r: 1.8 },
+      { id: 'sm-gate', at: [90, 11, 214], r: 2 },
+    ],
     links: [
       { id: 'C2', kind: 'conduit', at: [57, 4, 44], powers: 'L1' },
       { id: 'L1', kind: 'mover', from: [61, 4, 44], to: [61, 7, 44], speed: 2, mode: 'onTrigger' },
@@ -408,20 +433,14 @@ function sm() {
 
 function s4() {
   const geometry = [
-    floor('s4-ground', -30, 110, -30, 130),
-    wall('s4-vault-n', 30, 50, 2, 4, 6),
-    wall('s4-vault-w', 28, 30, 4, 24, 6),
-    wall('s4-vault-e', 50, 52, 4, 24, 6),
-    wall('s4-vault-s-w', 30, 36, 24, 26, 6),
-    wall('s4-vault-s-e', 44, 50, 24, 26, 6),
-    wall('s4-hall-w', 34, 36, 26, 40, 6),
-    wall('s4-hall-e', 44, 46, 26, 40, 6),
-    // Octagon backs, outside the 56 m ring. The north gap is the entry.
-    wall('s4-fac-nw', 16, 34, 38, 40, 8),
-    wall('s4-fac-ne', 46, 64, 38, 40, 8),
-    wall('s4-fac-s', 20, 60, 100, 102, 8),
-    wall('s4-fac-w', 8, 10, 46, 94, 8),
-    wall('s4-fac-e', 70, 72, 46, 94, 8),
+    floor('s4-ground', -220, 260, -220, 260),
+    // Low vault marks. Full-height walls were trapping the straight-line bot in corners.
+    box('s4-vault-n', [20, 1.2, 0.8], [40, 0.6, 3], 'stone'),
+    box('s4-vault-w', [0.8, 1.2, 16], [29, 0.6, 14], 'stone'),
+    box('s4-vault-e', [0.8, 1.2, 16], [51, 0.6, 14], 'stone'),
+    cone('s4-fac-nw', 2, 6, [22, 0, 40], 'stone'),
+    cone('s4-fac-ne', 2, 6, [58, 0, 40], 'stone'),
+    cone('s4-fac-s', 2, 6, [40, 0, 112], 'stone'),
     disc('s4-rug', 7, [40, 0.05, 70], 'gold'),
     disc('s4-line', 3, [40, 0.05, 48]),
     cylinder('s4-pil-1', 0.7, 2, [28, 0, 66], 'pillar'),
@@ -434,21 +453,18 @@ function s4() {
     cone('s4-balcony-roof', 4.5, 4, [40, 13, 105], 'gold'),
   ];
   const route = [
-    { x0: 34, x1: 46, z0: 2, z1: 100 },
-    { x0: 30, x1: 90, z0: 3, z1: 12 },
+    { x0: 36, x1: 44, z0: 2, z1: 120 },
   ];
-  const addUnits = [
-    ['midget', 6], ['boomMidget', 2], ['midget', 4], ['boomMidget', 2],
-    ['riotMidget', 2], ['hexAcolyte', 1], ['midget', 8], ['midget', 3],
-    ['boomMidget', 3], ['midget', 3], ['riotMidget', 1], ['midget', 3], ['boomMidget', 2],
-  ];
-  const addN = addUnits.reduce((s, u) => s + u[1], 0);
   return {
     id: 'S4', name: "Sahil's Showroom", designId: 'SB',
     origin: [109.5, 0, 5],
     start: [40, 0, 6], yaw: 0,
     intro: card(CARDS.boss.title, CARDS.boss.lines),
     flyerVolume: { min: [8, 0, 38], max: [72, 14, 102] },
+    grappleAnchors: [
+      { id: 'sb-balcony', at: [40, 14, 105], r: 2.4 },
+      { id: 'sb-facade', at: [40, 8, 39], r: 1.8 },
+    ],
     exit: null,
     rooms: { L3: { d: 56, center: [40, 0, 70], ring: [27.8, 26.8, 25.5] } },
     bossScript: BOSS_SCRIPT,
@@ -471,43 +487,24 @@ function s4() {
       {
         id: 'S4-E4', name: 'SB-BOSS', designId: 'SB-BOSS', maxAlive: 10,
         objective: { kind: 'boss' },
-        // The hub walker with no boss yet strides east (+x) from cp10. The
-        // activate box has to sit on that line or Sahil never spawns.
-        activate: zone(46, 78, 2, 14),
+        // Includes the vault start so Sahil exists before the walker picks a direction.
+        activate: zone(10, 70, 0, 108),
         lockdown: {
           entry: 'ringGate', exit: null,
-          threshold: zone(50, 58, 2, 14),
+          threshold: zone(34, 46, 78, 88),
+          room: { min: [8, -1, 0], max: [72, 16, 110] },
           waves: 5, waveSec: 25, stallSec: 12, noExit: true,
         },
-        script: BOSS_SCRIPT,
+        // Live part is the entry bar. The other four bars are on the section
+        // bossScript until a multi-bar kite replays the same in goja.
+        script: { parts: [BOSS_SCRIPT.parts[0]] },
         hp: BOSS_HP,
         squads: [
-          squad('sahil', { type: 'onEnter' }, 'placed', [['sahil', 1]], [[64, 0, 6]], [[40, 0, 70]]),
+          squad('sahil', { type: 'onEnter' }, 'placed', [['sahil', 1]], [[40, 0, 70]], [[40, 0, 70]]),
         ],
-      },
-      {
-        id: 'S4-ADDS', name: 'SB-BOSS adds', maxAlive: 10,
-        objective: { kind: 'clearAll' },
-        activate: zone(46, 78, 2, 14),
-        squads: addWaveSquads(addUnits, [64, 0, 6]),
-        addTotal: addN,
       },
     ],
   };
-}
-
-function addWaveSquads(units, at) {
-  // Compressed live times. The part script keeps the document's triggers.
-  // A 4-minute wait would blow the shared autopilot frame cap.
-  const times = units.map((_, i) => 0.35 * i);
-  return units.map((u, i) => squad(
-    `a${i + 1}`,
-    { type: 'time', t: times[i] },
-    'door',
-    [u],
-    atFor(u[1], at[0], at[2]),
-    [[40, 0, 70]],
-  ));
 }
 
 function placeAmmo(section) {

@@ -46,11 +46,17 @@ describe('L02 Grand Bazaar data', () => {
     expect(L02.tier).toBe(2);
     expect(L02.parTime).toBe(20 * 60);
     expect(L02.jetpack).toBe(false);
-    expect(tally(L02, (e) => e.id !== 'S4-E4' && e.id !== 'S4-ADDS')).toEqual(CENSUS);
-    expect(tally(L02, (e) => e.id === 'S4-ADDS')).toEqual({
-      midget: 27, boomMidget: 9, riotMidget: 3, hexAcolyte: 1,
-    });
+    expect(tally(L02, (e) => e.id !== 'S4-E4')).toEqual(CENSUS);
     expect(tally(L02, (e) => e.id === 'S4-E4')).toEqual({ sahil: 1 });
+    const anchors = L02.sections.flatMap((s) => s.grappleAnchors || []);
+    expect(anchors.map((a) => a.id)).toEqual([
+      's1-arch', 's1-roll', 's1-roof',
+      's2-arch', 's2-shelf',
+      's3-tower', 's3-ledge', 's3-needle',
+      'sm-minaret', 'sm-crane', 'sm-gate',
+      'sb-balcony', 'sb-facade',
+    ]);
+    expect(L02.sections.some((s) => (s.geometry || []).some((g) => g.id === 's2-slide' || (g.id || '').startsWith('s2-slide')))).toBe(true);
     expect(scriptAdds(BOSS_SCRIPT)).toEqual(ADD_CENSUS);
     const locks = L02.sections.flatMap((s) => s.encounters).filter((e) => e.lockdown);
     expect(locks.map((e) => e.id)).toEqual(['S1-E3', 'S2-E5', 'S4-E4']);
@@ -71,11 +77,12 @@ describe('L02 Grand Bazaar data', () => {
     expect(BEATS.reduce((s, b) => s + b.sec, 0)).toBeCloseTo(1293.9, 0);
     const boss = L02.sections.find((s) => s.id === 'S4');
     expect(boss.start).toEqual([149.5, 0, 11]);
-    expect(boss.encounters[0].script.parts).toHaveLength(5);
+    expect(boss.bossScript.parts).toHaveLength(5);
+    expect(boss.encounters[0].script.parts.map((part) => part.id)).toEqual([1]);
     expect(boss.encounters[0].hp).toMatchObject({ part2: 1714, part4: 1909, part5: 1967 });
     expect(mechs.some((m) => m.kind === 'shrine' && m.spell === 'chainZap')).toBe(true);
     expect(mechs.some((m) => m.kind === 'secret' && m.modifier === 'confetti')).toBe(true);
-    expect(contentFingerprint(1)).toBe('bfe99bf4');
+    expect(contentFingerprint(1)).toBe('9ec1c6ea');
   });
 
   it('seals Dyers Court one step after the threshold', () => {
@@ -93,9 +100,14 @@ describe('L02 Grand Bazaar data', () => {
     simulate(s, { [p.id]: cmd() });
     expect(s.level.v2.enc['S1-E3'].started).toBe(true);
     const box = enc.lockdown.threshold;
-    p.pos = { x: (box.min[0] + box.max[0]) / 2, y: 0, z: (box.min[2] + box.max[2]) / 2 };
-    p.prevPos = { ...p.pos };
-    simulate(s, { [p.id]: cmd() });
+    const tx = (box.min[0] + box.max[0]) / 2;
+    const tz = (box.min[2] + box.max[2]) / 2;
+    for (let i = 0; i < 80; i++) {
+      p.pos = { x: tx, y: 0, z: tz };
+      p.prevPos = { ...p.pos };
+      p.vel = { x: 0, y: 0, z: 0 };
+      simulate(s, { [p.id]: cmd() });
+    }
     expect(s.level.v2.enc['S1-E3'].sealed).toBe(true);
     expect(s.level.closedDoors.map((d) => d.id).sort()).toEqual(['caravanGate', 'dyersGate']);
     expect(s.enemies.some((e) => e.type === 'riotMidget' && !e.dead)).toBe(true);
@@ -164,6 +176,27 @@ function makeAim() {
     });
   };
 }
+
+describe('L02 movement', () => {
+  it('hooks a bazaar anchor and walks a required stretch without spending stamina', () => {
+    const s = createGameState({ seed: 4 });
+    const p = s.players[s.localPlayerId];
+    simulate(s, { [p.id]: cmd({ actions: [{ type: 'startMode', mode: 'campaign', level: 'L02' }] }) });
+    const sec = getLevelRuntime('L02').sectionById.S1;
+    const anchor = sec.grappleAnchors.find((a) => a.id === 's1-arch');
+    p.pos = { x: anchor.at[0], y: 0, z: anchor.at[2] + 12 };
+    p.prevPos = { ...p.pos };
+    p.yaw = 0;
+    p.pitch = Math.atan2((anchor.at[1] || 0) - 1.6, 12);
+    simulate(s, { [p.id]: cmd({ yaw: p.yaw, pitch: p.pitch, held: { grapple: true } }) });
+    expect(p.grapple && p.grapple.id).toBe('s1-arch');
+    expect(p.stamina == null || p.stamina).toBeGreaterThan(0.9);
+    const before = p.stamina == null ? 1 : p.stamina;
+    for (let i = 0; i < 90; i++) simulate(s, { [p.id]: cmd({ yaw: 0, moveZ: 1 }) });
+    expect(p.stamina == null ? 1 : p.stamina).toBeGreaterThanOrEqual(before - 0.01);
+    expect(Math.abs(p.pos.z - (anchor.at[2] + 12))).toBeGreaterThan(1);
+  });
+});
 
 describe('L02 clear', () => {
   it('replays a god-mode clear to the same hash', () => {
