@@ -203,7 +203,7 @@ export class Game {
           <button class="btn big alt" data-go="bossSelect">👑 Boss Fight <small>pick a boss to fight</small></button>
           <button class="btn big" data-go="campaignSelect">🗺 Campaign <small>The Great Sproto Audit</small></button>
           <button class="btn big alt" data-go="pvp">Play free <small>equal guns, no Tickets</small></button>
-          <button class="btn alt" data-go="characters">Character <small>${this.character.name}</small></button>
+          <button class="btn alt" data-go="characters">Choose Character <small>${this.character.name}</small></button>
           <span data-wager-slot></span>
           <button class="btn alt" data-go="hub">${this.hubReturnLabel()}</button>
           <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
@@ -213,9 +213,8 @@ export class Game {
       const asset = `${import.meta.env.BASE_URL}assets/`;
       const cards = PLAYER_CHARACTERS.map(({ id, name, portrait }) => {
         const selected = id === this.character.id;
-        const art = portrait ? `<img src="${asset}${portrait}" alt="" width="256" height="256">` : '<span class="character-emblem" aria-hidden="true">S</span>';
         return `<button class="btn alt character-card" data-go="character" data-character="${id}" aria-pressed="${selected}" ${selected ? 'data-nav-default' : ''}>
-          ${art}<b>${name}</b><small>${selected ? 'Equipped' : 'Equip'}</small></button>`;
+          <img src="${asset}${portrait}" alt="" width="256" height="256"><b>${name}</b><small>${selected ? 'Equipped' : 'Equip'}</small></button>`;
       }).join('');
       body = `<div class="title character-select"><h1>CHOOSE <span>CHARACTER</span></h1>
         <p class="tag">Choose who you see in the arena and behind the trigger.</p>
