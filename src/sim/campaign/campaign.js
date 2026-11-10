@@ -451,6 +451,10 @@ function bossAttack(state, e, def, t, name) {
   if (name === 'drone') { shot(16, 8, { homing: 1.2, homingSpeed: 16 }); return; }
   if (name === 'blast' || name === 'cloud' || name === 'breath') { shot(22, 12, { radius: 0.4 }); return; }
   if (name === 'fly') { e.pos.y = 1.2; return; }
+  if (name === 'pigRain') {
+    for (let i = 0; i < 4; i++) shot(18, 6, { homing: 0.4, homingSpeed: 14 });
+    return;
+  }
   shot(26, 7);
 }
 

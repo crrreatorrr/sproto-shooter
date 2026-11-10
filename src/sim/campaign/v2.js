@@ -7,6 +7,7 @@ import { damagePlayer } from '../combat.js';
 import { inBox } from '../level/runtime.js';
 import { solidFromPrimitive, solidsFromGeometry } from './solids.js';
 import { tickBossScript } from './bossScript.js';
+import { tickDuo } from './duo.js';
 
 function book(lv) {
   if (!lv.v2) lv.v2 = { enc: {}, parts: {}, doorOpen: {} };
@@ -485,6 +486,7 @@ export function v2Post(state, dt) {
     const prog = encState(lv, enc.id);
     if (!prog.started || lv.cleared[enc.id]) continue;
     tickBossScript(state, enc, dt);
+    tickDuo(state, enc, dt);
     retirePartSquads(state, enc, prog);
     noteKills(state, enc, prog);
     if (enc.fleeAt) {
