@@ -147,6 +147,7 @@ function triggerReady(state, enc, squad, prog) {
 export function ringAlarm(state, id) {
   if (!id) return;
   const lv = state.level;
+  if (lv.alarmsCut && lv.alarmsCut[id]) return;
   if (!lv.alarms) lv.alarms = {};
   if (lv.alarms[id] != null) return;
   lv.alarms[id] = lv.time || 0;
@@ -176,6 +177,9 @@ function spawnOne(state, enc, squad, at) {
   if (enc.noAmmoDrop) e.noAmmoDrop = true;
   if (at.partId) e.partId = at.partId;
   if (at.flockPart != null) e.flockPart = at.flockPart;
+  if (at.role) e.role = at.role;
+  if (at.alarm) e.alarm = at.alarm;
+  if (at.ringsAlarm) e.ringsAlarm = at.ringsAlarm;
   if (bossDef) {
     if (enc.arena) e.boss.arena = enc.arena;
     emit(state, 'bossSpawn', { id: e.id, bossType: type });
@@ -192,7 +196,10 @@ function trySpawn(state, enc, squad, key) {
   for (const u of squad.units || []) {
     for (let n = 0; n < u.count; n++) {
       const at = (squad.at && squad.at[Math.min(i, squad.at.length - 1)]) || [0, 0, 0];
-      spots.push({ type: u.type, pos: at, partId: u.partId || null, elite: !!u.elite, flockPart });
+      spots.push({
+        type: u.type, pos: at, partId: u.partId || null, elite: !!u.elite, flockPart,
+        role: u.role || null, alarm: u.alarm || null, ringsAlarm: squad.ringsAlarm || u.ringsAlarm || null,
+      });
       i++;
     }
   }
