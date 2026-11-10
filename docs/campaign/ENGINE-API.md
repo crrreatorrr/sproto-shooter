@@ -95,7 +95,7 @@ Local coordinates. `origin: [x, y, z]` is the section's north-west corner in the
 | Type | Fires when |
 |---|---|
 | `onEnter` | The player has entered `activate`. |
-| `time` | `t` seconds after the encounter started. |
+| `time` | `t` seconds after the encounter started. With `part`, `t` is seconds into that boss-script part (part 1 is the first part) and does not use the encounter clock. |
 | `onKills` | `n` enemies from this encounter are dead. |
 | `onRemain` | That many or fewer are still alive, and a squad has already spawned. |
 | `onHold` | Hold time is at least `p` seconds. |
@@ -103,7 +103,7 @@ Local coordinates. `origin: [x, y, z]` is the section's north-west corner in the
 | `onPartDestroyed` | `id` was marked destroyed. |
 | `with` | Squad `after` has spawned and `delay` seconds have passed. |
 
-Extra enemies wait while the encounter is at `maxAlive`.
+Extra enemies wait while the encounter is at `maxAlive`. `flockUnit: 6` counts six living bitbugs as one of those units. When a script part ends, a `part` squad that never spawned is skipped, and anyone it already spawned leaves with no drop and no kill credit.
 
 ## Lockdown
 
@@ -117,7 +117,7 @@ lockdown: {
 
 The two ids are `door` mechanisms with `at` and `size`. Crossing `threshold` adds those doors to the solid list (`lockdown` event, `sealed: true`). Clearing the encounter removes them (`sealed: false`).
 
-`waveSec` starts the next squad when that many seconds have passed since the previous squad spawned, or on `onRemain`, whichever is first. A lockdown with `waveSec` waits `delaySec` seconds (default 1) before the slabs drop, pushes a player standing in the entry slab into the room, and does not seal while they are still inside it. `delaySec: 0` seals on the same frame, which is the default when `waveSec` is absent. `stallSec` marks the last `stallN` (default 2) enemies and makes them run at the player. `noExit` skips the exit slab. A switch or conduit with `opens` set to a door id keeps that door solid until the switch fires. Dying while a lockdown is sealed restores the last checkpoint (`lockdownReset`) instead of losing the level. `onAlert` spawns a squad when the player crosses `zBelow` or `zAbove`, enters `box`, or an enemy of the encounter is already alerted.
+`waveSec` starts the next squad when that many seconds have passed since the previous squad spawned, or on `onRemain`, whichever is first. `fallbackSec` on the lockdown, or on the squad, is the same timer when `waveSec` is absent. A squad's own `fallbackSec` wins. `null` leaves the timer off. A lockdown with `waveSec` waits `delaySec` seconds (default 1) before the slabs drop, pushes a player standing in the entry slab into the room, and does not seal while they are still inside it. `delaySec: 0` seals on the same frame, which is the default when `waveSec` is absent. `stallSec` marks the last `stallN` (default 2) enemies and makes them run at the player. `noExit` skips the exit slab. A switch or conduit with `opens` set to a door id keeps that door solid until the switch fires. Dying while a lockdown is sealed restores the last checkpoint (`lockdownReset`) instead of losing the level. `onAlert` spawns a squad when the player crosses `zBelow` or `zAbove`, enters `box`, or an enemy of the encounter is already alerted.
 
 ## Enemy re-skins
 
