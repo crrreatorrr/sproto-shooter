@@ -973,7 +973,7 @@ Boss and mini-boss HP are the same on every setting (they are in the content fin
 | E12 | Part scripts for the dragon and Tinubu; the Duel port of Tinubu |
 | E13 | Depots (no Weapon Box), carry-over, boss bar with five part pips, lockdown HUD, escape timer, cards, credits, the Legendary and modifier unlocks |
 | E14 | Validator, pacing estimate, map export, autopilot bot that can fly |
-| E15 | `CANONICAL_BOSSES` for Tinubu moves from `S3-E3` to `SB-BOSS`; Tinubu's HP moves from one 1,600 bar to three Duel bars. Both re-pin the campaign fingerprint `bfe99bf4` |
+| E15 | `CANONICAL_BOSSES` for Tinubu moves from `S3-E3` to `SB-BOSS`; Tinubu's HP moves from one 1,600 bar to three Duel bars. Both re-pin the campaign fingerprint `9ec1c6ea` |
 | E16 | No crafting, no resources, no Magic levels: the level assumes spell unlockables and the Mana Battery |
 | E17 | The L10 tier row, nine guaranteed drops, lockdown chests, 37 ammo boxes, crates, the depot crate in `SB`, smart drops |
 

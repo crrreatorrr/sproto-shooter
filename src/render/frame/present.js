@@ -125,9 +125,15 @@ export function mountPresent(env) {
     if (campaign) {
       levelView.sync(state);
       if (scene.fog) {
+        const cap = state.level.viewCap;
         const dark = state.level.modifiers && state.level.modifiers.lightsOut;
-        scene.fog.near = dark ? 4 : 30;
-        scene.fog.far = dark ? 36 : 420;
+        if (cap) {
+          scene.fog.near = Math.min(14, cap * 0.35);
+          scene.fog.far = cap;
+        } else {
+          scene.fog.near = dark ? 4 : 30;
+          scene.fog.far = dark ? 36 : 420;
+        }
       }
     } else if (scene.fog && scene.fog.far > 300) {
       scene.fog.near = 60;

@@ -2,6 +2,8 @@
 // switch or barrel fires, so corridor levels keep their timing.
 import { explode, damagePlayer } from '../combat.js';
 import { emit } from '../events.js';
+import { markPartDestroyed } from './v2.js';
+import { scriptShields } from './bossScript.js';
 
 export function detonateBarrel(state, section, m) {
   const lv = state.level;
@@ -26,17 +28,17 @@ export function tickSwitch(state, p, m, dt) {
   const lv = state.level;
   if (lv.got[m.id]) return;
   const held = p.cmd && p.cmd.held && p.cmd.held.interact;
-  if (!m.needsHold) {
-    lv.got[m.id] = true;
-    emit(state, 'switch', { id: m.id });
-    return;
-  }
+  if (!m.needsHold) { finishSwitch(state, m); return; }
   if (!held) { m._hold = 0; return; }
   m._hold = (m._hold || 0) + dt;
-  if (m._hold >= (m.holdTime || 0.35)) {
-    lv.got[m.id] = true;
-    emit(state, 'switch', { id: m.id });
-  }
+  if (m._hold >= (m.holdTime || 0.35)) finishSwitch(state, m);
+}
+
+function finishSwitch(state, m) {
+  const lv = state.level;
+  lv.got[m.id] = true;
+  emit(state, 'switch', { id: m.id });
+  if (m.opens) lv.got[m.opens] = true;
 }
 
 export function onMover(p, m) {
@@ -109,12 +111,25 @@ export function isZone(m) {
 }
 
 /** Sustained speed multiplier for the player. 1 when they are not in a live zone. */
+function zoneSlowOf(m) {
+  if (m.slow != null) return m.slow;
+  if (m.speed != null && m.speed <= 1) return m.speed;
+  return null;
+}
+
+function zoneList(sec) {
+  const extra = (sec && sec.hazards) || [];
+  return extra.length ? (sec.mechanisms || []).concat(extra) : (sec && sec.mechanisms) || [];
+}
+
 export function playerZoneSlow(lv, sec, p) {
   let slow = 1;
-  for (const m of (sec && sec.mechanisms) || []) {
-    if (!isZone(m) || !hazardOn(lv, m) || m.slow == null) continue;
+  for (const m of zoneList(sec)) {
+    if (!isZone(m) || !hazardOn(lv, m)) continue;
+    const rate = zoneSlowOf(m);
+    if (rate == null) continue;
     if (!insideZone(m, p.pos.x, p.pos.z)) continue;
-    if (m.slow < slow) slow = m.slow;
+    if (rate < slow) slow = rate;
   }
   return slow;
 }
@@ -123,6 +138,7 @@ export function enemyZoneSlow(lv, sec, e) {
   let slow = 1;
   for (const m of (sec && sec.mechanisms) || []) {
     if (!isZone(m) || !hazardOn(lv, m) || !m.affectsEnemies || m.slow == null) continue;
+    if (e.type === 'frostHound' && m.tag === 'slick') continue;
     if (!insideZone(m, e.pos.x, e.pos.z)) continue;
     if (m.slow < slow) slow = m.slow;
   }
@@ -131,7 +147,7 @@ export function enemyZoneSlow(lv, sec, e) {
 
 export function publishSlowZones(lv, sec) {
   const zones = [];
-  for (const m of (sec && sec.mechanisms) || []) {
+  for (const m of zoneList(sec)) {
     if (!isZone(m) || !hazardOn(lv, m) || !(m.navCost > 1) || !m.min || !m.max) continue;
     zones.push({ min: m.min, max: m.max, cost: m.navCost });
   }
@@ -150,6 +166,56 @@ export function tickZoneDamage(state, p, m, dt) {
       if (e.hp <= 0) { e.hp = 0; e.dead = true; }
     }
   }
+}
+
+function targetKey(m) {
+  if (m.solid) return m.solid;
+  if (m.id && m.id.endsWith('-hp')) return m.id.slice(0, -'-hp'.length);
+  return m.id;
+}
+
+function matchesTarget(m, solidId) {
+  if (!solidId) return false;
+  if (m.id === solidId || targetKey(m) === solidId) return true;
+  return solidId === `${m.id}-body` || solidId === `${m.id}-hp`;
+}
+
+/** A shot into a destructible solid. Returns true when the solid is gone. */
+export function damageLevelSolid(state, solid, hit) {
+  const lv = state.level;
+  const sec = state._campaignSection || state._v2section;
+  if (!lv || !sec || !solid || !solid.id) return false;
+  const m = (sec.mechanisms || []).find((item) => item.kind === 'target' && matchesTarget(item, solid.id));
+  if (!m || scriptShields(state, solid.id)) return false;
+  if (!lv.targets) lv.targets = {};
+  const rec = lv.targets[m.id] || (lv.targets[m.id] = { hp: m.hp, max: m.hp });
+  if (rec.hp <= 0) return true;
+  let dmg = hit.base || 0;
+  if (hit.sourceKind === 'gun' && m.bulletMul != null) dmg *= m.bulletMul;
+  if ((hit.isSplash || hit.sourceKind === 'world') && m.explosiveMul != null) dmg *= m.explosiveMul;
+  if (hit.sourceKind === 'spell' && m.spellMul != null) dmg *= m.spellMul;
+  if (hit.zone === 'weak' && m.weak) dmg *= m.weak;
+  rec.hp -= dmg;
+  if (rec.hp > 0) return false;
+  rec.hp = 0;
+  if (!lv.brokenSolids) lv.brokenSolids = {};
+  lv.brokenSolids[solid.id] = true;
+  if (lv.solids) lv.solids = lv.solids.filter((s) => s.id !== solid.id);
+  markPartDestroyed(state, m.id);
+  if (targetKey(m) !== m.id) markPartDestroyed(state, targetKey(m));
+  return true;
+}
+
+export function tickRising(state, p, m, dt) {
+  if (m.kind !== 'risingHazard' || !m.min || !m.max) return;
+  const lv = state.level;
+  if (m.starts && !(lv.fled && lv.fled[m.starts.slice(0, -'.fled'.length)])) return;
+  if (!lv.rise) lv.rise = {};
+  const st = lv.rise[m.id] || (lv.rise[m.id] = { y: m.min[1] });
+  st.y = Math.min(m.max[1], st.y + (m.rate || 0.18) * dt);
+  if (p.pos.x < m.min[0] || p.pos.x > m.max[0] || p.pos.z < m.min[2] || p.pos.z > m.max[2]) return;
+  if (p.pos.y < st.y) p.pos.y = st.y;
+  if (m.dps && p.pos.y <= st.y + 0.2) damagePlayer(state, p, { base: m.dps * dt, sourceKind: 'world', fromPos: { x: p.pos.x, y: st.y, z: p.pos.z } });
 }
 
 export function tickGeyser(state, p, m) {

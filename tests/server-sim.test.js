@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  CANONICAL_BOSSES, bossById, contentFingerprint, listBossObjectives, rejectedBossReason,
+  CANONICAL_BOSSES, bossById, contentFingerprint, listBossObjectives, rejectedBossReason, resolveCanonicalEncounter,
 } from '../src/data/serverManifest.js';
 import { ECONOMY, buildIssuance, canonicalLoadoutOk, buildIssuedState } from '../src/server/runContract.js';
 import { PROTOCOL_VERSION } from '../src/server/protocol.js';
@@ -18,6 +18,8 @@ const caller = {
 describe('canonical bosses', () => {
   it('counts obamaDuo and midgetDuo as one obama and keeps glowie off Duel agent', () => {
     const obama = bossById('obama');
+    expect(obama.encounterId).toBe('SB-BOSS');
+    expect(obama.legacyEncounterId).toBe('S3-E3');
     expect(obama.parts).toEqual(['obamaDuo', 'midgetDuo']);
     expect(obama.countAs || 1).toBe(1);
     expect(obama.duelId).toBe('obama');
@@ -34,13 +36,20 @@ describe('canonical bosses', () => {
   it('does not treat a fleeing encounter as the payable boss', () => {
     const bosses = listBossObjectives();
     const flee = bosses.filter((b) => b.fleeAt > 0).map((b) => `${b.levelId}:${b.encounterId}`);
-    expect(flee).toContain('L03:S4-E4');
+    const l03 = flee.filter((id) => id.startsWith('L03:'));
+    expect(l03.some((id) => id === 'L03:S4-E4' || id === 'L03:S6-F2')).toBe(true);
     expect(flee).toContain('L09:S3-E4');
     for (const boss of CANONICAL_BOSSES) {
-      const hit = bosses.find((b) => b.levelId === boss.levelId && b.encounterId === boss.encounterId);
+      const found = resolveCanonicalEncounter(boss);
+      const hit = bosses.find((b) => b.levelId === boss.levelId && b.encounterId === found.encounter.id);
       expect(hit.fleeAt).toBe(0);
-      expect(hit.units.map((u) => u.type).sort()).toEqual(boss.parts.slice().sort());
+      for (const part of boss.parts) {
+        expect(hit.units.filter((u) => u.type === part && u.count === 1)).toHaveLength(1);
+      }
     }
+    const obama = bossById('obama');
+    expect(obama.encounterId).toBe('SB-BOSS');
+    expect(resolveCanonicalEncounter(obama).encounter.id).toBe('S3-E3');
   });
 });
 

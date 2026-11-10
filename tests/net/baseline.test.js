@@ -120,7 +120,7 @@ describe('pins the harness must never move', () => {
     // (S2b review fixes: 128-bit combat RNG, echo cap 1000 ms, view step 2). S3 (client only)
     // leaves it alone.
     expect(CONTENT_FINGERPRINT).toBe('17d87c54');
-    expect(contentFingerprint(1)).toBe('bfe99bf4');
+    expect(contentFingerprint(1)).toBe('9ec1c6ea');
   });
 });
 

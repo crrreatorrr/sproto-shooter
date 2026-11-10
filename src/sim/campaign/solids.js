@@ -132,18 +132,24 @@ export function snapToGround(ent, solids, radius, step = STEP_UP) {
 }
 
 /** First solid hit along a ray. Returns distance or -1. */
-export function raySolids(solids, origin, dir, maxDist, allow = null) {
-  let best = -1;
+export function firstSolid(solids, origin, dir, maxDist, allow = null, includeThin = false) {
+  let best = null;
+  let bestT = -1;
   for (let i = 0; i < solids.length; i++) {
     const s = solids[i];
-    if (allow && !allow(s)) continue;
+    if (typeof allow === 'function' && !allow(s)) continue;
     const thin = s.max[1] - s.min[1] <= 0.6;
-    if (thin && s.max[1] <= origin.y + 0.05) continue;
+    if (!includeThin && thin && s.max[1] <= origin.y + 0.05) continue;
     const t = rayAabb(origin, dir, s.min, s.max, maxDist);
     if (t < 0) continue;
-    if (best < 0 || t < best) best = t;
+    if (bestT < 0 || t < bestT) { bestT = t; best = s; }
   }
-  return best;
+  return best ? { t: bestT, solid: best } : null;
+}
+
+export function raySolids(solids, origin, dir, maxDist, allow = null) {
+  const hit = firstSolid(solids, origin, dir, maxDist, allow);
+  return hit ? hit.t : -1;
 }
 
 function rayAabb(o, d, min, max, maxDist) {

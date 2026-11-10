@@ -62,7 +62,7 @@ Keyboard, mouse and controller all work at once. The HUD prompts and the control
 | LMB / RMB | Fire / cast the selected spell |
 | F or middle-click | Aim toggle: press to aim and stay aiming; with a sniper press again to zoom closer (3× stronger); press again to stop. Shift cancels it |
 | Wheel while zoomed | Sniper: switch between zoom 1 and zoom 2 (instead of switching guns) |
-| Shift · Space · C (or Ctrl) · V (or Alt) | Sprint · jump/double jump · slide · dash |
+| Shift · Space · C · Ctrl+Shift · B · V (or Alt) | Sprint (stamina) · jump/double jump · slide · crouch-slide · grapple · dash |
 | R | Reload. Hold R: pick up gun / open Weapon Box (when one is in reach; E or G also work) |
 | 1–4, L / wheel | Switch gun (L = legendary slot) |
 | H | Use medkit |
