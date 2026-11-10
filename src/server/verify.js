@@ -201,7 +201,7 @@ export function verifyRun(log, ctx) {
       const before = { x: state.players[playerId].pos.x, y: state.players[playerId].pos.y, z: state.players[playerId].pos.z };
       simulate(state, { [playerId]: decoded.commands[f] });
       const moved = movementDelta(before, state.players[playerId].pos);
-      if (moved) return fail(moved, { logDigest: digest, tick: state.tick });
+      if (moved && !checkpointRestored(state)) return fail(moved, { logDigest: digest, tick: state.tick });
       const cheat = runtimeCheat(state) || inventoryCheat(state);
       if (cheat) return fail(cheat, { logDigest: digest, tick: state.tick });
       noteParts(seenParts, state, boss);
@@ -236,6 +236,17 @@ export function verifyRun(log, ctx) {
     cpuMs: now() - started,
     economy: ECONOMY,
   };
+}
+
+/** A lockdown rewind or a void rescue snaps the player. That jump is the sim, not a forged teleport. */
+function checkpointRestored(state) {
+  const events = state && state.events;
+  if (!events) return false;
+  for (let i = 0; i < events.length; i++) {
+    const type = events[i].type;
+    if (type === 'lockdownReset' || type === 'voidRescue') return true;
+  }
+  return false;
 }
 
 function rejectedOrUnknown(id) {

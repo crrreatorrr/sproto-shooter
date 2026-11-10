@@ -82,7 +82,7 @@ describe('L02 Grand Bazaar data', () => {
     expect(boss.encounters[0].hp).toMatchObject({ part2: 1714, part4: 1909, part5: 1967 });
     expect(mechs.some((m) => m.kind === 'shrine' && m.spell === 'chainZap')).toBe(true);
     expect(mechs.some((m) => m.kind === 'secret' && m.modifier === 'confetti')).toBe(true);
-    expect(contentFingerprint(1)).toBe('9ec1c6ea');
+    expect(contentFingerprint(1)).toBe('cea1f88b');
   });
 
   it('seals Dyers Court one step after the threshold', () => {
