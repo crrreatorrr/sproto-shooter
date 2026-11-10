@@ -1,6 +1,8 @@
 // Campaign world collision. Off unless state.level.useSolids is set, so Wave Mode,
 // Sandbox and the current corridor levels keep their old movement.
 // Solids are axis-aligned. A ramp's walkable top rises along yaw (0 rises toward +z).
+// A terrain solid is a heightfield: its box is only the broad bounds.
+import { heightAt } from './terrain.js';
 
 export const STEP_UP = 0.4;
 
@@ -51,7 +53,21 @@ function overlapsXZ(s, x, z, r) {
   return x + r > s.min[0] && x - r < s.max[0] && z + r > s.min[2] && z - r < s.max[2];
 }
 
+export function terrainSolid(t) {
+  const amp = (t.noise && t.noise.amp) || 0;
+  const oy = t.origin[1] || 0;
+  return {
+    kind: 'terrain', id: t.id, terrain: t,
+    min: [t.origin[0], oy - amp - 1, t.origin[2]],
+    max: [t.origin[0] + t.size[0], oy + amp + 1, t.origin[2] + t.size[1]],
+  };
+}
+
 export function surfaceY(s, x, z) {
+  if (s.kind === 'terrain') {
+    const h = heightAt(s.terrain, x, z);
+    return h == null ? -1e9 : h;
+  }
   if (s.kind !== 'ramp') return s.max[1];
   const spanZ = Math.max(0.001, s.max[2] - s.min[2]);
   const spanX = Math.max(0.001, s.max[0] - s.min[0]);
@@ -76,6 +92,22 @@ export function groundHeight(solids, x, z, radius, feet, step = STEP_UP) {
     if (top > g) g = top;
   }
   return g;
+}
+
+function pushDownhill(ent, s, step) {
+  const h = heightAt(s.terrain, ent.pos.x, ent.pos.z);
+  if (h == null || h <= ent.pos.y + step + 0.02) return;
+  const e = 0.35;
+  const east = heightAt(s.terrain, ent.pos.x + e, ent.pos.z);
+  const west = heightAt(s.terrain, ent.pos.x - e, ent.pos.z);
+  const north = heightAt(s.terrain, ent.pos.x, ent.pos.z + e);
+  const south = heightAt(s.terrain, ent.pos.x, ent.pos.z - e);
+  const hx = (east == null ? h : east) - (west == null ? h : west);
+  const hz = (north == null ? h : north) - (south == null ? h : south);
+  const gl = Math.hypot(hx, hz);
+  if (gl < 1e-4) return;
+  ent.pos.x -= (hx / gl) * 0.2;
+  ent.pos.z -= (hz / gl) * 0.2;
 }
 
 function pushCircle(x, z, s, radius) {
@@ -103,6 +135,10 @@ export function pushHorizontal(ent, solids, radius, height, step = STEP_UP) {
   for (let n = 0; n < 3; n++) {
     for (let i = 0; i < solids.length; i++) {
       const s = solids[i];
+      if (s.kind === 'terrain') {
+        pushDownhill(ent, s, step);
+        continue;
+      }
       const top = surfaceY(s, ent.pos.x, ent.pos.z);
       if (top <= feet + step + 0.02) continue;
       if (head <= s.min[1] + 0.01 || feet + step >= s.max[1]) continue;
@@ -138,9 +174,11 @@ export function firstSolid(solids, origin, dir, maxDist, allow = null, includeTh
   for (let i = 0; i < solids.length; i++) {
     const s = solids[i];
     if (typeof allow === 'function' && !allow(s)) continue;
-    const thin = s.max[1] - s.min[1] <= 0.6;
+    const thin = s.kind !== 'terrain' && s.max[1] - s.min[1] <= 0.6;
     if (!includeThin && thin && s.max[1] <= origin.y + 0.05) continue;
-    const t = rayAabb(origin, dir, s.min, s.max, maxDist);
+    const t = s.kind === 'terrain'
+      ? rayTerrain(origin, dir, s.terrain, maxDist, includeThin)
+      : rayAabb(origin, dir, s.min, s.max, maxDist);
     if (t < 0) continue;
     if (bestT < 0 || t < bestT) { bestT = t; best = s; }
   }
@@ -150,6 +188,31 @@ export function firstSolid(solids, origin, dir, maxDist, allow = null, includeTh
 export function raySolids(solids, origin, dir, maxDist, allow = null) {
   const hit = firstSolid(solids, origin, dir, maxDist, allow);
   return hit ? hit.t : -1;
+}
+
+function rayTerrain(o, d, field, maxDist, includeThin) {
+  const step = Math.max(0.5, ((field && field.cell) || 2) * 0.5);
+  const startH = heightAt(field, o.x, o.z);
+  let prevY = o.y;
+  let prevH = startH;
+  let prev = 0;
+  for (let dist = step; dist <= maxDist; dist += step) {
+    const x = o.x + d.x * dist;
+    const y = o.y + d.y * dist;
+    const z = o.z + d.z * dist;
+    const h = heightAt(field, x, z);
+    if (prevH != null && h != null && (prevY - prevH) * (y - h) <= 0) {
+      const denom = (prevY - prevH) - (y - h);
+      const f = Math.abs(denom) < 1e-8 ? 0 : (prevY - prevH) / denom;
+      const hit = prev + (dist - prev) * Math.max(0, Math.min(1, f));
+      if (hit > 0.2 && hit <= maxDist) return hit;
+      if (includeThin && hit >= 0 && hit <= maxDist) return hit;
+    }
+    prevY = y;
+    prevH = h;
+    prev = dist;
+  }
+  return -1;
 }
 
 function rayAabb(o, d, min, max, maxDist) {
