@@ -29,6 +29,7 @@ export const EVENT_COVERAGE = {
   dash: ['audio', 'vfx'],
   defeat: ['audio', 'ui'],
   door: ['audio', 'ui'],
+  droneStrike: ['audio', 'vfx'],
   doubleJump: ['audio'],
   duckBounce: ['audio', 'vfx'],
   encounterClear: ['audio', 'ui'],

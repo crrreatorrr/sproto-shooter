@@ -104,7 +104,7 @@ Local coordinates. `origin: [x, y, z]` is the section's north-west corner in the
 | `with` | Squad `after` has spawned and `delay` seconds have passed. |
 | `onAlarm` | `ringAlarm(state, alarm)` has been called and `delay` seconds (on the squad) have passed. |
 
-`clearAll` and `boss` ignore a squad marked `optional: true` until it spawns. A quiet run does not wait on an alarm pack that never rings. Once it spawns, it still has to die. Extra enemies wait while the encounter is at `maxAlive`. `flockUnit: 6` counts six living bitbugs as one of those units. When a script part ends, a `part` squad that never spawned is skipped, and anyone it already spawned leaves with no drop and no kill credit.
+`clearAll` and `boss` ignore a squad marked `optional: true` until it spawns. A quiet run does not wait on an alarm pack that never rings. Once it spawns, it still has to die. An objective may also set `also: { kind: 'hold', seconds }`. The exit waits for the waves and for that many seconds inside `hold`. The clock runs only while the player or an ally stands in `hold`. Enemies in the ring do not pause it. After the waves are dead it runs at three times speed. `strikes: [8, 22, ...]` and `strikeEvery` launch a drone strike on that clock: it tracks for 1.8 s, locks for 0.75 s, then deals 30 to the player and 120 to enemies inside 2.6 m. Extra enemies wait while the encounter is at `maxAlive`. `flockUnit: 6` counts six living bitbugs as one of those units. When a script part ends, a `part` squad that never spawned is skipped, and anyone it already spawned leaves with no drop and no kill credit.
 
 ## Lockdown
 
