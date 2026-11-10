@@ -1,5 +1,6 @@
 // Projectiles, hazards, pickups, allies, status effects, cleanup.
 import { TUNING, ARENA_R } from '../data/tuning.js';
+import { activeSolids, groundHeight, raySolids } from './campaign/solids.js';
 import { ALLY } from '../data/enemies.js';
 import { XP } from '../data/skills.js';
 import { RES_IDS } from '../data/drops.js';
@@ -28,6 +29,15 @@ export function projectiles(state, dt) {
     }
     const len = Math.hypot(p.vel.x, p.vel.y, p.vel.z) * dt;
     const dir = len > 0 ? { x: (p.vel.x * dt) / len, y: (p.vel.y * dt) / len, z: (p.vel.z * dt) / len } : { x: 0, y: 0, z: 1 };
+    const shotSolids = activeSolids(state);
+    if (shotSolids && len > 0) {
+      const wall = raySolids(shotSolids, p.pos, dir, len);
+      if (wall >= 0) {
+        p.pos = { x: p.pos.x + dir.x * wall, y: p.pos.y + dir.y * wall, z: p.pos.z + dir.z * wall };
+        detonate(state, p);
+        continue;
+      }
+    }
     const end = { x: p.pos.x + p.vel.x * dt, y: p.pos.y + p.vel.y * dt, z: p.pos.z + p.vel.z * dt };
     let consumed = false;
     if (p.faction === 'player') {
@@ -157,7 +167,9 @@ export function pickups(state, dt) {
     if (k.kind === 'gun') {
       k.vel.y -= 18 * dt;
       k.pos.x += k.vel.x * dt; k.pos.y += k.vel.y * dt; k.pos.z += k.vel.z * dt;
-      if (k.pos.y < 0.6) { k.pos.y = 0.6; k.vel.y = 0; k.vel.x *= 0.85; k.vel.z *= 0.85; }
+      const dropSolids = activeSolids(state);
+      const floor = dropSolids ? Math.max(0.6, groundHeight(dropSolids, k.pos.x, k.pos.z, 0.2, k.pos.y, 2) + 0.3) : 0.6;
+      if (k.pos.y < floor) { k.pos.y = floor; k.vel.y = 0; k.vel.x *= 0.85; k.vel.z *= 0.85; }
       clampR(k);
       if (!p.dead && d < nearD) { nearD = d; p.nearGunPickupId = k.id; }
       continue;

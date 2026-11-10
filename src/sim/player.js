@@ -5,8 +5,9 @@ import { float, range } from '../core/rng.js';
 import { dirFromYawPitch, deg, clamp } from '../core/math.js';
 import { emit } from './events.js';
 import { clampToArena, pushOutOfBoxes, raycastEnemies, rayWorld, eyePos } from './collision.js';
+import { activeSolids, campaignSolidsOn, pushHorizontal, raySolids, snapToGround, voidAt, STEP_UP } from './campaign/solids.js';
 import { effectiveGunStats } from './guns.js';
-import { damageEnemy, healPlayer, explode } from './combat.js';
+import { damageEnemy, damagePlayer, healPlayer, explode } from './combat.js';
 import { createProjectile } from './state.js';
 
 const EMPTY_CMD = { yaw: 0, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [] };
@@ -113,7 +114,23 @@ export function playerMovement(state, dt) {
     }
     p.pos.x += p.vel.x * dt; p.pos.y += p.vel.y * dt; p.pos.z += p.vel.z * dt;
     const wasAir = !p.onGround;
-    if (p.pos.y <= 0) {
+    const solids = activeSolids(state);
+    if (solids) {
+      pushHorizontal(p, solids, TUNING.playerRadius, TUNING.playerHeight, STEP_UP);
+      const beforeY = p.pos.y;
+      snapToGround(p, solids, TUNING.playerRadius, STEP_UP);
+      if (wasAir && p.onGround && beforeY - p.pos.y > 0.05 && p.vel.y < -6) {
+        emit(state, 'land', { playerId: p.id, speed: 6 });
+      }
+      const hole = voidAt(p.pos, state.level.voids);
+      if (hole && hole.to) {
+        p.pos.x = hole.to[0]; p.pos.y = hole.to[1]; p.pos.z = hole.to[2];
+        p.vel.x = p.vel.y = p.vel.z = 0;
+        p.onGround = true;
+        if (hole.penalty) damagePlayer(state, p, { base: p.maxHp * hole.penalty, sourceKind: 'world', fromPos: p.pos });
+        emit(state, 'voidRescue', { id: hole.id || 'void', penalty: hole.penalty || 0 });
+      }
+    } else if (p.pos.y <= 0) {
       p.pos.y = 0;
       if (p.vel.y < 0) { if (wasAir && p.vel.y < -6) emit(state, 'land', { playerId: p.id, speed: -p.vel.y }); p.vel.y = 0; }
       p.onGround = true;
@@ -183,6 +200,13 @@ export function fireHitscan(state, p, g, st, origin, dir, extra = {}) {
   const ignore = {};
   const rng = gunRange(g); // shots stop at the gun's max range and lose damage past its full-damage range
   let remaining = Math.min(TUNING.hitscanRange, rng.max);
+  if (campaignSolidsOn(state)) {
+    const solids = activeSolids(state);
+    if (solids) {
+      const wall = raySolids(solids, origin, dir, remaining);
+      if (wall >= 0) remaining = wall;
+    }
+  }
   let pierce = st.pierce;
   let end = null;
   for (let i = 0; i <= pierce; i++) {

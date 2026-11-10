@@ -5,6 +5,7 @@ import { float, range } from '../core/rng.js';
 import { angleWrap, yawTo, deg } from '../core/math.js';
 import { emit } from './events.js';
 import { clampToArena, pushOutOfBoxes, entityDef } from './collision.js';
+import { activeSolids, pushHorizontal, snapToGround } from './campaign/solids.js';
 import { hitPlayerSphere, enemyAoE } from './combat.js';
 import { createProjectile, createHazard } from './state.js';
 
@@ -270,8 +271,14 @@ export function enemyAI(state, dt) {
     if (def.flying) { if (e.state === 'stagger' || e.state === 'spawning') e.vel.y += ((e.state === 'spawning' ? 2 : -3) - e.vel.y) * Math.min(1, 5 * dt); }
     else e.vel.y -= 30 * dt;
     e.pos.x += e.vel.x * dt; e.pos.y += e.vel.y * dt; e.pos.z += e.vel.z * dt;
-    const floorY = def.flying ? 0.6 : 0;
-    if (e.pos.y <= floorY) { e.pos.y = floorY; if (e.vel.y < 0) e.vel.y = 0; }
+    const solids = activeSolids(state);
+    if (solids && !def.flying) {
+      pushHorizontal(e, solids, e.radius * e.scale, e.height * e.scale);
+      snapToGround(e, solids, e.radius * e.scale);
+    } else {
+      const floorY = def.flying ? 0.6 : 0;
+      if (e.pos.y <= floorY) { e.pos.y = floorY; if (e.vel.y < 0) e.vel.y = 0; }
+    }
     // knockback damping
     if (e.state !== 'chase' && e.state !== 'attack') { e.vel.x *= Math.max(0, 1 - 4 * dt); e.vel.z *= Math.max(0, 1 - 4 * dt); }
   }
