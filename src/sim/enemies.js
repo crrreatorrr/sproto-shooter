@@ -6,6 +6,7 @@ import { angleWrap, yawTo, deg } from '../core/math.js';
 import { emit } from './events.js';
 import { clampToArena, pushOutOfBoxes, entityDef } from './collision.js';
 import { activeSolids, pushHorizontal, snapToGround } from './campaign/solids.js';
+import { sensePlayer } from './campaign/perception.js';
 import { hitPlayerSphere, enemyAoE } from './combat.js';
 import { createProjectile, createHazard } from './state.js';
 
@@ -261,6 +262,8 @@ export function enemyAI(state, dt) {
       e.ai.burstLeft = 0; e.ai.aimT = 0;
       approachVel(e, { x: 0, z: 0 }, 0, 25, dt);
       if (e.stateT >= def.staggerTime) setState(e, 'chase');
+    } else if (e.ai.alert && e.ai.alert !== 'alerted' && !sensePlayer(state, e, target)) {
+      approachVel(e, { x: 0, z: 0 }, 0, 30, dt);
     } else {
       if (e.state === 'idle' && e.type !== 'dummy') setState(e, 'chase');
       const slow = e.status.goo ? 1 - e.status.goo.slow : 1;

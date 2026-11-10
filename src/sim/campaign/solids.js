@@ -129,10 +129,11 @@ export function snapToGround(ent, solids, radius, step = STEP_UP) {
 }
 
 /** First solid hit along a ray. Returns distance or -1. */
-export function raySolids(solids, origin, dir, maxDist) {
+export function raySolids(solids, origin, dir, maxDist, allow = null) {
   let best = -1;
   for (let i = 0; i < solids.length; i++) {
     const s = solids[i];
+    if (allow && !allow(s)) continue;
     const t = rayAabb(origin, dir, s.min, s.max, maxDist);
     if (t < 0) continue;
     if (best < 0 || t < best) best = t;

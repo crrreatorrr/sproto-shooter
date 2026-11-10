@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createGameState } from '../src/sim/state.js';
 import { simulate } from '../src/sim/simulate.js';
 import { groundHeight, raySolids, solidFromPrimitive, surfaceY } from '../src/sim/campaign/solids.js';
+import { coverNear, hasLOS } from '../src/sim/campaign/perception.js';
 import { contentFingerprint } from '../src/data/serverManifest.js';
 import { CONTENT_FINGERPRINT } from '../src/sim/pvp/rules.js';
 
@@ -73,6 +74,29 @@ describe('campaign solids', () => {
     expect(p.pos.z).toBeCloseTo(11);
     expect(p.hp + p.shield).toBeLessThan(before);
     expect(s.events.some((ev) => ev.type === 'voidRescue')).toBe(true);
+  });
+
+  it('hides a player behind a wall until they step into sight or fire', () => {
+    const screen = solidFromPrimitive({ kind: 'box', id: 'screen', at: [20, 1.2, 8], size: [8, 2.4, 0.6] });
+    const s = boot([floor, screen], { x: 20, z: 5, y: 0 });
+    const p = s.players[s.localPlayerId];
+    simulate(s, { [p.id]: cmd({ actions: [{ type: 'debug', op: 'spawnEnemy', args: { type: 'midget', count: 1 } }] }) });
+    const e = s.enemies.find((en) => !en.dead);
+    e.pos = { x: 20, y: 0, z: 12 };
+    e.prevPos = { ...e.pos };
+    e.ai.alert = 'unaware';
+    e.state = 'chase';
+    const from = { x: 20, y: 1.4, z: 12 };
+    const hidden = { x: 20, y: 1.4, z: 5 };
+    expect(hasLOS(s, from, hidden)).toBe(false);
+    expect(coverNear(s.level.solids, 20, 8.2, 1).includes('screen')).toBe(true);
+    const z0 = e.pos.z;
+    for (let i = 0; i < 20; i++) simulate(s, { [p.id]: cmd() });
+    expect(e.ai.alert).toBe('unaware');
+    expect(e.pos.z).toBeCloseTo(z0, 1);
+    p.pos.x = 28; p.pos.z = 12;
+    for (let i = 0; i < 5; i++) simulate(s, { [p.id]: cmd() });
+    expect(e.ai.alert).toBe('alerted');
   });
 
   it('does not move the campaign fingerprint or the PvP fingerprint', () => {
