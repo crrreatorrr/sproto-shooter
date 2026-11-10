@@ -173,12 +173,18 @@ function targetKey(m) {
   return m.id;
 }
 
+function matchesTarget(m, solidId) {
+  if (!solidId) return false;
+  if (m.id === solidId || targetKey(m) === solidId) return true;
+  return solidId === `${m.id}-body` || solidId === `${m.id}-hp`;
+}
+
 /** A shot into a destructible solid. Returns true when the solid is gone. */
 export function damageLevelSolid(state, solid, hit) {
   const lv = state.level;
   const sec = state._campaignSection || state._v2section;
   if (!lv || !sec || !solid || !solid.id) return false;
-  const m = (sec.mechanisms || []).find((item) => item.kind === 'target' && targetKey(item) === solid.id);
+  const m = (sec.mechanisms || []).find((item) => item.kind === 'target' && matchesTarget(item, solid.id));
   if (!m || scriptShields(state, solid.id)) return false;
   if (!lv.targets) lv.targets = {};
   const rec = lv.targets[m.id] || (lv.targets[m.id] = { hp: m.hp, max: m.hp });
@@ -187,6 +193,7 @@ export function damageLevelSolid(state, solid, hit) {
   if (hit.sourceKind === 'gun' && m.bulletMul != null) dmg *= m.bulletMul;
   if ((hit.isSplash || hit.sourceKind === 'world') && m.explosiveMul != null) dmg *= m.explosiveMul;
   if (hit.sourceKind === 'spell' && m.spellMul != null) dmg *= m.spellMul;
+  if (hit.zone === 'weak' && m.weak) dmg *= m.weak;
   rec.hp -= dmg;
   if (rec.hp > 0) return false;
   rec.hp = 0;
