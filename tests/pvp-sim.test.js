@@ -18,10 +18,10 @@ import './fixtures/director-golden.js';
 
 // SHOOTER-S2b: sim 2 (lag compensation, split seed, no crits) is a deliberate golden bump from
 // ce272de1 (sim 1, tick 61). The fingerprint went f5949631 (protocol 1) -> 0e584d36 (S2a) ->
-// ec36c8fa (S2b) -> 17d87c54 (S2b review fixes).
-const GOLDEN_HASH = '6545ca0a';
+// ec36c8fa (S2b) -> 17d87c54 (S2b review fixes) -> b33eada6 (slide, grapple, stamina).
+const GOLDEN_HASH = '532a562e';
 const GOLDEN_TICK = 65;
-const FINGERPRINT = '17d87c54';
+const FINGERPRINT = 'b33eada6';
 const DRIVER = path.resolve('tests', 'fixtures', 'director-golden.js');
 const { comment: _comment, ...DIRECTOR_GOLDEN } = directorGoldenFixture;
 

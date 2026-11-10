@@ -73,6 +73,6 @@ describe('vault drill and drone strikes', () => {
 
   it('keeps the campaign and PvP pins', () => {
     expect(contentFingerprint(1)).toBe('cea1f88b');
-    expect(CONTENT_FINGERPRINT).toBe('17d87c54');
+    expect(CONTENT_FINGERPRINT).toBe('b33eada6');
   });
 });

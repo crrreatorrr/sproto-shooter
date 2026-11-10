@@ -358,7 +358,9 @@ export function createDirector({
     for (const key of Object.keys(p)) {
       if (PRIVATE_SKIP.has(key)) continue;
       const value = p[key];
-      out[key] = Array.isArray(value) ? value.slice() : value;
+      if (Array.isArray(value)) out[key] = value.slice();
+      else if (value && typeof value === 'object') out[key] = { ...value };
+      else out[key] = value;
     }
     return out;
   }
@@ -387,6 +389,7 @@ export function createDirector({
         hp: p.hp, shield: p.shield,
         alive: p.alive,
         slot: p.slot,
+        grapple: p.grapple ? { x: p.grapple.x, y: p.grapple.y, z: p.grapple.z, id: p.grapple.id } : null,
       })),
       you: {
         seat: index,

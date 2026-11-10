@@ -8,7 +8,7 @@
 //   int16 pitch  -32767..32767 -> -1.5..1.5, -32768 = keep
 //   int8  moveX  -127..127 -> -1..1
 //   int8  moveZ
-//   uint8 buttons, input-codec bits: fire, zoom, sprint, jump, dash, reload, slide
+//   uint8 buttons, input-codec bits: fire, zoom, sprint, jump, dash, reload, slide, grapple
 //   uint8 meta   low 2 bits slot + 1 (0 = keep the gun), bits 2-3 source (input, hold, neutral)
 //   uint8 rewind ticks back from this tick, already clamped by the director (sim 2)
 //   uint8 frac   viewFrac, 0..255 (the shooter saw rewind - frac/256 ticks back)
@@ -21,9 +21,9 @@ const SEAT_HEX = TICK_HEX / 2;
 /** Ticks per log chunk. Chunks keep exportState cheap to copy. */
 export const CHUNK_TICKS = 30;
 
-const BUTTONS = Object.freeze(['fire', 'zoom', 'sprint', 'jump', 'dash', 'reload', 'slide']);
-/** fire, zoom, sprint: the held buttons a missing tick may repeat. Edges never repeat. */
-export const HELD_MASK = 0b0000111;
+const BUTTONS = Object.freeze(['fire', 'zoom', 'sprint', 'jump', 'dash', 'reload', 'slide', 'grapple']);
+/** fire, zoom, sprint, grapple: the held buttons a missing tick may repeat. Edges never repeat. */
+export const HELD_MASK = 0b10000111;
 const KEEP = -32768;
 
 function quant(value, scale) {
@@ -91,7 +91,7 @@ function encodeOne(u) {
     + hex(u.p == null ? KEEP : u.p, 2)
     + hex(u.mx, 1)
     + hex(u.mz, 1)
-    + hex(u.b & 0x7f, 1)
+    + hex(u.b & 0xff, 1)
     + hex(((u.s + 1) & 3) | ((u.src & 3) << 2), 1)
     + hex(u8(u.r), 1)
     + hex(u8(u.f), 1);
@@ -113,7 +113,7 @@ function decodeOne(text, at) {
   const meta = parseInt(text.slice(at + 14, at + 16), 16);
   const r = parseInt(text.slice(at + 16, at + 18), 16);
   const f = parseInt(text.slice(at + 18, at + 20), 16);
-  if (b & 0x80 || meta > 0x0f || mx < -127 || mz < -127) return null;
+  if (meta > 0x0f || mx < -127 || mz < -127) return null;
   if ((y !== KEEP && y < -32767) || (p !== KEEP && p < -32767)) return null;
   const src = (meta >> 2) & 3;
   if (src > SOURCE.neutral) return null;

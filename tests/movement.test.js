@@ -177,7 +177,7 @@ describe('slide, grapple, stamina', () => {
     const back = dequantizeCommand(quantizeCommand(cmd({ held: { grapple: true }, pressed: { grapple: true } })));
     expect(back.held.grapple).toBe(true);
     expect(back.pressed.grapple).toBe(true);
-    expect(CONTENT_FINGERPRINT).toBe('17d87c54');
+    expect(CONTENT_FINGERPRINT).toBe('b33eada6');
     expect(contentFingerprint(1)).toBe('cea1f88b');
   });
 });

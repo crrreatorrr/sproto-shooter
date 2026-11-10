@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { TUNING } from '../../data/tuning.js';
 import { dirFromYawPitch } from '../../core/math.js';
+import { ARENA_SOLIDS, ARENA_WALL_H } from '../../sim/pvp/arena.js';
 import { chaseCamera } from './aim.js';
 
 export { chaseCamera };
@@ -77,6 +78,23 @@ export function createArenaView(canvas) {
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.02;
   scene.add(ring);
+  const wall = new THREE.Mesh(
+    new THREE.CylinderGeometry(TUNING.arenaRadius, TUNING.arenaRadius, ARENA_WALL_H, 48, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xff5ec4, transparent: true, opacity: 0.12, side: THREE.BackSide }),
+  );
+  wall.position.y = ARENA_WALL_H / 2;
+  scene.add(wall);
+  for (const solid of ARENA_SOLIDS) {
+    const sx = solid.max[0] - solid.min[0];
+    const sy = solid.max[1] - solid.min[1];
+    const sz = solid.max[2] - solid.min[2];
+    const pillar = new THREE.Mesh(
+      new THREE.BoxGeometry(sx, sy, sz),
+      new THREE.MeshStandardMaterial({ color: 0x9a9188, roughness: 0.85 }),
+    );
+    pillar.position.set((solid.min[0] + solid.max[0]) / 2, sy / 2, (solid.min[2] + solid.max[2]) / 2);
+    scene.add(pillar);
+  }
 
   const loader = new THREE.TextureLoader();
   loader.load(asset('textures/stages/city/floor.' + 'jpg'), (tex) => {
@@ -84,6 +102,16 @@ export function createArenaView(canvas) {
     floor.material.map = tex;
     floor.material.color.set(0xffffff);
     floor.material.needsUpdate = true;
+  });
+
+  const ropes = [0, 1].map(() => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+    const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xffd166 }));
+    line.visible = false;
+    line.frustumCulled = false;
+    scene.add(line);
+    return line;
   });
 
   const bodies = [0, 1].map((seat) => {
@@ -185,10 +213,19 @@ export function createArenaView(canvas) {
     for (let i = 0; i < 2; i++) {
       const p = players && players[i];
       const body = bodies[i].group;
-      if (!p) { body.visible = false; continue; }
+      if (!p) { body.visible = false; ropes[i].visible = false; continue; }
       body.visible = !!p.alive || p.hp > 0;
       body.position.set(p.x, p.y, p.z);
       body.rotation.y = p.yaw;
+      const rope = ropes[i];
+      const hook = p.grapple;
+      if (hook) {
+        const pos = rope.geometry.attributes.position;
+        pos.setXYZ(0, p.x, p.y + 0.9, p.z);
+        pos.setXYZ(1, hook.x, hook.y, hook.z);
+        pos.needsUpdate = true;
+        rope.visible = true;
+      } else rope.visible = false;
     }
     const me = players && players[seat] ? players[seat] : { x: 0, y: 0, z: 16, yaw: 0, pitch: 0 };
     if (look && players && players[seat]) bodies[seat].group.rotation.y = look.yaw;

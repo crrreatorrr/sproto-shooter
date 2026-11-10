@@ -101,7 +101,7 @@ describe('L01 Sproto Landing', () => {
     expect(second.level.won).toBe(true);
     expect(stateHash(second)).toBe(stateHash(first));
     expect(contentFingerprint(1)).toBe('cea1f88b');
-    expect(CONTENT_FINGERPRINT).toBe('17d87c54');
+    expect(CONTENT_FINGERPRINT).toBe('b33eada6');
   }, 180000);
 });
 
