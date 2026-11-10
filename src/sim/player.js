@@ -96,12 +96,15 @@ export function playerMovement(state, dt) {
       emit(state, 'slide', { playerId: p.id });
     }
 
+    // While the hook is held, ground friction and the air speed cap stay off so the
+    // rope can build speed. Letting go does not touch that velocity.
+    const hooked = !!(p.grapple) || !!(c.held && c.held.grapple);
     if (m.mode === 'dash') {
       m.dashT -= dt;
       p.vel.x = m.dashDir.x * TUNING.dashSpeed; p.vel.z = m.dashDir.z * TUNING.dashSpeed;
       p.vel.y = Math.max(p.vel.y, 0);
       if (m.dashT <= 0) { m.mode = 'walk'; p.vel.x *= 0.45; p.vel.z *= 0.45; }
-    } else if (m.mode === 'slide') {
+    } else if (m.mode === 'slide' && !hooked) {
       m.slideT -= dt;
       if (wl > 0.2) { p.vel.x += wx * 10 * dt; p.vel.z += wz * 10 * dt; }
       let sp = Math.hypot(p.vel.x, p.vel.z) || 0.0001;
@@ -125,7 +128,7 @@ export function playerMovement(state, dt) {
         m.mode = p.onGround ? 'walk' : 'air';
         m.slideCd = TUNING.slideCd;
       }
-    } else if (p.onGround) {
+    } else if (p.onGround && !hooked) {
       // ground accel + friction
       const tx = wx * maxSpeed, tz = wz * maxSpeed;
       const dx = tx - p.vel.x, dz = tz - p.vel.z;
@@ -133,6 +136,8 @@ export function playerMovement(state, dt) {
       const acc = (wl > 0.01 ? TUNING.groundAccel : TUNING.friction * Math.max(hs, 2)) * dt;
       if (dl > 0) { const k = Math.min(1, acc / dl); p.vel.x += dx * k; p.vel.z += dz * k; }
       m.mode = sprinting ? 'sprint' : 'walk';
+    } else if (hooked) {
+      m.mode = 'air';
     } else {
       const cap = Math.max(hs, TUNING.walkSpeed);
       p.vel.x += wx * TUNING.airAccel * dt; p.vel.z += wz * TUNING.airAccel * dt;

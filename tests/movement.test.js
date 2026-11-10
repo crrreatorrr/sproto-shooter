@@ -117,9 +117,11 @@ describe('slide, grapple, stamina', () => {
     const stam = p.stamina;
     simulate(s, { [p.id]: cmd({ yaw: p.yaw, held: { grapple: true } }) });
     expect(p.stamina).toBeCloseTo(stam, 5);
+    const flung = { x: p.vel.x, y: p.vel.y, z: p.vel.z };
     simulate(s, { [p.id]: cmd({ yaw: p.yaw }) });
     expect(p.grapple).toBeNull();
-    expect(p.vel.x).toBeGreaterThan(0);
+    expect(p.vel.x).toBeCloseTo(flung.x, 4);
+    expect(p.vel.z).toBeCloseTo(flung.z, 4);
     expect(p.grappleCd).toBeGreaterThan(5);
     p.grappleCd = 0;
     p.pos = { x: 16, y: 0, z: 8 };
@@ -128,11 +130,54 @@ describe('slide, grapple, stamina', () => {
     expect(p.grapple).toBeNull();
   });
 
+  it('an upward hook flings the player over a gap and keeps that speed', () => {
+    const id = 'T-FLING';
+    const lv = makeV2Level({
+      id, name: 'Fling',
+      sections: [{
+        id: 'S1', start: [2, 0, 8],
+        geometry: [
+          box({ id: 'near', at: [4, -0.25, 8], size: [8, 0.5, 8] }),
+          box({ id: 'lip', at: [16, 6, 8], size: [1, 12, 6], mat: 'metal' }),
+          box({ id: 'far', at: [24, -0.25, 8], size: [8, 0.5, 8] }),
+        ],
+        encounters: [{ id: 'E', objective: { kind: 'reach' }, activate: { min: [80, -2, 0], max: [90, 4, 4] }, squads: [] }],
+      }],
+    });
+    installLevel(lv);
+    const s = createGameState({ seed: 1 });
+    const p = s.players[s.localPlayerId];
+    simulate(s, { [p.id]: cmd({ actions: [{ type: 'startMode', mode: 'campaign', level: id }] }) });
+    p.pos = { x: 4, y: 0, z: 8 };
+    p.yaw = -Math.PI / 2;
+    p.pitch = 0.55;
+    let up = 0;
+    let along = 0;
+    for (let i = 0; i < 24; i++) {
+      simulate(s, { [p.id]: cmd({ yaw: p.yaw, pitch: 0.55, held: { grapple: true } }) });
+      if (p.vel.y > up) up = p.vel.y;
+      if (p.vel.x > along) along = p.vel.x;
+    }
+    expect(up).toBeGreaterThan(10);
+    expect(along).toBeGreaterThan(8);
+    const heldX = p.vel.x;
+    simulate(s, { [p.id]: cmd({ yaw: p.yaw, pitch: 0.55, moveZ: 1 }) });
+    expect(p.grapple).toBeNull();
+    expect(p.vel.x).toBeGreaterThan(heldX * 0.9);
+    let peak = p.pos.y;
+    for (let i = 0; i < 40; i++) {
+      simulate(s, { [p.id]: cmd({ yaw: p.yaw, moveZ: 1 }) });
+      if (p.pos.y > peak) peak = p.pos.y;
+    }
+    expect(peak).toBeGreaterThan(3);
+    expect(p.pos.x).toBeGreaterThan(14);
+  });
+
   it('puts grapple on the run log and keeps the PvP fingerprint', () => {
     const back = dequantizeCommand(quantizeCommand(cmd({ held: { grapple: true }, pressed: { grapple: true } })));
     expect(back.held.grapple).toBe(true);
     expect(back.pressed.grapple).toBe(true);
     expect(CONTENT_FINGERPRINT).toBe('17d87c54');
-    expect(contentFingerprint(1)).toBe('0ebc3c6d');
+    expect(contentFingerprint(1)).toBe('9ec1c6ea');
   });
 });
