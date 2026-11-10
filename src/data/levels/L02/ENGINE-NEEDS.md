@@ -1,19 +1,12 @@
-# L02 engine needs still open after main
+# L02 engine needs still open
 
-`#59` and `#60` are on main. Issued Sahil runs rebind S4, and `tickDuelBoss` runs during the campaign script. Grapple anchors, slide ramps, and sprint stamina are in the sim. This file is only what L02 still cannot turn on.
+`#88` is on main. `S4-E4.script` is the five-part fight: entry bar, then a 1300 bar, the rug pit, 1000, and 900. `designHp` on those bars is still 1714 / 1909 / 1967. GitHub's goja reaches about frame 11000 inside the verifier's 15 second budget, and the design bars run to about frame 16600, so the live bars are the longest set that still clears in both success and assisted mode inside that budget. Node and goja replay the same receipts. The campaign fingerprint is `cea1f88b`. Section S4 still starts at `[149.5, 0, 11]`, and the payable squad is still `sahil` × 1.
 
-The campaign fingerprint stays `9ec1c6ea`. Section S4 still starts at `[149.5, 0, 11]`, and `S4-E4` is still `sahil` × 1.
+## Looms and pylons are not spawned
 
-## Verified Sahil cannot play the five bars
+The golden autopilot only aims at the boss. Immune looms and pylons never die, so a part that waits on them never ends. Those bodies are `designTargets` (looms 161, pylons 230). A verified bot that can shoot script targets would let them be live `targets`.
 
-`S4.bossScript` is the full five-part fight (design HP 1714 / 1909 / 1967, looms, pylons, pit, rings, 40 adds). The live `S4-E4.script` is part 1 only: the entry bar plus the six midgets at t+2. Part 1 uses a single attack name, `bolt`.
-
-Two engine limits force that:
-
-1. The golden autopilot only aims at the boss. Immune looms and pylons never die, so a part that waits on them never ends. Those bodies are `designTargets` on the script, not spawned targets. A verified bot that can shoot script targets would let the looms and pylons be live.
-2. A live five-bar kite runs thousands of frames. Node and the bundled verifier agree. Goja does not. Past roughly tick 2400, `Math.floor(float(rng) * attacks.length)` in `tickDuelBoss` picks a different attack, then hit tests diverge, and the same log is `boss_clear` in node and `player_down` in goja. One attack name does not save a long kite: the 1 ulp position drift still flips a hit. The entry bar ends near tick 1456 and replays the same receipt in node, goja, and the assisted clear. Extra bars also make the assisted recorder die (`player_down`) instead of `assisted`, because it stops shooting once the bar is under 80 HP.
-
-Attach `bossScript` as `encounter.script` only after goja matches node for a multi-bar Sahil kite and the assisted recorder can finish every bar.
+The showroom floor is wide so the kite cannot walk off it. The columns, the balcony, and the vault marks are cones: they stay visible, and they do not add collision the five-bar replay cannot afford. A solid vault lip also left the shared autopilot stuck on a midget it could not walk around.
 
 ## Still data-only
 
