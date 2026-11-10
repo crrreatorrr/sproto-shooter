@@ -181,6 +181,10 @@ function spawnOne(state, enc, squad, at) {
   if (at.role) e.role = at.role;
   if (at.alarm) e.alarm = at.alarm;
   if (at.ringsAlarm) e.ringsAlarm = at.ringsAlarm;
+  if (at.asleep) {
+    e.ai.alert = 'asleep';
+    e.ai.hearing = at.hearing || 12;
+  }
   if (bossDef) {
     if (enc.arena) e.boss.arena = enc.arena;
     emit(state, 'bossSpawn', { id: e.id, bossType: type });
@@ -200,6 +204,7 @@ function trySpawn(state, enc, squad, key) {
       spots.push({
         type: u.type, pos: at, partId: u.partId || null, elite: !!u.elite, flockPart,
         role: u.role || null, alarm: u.alarm || null, ringsAlarm: squad.ringsAlarm || u.ringsAlarm || null,
+        asleep: !!(squad.asleep || u.asleep), hearing: squad.hearing || u.hearing || null,
       });
       i++;
     }

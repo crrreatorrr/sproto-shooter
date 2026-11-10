@@ -28,23 +28,63 @@ export function coverNear(solids, x, z, radius = 1.6) {
   return ids;
 }
 
+function capSight(state, range, uncapped) {
+  if (uncapped) return range;
+  if (state.level && state.level.whiteout) return Math.min(range, 40);
+  return range;
+}
+
+function inCone(e, target, halfDeg, yaw) {
+  const fx = -Math.sin(yaw);
+  const fz = -Math.cos(yaw);
+  const dx = target.pos.x - e.pos.x;
+  const dz = target.pos.z - e.pos.z;
+  const d = Math.hypot(dx, dz) || 1;
+  return (dx / d) * fx + (dz / d) * fz >= Math.cos(halfDeg * Math.PI / 180);
+}
+
+function heardShot(state, dist, hear) {
+  for (let i = 0; i < state.events.length; i++) {
+    if (state.events[i].type === 'shot' && dist <= hear) return true;
+  }
+  return false;
+}
+
 /**
  * Unaware enemies stand still until they see the player or hear a shot.
- * Returns true when the enemy should chase.
+ * Returns true when the enemy should chase. An enemy with no alert and no
+ * stealth body keeps today's always-chase behaviour.
  */
 export function sensePlayer(state, e, target) {
-  if (!e.ai.alert || e.ai.alert === 'alerted') return true;
-  const sight = e.ai.sight || 28;
+  if (e.ai.alert === 'alerted') return true;
+  const stealth = e.type === 'auditSniper' || e.type === 'miningRig' || e.type === 'frostHound'
+    || e.ai.alert === 'asleep' || e.ai.alert === 'idle' || e.ai.alert === 'unaware';
+  if (!stealth) return true;
   const dx = target.pos.x - e.pos.x, dz = target.pos.z - e.pos.z;
   const dist = Math.hypot(dx, dz);
-  const from = { x: e.pos.x, y: e.pos.y + e.height * 0.8, z: e.pos.z };
+  const from = { x: e.pos.x, y: e.pos.y + (e.height || 1) * 0.8, z: e.pos.z };
   const to = { x: target.pos.x, y: target.pos.y + 1.2, z: target.pos.z };
-  let wake = dist <= sight && hasLOS(state, from, to);
-  if (!wake) {
-    const hear = e.ai.hearing || 16;
-    for (let i = 0; i < state.events.length; i++) {
-      if (state.events[i].type === 'shot' && dist <= hear) { wake = true; break; }
-    }
+  const time = (state.level && state.level.time) || 0;
+  let wake = false;
+  if (e.ai.alert === 'asleep') {
+    wake = heardShot(state, dist, e.ai.hearing || 12);
+  } else if (e.type === 'frostHound') {
+    wake = dist <= 45;
+  } else if (e.type === 'auditSniper') {
+    const yaw = e.yaw + Math.sin(time * Math.PI * 2 / 6) * (30 * Math.PI / 180);
+    const los = hasLOS(state, from, to, 140);
+    const cone = dist <= capSight(state, 140, false) && inCone(e, target, 15, yaw);
+    const outside = dist <= capSight(state, 60, false);
+    wake = los && (cone || outside);
+  } else if (e.type === 'miningRig') {
+    const under = dist < 15 && target.pos.y + 1.2 < e.pos.y - 1;
+    wake = !under && dist <= capSight(state, 90, false) && hasLOS(state, from, to, 90);
+  } else {
+    const yaw = e.yaw;
+    wake = dist <= capSight(state, e.ai.sight || 30, false)
+      && inCone(e, target, 60, yaw)
+      && hasLOS(state, from, to, 30);
+    if (!wake) wake = heardShot(state, dist, e.ai.hearing || 16);
   }
   if (!wake) return false;
   e.ai.alert = 'alerted';

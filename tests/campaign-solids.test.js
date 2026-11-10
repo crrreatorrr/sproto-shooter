@@ -85,6 +85,7 @@ describe('campaign solids', () => {
     e.pos = { x: 20, y: 0, z: 12 };
     e.prevPos = { ...e.pos };
     e.ai.alert = 'unaware';
+    e.yaw = 0;
     e.state = 'chase';
     const from = { x: 20, y: 1.4, z: 12 };
     const hidden = { x: 20, y: 1.4, z: 5 };
@@ -94,6 +95,7 @@ describe('campaign solids', () => {
     for (let i = 0; i < 20; i++) simulate(s, { [p.id]: cmd() });
     expect(e.ai.alert).toBe('unaware');
     expect(e.pos.z).toBeCloseTo(z0, 1);
+    e.yaw = -Math.PI / 2;
     p.pos.x = 28; p.pos.z = 12;
     for (let i = 0; i < 5; i++) simulate(s, { [p.id]: cmd() });
     expect(e.ai.alert).toBe('alerted');
