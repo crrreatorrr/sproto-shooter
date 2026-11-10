@@ -301,6 +301,8 @@ export function enemyAI(state, dt) {
     } else if (solids && !def.flying) {
       pushHorizontal(e, solids, e.radius * e.scale, e.height * e.scale);
       snapToGround(e, solids, e.radius * e.scale);
+    } else if (def.flying && state.mode === 'campaign' && state.level && state.level.flyerLids) {
+      for (let i = 0; i < state.level.flyerLids.length; i++) clampFlyer(e, state.level.flyerLids[i]);
     } else if (def.flying && state.mode === 'campaign' && state.level && state.level.flyerVolume) {
       clampFlyer(e, state.level.flyerVolume);
     } else {

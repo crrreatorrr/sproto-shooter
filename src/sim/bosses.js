@@ -303,7 +303,16 @@ function HEX(state, e, a, dt, def, t) {
     const gx = goal.x - e.pos.x, gz = goal.z - e.pos.z, gl = Math.hypot(gx, gz);
     const sp = def.speed * (e.status.goo ? 1 - e.status.goo.slow : 1);
     if (gl > 0.5) { e.pos.x += (gx / gl) * Math.min(gl, sp * dt); e.pos.z += (gz / gl) * Math.min(gl, sp * dt); }
-    const r = Math.hypot(e.pos.x, e.pos.z); if (r > ARENA_R - 4) { e.pos.x *= (ARENA_R - 4) / r; e.pos.z *= (ARENA_R - 4) / r; }
+    if (state.mode !== 'campaign') {
+      const r = Math.hypot(e.pos.x, e.pos.z);
+      if (r > ARENA_R - 4) { e.pos.x *= (ARENA_R - 4) / r; e.pos.z *= (ARENA_R - 4) / r; }
+    } else if (e.boss.arena) {
+      const c = e.boss.arena;
+      const ax = e.pos.x - c.x, az = e.pos.z - c.z;
+      const ar = Math.hypot(ax, az);
+      const limit = Math.max(1, (c.radius || 30) - 4);
+      if (ar > limit) { e.pos.x = c.x + (ax / ar) * limit; e.pos.z = c.z + (az / ar) * limit; }
+    }
     e.yaw = yawTo(e.pos, t.pos);
   }
   // aura: drains mana

@@ -19,7 +19,9 @@ function encState(lv, id) {
 
 export function bindV2Section(state, sec) {
   const lv = state.level;
-  lv.solids = sec && sec.solids ? sec.solids.slice() : solidsFromGeometry(sec && sec.geometry);
+  let solids = sec && sec.solids ? sec.solids.slice() : solidsFromGeometry(sec && sec.geometry);
+  if (lv.brokenSolids) solids = solids.filter((s) => !lv.brokenSolids[s.id]);
+  lv.solids = solids;
   lv.closedDoors = [];
   lv.useSolids = true;
 }
@@ -73,16 +75,19 @@ function triggerReady(state, enc, squad, prog) {
 function spawnOne(state, enc, squad, at) {
   const type = at.type;
   const pos = at.pos;
-  const boss = BOSSES[type] && BOSSES[type].campaign;
-  const e = boss
+  const bossDef = BOSSES[type];
+  const e = bossDef
     ? createBoss(state, type, { pos: { x: pos[0], z: pos[2] } })
-    : createEnemy(state, type, { pos: { x: pos[0], z: pos[2] } });
+    : createEnemy(state, type, { elite: !!at.elite, pos: { x: pos[0], z: pos[2] } });
   e.pos.y = pos[1] || 0;
   e.campaignEnc = enc.id;
   e.spawnMethod = squad.method || 'placed';
   if (enc.noAmmoDrop) e.noAmmoDrop = true;
   if (at.partId) e.partId = at.partId;
-  if (boss) emit(state, 'bossSpawn', { id: e.id, bossType: type });
+  if (bossDef) {
+    if (enc.arena) e.boss.arena = enc.arena;
+    emit(state, 'bossSpawn', { id: e.id, bossType: type });
+  }
   return e;
 }
 
@@ -95,7 +100,7 @@ function trySpawn(state, enc, squad, key) {
   for (const u of squad.units || []) {
     for (let n = 0; n < u.count; n++) {
       const at = (squad.at && squad.at[Math.min(i, squad.at.length - 1)]) || [0, 0, 0];
-      spots.push({ type: u.type, pos: at, partId: u.partId || null });
+      spots.push({ type: u.type, pos: at, partId: u.partId || null, elite: !!u.elite });
       i++;
     }
   }
@@ -211,6 +216,21 @@ export function v2Post(state, dt) {
     const prog = encState(lv, enc.id);
     if (!prog.started || lv.cleared[enc.id]) continue;
     noteKills(state, enc, prog);
+    if (enc.fleeAt) {
+      for (const e of state.enemies) {
+        if (e.dead || e.campaignEnc !== enc.id || !e.boss) continue;
+        if (e.hp / e.maxHp > enc.fleeAt) continue;
+        e.dead = true;
+        e.fled = true;
+        if (!lv.fled) lv.fled = {};
+        lv.fled[enc.id] = true;
+        const flag = `${enc.id}.fled`;
+        for (const m of (sec && sec.mechanisms) || []) {
+          if (m.opens === flag) lv.got[m.id] = true;
+        }
+        emit(state, 'bossEscape', { id: e.id, bossType: e.type });
+      }
+    }
     if (objectiveDone(state, enc, prog)) {
       lv.cleared[enc.id] = true;
       unseal(state, enc);
@@ -245,5 +265,15 @@ export function noteV2Section(state, sec, rt) {
   state.level.useNav = !!(sec && sec.navBounds);
   state.level.navBounds = sec && sec.navBounds;
   state.level.flyerVolume = sec && sec.flyerVolume;
+  const lids = [];
+  for (const enc of (sec && sec.encounters) || []) {
+    const room = enc.lockdown && enc.lockdown.room;
+    if (room) lids.push(room);
+    if (enc.lid) lids.push(enc.lid);
+  }
+  if (lids.length) state.level.flyerLids = lids;
+  else if (state.level.flyerLids) delete state.level.flyerLids;
+  if (sec && sec.navLinks) state.level.navLinks = sec.navLinks;
+  else if (state.level.navLinks) delete state.level.navLinks;
   if (sec) bindV2Section(state, sec);
 }
