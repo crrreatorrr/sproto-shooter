@@ -33,7 +33,8 @@ jobs:
         run: npm run typecheck
 
       - name: test
-        run: npm test
+        # Keep timing-sensitive Goja replays free of browser test CPU contention.
+        run: npm test -- --no-file-parallelism
 
       - name: build
         run: npm run build

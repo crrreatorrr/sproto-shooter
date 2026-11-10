@@ -20,6 +20,8 @@ export function mountViewmodel(env) {
   const VM_POSE = {
     box: { rest: FP.hip.pos, ads: FP.ads.pos, yaw: 0, roll: 0, scale: FP.gunScale }, // placeholder while a model loads
     model: { rest: [0.2, -0.17, -0.5], ads: [0, -0.27, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
+    // The MG's front sight sits above the barrel shroud. Keep it just below the crosshair in ADS.
+    mg: { rest: [0.21, -0.18, -0.5], ads: [0, -0.16, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
     // slim shotgun sits a little higher; its barrel is the top of the model, so aiming can stay close to center
     shotgun: { rest: [0.19, -0.15, -0.5], ads: [0, -0.16, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
     // bazooka: same rules as the other guns, a little lower because the tube is tall; aiming keeps its top
@@ -57,10 +59,10 @@ export function mountViewmodel(env) {
   const smooth = (a, b, t) => { const k = Math.min(1, Math.max(0, (t - a) / (b - a))); return k * k * (3 - 2 * k); };
   const pulse = (t, c, w) => Math.exp(-(((t - c) / w) ** 2));
   const RELOAD_ANIM = {
-    // magazine swap: tilt the gun over, mag out, slap a new one in, rack the charging handle
+    // drum swap: roll the underside toward the support hand, pull down, then seat the drum
     mg: (t, e) => ({
-      x: -0.02 * e, y: -0.06 * e - 0.03 * pulse(t, 0.35, 0.06) + 0.035 * pulse(t, 0.6, 0.04), z: 0.08 * e + 0.04 * pulse(t, 0.82, 0.04),
-      rx: 0.25 * e - 0.1 * pulse(t, 0.35, 0.06) + 0.1 * pulse(t, 0.82, 0.04), ry: 0.1 * e, rz: 0.5 * e - 0.12 * pulse(t, 0.6, 0.04),
+      x: -0.02 * e, y: -0.06 * e - 0.03 * pulse(t, 0.35, 0.06) + 0.035 * pulse(t, 0.6, 0.04), z: 0.08 * e,
+      rx: 0.25 * e - 0.1 * pulse(t, 0.35, 0.06), ry: 0.1 * e, rz: -0.5 * e - 0.12 * pulse(t, 0.6, 0.04),
     }),
     // shell by shell: gun canted up and left, a push per shell, then a big pump
     shotgun: (t, e) => {
@@ -130,11 +132,13 @@ export function mountViewmodel(env) {
   const PUSH_FWD_L = { fingers: [0, 1, 0.25], thumb: [1, 0, 0] }; // left palm facing forward (pushing in)
   const BOLT_R = { fingers: [-0.3, -1, -0.3], thumb: [0, 0.2, -1] }; // right hand pinching a bolt knob from above
   const HAND_ANIM = {
-    // left hand: up to the gumball hopper, lift it out, fetch a full one from below, slap it in, back to the handguard
+    // Left hand clears the shroud, cups the drum from below and pushes up to seat it.
     mg: (t) => {
-      const top = [0.02, 0.4, 0.014], out = [-0.7, 0.5, -0.15], low = [-1.3, -0.6, 0.1], side = [-1.0, -0.2, -0.25];
-      return { left: { w: track(t, [[0.06, 0], [0.2, 1], [0.82, 1], [0.92, 0]]), spec: PALM_DOWN_L,
-        at: track(t, [[0.2, top], [0.3, top], [0.4, out], [0.48, low], [0.56, out], [0.62, top], [0.74, top], [0.82, side]]) } };
+      const fore = HAND_FRAC.mg.fore, clear = [-0.6, -0.58, fore[2]];
+      const drum = [0, -0.43, -0.065], under = [0, -0.67, -0.065], low = [-0.42, -0.98, -0.065];
+      return { left: { w: track(t, [[0.04, 0], [0.15, 1], [0.85, 1], [0.96, 0]]),
+        at: track(t, [[0.04, fore], [0.15, clear], [0.19, under], [0.26, drum], [0.35, drum], [0.46, low], [0.55, low],
+          [0.65, drum], [0.73, drum], [0.8, under], [0.87, clear], [0.96, fore]]) } };
     },
     // left hand: from the pump down to the loading port, push a shell in per bump, back to the pump and rack it
     shotgun: (t) => {
