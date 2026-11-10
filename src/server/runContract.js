@@ -1,8 +1,9 @@
 // Server-issued campaign run. This module never credits Tickets.
 import { createGameState } from '../sim/state.js';
 import { startCampaign } from '../sim/campaign/campaign.js';
+import { noteV2Section } from '../sim/campaign/v2.js';
 import { verifyStateHash } from '../sim/hash.js';
-import { sectionById } from '../sim/level/runtime.js';
+import { getLevelRuntime, sectionById } from '../sim/level/runtime.js';
 import {
   bossById, rejectedBossReason, contentFingerprint, findEncounter,
 } from '../data/serverManifest.js';
@@ -65,6 +66,7 @@ export function buildIssuedState(issuance) {
   state.level.transition = null;
   state.level.won = false;
   state.level.lost = false;
+  if (state.level.format === 'v2') noteV2Section(state, section, getLevelRuntime(boss.levelId));
   p.pos = { x: section.start[0], y: section.start[1], z: section.start[2] };
   p.prevPos = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
   p.vel = { x: 0, y: 0, z: 0 };
