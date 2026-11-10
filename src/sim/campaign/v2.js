@@ -5,6 +5,7 @@ import { emit } from '../events.js';
 import { createEnemy, createBoss } from '../state.js';
 import { inBox } from '../level/runtime.js';
 import { solidFromPrimitive, solidsFromGeometry } from './solids.js';
+import { tickBossScript } from './bossScript.js';
 
 function book(lv) {
   if (!lv.v2) lv.v2 = { enc: {}, parts: {}, doorOpen: {} };
@@ -215,6 +216,7 @@ export function v2Post(state, dt) {
   for (const enc of sec.encounters || []) {
     const prog = encState(lv, enc.id);
     if (!prog.started || lv.cleared[enc.id]) continue;
+    tickBossScript(state, enc, dt);
     noteKills(state, enc, prog);
     if (enc.fleeAt) {
       for (const e of state.enemies) {

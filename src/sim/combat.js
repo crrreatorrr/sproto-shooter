@@ -18,7 +18,7 @@ export function healPlayer(p, amount) {
 }
 
 export function damageEnemy(state, e, hit) {
-  if (e.dead || e.state === 'spawning' || (e.boss && e.boss.invuln) || (e.ai && (e.ai.buried > 0 || e.ai.audit))) return 0;
+  if (e.dead || e.state === 'spawning' || (e.boss && e.boss.invuln) || (e.ai && (e.ai.buried > 0 || e.ai.audit || e.ai.riseT > 0))) return 0;
   let dmg = hit.base;
   const p = state.players[hit.sourceId];
   if (p) {
@@ -45,6 +45,23 @@ export function damageEnemy(state, e, hit) {
   dmg *= taken;
   dmg = Math.max(1, Math.round(dmg));
   if (e.type === 'dummy' && state.tuning.dummyInfinite) e.hp = e.maxHp + dmg;
+  if (e.boss && e.boss.scriptHold && e.hp - dmg <= 0) {
+    const dealt = Math.max(0, e.hp - 1);
+    e.hp = 1;
+    e.boss.barEmpty = true;
+    e.hitFlash = 0.08;
+    e.lastHit = { sourceId: hit.sourceId, sourceKind: hit.sourceKind, element: el, isCrit, isWeak, gunId: hit.gunId ?? null, wacky: hit.wacky ?? null };
+    if (p) {
+      state.run.damageDealt += dealt;
+      state.run.bestHit = Math.max(state.run.bestHit, dealt);
+    }
+    emit(state, 'damage', {
+      sourceId: hit.sourceId, targetId: e.id, amount: dealt, element: el, isCrit, isWeak, zone: hit.zone,
+      pos: hit.point || { x: e.pos.x, y: e.pos.y + 1, z: e.pos.z },
+      sourceKind: hit.sourceKind, killed: false, pellet: !!hit.pellet,
+    });
+    return dealt;
+  }
   e.hp -= dmg;
   e.poise += dmg;
   e.hitFlash = 0.08;

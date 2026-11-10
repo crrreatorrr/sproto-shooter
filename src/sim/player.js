@@ -42,6 +42,7 @@ export function playerMovement(state, dt) {
     let maxSpeed = sprinting ? TUNING.sprintSpeed : TUNING.walkSpeed;
     if (p.campaignSpeed) maxSpeed *= p.campaignSpeed;
     if (state.mode === 'campaign' && p.hazardSlow != null && p.hazardSlow < 1) maxSpeed *= p.hazardSlow;
+    if (state.mode === 'campaign' && p.scriptSlow != null && p.scriptSlow < 1) maxSpeed *= p.scriptSlow;
     if (p.downed) maxSpeed *= TUNING.downedSpeedMult;
 
     // jump buffering

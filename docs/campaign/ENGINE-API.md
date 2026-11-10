@@ -148,6 +148,8 @@ A squad whose type is in `BOSSES` spawns with `createBoss`, including the Hex. I
 
 `fleeAt` on a v2 encounter marks the boss `fled`, emits `bossEscape`, and does not add a boss kill. `lv.fled[encounterId]` is set, so a door with `opens: 'S6-F2.fled'` opens. A `risingHazard` with `starts: 'S6-F2.fled'` then lifts its surface at `rate` metres per second.
 
+`enc.script.parts` is an optional boss script. It does not add squads, so a `sameParts` encounter can stay `sahil` × 1. An `immune` part with `targets` takes no boss damage until those targets die. A target `{ id, hp, at, shields, rise }` is a stationary body. `rise` (1.5 s when the id starts with `pylon`) blocks damage while it counts down. A living target whose `shields` lists a solid id blocks damage to that solid. A phase part refills `hp` when the bar would hit zero, until the last part. `adds` spawn on `t` seconds, `on` (`firstLoom`, `secondPylon`), or `onBossHp` (percent of the current bar). `pit`, `pools` and `vents` are `{ at, r, slow, dps, period, offset }` in section-local coordinates. `ring` burns 12 once when the player crosses it. `attacks: { bolts: 'half' }` doubles the attack gap. `attacks` as a list replaces the boss attack list (`carpetSweep` is the low sweep). `kind: 'entry'` stuns the boss for 3 s when the part ends. `duelStage` selects the portrait phase. Target `at`, pit, pool and vent positions are shifted by the section origin.
+
 A `target` with id `TOT-N-hp` tracks HP for the solid `TOT-N`. A bullet that hits that solid spends the HP (`bulletMul` scales gun damage). At 0 the solid is removed and both ids are marked destroyed.
 
 `noteV2Section` copies `navLinks`. A lockdown `room` or an encounter `lid` is a flyer lid for that section.
