@@ -67,8 +67,116 @@ export function slowEnemiesInHazard(state, m) {
   if (!m.affectsEnemies || m.slow == null) return;
   for (const e of state.enemies) {
     if (e.dead) continue;
-    if (e.pos.x < m.min[0] || e.pos.x > m.max[0] || e.pos.z < m.min[2] || e.pos.z > m.max[2]) continue;
+    if (!insideZone(m, e.pos.x, e.pos.z)) continue;
     e.vel.x *= m.slow;
     e.vel.z *= m.slow;
   }
+}
+
+export function insideZone(m, x, z) {
+  if (m.min && m.max) return x >= m.min[0] && x <= m.max[0] && z >= m.min[2] && z <= m.max[2];
+  if (m.at && m.r) return Math.hypot(x - m.at[0], z - m.at[2]) <= m.r;
+  return false;
+}
+
+/** A named set is off until a script turns it on. `when` uses the same flags as doors. */
+export function hazardOn(lv, m) {
+  if (!lv) return true;
+  if (m.set) {
+    const sets = lv.hazardSets || {};
+    if (sets[m.set] == null) return false;
+    return !!sets[m.set];
+  }
+  if (m.when) {
+    if (m.when.endsWith('.cleared')) return !!lv.cleared[m.when.slice(0, -'.cleared'.length)];
+    if (m.when.startsWith('switch:')) return !!lv.got[m.when.slice('switch:'.length)];
+    return !!lv.got[m.when];
+  }
+  return true;
+}
+
+export function setHazardSet(state, id, on) {
+  const lv = state.level;
+  if (!lv) return;
+  if (!lv.hazardSets) lv.hazardSets = {};
+  lv.hazardSets[id] = !!on;
+  lv._zonesDirty = true;
+  emit(state, 'hazardSet', { id, on: !!on });
+}
+
+export function isZone(m) {
+  return m.kind === 'hazardZone' || m.kind === 'slow';
+}
+
+/** Sustained speed multiplier for the player. 1 when they are not in a live zone. */
+export function playerZoneSlow(lv, sec, p) {
+  let slow = 1;
+  for (const m of (sec && sec.mechanisms) || []) {
+    if (!isZone(m) || !hazardOn(lv, m) || m.slow == null) continue;
+    if (!insideZone(m, p.pos.x, p.pos.z)) continue;
+    if (m.slow < slow) slow = m.slow;
+  }
+  return slow;
+}
+
+export function enemyZoneSlow(lv, sec, e) {
+  let slow = 1;
+  for (const m of (sec && sec.mechanisms) || []) {
+    if (!isZone(m) || !hazardOn(lv, m) || !m.affectsEnemies || m.slow == null) continue;
+    if (!insideZone(m, e.pos.x, e.pos.z)) continue;
+    if (m.slow < slow) slow = m.slow;
+  }
+  return slow;
+}
+
+export function publishSlowZones(lv, sec) {
+  const zones = [];
+  for (const m of (sec && sec.mechanisms) || []) {
+    if (!isZone(m) || !hazardOn(lv, m) || !(m.navCost > 1) || !m.min || !m.max) continue;
+    zones.push({ min: m.min, max: m.max, cost: m.navCost });
+  }
+  lv.slowZones = zones;
+  lv._zonesDirty = false;
+}
+
+export function tickZoneDamage(state, p, m, dt) {
+  if (!isZone(m) || !hazardOn(state.level, m)) return;
+  if (!insideZone(m, p.pos.x, p.pos.z)) return;
+  if (m.dps) damagePlayer(state, p, { base: m.dps * dt, sourceKind: 'world', fromPos: { x: (m.min && m.min[0]) || m.at[0], y: 0, z: (m.min && m.min[2]) || m.at[2] } });
+  if (m.affectsEnemies && m.dps) {
+    for (const e of state.enemies) {
+      if (e.dead || !insideZone(m, e.pos.x, e.pos.z)) continue;
+      e.hp -= m.dps * dt;
+      if (e.hp <= 0) { e.hp = 0; e.dead = true; }
+    }
+  }
+}
+
+export function tickGeyser(state, p, m) {
+  if (m.kind !== 'geyser' || !m.at || !hazardOn(state.level, m)) return;
+  const lv = state.level;
+  const period = m.period || 5;
+  const phase = ((lv.time + (m.offset || 0)) % period + period) % period;
+  const rumble = m.rumble == null ? 1.2 : m.rumble;
+  const book = lv.mech || (lv.mech = {});
+  const st = book[m.id] || (book[m.id] = {});
+  const warning = rumble > 0 && phase >= period - rumble;
+  if (warning && !st.warn) {
+    st.warn = true;
+    emit(state, 'geyser', { id: m.id, phase: 'rumble' });
+  }
+  if (!warning) st.warn = false;
+  const near = Math.hypot(p.pos.x - m.at[0], p.pos.z - m.at[2]) <= (m.r || 1.6);
+  if (phase < 0.45 && near && !st.hit) {
+    st.hit = true;
+    emit(state, 'geyser', { id: m.id, phase: 'erupt' });
+    if (m.damage) damagePlayer(state, p, { base: m.damage, sourceKind: 'world', fromPos: { x: m.at[0], y: m.at[1] || 0, z: m.at[2] } });
+    if (m.to) {
+      p.pos.x = m.to[0];
+      p.pos.y = m.to[1] == null ? p.pos.y : m.to[1];
+      p.pos.z = m.to[2];
+      p.vel.y = Math.max(p.vel.y, 6);
+    }
+  }
+  if (phase >= 0.45) st.hit = false;
 }

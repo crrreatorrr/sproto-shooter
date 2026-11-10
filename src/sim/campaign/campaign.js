@@ -11,7 +11,7 @@ import { next } from '../../core/rng.js';
 import { damagePlayer } from '../combat.js';
 import { clearCampaignSpells, grantSpell } from '../spellbook.js';
 import { beginV2, noteV2Section, v2Post, v2Pre } from './v2.js';
-import { detonateBarrel, onMover, slowEnemiesInHazard, tickMover, tickSwitch } from './mechanisms.js';
+import { detonateBarrel, onMover, playerZoneSlow, publishSlowZones, slowEnemiesInHazard, tickGeyser, tickMover, tickSwitch, tickZoneDamage } from './mechanisms.js';
 
 const snaps = new WeakMap();
 
@@ -70,10 +70,18 @@ export function campaignPre(state, dt) {
   if (!lv || lv.won || lv.lost) return;
   lv.time += dt;
   const p = state.players[state.localPlayerId];
+  p.hazardSlow = 1;
   if (p.padCd > 0) p.padCd -= dt;
   const sec = sectionById(lv.id, lv.section);
   if (!sec) return;
-  for (const m of sec.mechanisms || []) touchMechanism(state, p, lv, sec, m, dt);
+  for (const m of sec.mechanisms || []) {
+    touchMechanism(state, p, lv, sec, m, dt);
+    tickZoneDamage(state, p, m, dt);
+    tickGeyser(state, p, m);
+  }
+  state._campaignSection = sec;
+  p.hazardSlow = playerZoneSlow(lv, sec, p);
+  if (lv._zonesDirty || !lv.slowZones) publishSlowZones(lv, sec);
   for (const w of sec.weapons || []) {
     if (lv.got[w.id]) continue;
     if (!nearPoint(w.at, p.pos.x, p.pos.y + 1, p.pos.z, 3.2)) continue;
