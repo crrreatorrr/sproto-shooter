@@ -42,6 +42,7 @@ export const EVENT_COVERAGE = {
   grappleRelease: ['audio'],
   gunDropped: ['none'],
   gunPickedUp: ['audio', 'vfx', 'ui'],
+  icePatch: ['vfx'],
   impact: ['audio', 'vfx'],
   intermissionEnd: ['none'],
   intermissionStart: ['audio', 'ui'],

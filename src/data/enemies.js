@@ -153,7 +153,10 @@ Object.assign(ENEMIES, {
     ],
   },
   frostHound: {
-    name: 'Frost Hound', hp: 55, speed: 5, accel: 24, radius: 0.5, height: 0.9, damage: 16,
+    name: 'Frost Hound', hp: 55, speed: 5, run: 9.5, accel: 24, radius: 0.5, height: 0.9, damage: 16,
+    weights: { seek: 1.0, sep: 1.2, wall: 2.0, strafe: 0.25 },
+    range: 9, windup: 0.5, active: 0.2, recover: 0.9, lunge: 20, knockback: 6,
+    patch: { radius: 2.5, seconds: 6, slow: 0.15 },
     poiseMax: 30, staggerTime: 0.35, color: 0xd5e4ef,
     affinity: { resist: null, weak: 'fire' },
     behavior: 'midget',

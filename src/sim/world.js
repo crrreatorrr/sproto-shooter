@@ -107,6 +107,31 @@ function emitEnemyBlast(state, p, pos) {
 }
 
 // ---------------- Hazards ----------------
+function tickIce(state) {
+  let live = false;
+  for (let i = 0; i < state.hazards.length; i++) {
+    const h = state.hazards[i];
+    if (!h.dead && h.kind === 'icePatch') live = true;
+  }
+  const players = Object.values(state.players);
+  let sticky = false;
+  if (!live) {
+    for (let i = 0; i < players.length; i++) if (players[i].iceSlow != null) sticky = true;
+    if (!sticky) return;
+  }
+  for (let i = 0; i < players.length; i++) if (players[i].iceSlow != null) delete players[i].iceSlow;
+  if (!live) return;
+  for (let i = 0; i < state.hazards.length; i++) {
+    const h = state.hazards[i];
+    if (h.dead || h.kind !== 'icePatch') continue;
+    for (let p = 0; p < players.length; p++) {
+      const pl = players[p];
+      if (pl.dead) continue;
+      if (Math.hypot(pl.pos.x - h.pos.x, pl.pos.z - h.pos.z) < h.radius + 0.4) pl.iceSlow = h.slow == null ? 0.15 : h.slow;
+    }
+  }
+}
+
 export function hazards(state, dt) {
   for (const h of state.hazards) {
     if (h.dead) continue;
@@ -131,6 +156,7 @@ export function hazards(state, dt) {
     }
     if (h.t >= h.ttl && h.kind !== 'shockwave') h.dead = true;
   }
+  tickIce(state);
 }
 
 // ---------------- Status effects ----------------

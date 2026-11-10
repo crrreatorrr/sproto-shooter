@@ -140,7 +140,7 @@ These ids have an `archetype` and run it on top of the enemy they are dressed as
 | `bitbug` | Drifts toward other bitbugs. |
 | `jetObama` | A weak spot that takes 2.5×. |
 | `spotterDrone` | Flies the midget orbit at 8–9 m, radius 7–14 m. Tier-1 HP 45 (79 at tier 5). The lamp is the weak spot. |
-| `frostHound` | Scents 45 m through walls, and a whiteout does not shorten that. Tier-1 HP 55 (96 at tier 5). The head is the weak spot. |
+| `frostHound` | Scents 45 m through walls, and a whiteout does not shorten that. Trots at 5 m/s and runs at 9.5. Inside 9 m it crouches for 0.5 s, then dashes at 20 m/s for 0.2 s (16 damage, 28 at tier 5, knockback 6) and leaves a 2.5 m ice patch for 6 s. It is not slowed by its own ice or by a zone tagged `slick`. Tier-1 HP 55 (96 at tier 5). The head is the weak spot. |
 | `miniTinubu` | Charges. |
 
 `midget`, `flyingMidget`, `obama`, `bigObama`, `robotLaser` and `robotShooter` are unchanged.

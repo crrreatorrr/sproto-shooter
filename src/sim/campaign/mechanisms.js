@@ -138,6 +138,7 @@ export function enemyZoneSlow(lv, sec, e) {
   let slow = 1;
   for (const m of (sec && sec.mechanisms) || []) {
     if (!isZone(m) || !hazardOn(lv, m) || !m.affectsEnemies || m.slow == null) continue;
+    if (e.type === 'frostHound' && m.tag === 'slick') continue;
     if (!insideZone(m, e.pos.x, e.pos.z)) continue;
     if (m.slow < slow) slow = m.slow;
   }
