@@ -3,6 +3,7 @@
 import { BOSSES } from '../../data/enemies.js';
 import { emit } from '../events.js';
 import { createEnemy, createBoss } from '../state.js';
+import { equipAuditorPlates } from './plates.js';
 import { damagePlayer } from '../combat.js';
 import { inBox } from '../level/runtime.js';
 import { solidFromPrimitive, solidsFromGeometry } from './solids.js';
@@ -186,6 +187,7 @@ function spawnOne(state, enc, squad, at) {
     e.ai.hearing = at.hearing || 12;
   }
   if (bossDef) {
+    if (state.mode === 'campaign' && type === 'monster') equipAuditorPlates(e, state.tier);
     if (enc.arena) e.boss.arena = enc.arena;
     emit(state, 'bossSpawn', { id: e.id, bossType: type });
   }
