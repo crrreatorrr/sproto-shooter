@@ -20,7 +20,10 @@ export const CANONICAL_BOSSES = [
     id: 'obama',
     duelId: 'obama',
     levelId: 'L04',
-    encounterId: 'S3-E3',
+    // SB-BOSS is the payable fight. The corridor level still calls it S3-E3,
+    // so a tree without SB-BOSS keeps issuing that encounter.
+    encounterId: 'SB-BOSS',
+    legacyEncounterId: 'S3-E3',
     parts: ['obamaDuo', 'midgetDuo'],
     countAs: 1,
   },
@@ -62,6 +65,17 @@ export function rejectedBossReason(id) {
   return null;
 }
 
+/** The live encounter for a payable boss. Prefers encounterId, then legacyEncounterId. */
+export function resolveCanonicalEncounter(boss) {
+  const ids = [boss.encounterId, boss.legacyEncounterId];
+  for (let i = 0; i < ids.length; i++) {
+    if (!ids[i]) continue;
+    const found = findEncounter(boss.levelId, ids[i]);
+    if (found) return found;
+  }
+  return null;
+}
+
 export function findEncounter(levelId, encounterId) {
   const level = CAMPAIGN_LEVELS.find((l) => l.id === levelId);
   if (!level) return null;
@@ -96,17 +110,18 @@ export function listBossObjectives() {
 }
 
 function sameParts(units, parts) {
-  const got = units.map((u) => u.type).slice().sort();
-  const want = parts.slice().sort();
-  if (got.length !== want.length) return false;
-  for (let i = 0; i < got.length; i++) if (got[i] !== want[i]) return false;
-  return units.every((u) => u.count === 1);
+  // The payable parts must each appear once. Add squads on the same encounter are allowed.
+  for (let i = 0; i < parts.length; i++) {
+    const got = units.filter((u) => u.type === parts[i]);
+    if (got.length !== 1 || got[0].count !== 1) return false;
+  }
+  return parts.length > 0;
 }
 
 /** Throws if the allowlist no longer matches the campaign data. */
 export function assertCanonicalManifest() {
   for (const boss of CANONICAL_BOSSES) {
-    const found = findEncounter(boss.levelId, boss.encounterId);
+    const found = resolveCanonicalEncounter(boss);
     if (!found) throw new Error(`missing canonical encounter ${boss.id}`);
     if (found.encounter.fleeAt) throw new Error(`${boss.id} encounter flees and cannot pay`);
     const units = [];
@@ -140,7 +155,7 @@ function gunBalance(g) {
 }
 
 function encounterFacts(boss) {
-  const found = findEncounter(boss.levelId, boss.encounterId);
+  const found = resolveCanonicalEncounter(boss);
   const units = [];
   for (const squad of found.encounter.squads) {
     for (const u of squad.units) units.push({ type: u.type, count: u.count });
@@ -150,7 +165,7 @@ function encounterFacts(boss) {
     duelId: boss.duelId,
     distinctFrom: boss.distinctFrom || [],
     levelId: boss.levelId,
-    encounterId: boss.encounterId,
+    encounterId: found.encounter.id,
     sectionStart: found.section.start,
     fleeAt: found.encounter.fleeAt || 0,
     units,

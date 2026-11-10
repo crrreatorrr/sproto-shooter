@@ -3,6 +3,7 @@
 /** @type {Record<string, string[]>} */
 export const EVENT_COVERAGE = {
   actionFailed: ['audio'],
+  alarm: ['audio', 'ui'],
   allyPoof: ['audio', 'vfx'],
   allyShot: ['audio'],
   ammoEmpty: ['audio', 'ui'],
@@ -28,6 +29,7 @@ export const EVENT_COVERAGE = {
   dash: ['audio', 'vfx'],
   defeat: ['audio', 'ui'],
   door: ['audio', 'ui'],
+  droneStrike: ['audio', 'vfx'],
   doubleJump: ['audio'],
   duckBounce: ['audio', 'vfx'],
   encounterClear: ['audio', 'ui'],
@@ -36,6 +38,8 @@ export const EVENT_COVERAGE = {
   explosion: ['audio', 'vfx'],
   geyser: ['audio', 'vfx'],
   hazardSet: ['none'],
+  grapple: ['audio', 'vfx'],
+  grappleRelease: ['audio'],
   gunDropped: ['none'],
   gunPickedUp: ['audio', 'vfx', 'ui'],
   impact: ['audio', 'vfx'],

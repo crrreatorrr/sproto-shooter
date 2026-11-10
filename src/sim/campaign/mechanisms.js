@@ -111,12 +111,25 @@ export function isZone(m) {
 }
 
 /** Sustained speed multiplier for the player. 1 when they are not in a live zone. */
+function zoneSlowOf(m) {
+  if (m.slow != null) return m.slow;
+  if (m.speed != null && m.speed <= 1) return m.speed;
+  return null;
+}
+
+function zoneList(sec) {
+  const extra = (sec && sec.hazards) || [];
+  return extra.length ? (sec.mechanisms || []).concat(extra) : (sec && sec.mechanisms) || [];
+}
+
 export function playerZoneSlow(lv, sec, p) {
   let slow = 1;
-  for (const m of (sec && sec.mechanisms) || []) {
-    if (!isZone(m) || !hazardOn(lv, m) || m.slow == null) continue;
+  for (const m of zoneList(sec)) {
+    if (!isZone(m) || !hazardOn(lv, m)) continue;
+    const rate = zoneSlowOf(m);
+    if (rate == null) continue;
     if (!insideZone(m, p.pos.x, p.pos.z)) continue;
-    if (m.slow < slow) slow = m.slow;
+    if (rate < slow) slow = rate;
   }
   return slow;
 }
@@ -133,7 +146,7 @@ export function enemyZoneSlow(lv, sec, e) {
 
 export function publishSlowZones(lv, sec) {
   const zones = [];
-  for (const m of (sec && sec.mechanisms) || []) {
+  for (const m of zoneList(sec)) {
     if (!isZone(m) || !hazardOn(lv, m) || !(m.navCost > 1) || !m.min || !m.max) continue;
     zones.push({ min: m.min, max: m.max, cost: m.navCost });
   }
@@ -160,12 +173,18 @@ function targetKey(m) {
   return m.id;
 }
 
+function matchesTarget(m, solidId) {
+  if (!solidId) return false;
+  if (m.id === solidId || targetKey(m) === solidId) return true;
+  return solidId === `${m.id}-body` || solidId === `${m.id}-hp`;
+}
+
 /** A shot into a destructible solid. Returns true when the solid is gone. */
 export function damageLevelSolid(state, solid, hit) {
   const lv = state.level;
   const sec = state._campaignSection || state._v2section;
   if (!lv || !sec || !solid || !solid.id) return false;
-  const m = (sec.mechanisms || []).find((item) => item.kind === 'target' && targetKey(item) === solid.id);
+  const m = (sec.mechanisms || []).find((item) => item.kind === 'target' && matchesTarget(item, solid.id));
   if (!m || scriptShields(state, solid.id)) return false;
   if (!lv.targets) lv.targets = {};
   const rec = lv.targets[m.id] || (lv.targets[m.id] = { hp: m.hp, max: m.hp });
@@ -174,6 +193,7 @@ export function damageLevelSolid(state, solid, hit) {
   if (hit.sourceKind === 'gun' && m.bulletMul != null) dmg *= m.bulletMul;
   if ((hit.isSplash || hit.sourceKind === 'world') && m.explosiveMul != null) dmg *= m.explosiveMul;
   if (hit.sourceKind === 'spell' && m.spellMul != null) dmg *= m.spellMul;
+  if (hit.zone === 'weak' && m.weak) dmg *= m.weak;
   rec.hp -= dmg;
   if (rec.hp > 0) return false;
   rec.hp = 0;

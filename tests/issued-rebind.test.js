@@ -44,7 +44,7 @@ describe('issued v2 section', () => {
     expect(state.level.id).toBe('L02');
     expect(state.level.section).toBe('S4');
     expect(state.level.format).not.toBe('v2');
-    expect(contentFingerprint(1)).toBe('bfe99bf4');
+    expect(contentFingerprint(1)).toBe('9ec1c6ea');
     expect(CONTENT_FINGERPRINT).toBe('17d87c54');
   });
 });

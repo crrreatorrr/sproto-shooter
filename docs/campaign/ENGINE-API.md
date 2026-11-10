@@ -95,15 +95,16 @@ Local coordinates. `origin: [x, y, z]` is the section's north-west corner in the
 | Type | Fires when |
 |---|---|
 | `onEnter` | The player has entered `activate`. |
-| `time` | `t` seconds after the encounter started. |
+| `time` | `t` seconds after the encounter started. With `part`, `t` is seconds into that boss-script part (part 1 is the first part) and does not use the encounter clock. |
 | `onKills` | `n` enemies from this encounter are dead. |
 | `onRemain` | That many or fewer are still alive, and a squad has already spawned. |
 | `onHold` | Hold time is at least `p` seconds. |
 | `onBossHp` | The encounter's boss is at or below `p` percent health. |
 | `onPartDestroyed` | `id` was marked destroyed. |
 | `with` | Squad `after` has spawned and `delay` seconds have passed. |
+| `onAlarm` | `ringAlarm(state, alarm)` has been called and `delay` seconds (on the squad) have passed. |
 
-Extra enemies wait while the encounter is at `maxAlive`.
+`clearAll` and `boss` ignore a squad marked `optional: true` until it spawns. A quiet run does not wait on an alarm pack that never rings. Once it spawns, it still has to die. An objective may also set `also: { kind: 'hold', seconds }`. The exit waits for the waves and for that many seconds inside `hold`. The clock runs only while the player or an ally stands in `hold`. Enemies in the ring do not pause it. After the waves are dead it runs at three times speed. `strikes: [8, 22, ...]` and `strikeEvery` launch a drone strike on that clock: it tracks for 1.8 s, locks for 0.75 s, then deals 30 to the player and 120 to enemies inside 2.6 m. Extra enemies wait while the encounter is at `maxAlive`. `flockUnit: 6` counts six living bitbugs as one of those units. When a script part ends, a `part` squad that never spawned is skipped, and anyone it already spawned leaves with no drop and no kill credit.
 
 ## Lockdown
 
@@ -117,7 +118,7 @@ lockdown: {
 
 The two ids are `door` mechanisms with `at` and `size`. Crossing `threshold` adds those doors to the solid list (`lockdown` event, `sealed: true`). Clearing the encounter removes them (`sealed: false`).
 
-`waveSec` starts the next squad when that many seconds have passed since the previous squad spawned, or on `onRemain`, whichever is first. A lockdown with `waveSec` waits `delaySec` seconds (default 1) before the slabs drop, pushes a player standing in the entry slab into the room, and does not seal while they are still inside it. `delaySec: 0` seals on the same frame, which is the default when `waveSec` is absent. `stallSec` marks the last `stallN` (default 2) enemies and makes them run at the player. `noExit` skips the exit slab. A switch or conduit with `opens` set to a door id keeps that door solid until the switch fires. Dying while a lockdown is sealed restores the last checkpoint (`lockdownReset`) instead of losing the level. `onAlert` spawns a squad when the player crosses `zBelow` or `zAbove`, enters `box`, or an enemy of the encounter is already alerted.
+`waveSec` starts the next squad when that many seconds have passed since the previous squad spawned, or on `onRemain`, whichever is first. `fallbackSec` on the lockdown, or on the squad, is the same timer when `waveSec` is absent. A squad's own `fallbackSec` wins. `null` leaves the timer off. A lockdown with `waveSec` waits `delaySec` seconds (default 1) before the slabs drop, pushes a player standing in the entry slab into the room, and does not seal while they are still inside it. `delaySec: 0` seals on the same frame, which is the default when `waveSec` is absent. `stallSec` marks the last `stallN` (default 2) enemies and makes them run at the player. `noExit` skips the exit slab. A switch or conduit with `opens` set to a door id keeps that door solid until the switch fires. Dying while a lockdown is sealed restores the last checkpoint (`lockdownReset`) instead of losing the level. `onAlert` spawns a squad when the player crosses `zBelow` or `zAbove`, enters `box`, or an enemy of the encounter is already alerted.
 
 ## Enemy re-skins
 
@@ -136,6 +137,8 @@ These ids have an `archetype` and run it on top of the enemy they are dressed as
 | `daycare` | The nest spawn that was already there. |
 | `bitbug` | Drifts toward other bitbugs. |
 | `jetObama` | A weak spot that takes 2.5×. |
+| `spotterDrone` | Flies. Tier-1 HP 45 (79 at tier 5). The lamp is the weak spot. |
+| `frostHound` | Chases on the ground. Tier-1 HP 55 (96 at tier 5). The head is the weak spot. |
 | `miniTinubu` | Charges. |
 
 `midget`, `flyingMidget`, `obama`, `bigObama`, `robotLaser` and `robotShooter` are unchanged.
@@ -154,7 +157,7 @@ A squad whose type is in `BOSSES` spawns with `createBoss`, including the Hex. I
 
 A `target` with id `TOT-N-hp` tracks HP for the solid `TOT-N`. A bullet that hits that solid spends the HP (`bulletMul` scales gun damage). At 0 the solid is removed and both ids are marked destroyed.
 
-`noteV2Section` copies `navLinks`. A lockdown `room` or an encounter `lid` is a flyer lid for that section.
+`noteV2Section` copies `navLinks` and `voids` as stored (the level shifts them). A player who enters a void is sent to the last grounded point, or to `to` when `mode` is `fixed`. `penalty` is a fraction of max HP. `invuln` is seconds of invulnerability after the hit. Candle materials `candleUp` and `candleDown` are emissive green and red. `forceField` is see-through.
 
 A `hazard` with `enemyDps` hurts enemies in the box. Goo globs ignore it. `stripsBark` sets bark to stripped.
 
@@ -168,7 +171,21 @@ A `hazard` with `enemyDps` hurts enemies in the box. Goo globs ignore it. `strip
 
 `kind: 'geyser'` at `at`, with `period`, `offset`, `rumble`, `damage` and optional `to`. Damage 0 is a launcher. Standing on it during the erupt moves the player to `to`.
 
+The same behaviour runs from section fields, shifted by the section origin. `hazards` entries with `kind: 'slow'` and `speed` are zones (`navCost` included). `geysers` use `damage` and `to`. `carpets` ping-pong from `from` to `to` (`pause` at each end; `mode: 'onTrigger'` waits for the player, then returns after `returnAfter` seconds, default 4). A `links` entry with `kind: 'zipline'` carries the player from `from` to `to`. `voidRescue` with `y` and `penalty` puts the player back on the last safe ground and kills a fallen enemy with no drop. A `depot` mechanism refills health, the magazine, and reserve ammo while the player stands on it.
+
 The old `kind: 'hazard'` brake is unchanged.
+
+## Movement
+
+Campaign, Wave Mode and Sandbox share this. PvP does not.
+
+Sprint lasts `staminaSprint` seconds (4.5). The bar then regens after `staminaRegenDelay` (0.55 s) and fills in `staminaRegen` seconds (1.7). Sprint stays off until the bar reaches `staminaRefill` (0.28). Slide spends `slideStamina` (0.14). Grapple spends none.
+
+Slide is C, or Ctrl held while sprinting. It boosts to at least `slideBoost` (16 m/s), eases toward `slideCruise` (8), and gains speed when the ground ahead is lower (`slideSlope`). The capsule and the camera drop (`slideEye` 0.72). Jumping out of a slide keeps the speed times `slideHopBoost` and sets `slideHopCd` (0.85 s) so the hop cannot be chained. A slide that just ends uses the shorter `slideCd` (0.22 s).
+
+Grapple is B, or a mouse back button. It is not a gun slot. The hook is a hit-scan up to `grappleRange` (30 m) on solids and the ground, never on enemies or bosses. While it is held, `grapplePull` accelerates the player toward the anchor and ground friction stays off. Releasing, or arriving at the anchor, keeps that full velocity. Gravity and air steering apply after that, so a hook aimed up and let go throws the player over a wall or a gap. The recharge is `grappleCd` (6 s), including a miss. A sealed lockdown room rejects a hook outside that room, and the player is held inside it. Solids block the line.
+
+`noGrapple` is a list of `{ min, max }` boxes. A hook point inside one is a miss. `grappleAnchors` is a list of `{ id, at, r }`. A ray that passes within `r` of an anchor snaps to it, which is how a level marks a grapple point. `makeV2Level` shifts both by the section origin. Ramps and slopes are already slide-friendly: the slide samples the ground ahead and speeds up when it drops.
 
 ## What L02 and L03 can use today
 
