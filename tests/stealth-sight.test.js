@@ -57,6 +57,17 @@ describe('stealth sight', () => {
     expect(sensePlayer(s, asleep, p)).toBe(true);
   });
 
+  it('keeps an idle enemy to a 30 m cone in front of them', () => {
+    const s = world();
+    const { e, p } = pair(s, 'midget', 0, 0, 0);
+    e.ai.alert = 'unaware';
+    p.pos = { x: 0, y: 0, z: -10 };
+    expect(sensePlayer(s, e, p)).toBe(true);
+    e.ai.alert = 'unaware';
+    p.pos = { x: 0, y: 0, z: 10 };
+    expect(sensePlayer(s, e, p)).toBe(false);
+  });
+
   it('does not let a mining rig see someone tucked under its wall', () => {
     const s = world();
     const { e, p } = pair(s, 'miningRig', 0, 0);
