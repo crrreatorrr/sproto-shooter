@@ -1,47 +1,15 @@
 // The Great Sproto Audit. Ten levels, one section chain each.
-// L01, L02 and L03 register themselves from their own folders. Later levels still
-// live here until each one moves into src/data/levels/LNN/.
+// L01, L02, L03 and L04 register themselves from their own folders. Later levels
+// still live here until each one moves into src/data/levels/LNN/.
 import { makeLevel } from './assemble.js';
 import { L01 } from './L01/index.js';
 import { L02 } from './L02/index.js';
 import { L03 } from './L03/index.js';
+import { L04 } from './L04/index.js';
 
-export { L01, L02, L03 };
+export { L01, L02, L03, L04 };
 
 const card = (title, lines) => ({ title, lines });
-
-export const L04 = makeLevel({
-  id: 'L04', name: 'The Blockchain Void', stage: 'void', tier: 4, parTime: 18 * 60, jetpack: 'pickup',
-  sections: [
-    {
-      id: 'S1', name: 'Candle Forest', length: 52, floor: 'metal',
-      encounters: [{ id: 'E1', x: 18, space: 'sky', units: [['bitbug', 5]] }],
-      weapons: [{ id: 'mg-bugs', x: 28, gun: 'mg', why: 'bitbug flocks' }],
-      mechanisms: [
-        { kind: 'jetpack', id: 'jetpack-1', x: 12 },
-        { kind: 'jumpPad', id: 'updraft', x: 22, power: 14 },
-      ],
-      secret: { x: 8, modifier: 'moonBoots' },
-    },
-    {
-      id: 'S2', name: 'Mine Field', length: 52, floor: 'metal',
-      intro: card('Liquidity', ['Bitcoin Obama pumps the price. The Midget dumps it.', 'You ride the chart.']),
-      encounters: [{ id: 'E2', x: 16, space: 'sky', units: [['jetObama', 2], ['balloonMidget', 3]] }],
-      weapons: [{ id: 'sn-mine', x: 30, gun: 'sniper', why: 'jet Obamas between candles' }],
-      mechanisms: [
-        { kind: 'fuel', id: 'fuel-1', x: 12 },
-        { kind: 'hazard', id: 'gravity-well', x: 24, slow: 0.4, dps: 0 },
-        { kind: 'power', id: 'infinite-fuel', x: 36, modifier: 'fuel' },
-      ],
-    },
-    {
-      id: 'S3', name: 'The Exchange', length: 50,
-      intro: card('The Blockchain Void', ['The Pump and Dump Duo.', 'One counts. One flies.']),
-      encounters: [{ id: 'E3', x: 16, space: 'arena', objective: 'boss', units: [['obamaDuo', 1], ['midgetDuo', 1]] }],
-      weapons: [{ id: 'bz-duo', x: 10, gun: 'bazooka', why: 'the duo on the exchange floor' }],
-    },
-  ],
-});
 
 export const L05 = makeLevel({
   id: 'L05', name: 'Frostspire Black Site', stage: 'glacier', tier: 5, parTime: 18 * 60,
