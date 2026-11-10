@@ -111,12 +111,25 @@ export function isZone(m) {
 }
 
 /** Sustained speed multiplier for the player. 1 when they are not in a live zone. */
+function zoneSlowOf(m) {
+  if (m.slow != null) return m.slow;
+  if (m.speed != null && m.speed <= 1) return m.speed;
+  return null;
+}
+
+function zoneList(sec) {
+  const extra = (sec && sec.hazards) || [];
+  return extra.length ? (sec.mechanisms || []).concat(extra) : (sec && sec.mechanisms) || [];
+}
+
 export function playerZoneSlow(lv, sec, p) {
   let slow = 1;
-  for (const m of (sec && sec.mechanisms) || []) {
-    if (!isZone(m) || !hazardOn(lv, m) || m.slow == null) continue;
+  for (const m of zoneList(sec)) {
+    if (!isZone(m) || !hazardOn(lv, m)) continue;
+    const rate = zoneSlowOf(m);
+    if (rate == null) continue;
     if (!insideZone(m, p.pos.x, p.pos.z)) continue;
-    if (m.slow < slow) slow = m.slow;
+    if (rate < slow) slow = rate;
   }
   return slow;
 }
@@ -133,7 +146,7 @@ export function enemyZoneSlow(lv, sec, e) {
 
 export function publishSlowZones(lv, sec) {
   const zones = [];
-  for (const m of (sec && sec.mechanisms) || []) {
+  for (const m of zoneList(sec)) {
     if (!isZone(m) || !hazardOn(lv, m) || !(m.navCost > 1) || !m.min || !m.max) continue;
     zones.push({ min: m.min, max: m.max, cost: m.navCost });
   }

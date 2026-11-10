@@ -168,6 +168,8 @@ A `hazard` with `enemyDps` hurts enemies in the box. Goo globs ignore it. `strip
 
 `kind: 'geyser'` at `at`, with `period`, `offset`, `rumble`, `damage` and optional `to`. Damage 0 is a launcher. Standing on it during the erupt moves the player to `to`.
 
+The same behaviour runs from section fields, shifted by the section origin. `hazards` entries with `kind: 'slow'` and `speed` are zones (`navCost` included). `geysers` use `damage` and `to`. `carpets` ping-pong from `from` to `to` (`pause` at each end; `mode: 'onTrigger'` waits for the player, then returns after `returnAfter` seconds, default 4). A `links` entry with `kind: 'zipline'` carries the player from `from` to `to`. `voidRescue` with `y` and `penalty` puts the player back on the last safe ground and kills a fallen enemy with no drop. A `depot` mechanism refills health, the magazine, and reserve ammo while the player stands on it.
+
 The old `kind: 'hazard'` brake is unchanged.
 
 ## What L02 and L03 can use today
