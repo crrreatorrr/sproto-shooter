@@ -61,8 +61,8 @@
   ],
   "counts": {
     "runtimeFiles": 58,
-    "runtimeBytes": 23604566,
-    "decodedBytes": 230139382,
+    "runtimeBytes": 23759354,
+    "decodedBytes": 224271084,
     "referenced": 58,
     "dynamic": 39,
     "missing": 0,
@@ -1858,8 +1858,8 @@
     },
     {
       "path": "models/guns/toy_mg.glb",
-      "bytes": 834340,
-      "sha256": "9c82cd20502188f704064b4c4938651151367422c94fb46f13e97e404248ecbf",
+      "bytes": 989128,
+      "sha256": "18a1b59fbeec5f9abc7295b5bf31e4e7e39320e6ec6c9253c3878a1c5ff4d4c1",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -1869,38 +1869,38 @@
       "width": null,
       "height": null,
       "meshopt": true,
-      "triangles": 78142,
-      "meshoptDecodedBytes": 1325076,
-      "imageDecodedBytes": 12582912,
-      "decodedBytes": 13907988,
+      "triangles": 49837,
+      "meshoptDecodedBytes": 961802,
+      "imageDecodedBytes": 7077888,
+      "decodedBytes": 8039690,
       "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
       "images": [
         {
-          "name": "toy_gun_3d_model_basecolor.jpg",
-          "mime": "image/webp",
-          "encodedBytes": 164754,
-          "sha256": "fb611d736ecb28607bafe5a4f6b42c54a1f01b4efafc955de0d2b1a790aa7866",
-          "width": 1024,
-          "height": 1024,
-          "decodedBytes": 4194304
+          "name": "Sproto_Machine_Gun_basecolor.jpg",
+          "mime": "image/jpeg",
+          "encodedBytes": 108201,
+          "sha256": "ce0900dc3925534c8da622b779b7d993aa0b01fbfa2ccc3c7d68737b13e69037",
+          "width": 768,
+          "height": 768,
+          "decodedBytes": 2359296
         },
         {
-          "name": "toy_gun_3d_model_rm.jpg",
-          "mime": "image/webp",
-          "encodedBytes": 61800,
-          "sha256": "32660a29a72c828a50d0ad4bdc91a30e8fac30fd17cad5efcf19256e181ce230",
-          "width": 1024,
-          "height": 1024,
-          "decodedBytes": 4194304
+          "name": "Sproto_Machine_Gun_rm.jpg",
+          "mime": "image/jpeg",
+          "encodedBytes": 16345,
+          "sha256": "04cb04c3aed7dbea6ee1dc4ae10f44f66f2ff0bf7adfe4d333eb2fdd58385a5b",
+          "width": 768,
+          "height": 768,
+          "decodedBytes": 2359296
         },
         {
-          "name": "toy_gun_3d_model_normal.png",
-          "mime": "image/webp",
-          "encodedBytes": 58394,
-          "sha256": "7c39cb26e6e9e59e4851d026fa6bd31292bd7cdb0d2507f5a2e8a1b01a6f688f",
-          "width": 1024,
-          "height": 1024,
-          "decodedBytes": 4194304
+          "name": "Sproto_Machine_Gun_normal.png",
+          "mime": "image/png",
+          "encodedBytes": 505708,
+          "sha256": "465f4990cb2743df3d1a9be2f8c4d7012164f674a200b33605198b4aba0b4872",
+          "width": 768,
+          "height": 768,
+          "decodedBytes": 2359296
         }
       ],
       "rig": {
@@ -1909,7 +1909,7 @@
         "joints": 0,
         "nodes": 1,
         "materials": [
-          "tripo_material_2838bc58-1b1f-4276-9b07-99b2840614a4"
+          "tripo_material_a4c1903b-26c4-42ce-8fa7-9708177cab02"
         ]
       }
     },

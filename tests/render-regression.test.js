@@ -37,7 +37,7 @@ describe('render structure', () => {
     expect(sniper.meshopt).toBe(true);
     expect(sniper.materials).toEqual(['tripo_material_d5c03414-1c4c-4b55-b958-1b580dbef7b0']);
     const mg = structureOf(glbJson('public/assets/models/guns/toy_mg.glb'));
-    expect(mg.materials).toEqual(['tripo_material_2838bc58-1b1f-4276-9b07-99b2840614a4']);
+    expect(mg.materials).toEqual(['tripo_material_a4c1903b-26c4-42ce-8fa7-9708177cab02']);
   });
 
   it('ships the hands, reload, sniper, boss, and campaign shots', () => {

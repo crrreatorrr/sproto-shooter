@@ -203,7 +203,7 @@ export function loadTexture(path, { color = true, repeat = null, prio = NOW } = 
  * `muzzleY` is the barrel's height as a fraction of the model's height (0 = bottom, 1 = top).
  */
 export const GUN_MODELS = {
-  mg: { path: 'models/guns/toy_mg.glb', yaw: 90, muzzleY: 0.55 },
+  mg: { path: 'models/guns/toy_mg.glb', yaw: 90, muzzleY: 0.6 },
   shotgun: { path: 'models/guns/toy_shotgun.glb', yaw: -90, muzzleY: 0.85 },
   sniper: { path: 'models/guns/toy_sniper.glb', yaw: 90, muzzleY: 0.68 },
   bazooka: { path: 'models/guns/toy_bazooka.glb', yaw: 0, muzzleY: 0.47 },

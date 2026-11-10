@@ -15,7 +15,7 @@ export function mountGuns(env) {
   // side of the handguard, thumb up). Calibrated with dev/fpLab.js (no hand, arm or finger more than 1 cm inside
   // the gun at hip or aim).
   const HAND_FRAC = {
-    mg: { grip: [0, -0.472, 0.271], fore: [0.096, -0.165, -0.257], left: 'foregrip', rake: -0.6 },
+    mg: { grip: [0, -0.26, 0.23], fore: [0, 0.02, -0.25], left: 'cup', rake: -0.6 },
     shotgun: { grip: [0, -0.29, 0.373], fore: [0, -0.041, -0.373], left: 'cup', rake: -0.6 },
     sniper: { grip: [0, -0.4, 0.1375], fore: [0.108, 0.067, -0.175], left: 'foregrip', rake: -0.35 },
     bazooka: { grip: [0, -0.415, 0.208], fore: [0, -0.32, -0.042], left: 'foregrip', rake: -0.35 },
