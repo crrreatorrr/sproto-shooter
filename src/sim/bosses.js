@@ -103,6 +103,7 @@ function MEGA(state, e, a, dt, def, t) {
     e.vel.y -= 30 * dt;
     e.pos.x += e.vel.x * dt; e.pos.y += e.vel.y * dt; e.pos.z += e.vel.z * dt;
     if (e.pos.y <= 0) { e.pos.y = 0; e.vel.y = 0; }
+    if (state.mode === 'campaign' && e.boss.arena) return holdInCircle(e, 4);
     const r = Math.hypot(e.pos.x, e.pos.z), maxR = ARENA_R - def.radius;
     if (r > maxR) { e.pos.x *= maxR / r; e.pos.z *= maxR / r; return true; }
     return false;
@@ -284,6 +285,21 @@ function orb(state, e, dir, speed, kind = 'orb', homing = 0, ttl = 6) {
   });
 }
 
+/** Keep a campaign boss inside its encounter circle. Wave fights still use the origin arena. */
+function holdInCircle(e, margin) {
+  const c = e.boss && e.boss.arena;
+  if (!c) return false;
+  const ax = e.pos.x - c.x, az = e.pos.z - c.z;
+  const ar = Math.hypot(ax, az);
+  const limit = Math.max(1, (c.radius || 30) - margin);
+  if (ar > limit) {
+    e.pos.x = c.x + (ax / ar) * limit;
+    e.pos.z = c.z + (az / ar) * limit;
+    return true;
+  }
+  return false;
+}
+
 function aimDir(e, t, yawOff = 0) {
   const dx = t.pos.x - e.pos.x, dy = t.pos.y + 1.2 - e.pos.y, dz = t.pos.z - e.pos.z;
   const h = Math.hypot(dx, dz) || 1;
@@ -310,13 +326,7 @@ function HEX(state, e, a, dt, def, t) {
     if (state.mode !== 'campaign') {
       const r = Math.hypot(e.pos.x, e.pos.z);
       if (r > ARENA_R - 4) { e.pos.x *= (ARENA_R - 4) / r; e.pos.z *= (ARENA_R - 4) / r; }
-    } else if (e.boss.arena) {
-      const c = e.boss.arena;
-      const ax = e.pos.x - c.x, az = e.pos.z - c.z;
-      const ar = Math.hypot(ax, az);
-      const limit = Math.max(1, (c.radius || 30) - 4);
-      if (ar > limit) { e.pos.x = c.x + (ax / ar) * limit; e.pos.z = c.z + (az / ar) * limit; }
-    }
+    } else holdInCircle(e, 4);
     e.yaw = yawTo(e.pos, t.pos);
   }
   // aura: drains mana
