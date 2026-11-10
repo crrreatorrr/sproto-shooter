@@ -134,16 +134,22 @@ These ids have an `archetype` and run it on top of the enemy they are dressed as
 | `floretSprout` | Lobs a mortar. |
 | `hexAcolyte` | Puts a bubble on the nearest ally. Bubble hits deal half damage. |
 | `glowieAgent` | Slows the player for one step when close. It does not take the controls. |
-| `auditSniper` | Sidesteps on a timer. |
+| `auditSniper` | Sees 140 m inside a 30° cone that sweeps 60° over 6 s, and 60 m outside it. A whiteout (`level.whiteout`) caps that at 40 m. |
 | `miningRig` | Stays planted. |
 | `daycare` | The nest spawn that was already there. |
 | `bitbug` | Drifts toward other bitbugs. |
 | `jetObama` | A weak spot that takes 2.5×. |
 | `spotterDrone` | Flies the midget orbit at 8–9 m, radius 7–14 m. Tier-1 HP 45 (79 at tier 5). The lamp is the weak spot. |
-| `frostHound` | Chases on the ground. Tier-1 HP 55 (96 at tier 5). The head is the weak spot. |
+| `frostHound` | Scents 45 m through walls, and a whiteout does not shorten that. Trots at 5 m/s and runs at 9.5. Inside 9 m it crouches for 0.5 s, then dashes at 20 m/s for 0.2 s (16 damage, 28 at tier 5, knockback 6) and leaves a 2.5 m ice patch for 6 s. It is not slowed by its own ice or by a zone tagged `slick`. Tier-1 HP 55 (96 at tier 5). The head is the weak spot. |
 | `miniTinubu` | Charges. |
 
 `midget`, `flyingMidget`, `obama`, `bigObama`, `robotLaser` and `robotShooter` are unchanged.
+
+An unaware enemy sees 30 m inside a 120° cone and hears a shot inside 16 m. `asleep: true` on a squad removes that sight and hears a shot inside `hearing` (default 12). A mining rig sees 90 m all round, except a player within 15 m who is tucked under the wall it stands on.
+
+A campaign `monster` (the Auditor) wears three plates. The brow has 250 HP and covers the head, so a head shot does not reach the body until it breaks. The chest and the back have 400 HP each and cover the front and rear 180°. A body shot on a live plate deals 10% to the body and the rest to that plate. All three scale with the tier multiplier (437 and 700 at tier 5). Wave Mode's monster has no plates.
+
+A `kind: 'weather'` mechanism times a whiteout from when the section is entered. `windows` are `[start, end]` pairs. The same gap then repeats: `period` seconds (default 90) after each start, for `whiteout` seconds (default 20). `warning` seconds before a window sets `level.whiteoutWarn`. While it is on, `level.whiteout` is set, sight other than a hound's is capped at `sightCap` (default 40), and the fog pulls in to `viewCap` (default 40).
 
 ## Mechanisms
 
