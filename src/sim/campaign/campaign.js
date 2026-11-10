@@ -12,6 +12,7 @@ import { damagePlayer, onEnemyKilled } from '../combat.js';
 import { clearCampaignSpells, grantSpell } from '../spellbook.js';
 import { beginV2, noteV2Section, v2Post, v2Pre } from './v2.js';
 import { detonateBarrel, isZone, onMover, playerZoneSlow, publishSlowZones, slowEnemiesInHazard, tickGeyser, tickMover, tickRising, tickSwitch, tickZoneDamage } from './mechanisms.js';
+import { noteSafeGround, tickRides, tickVoid } from './sectionMotion.js';
 
 const snaps = new WeakMap();
 
@@ -79,9 +80,12 @@ export function campaignPre(state, dt) {
     tickGeyser(state, p, m);
     tickRising(state, p, m, dt);
   }
+  for (const g of sec.geysers || []) tickGeyser(state, p, g.kind ? g : { ...g, kind: 'geyser' });
+  noteSafeGround(state, sec);
   // Only levels that actually have a zone grow these fields. Boss goldens hash the whole state.
   let zoned = false;
   for (const m of sec.mechanisms || []) if (isZone(m)) { zoned = true; break; }
+  if (!zoned && sec.hazards && sec.hazards.length) zoned = true;
   if (zoned) {
     state._campaignSection = sec;
     const slow = playerZoneSlow(lv, sec, p);
@@ -135,6 +139,11 @@ function hurtEnemiesInHazard(state, p, m, dt) {
 export function campaignPost(state, dt) {
   const lv = state.level;
   if (!lv || lv.won || lv.lost) return;
+  const motionSec = sectionById(lv.id, lv.section);
+  if (motionSec) {
+    tickVoid(state, motionSec);
+    tickRides(state, motionSec, dt);
+  }
   for (const e of state.enemies) {
     if (e.dead || !e.boss || !BOSSES[e.type] || !BOSSES[e.type].campaign) continue;
     tickDuelBoss(state, e, dt);
@@ -226,6 +235,16 @@ function flagOn(lv, when) {
 function touchMechanism(state, p, lv, sec, m, dt) {
   const x = p.pos.x, y = p.pos.y, z = p.pos.z;
   if (m.kind === 'switch' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.5)) tickSwitch(state, p, m, dt);
+  if (m.kind === 'depot' && m.at && nearPoint(m.at, x, y + 1, z, 2.4)) {
+    if (p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + 30 * dt);
+    for (const type of Object.keys(p.ammo)) {
+      const cap = p.ammoCap[type];
+      if (p.ammo[type] < cap) p.ammo[type] = Math.min(cap, p.ammo[type] + 40 * dt);
+    }
+    for (const g of p.guns) {
+      if (g && g.stats && g.ammoInMag < g.stats.magSize) g.ammoInMag = g.stats.magSize;
+    }
+  }
   if (m.kind === 'door' && m.opens && !lv.got[m.id] && flagOn(lv, m.opens)) {
     lv.got[m.id] = true;
     emit(state, 'door', { id: m.id, open: true });
