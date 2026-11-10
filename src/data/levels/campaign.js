@@ -1,116 +1,14 @@
 // The Great Sproto Audit. Ten levels, one section chain each.
-// Coordinates are playable scale; the design doc's kilometre footprints are the target proportions.
+// L01, L02 and L03 register themselves from their own folders. Later levels still
+// live here until each one moves into src/data/levels/LNN/.
 import { makeLevel } from './assemble.js';
+import { L01 } from './L01/index.js';
+import { L02 } from './L02/index.js';
+import { L03 } from './L03/index.js';
+
+export { L01, L02, L03 };
 
 const card = (title, lines) => ({ title, lines });
-
-export const L01 = makeLevel({
-  id: 'L01', name: 'Sproto Landing', stage: 'city', tier: 1, parTime: 10 * 60,
-  sections: [
-    {
-      id: 'S1', name: 'Drop Zone', length: 48,
-      encounters: [{ id: 'E1', x: 16, space: 'corridor', units: [['midget', 4]] }],
-      weapons: [{ id: 'sg-alley', x: 30, gun: 'shotgun', why: 'E2 mall corridors' }],
-      mechanisms: [
-        { kind: 'door', id: 'mall-door', x: 34, opens: 'E1.cleared' },
-        { kind: 'switch', id: 'gate-switch', x: 12, opens: 'side-door' },
-        { kind: 'door', id: 'side-door', x: 14, opens: 'switch:gate-switch' },
-        { kind: 'barrel', id: 'barrel-1', x: 22 },
-      ],
-      checkpoints: [{ id: 'cp1', x: 36, when: 'E1.cleared' }],
-      secret: { x: 10, modifier: 'bigHead' },
-      cover: [{ x: 20, h: 1.2 }],
-    },
-    {
-      id: 'S2', name: 'Mall', length: 48, transition: 'seamless',
-      encounters: [{ id: 'E2', x: 16, space: 'interior', units: [['obama', 2], ['flyingMidget', 2]] }],
-      mechanisms: [
-        { kind: 'jumpPad', id: 'lift-pad', x: 12, power: 10 },
-        { kind: 'mover', id: 'parking-lift', x: 28 },
-      ],
-      checkpoints: [{ id: 'cp2', x: 34, when: 'E2.cleared' }],
-      cover: [{ x: 22, h: 1.4 }],
-    },
-    {
-      id: 'S3', name: 'Gate Plaza', length: 48,
-      intro: card('Gate Plaza', ['A Big Bitcoin Obama is counting the take.', 'The gate does not open until he drops it.']),
-      encounters: [{ id: 'E3', x: 16, space: 'arena', units: [['bigObama', 1]] }],
-      checkpoints: [{ id: 'cp3', x: 8, when: 'E3.cleared' }],
-    },
-  ],
-});
-
-export const L02 = makeLevel({
-  id: 'L02', name: 'The Grand Bazaar', stage: 'desert', tier: 2, parTime: 18 * 60,
-  sections: [
-    {
-      id: 'S1', name: 'Souk Alleys', length: 50, floor: 'sand',
-      encounters: [{ id: 'E1', x: 16, space: 'corridor', units: [['riotMidget', 3], ['obama', 2]] }],
-      weapons: [{ id: 'sg-souk', x: 28, gun: 'shotgun', why: 'phalanx in the alleys' }],
-      mechanisms: [
-        { kind: 'hazard', id: 'quicksand', x: 24, slow: 0.45, dps: 0 },
-        { kind: 'barrel', id: 'spice-barrel', x: 20 },
-      ],
-      secret: { x: 8, modifier: 'confetti' },
-    },
-    {
-      id: 'S2', name: 'Dune Sea', length: 52, floor: 'sand',
-      intro: card('Into the Dunes', ['The souk was the easy part.', "Sahil's caravan route crosses the Dune Sea."]),
-      encounters: [{ id: 'E2', x: 18, space: 'field', units: [['boomMidget', 4]] }],
-      mechanisms: [
-        { kind: 'jumpPad', id: 'sand-geyser', x: 12, power: 12 },
-        { kind: 'carpet', id: 'carpet-1', x: 30 },
-        { kind: 'power', id: 'overshield', x: 36, modifier: 'overshield' },
-      ],
-    },
-    {
-      id: 'S3', name: 'Canyon Rim', length: 50, floor: 'sand',
-      encounters: [{ id: 'E3', x: 16, space: 'ledge', units: [['hexAcolyte', 3]] }],
-      weapons: [{ id: 'sn-rim', x: 30, gun: 'sniper', why: 'acolytes across the rim' }],
-      mechanisms: [{ kind: 'zipline', id: 'clothesline', x: 22 }],
-    },
-    {
-      id: 'S4', name: 'Bazaar Gate', length: 48,
-      intro: card('The Grand Bazaar', ['Sahil the RugMaster.', 'He sells the floor out from under you.']),
-      encounters: [{ id: 'E4', x: 16, space: 'arena', objective: 'boss', units: [['sahil', 1]] }],
-      weapons: [{ id: 'bz-sahil', x: 10, gun: 'bazooka', why: 'Sahil at the gate' }],
-    },
-  ],
-});
-
-export const L03 = makeLevel({
-  id: 'L03', name: 'The Vegetable Grove', stage: 'grove', tier: 3, parTime: 18 * 60,
-  sections: [
-    {
-      id: 'S1', name: 'Crop Fields', length: 52, floor: 'dirt',
-      encounters: [{ id: 'E1', x: 18, space: 'field', units: [['floretSprout', 3]] }],
-      weapons: [{ id: 'sn-field', x: 10, gun: 'sniper', why: 'sprouts across the furrows' }],
-      mechanisms: [{ kind: 'jumpPad', id: 'mushroom', x: 28, power: 11 }],
-      secret: { x: 8, modifier: 'floorIsLava' },
-    },
-    {
-      id: 'S2', name: 'Hedge Maze', length: 52, floor: 'hedge',
-      encounters: [{ id: 'E2', x: 16, space: 'corridor', units: [['sewerMidget', 4], ['daycare', 1]] }],
-      weapons: [
-        { id: 'mg-maze', x: 26, gun: 'mg', why: 'burrowers in the hedges' },
-        { id: 'sg-maze', x: 30, gun: 'shotgun', why: 'close hedges' },
-      ],
-      mechanisms: [{ kind: 'bridge', id: 'vine-bridge', x: 34 }, { kind: 'power', id: 'turbo', x: 12, modifier: 'turbo' }],
-      cover: [{ x: 20, h: 1.6, z: 8 }, { x: 22, h: 1.6, z: 14 }],
-    },
-    {
-      id: 'S3', name: 'Greenhouses', length: 46, floor: 'dirt',
-      encounters: [{ id: 'E3', x: 16, space: 'interior', units: [['floretSprout', 2], ['midget', 3]] }],
-      mechanisms: [{ kind: 'hazard', id: 'runoff', x: 24, dps: 10 }, { kind: 'door', id: 'airlock', x: 34, opens: 'E3.cleared' }],
-    },
-    {
-      id: 'S4', name: 'The Patch', length: 46,
-      intro: card('Something Smells Green', ['The Floret Lord is only a sprout.', 'He will not stay for the whole fight.']),
-      encounters: [{ id: 'E4', x: 16, space: 'arena', objective: 'boss', fleeAt: 0.5, units: [['broccoli', 1]] }],
-      weapons: [{ id: 'bz-nest', x: 10, gun: 'bazooka', why: 'the sprout in the patch' }],
-    },
-  ],
-});
 
 export const L04 = makeLevel({
   id: 'L04', name: 'The Blockchain Void', stage: 'void', tier: 4, parTime: 18 * 60, jetpack: 'pickup',

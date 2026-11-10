@@ -10,6 +10,7 @@ import { generateGun } from '../guns.js';
 import { next } from '../../core/rng.js';
 import { damagePlayer } from '../combat.js';
 import { clearCampaignSpells } from '../spellbook.js';
+import { beginV2, noteV2Section, v2Post, v2Pre } from './v2.js';
 
 const snaps = new WeakMap();
 
@@ -38,6 +39,10 @@ export function startCampaign(state, p, levelId) {
   p.prevPos = { ...p.pos };
   p.vel = { x: 0, y: 0, z: 0 };
   p.yaw = first.yaw || 0;
+  if (rt.format === 'v2') {
+    beginV2(state);
+    noteV2Section(state, first, rt);
+  }
   emit(state, 'modeStart', { mode: 'campaign', tier: state.tier, level: rt.id });
   if (first.intro) emit(state, 'levelCard', { title: first.intro.title, lines: first.intro.lines });
   saveCheckpoint(state, 'start');
@@ -51,6 +56,7 @@ export function transitionDone(state) {
     lv.transition = null;
     const sec = sectionById(lv.id, lv.section);
     lv.intro = sec && sec.intro ? sec.intro : null;
+    if (lv.format === 'v2') noteV2Section(state, sec, getLevelRuntime(lv.id));
     if (lv.intro) emit(state, 'levelCard', { title: lv.intro.title, lines: lv.intro.lines });
   } else if (lv.intro) lv.intro = null;
 }
@@ -78,6 +84,7 @@ export function campaignPre(state, dt) {
     saveCheckpoint(state, c.id);
     emit(state, 'checkpoint', { id: c.id });
   }
+  if (lv.format === 'v2') { v2Pre(state, dt); return; }
   for (const enc of sec.encounters || []) {
     if (lv.spawned[enc.id] || lv.cleared[enc.id]) continue;
     if (!inBox(enc.activate, p.pos.x, p.pos.y, p.pos.z)) continue;
@@ -90,6 +97,7 @@ export function campaignPre(state, dt) {
 export function campaignPost(state, dt) {
   const lv = state.level;
   if (!lv || lv.won || lv.lost) return;
+  if (lv.format === 'v2') { v2Post(state, dt); return; }
   const p = state.players[state.localPlayerId];
   for (const e of state.enemies) {
     if (e.dead || !e.boss || !BOSSES[e.type] || !BOSSES[e.type].campaign) continue;

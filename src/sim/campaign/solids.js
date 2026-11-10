@@ -41,7 +41,10 @@ export function campaignSolidsOn(state) {
 
 export function activeSolids(state) {
   if (!campaignSolidsOn(state)) return null;
-  return state.level.solids || null;
+  const base = state.level.solids || [];
+  const doors = state.level.closedDoors;
+  if (!doors || !doors.length) return base;
+  return base.concat(doors);
 }
 
 function overlapsXZ(s, x, z, r) {

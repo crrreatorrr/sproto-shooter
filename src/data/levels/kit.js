@@ -20,6 +20,18 @@ export function cylinder({ id, at, r, h, mat = 'pillar', tag } = {}) {
   return { kind: 'cylinder', id, at: at.slice(), r, h, mat, tag };
 }
 
+export function sphere({ id, at, r, mat = 'stone', tag } = {}) {
+  return { kind: 'sphere', id, at: at.slice(), r, mat, tag };
+}
+
+export function cone({ id, at, r, h, mat = 'stone', tag } = {}) {
+  return { kind: 'cone', id, at: at.slice(), r, h, mat, tag };
+}
+
+export function disc({ id, at, r, mat = 'neon', tag } = {}) {
+  return { kind: 'disc', id, at: at.slice(), r, mat, tag };
+}
+
 export function terrain({ id, origin, size, cell = 2, seed = 1, noise = {}, mat = 'rock' } = {}) {
   return {
     kind: 'terrain', id, origin: origin.slice(), size: size.slice(), cell, seed, mat,
@@ -49,6 +61,16 @@ function checkSolid(errors, g, index) {
     checkVec(errors, `${where} at`, g.at, 3);
     if (!(g.r >= 0.25)) errors.push(`${where} radius must be >= 0.25`);
     if (!(g.h >= 0.5)) errors.push(`${where} height must be >= 0.5`);
+  } else if (g.kind === 'sphere') {
+    checkVec(errors, `${where} at`, g.at, 3);
+    if (!(g.r >= 0.25)) errors.push(`${where} radius must be >= 0.25`);
+  } else if (g.kind === 'cone') {
+    checkVec(errors, `${where} at`, g.at, 3);
+    if (!(g.r >= 0.25)) errors.push(`${where} radius must be >= 0.25`);
+    if (!(g.h >= 0.5)) errors.push(`${where} height must be >= 0.5`);
+  } else if (g.kind === 'disc') {
+    checkVec(errors, `${where} at`, g.at, 3);
+    if (!(g.r >= 0.25)) errors.push(`${where} radius must be >= 0.25`);
   } else if (g.kind === 'terrain') {
     if (!g.id) errors.push('terrain needs an id');
     checkVec(errors, `${where} origin`, g.origin, 3);
