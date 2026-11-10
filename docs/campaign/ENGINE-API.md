@@ -139,7 +139,7 @@ These ids have an `archetype` and run it on top of the enemy they are dressed as
 | `daycare` | The nest spawn that was already there. |
 | `bitbug` | Drifts toward other bitbugs. |
 | `jetObama` | A weak spot that takes 2.5×. |
-| `spotterDrone` | Flies. Tier-1 HP 45 (79 at tier 5). The lamp is the weak spot. |
+| `spotterDrone` | Flies the midget orbit at 8–9 m, radius 7–14 m. Tier-1 HP 45 (79 at tier 5). The lamp is the weak spot. |
 | `frostHound` | Chases on the ground. Tier-1 HP 55 (96 at tier 5). The head is the weak spot. |
 | `miniTinubu` | Charges. |
 

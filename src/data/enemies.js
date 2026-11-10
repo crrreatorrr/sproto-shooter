@@ -135,7 +135,8 @@ Object.assign(ENEMIES, {
   },
   spotterDrone: {
     name: 'Spotter Drone', hp: 45, speed: 8, accel: 20, radius: 0.6, height: 0.8, damage: 0,
-    flying: true, poiseMax: 20, staggerTime: 0.3, color: 0x9fd6ff,
+    flying: true, altMin: 8, altMax: 9, orbitMin: 7, orbitMax: 14, jinkMin: 0.5, jinkMax: 1.2,
+    poiseMax: 20, staggerTime: 0.3, color: 0x9fd6ff,
     affinity: { resist: null, weak: 'shock' },
     behavior: 'flyingMidget',
     look: [
