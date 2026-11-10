@@ -9,6 +9,7 @@ import { crafting } from './economy.js';
 import { progression } from './progression.js';
 import { waveDirector } from './waves.js';
 import { campaignPre, campaignPost } from './campaign/campaign.js';
+import { snapScripted } from './campaign/scriptSnap.js';
 
 export const DT = 1 / 60;
 
@@ -36,5 +37,6 @@ export function simulate(state, commands, dt = DT) {
   crafting(state, dt);
   progression(state);
   if (state.mode === 'campaign') campaignPost(state, dt);
+  snapScripted(state);
   cleanup(state);
 }

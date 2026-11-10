@@ -96,7 +96,7 @@ describe('browser, node, and goja', () => {
     expect(pin.contentFingerprint).toBe(goldens.contentFingerprint);
     expect(fs.readFileSync(bundlePath, 'utf8').includes('earnTickets')).toBe(false);
     for (const spec of Object.values(goldens.runs)) {
-      const rec = recordBoss(spec.boss, spec.seed, spec.mode, 8000);
+      const rec = recordBoss(spec.boss, spec.seed, spec.mode, 16000);
       const receipt = verifyRun(rec.log, { issuance: rec.issuance });
       expect(receipt.stateHash).toBe(spec.stateHash);
       expect(receipt.cpuMs).toBeLessThan(LIMITS.maxCpuMs);
