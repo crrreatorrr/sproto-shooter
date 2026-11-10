@@ -1,12 +1,13 @@
 // The Great Sproto Audit. Ten levels, one section chain each.
-// L01, L02 and L03 register themselves from their own folders. Later levels still
-// live here until each one moves into src/data/levels/LNN/.
+// L01, L02, L03 and L05 register themselves from their own folders. Later levels
+// still live here until each one moves into src/data/levels/LNN/.
 import { makeLevel } from './assemble.js';
 import { L01 } from './L01/index.js';
 import { L02 } from './L02/index.js';
 import { L03 } from './L03/index.js';
+import { L05 } from './L05/index.js';
 
-export { L01, L02, L03 };
+export { L01, L02, L03, L05 };
 
 const card = (title, lines) => ({ title, lines });
 
@@ -39,36 +40,6 @@ export const L04 = makeLevel({
       intro: card('The Blockchain Void', ['The Pump and Dump Duo.', 'One counts. One flies.']),
       encounters: [{ id: 'E3', x: 16, space: 'arena', objective: 'boss', units: [['obamaDuo', 1], ['midgetDuo', 1]] }],
       weapons: [{ id: 'bz-duo', x: 10, gun: 'bazooka', why: 'the duo on the exchange floor' }],
-    },
-  ],
-});
-
-export const L05 = makeLevel({
-  id: 'L05', name: 'Frostspire Black Site', stage: 'glacier', tier: 5, parTime: 18 * 60,
-  sections: [
-    {
-      id: 'S1', name: 'Snowfield', length: 54, floor: 'ice',
-      encounters: [{ id: 'E1', x: 18, space: 'field', units: [['auditSniper', 2], ['miningRig', 1]] }],
-      weapons: [
-        { id: 'sn-snow', x: 10, gun: 'sniper', why: 'snipers on the snowfield' },
-        { id: 'bz-turret', x: 14, gun: 'bazooka', why: 'mining rig turret' },
-      ],
-      mechanisms: [{ kind: 'hazard', id: 'ice-slick', x: 26, slow: 0.2, dps: 0 }],
-      secret: { x: 8, modifier: 'taxSeason' },
-    },
-    {
-      id: 'S2', name: 'Bunkers', length: 48, floor: 'ice',
-      encounters: [{ id: 'E2', x: 16, space: 'interior', units: [['glowieAgent', 4]] }],
-      mechanisms: [
-        { kind: 'switch', id: 'generator', x: 12, opens: 'shield-gate' },
-        { kind: 'door', id: 'shield-gate', x: 34, opens: 'switch:generator' },
-      ],
-    },
-    {
-      id: 'S3', name: 'Frost Halls', length: 48, floor: 'ice',
-      encounters: [{ id: 'E3', x: 16, space: 'hold', units: [['glowieAgent', 2], ['auditSniper', 2]] }],
-      weapons: [{ id: 'sg-hall', x: 28, gun: 'shotgun', why: 'frost halls' }],
-      mechanisms: [{ kind: 'hazard', id: 'drone-strike', x: 22, dps: 6 }],
     },
   ],
 });
