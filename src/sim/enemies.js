@@ -8,6 +8,7 @@ import { clampToArena, pushOutOfBoxes, entityDef } from './collision.js';
 import { activeSolids, pushHorizontal, snapToGround } from './campaign/solids.js';
 import { sensePlayer } from './campaign/perception.js';
 import { clampFlyer, navWaypoint } from './campaign/nav.js';
+import { tickArchetype } from './campaign/archetypes.js';
 import { hitPlayerSphere, enemyAoE } from './combat.js';
 import { createProjectile, createHazard } from './state.js';
 
@@ -264,6 +265,9 @@ export function enemyAI(state, dt) {
       e.ai.burstLeft = 0; e.ai.aimT = 0;
       approachVel(e, { x: 0, z: 0 }, 0, 25, dt);
       if (e.stateT >= def.staggerTime) setState(e, 'chase');
+    } else if (e.ai.buried > 0) {
+      e.ai.buried -= dt;
+      approachVel(e, { x: 0, z: 0 }, 0, 30, dt);
     } else if (e.ai.alert && e.ai.alert !== 'alerted' && !sensePlayer(state, e, target)) {
       approachVel(e, { x: 0, z: 0 }, 0, 30, dt);
     } else {
@@ -275,6 +279,8 @@ export function enemyAI(state, dt) {
       const slow = e.status.goo ? 1 - e.status.goo.slow : 1;
       const beh = BEHAVIORS[e.type] || BEHAVIORS[def.behavior];
       beh.update(state, e, target, def, def.speed * e.speedMult * slow, dt);
+      if (e.ai.bubble > 0) e.ai.bubble -= dt;
+      tickArchetype(state, e, target, dt);
     }
     // integrate (flyers hold altitude themselves; staggered flyers sag a bit)
     if (def.flying) { if (e.state === 'stagger' || e.state === 'spawning') e.vel.y += ((e.state === 'spawning' ? 2 : -3) - e.vel.y) * Math.min(1, 5 * dt); }

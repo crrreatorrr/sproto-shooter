@@ -117,8 +117,33 @@ lockdown: {
 
 The two ids are `door` mechanisms with `at` and `size`. Crossing `threshold` adds those doors to the solid list (`lockdown` event, `sealed: true`). Clearing the encounter removes them (`sealed: false`).
 
+## Enemy re-skins
+
+These ids have an `archetype` and run it on top of the enemy they are dressed as. Wave Mode never spawns them.
+
+| Id | Extra behaviour |
+|---|---|
+| `boomMidget`, `balloonMidget` | Explode when they die. |
+| `riotMidget` | Front shots deal 30% damage. |
+| `sewerMidget` | Burrows for 0.6 s and ignores hits. |
+| `floretSprout` | Lobs a mortar. |
+| `hexAcolyte` | Puts a bubble on the nearest ally. Bubble hits deal half damage. |
+| `glowieAgent` | Slows the player for one step when close. It does not take the controls. |
+| `auditSniper` | Sidesteps on a timer. |
+| `miningRig` | Stays planted. |
+| `daycare` | The nest spawn that was already there. |
+| `bitbug` | Drifts toward other bitbugs. |
+| `jetObama` | A weak spot that takes 2.5×. |
+| `miniTinubu` | Charges. |
+
+`midget`, `flyingMidget`, `obama`, `bigObama`, `robotLaser` and `robotShooter` are unchanged.
+
+## Mechanisms
+
+A barrel blast damages enemies, hurts the player, and chains. A switch with `needsHold` waits for interact held for `holdTime`. A mover with `carry` rides the player from `from` to `to`. A hazard with `affectsEnemies` slows enemies in its box. Corridor switches stay proximity triggers.
+
 ## What L02 and L03 can use today
 
-Collision (`useSolids`), line of sight (`hasLOS`, `coverNear`), alert (`ai.alert = 'unaware'`), the nav grid (`useNav`, `navBounds`, `navLinks`), flyer lids (`flyerVolume`), and this v2 director.
+Collision (`useSolids`), line of sight (`hasLOS`, `coverNear`), alert (`ai.alert = 'unaware'`), the nav grid (`useNav`, `navBounds`, `navLinks`), flyer lids (`flyerVolume`), this v2 director, the mechanisms above, and the re-skins in the table.
 
 They should not edit `src/sim`, `src/server`, `src/net`, or `src/data/levels/campaign.js`.

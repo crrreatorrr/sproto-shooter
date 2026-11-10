@@ -7,6 +7,7 @@ import { TUNING } from '../data/tuning.js';
 import { distToCapsule, entityDef, sphereHitsPlayer } from './collision.js';
 import { rollDrops, spawnDrops } from './drops.js';
 import { createHazard, nextId } from './state.js';
+import { archetypeDamageMul, archetypeDeathBlast } from './campaign/archetypes.js';
 
 export function healPlayer(p, amount) {
   if (p.dead) return 0;
@@ -16,7 +17,7 @@ export function healPlayer(p, amount) {
 }
 
 export function damageEnemy(state, e, hit) {
-  if (e.dead || e.state === 'spawning' || (e.boss && e.boss.invuln)) return 0;
+  if (e.dead || e.state === 'spawning' || (e.boss && e.boss.invuln) || (e.ai && e.ai.buried > 0)) return 0;
   let dmg = hit.base;
   const p = state.players[hit.sourceId];
   if (p) {
@@ -32,6 +33,7 @@ export function damageEnemy(state, e, hit) {
   if (isCrit) dmg *= 1.5;
   if (hit.zone === 'shield') dmg *= 0.1;
   if (e.type === 'bigObama') { if (hit.isSplash) dmg *= 1.5; if (hit.pellet) dmg *= 1.3; }
+  dmg *= archetypeDamageMul(e, p ? p.pos : null);
   const el = hit.element || 'none';
   if (el !== 'none') {
     if (e.affinity.weak === el) dmg *= 1.5;
@@ -137,6 +139,11 @@ export function onEnemyKilled(state, e) {
   }
   if (lh.wacky === 'confettiKill') {
     explode(state, centerOf(e), { radius: 4, damage: 40, minFalloff: 0.4, selfMult: 0, knockback: 6 }, lh.sourceId, 'none', 'splash', true);
+  }
+  const blast = archetypeDeathBlast(e);
+  if (blast && e.ai && !e.ai.blasted) {
+    e.ai.blasted = true;
+    explode(state, centerOf(e), { radius: blast.radius, damage: blast.damage, minFalloff: 0.4, selfMult: 0, knockback: 4 }, lh.sourceId || 0, 'fire', 'world');
   }
   // Drops
   const p = state.players[state.localPlayerId];
