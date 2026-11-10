@@ -5,7 +5,8 @@ import { float, range } from '../core/rng.js';
 import { dirFromYawPitch, deg, clamp } from '../core/math.js';
 import { emit } from './events.js';
 import { clampToArena, pushOutOfBoxes, raycastEnemies, rayWorld, eyePos } from './collision.js';
-import { activeSolids, campaignSolidsOn, pushHorizontal, raySolids, snapToGround, voidAt, STEP_UP } from './campaign/solids.js';
+import { activeSolids, campaignSolidsOn, firstSolid, pushHorizontal, snapToGround, voidAt, STEP_UP } from './campaign/solids.js';
+import { damageLevelSolid } from './campaign/mechanisms.js';
 import { effectiveGunStats } from './guns.js';
 import { damageEnemy, damagePlayer, healPlayer, explode } from './combat.js';
 import { createProjectile } from './state.js';
@@ -204,8 +205,8 @@ export function fireHitscan(state, p, g, st, origin, dir, extra = {}) {
   if (campaignSolidsOn(state)) {
     const solids = activeSolids(state);
     if (solids) {
-      const wall = raySolids(solids, origin, dir, remaining);
-      if (wall >= 0) remaining = wall;
+      const wall = firstSolid(solids, origin, dir, remaining);
+      if (wall && !damageLevelSolid(state, wall.solid, { base: st.damage, sourceKind: 'gun' })) remaining = wall.t;
     }
   }
   let pierce = st.pierce;

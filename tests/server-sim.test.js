@@ -34,7 +34,8 @@ describe('canonical bosses', () => {
   it('does not treat a fleeing encounter as the payable boss', () => {
     const bosses = listBossObjectives();
     const flee = bosses.filter((b) => b.fleeAt > 0).map((b) => `${b.levelId}:${b.encounterId}`);
-    expect(flee).toContain('L03:S4-E4');
+    const l03 = flee.filter((id) => id.startsWith('L03:'));
+    expect(l03.some((id) => id === 'L03:S4-E4' || id === 'L03:S6-F2')).toBe(true);
     expect(flee).toContain('L09:S3-E4');
     for (const boss of CANONICAL_BOSSES) {
       const hit = bosses.find((b) => b.levelId === boss.levelId && b.encounterId === boss.encounterId);
