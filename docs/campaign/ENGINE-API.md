@@ -102,8 +102,9 @@ Local coordinates. `origin: [x, y, z]` is the section's north-west corner in the
 | `onBossHp` | The encounter's boss is at or below `p` percent health. |
 | `onPartDestroyed` | `id` was marked destroyed. |
 | `with` | Squad `after` has spawned and `delay` seconds have passed. |
+| `onAlarm` | `ringAlarm(state, alarm)` has been called and `delay` seconds (on the squad) have passed. |
 
-Extra enemies wait while the encounter is at `maxAlive`. `flockUnit: 6` counts six living bitbugs as one of those units. When a script part ends, a `part` squad that never spawned is skipped, and anyone it already spawned leaves with no drop and no kill credit.
+`clearAll` and `boss` ignore a squad marked `optional: true` until it spawns. A quiet run does not wait on an alarm pack that never rings. Once it spawns, it still has to die. Extra enemies wait while the encounter is at `maxAlive`. `flockUnit: 6` counts six living bitbugs as one of those units. When a script part ends, a `part` squad that never spawned is skipped, and anyone it already spawned leaves with no drop and no kill credit.
 
 ## Lockdown
 
