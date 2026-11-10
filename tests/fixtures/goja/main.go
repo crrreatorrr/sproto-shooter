@@ -10,9 +10,13 @@ import (
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: goja-verify <bundle.js>")
+	if len(os.Args) != 2 && len(os.Args) != 3 {
+		fmt.Fprintln(os.Stderr, "usage: goja-verify <bundle.js> [export]")
 		os.Exit(2)
+	}
+	method := "verifyRunJSON"
+	if len(os.Args) == 3 {
+		method = os.Args[2]
 	}
 	src, err := os.ReadFile(os.Args[1])
 	if err != nil {
@@ -29,9 +33,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	fn, ok := goja.AssertFunction(vm.Get("SprotoShooterSim").ToObject(vm).Get("verifyRunJSON"))
+	fn, ok := goja.AssertFunction(vm.Get("SprotoShooterSim").ToObject(vm).Get(method))
 	if !ok {
-		fmt.Fprintln(os.Stderr, "verifyRunJSON missing")
+		fmt.Fprintln(os.Stderr, method+" missing")
 		os.Exit(1)
 	}
 	out, err := fn(goja.Undefined(), vm.ToValue(string(input)))

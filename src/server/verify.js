@@ -1,5 +1,6 @@
 // Replay a server-issued run. The receipt never credits Tickets.
 import { simulate } from '../sim/simulate.js';
+import { runSahilKiteProbe } from '../sim/campaign/kiteProbe.js';
 import { verifyStateHash } from '../sim/hash.js';
 import { bossById, contentFingerprint } from '../data/serverManifest.js';
 import { ECONOMY, SOURCE_COMMIT, buildIssuedState, buildIssuance, canonicalLoadoutOk } from './runContract.js';
@@ -258,6 +259,14 @@ export function verifyRunJSON(text) {
     return JSON.stringify(out);
   }
   return JSON.stringify(publicReceipt(verifyRun(body.log, body.ctx)));
+}
+
+export function runKiteProbeJSON(text) {
+  let body = {};
+  if (typeof text === 'string' && text) {
+    try { body = JSON.parse(text); } catch { body = {}; }
+  }
+  return JSON.stringify(runSahilKiteProbe(body.seed, body.mode, body.maxFrames));
 }
 
 export function contentFingerprintOf() {
