@@ -1,5 +1,5 @@
 // S4 Greenhouses. The Hothouse is lockdown L2.
-import { box, disc, place, stairs } from './prim.js';
+import { box, disc, place, sphere, stairs } from './prim.js';
 import { manaBloom, mound, podStump, shed } from './prefabs.js';
 import { ENCOUNTERS } from './encounters.js';
 
@@ -62,6 +62,7 @@ export const S4 = {
     ...place(manaBloom(), { at: [94, 3.5, -65], id: 'MB13' }),
     ...place(manaBloom(), { at: [74, 0, -45], id: 'MB14' }),
     ...place(manaBloom(), { at: [112, 0, -60], id: 'MB15' }),
+    sphere({ id: 'S4-GA-CAT-mark', at: [70, 6.2, -62], r: 0.45, mat: 'neon' }),
   ],
   weapons: [
     { id: 'W4', at: [40, 0.9, -38], gun: 'bazooka', why: 'E7: two nests' },
@@ -100,4 +101,8 @@ export const S4 = {
     { kind: 'secret', id: 'S4-AF3', at: [12, 3.6, -22], tickets: 15, story: 'Shipment 6: to Los Angeles, by cloud.' },
   ],
   encounters: [ENCOUNTERS.E7, ENCOUNTERS.E8],
+  // Under the glass roof, above the north catwalk. The floor lane does not need it.
+  grappleAnchors: [
+    { id: 'S4-GA-CAT', at: [70, 6.2, -62], r: 2 },
+  ],
 };

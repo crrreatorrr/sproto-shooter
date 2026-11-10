@@ -1,5 +1,10 @@
 # L03 engine needs
 
+Landed and used: slide, grapple (6 s recharge, no stamina cost), and sprint stamina. Anchors are
+optional. Walk speed is 6.5 m/s, above the 5.5 m/s the runoff route was timed at, so a locked
+sprint bar does not trap the escape. Alarm squads, strike clocks, and the Spotter, Frost Hound,
+and flak bodies are not in this level's census, so they are not added.
+
 Landed on main and wired in this level: the four bodies, Hex `arena: { x: 45, z: -80, radius: 34 }`,
 `fleeAt: 0.5` on `S6-F2` with `S6-LG` `opens: 'S6-F2.fled'` and `S6-RISE` `starts: 'S6-F2.fled'`,
 targets `S1-LB-hp` (bulletMul 0.2), `S6-HCB-hp`, and `TOT-N-hp` / `TOT-SE-hp` / `TOT-SW-hp`.
