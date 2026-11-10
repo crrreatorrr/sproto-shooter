@@ -9,6 +9,7 @@ import { activeSolids, pushHorizontal, snapToGround } from './campaign/solids.js
 import { sensePlayer } from './campaign/perception.js';
 import { clampFlyer, navWaypoint } from './campaign/nav.js';
 import { tickArchetype } from './campaign/archetypes.js';
+import { enemyZoneSlow } from './campaign/mechanisms.js';
 import { hitPlayerSphere, enemyAoE } from './combat.js';
 import { createProjectile, createHazard } from './state.js';
 
@@ -277,8 +278,9 @@ export function enemyAI(state, dt) {
       }
       if (e.state === 'idle' && e.type !== 'dummy') setState(e, 'chase');
       const slow = e.status.goo ? 1 - e.status.goo.slow : 1;
+      const zone = state.mode === 'campaign' ? enemyZoneSlow(state.level, state._campaignSection, e) : 1;
       const beh = BEHAVIORS[e.type] || BEHAVIORS[def.behavior];
-      beh.update(state, e, target, def, def.speed * e.speedMult * slow, dt);
+      beh.update(state, e, target, def, def.speed * e.speedMult * slow * zone, dt);
       if (e.ai.bubble > 0) e.ai.bubble -= dt;
       tickArchetype(state, e, target, dt);
     }

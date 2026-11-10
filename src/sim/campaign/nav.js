@@ -29,7 +29,17 @@ function blocked(solids, x, z) {
 
 function key(ix, iz) { return `${ix},${iz}`; }
 
-export function bakeNav(solids, bounds, links = [], cell = CELL) {
+function zoneCostAt(zones, x, z) {
+  let cost = 1;
+  for (let i = 0; i < zones.length; i++) {
+    const zone = zones[i];
+    if (x < zone.min[0] || x > zone.max[0] || z < zone.min[2] || z > zone.max[2]) continue;
+    if (zone.cost > cost) cost = zone.cost;
+  }
+  return cost;
+}
+
+export function bakeNav(solids, bounds, links = [], cell = CELL, zones = []) {
   const x0 = bounds.min[0], z0 = bounds.min[1];
   const nx = Math.max(1, Math.ceil((bounds.max[0] - x0) / cell));
   const nz = Math.max(1, Math.ceil((bounds.max[1] - z0) / cell));
@@ -49,7 +59,17 @@ export function bakeNav(solids, bounds, links = [], cell = CELL) {
     open.add(key(a.ix, a.iz));
     open.add(key(b.ix, b.iz));
   }
-  return { bounds, cell, nx, nz, open, extra };
+  const cost = new Map();
+  if (zones.length) {
+    for (let iz = 0; iz < nz; iz++) {
+      for (let ix = 0; ix < nx; ix++) {
+        const x = x0 + (ix + 0.5) * cell, z = z0 + (iz + 0.5) * cell;
+        const c = zoneCostAt(zones, x, z);
+        if (c > 1) cost.set(key(ix, iz), c);
+      }
+    }
+  }
+  return { bounds, cell, nx, nz, open, extra, cost };
 }
 
 function cellAt(bounds, pos, cell = CELL) {
@@ -70,10 +90,11 @@ export function navGridFor(state) {
   const bounds = state.level && state.level.navBounds;
   if (!solids || !bounds) return null;
   const links = state.level.navLinks || [];
+  const zones = state.level.slowZones || [];
   const cached = grids.get(solids);
-  if (cached && cached.bounds === bounds && cached.links === links) return cached.grid;
-  const grid = bakeNav(solids, bounds, links);
-  grids.set(solids, { bounds, links, grid });
+  if (cached && cached.bounds === bounds && cached.links === links && cached.zones === zones) return cached.grid;
+  const grid = bakeNav(solids, bounds, links, CELL, zones);
+  grids.set(solids, { bounds, links, zones, grid });
   return grid;
 }
 
@@ -122,7 +143,7 @@ export function findPath(grid, from, to) {
       const jx = ix + neigh[n][0], jz = iz + neigh[n][1];
       const nk = key(jx, jz);
       if (!grid.open.has(nk)) continue;
-      const ng = g.get(cur) + 1;
+      const ng = g.get(cur) + ((grid.cost && grid.cost.get(nk)) || 1);
       if (ng < (g.get(nk) ?? 1e9)) { g.set(nk, ng); came.set(nk, cur); open.push(nk); }
     }
     for (let n = 0; n < grid.extra.length; n++) {

@@ -40,6 +40,7 @@ export function playerMovement(state, dt) {
     const sprinting = canAct && c.held.sprint && c.moveZ > 0 && !p.zooming;
     let maxSpeed = sprinting ? TUNING.sprintSpeed : TUNING.walkSpeed;
     if (p.campaignSpeed) maxSpeed *= p.campaignSpeed;
+    if (state.mode === 'campaign' && p.hazardSlow != null && p.hazardSlow < 1) maxSpeed *= p.hazardSlow;
     if (p.downed) maxSpeed *= TUNING.downedSpeedMult;
 
     // jump buffering
