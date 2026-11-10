@@ -142,6 +142,10 @@ These ids have an `archetype` and run it on top of the enemy they are dressed as
 
 A barrel blast damages enemies, hurts the player, and chains. A switch with `needsHold` waits for interact held for `holdTime`. A mover with `carry` rides the player from `from` to `to`. A hazard with `affectsEnemies` slows enemies in its box. Corridor switches stay proximity triggers.
 
+## Placeholder enemies
+
+`hexWisp` flies and ignores solids (`ghost`), and stays inside `navBounds`. Bullets deal 20%, explosives 50%, spells 200%. `barkBrute` starts in bark state `hard` (bullets deal nothing, the back knot still takes them). Goo softens it. `manaLeech` drains 8 mana per second inside 10 m. `gooGlob` splits into two smaller globs, then those split into two small ones. `e.ai.exposed` shows a hitbox whose `onlyWhen` matches it.
+
 ## Hazard zones and geysers
 
 `kind: 'hazardZone'` (or `'slow'`) with `min`/`max` or `at` plus `r`. `slow` is a sustained speed multiplier (0.5 means half speed). `dps` hurts the player. `affectsEnemies` does both to enemies. `navCost` above 1 makes the nav grid treat those cells as expensive, so enemies walk around a pool when a way around exists. `set` stays off until `setHazardSet(state, id, true)`. `when` uses the same flags as a door (`switch:id`, `id.cleared`).
