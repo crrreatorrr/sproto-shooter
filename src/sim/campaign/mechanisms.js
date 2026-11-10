@@ -3,6 +3,7 @@
 import { explode, damagePlayer } from '../combat.js';
 import { emit } from '../events.js';
 import { markPartDestroyed } from './v2.js';
+import { scriptShields } from './bossScript.js';
 
 export function detonateBarrel(state, section, m) {
   const lv = state.level;
@@ -165,7 +166,7 @@ export function damageLevelSolid(state, solid, hit) {
   const sec = state._campaignSection || state._v2section;
   if (!lv || !sec || !solid || !solid.id) return false;
   const m = (sec.mechanisms || []).find((item) => item.kind === 'target' && targetKey(item) === solid.id);
-  if (!m) return false;
+  if (!m || scriptShields(state, solid.id)) return false;
   if (!lv.targets) lv.targets = {};
   const rec = lv.targets[m.id] || (lv.targets[m.id] = { hp: m.hp, max: m.hp });
   if (rec.hp <= 0) return true;

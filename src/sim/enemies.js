@@ -266,6 +266,8 @@ export function enemyAI(state, dt) {
       e.ai.burstLeft = 0; e.ai.aimT = 0;
       approachVel(e, { x: 0, z: 0 }, 0, 25, dt);
       if (e.stateT >= def.staggerTime) setState(e, 'chase');
+    } else if (e.ai.scriptTarget) {
+      approachVel(e, { x: 0, z: 0 }, 0, 30, dt);
     } else if (e.ai.buried > 0) {
       e.ai.buried -= dt;
       approachVel(e, { x: 0, z: 0 }, 0, 30, dt);

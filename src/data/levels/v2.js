@@ -27,6 +27,22 @@ function shiftPrim(g, origin) {
   return next;
 }
 
+function shiftScript(script, origin) {
+  if (!script) return null;
+  const shiftAt = (at) => (at ? add(at, origin) : at);
+  const shiftField = (field) => (field ? { ...field, at: shiftAt(field.at) } : field);
+  return {
+    ...script,
+    parts: (script.parts || []).map((part) => ({
+      ...part,
+      targets: (part.targets || []).map((t) => ({ ...t, at: shiftAt(t.at) })),
+      pit: shiftField(part.pit),
+      pools: (part.pools || []).map(shiftField),
+      vents: (part.vents || []).map(shiftField),
+    })),
+  };
+}
+
 function shiftSquad(squad, origin) {
   const at = (squad.at || []).map((p) => add(p, origin));
   return { ...squad, at, trigger: squad.trigger || { type: 'onEnter' }, method: squad.method || 'placed' };
@@ -50,6 +66,7 @@ export function makeV2Level(def) {
       } : null,
       lid: shiftBox(enc.lid, origin),
       arena: enc.arena ? { x: enc.arena.x + origin[0], z: enc.arena.z + origin[2], radius: enc.arena.radius } : null,
+      script: shiftScript(enc.script, origin),
     }));
     const next = def.sections[i + 1];
     return {
