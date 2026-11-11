@@ -110,7 +110,7 @@ describe('sandbox toys stay in the sandbox', () => {
 
   it('removes them even when both mode changes arrive in one command (page opened with ?mode=waves)', () => {
     const s = createGameState({ seed: 3 });
-    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'sandbox', tier: 1 }, { type: 'startMode', mode: 'waves', tier: 1, leaveSandbox: true }] }));
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'sandbox', tier: 1 }, { type: 'startMode', mode: 'waves', tier: 1, freshLoadout: true }] }));
     expect(s.mode).toBe('waves');
     expect(duckPickup(s)).toBeFalsy();
   });
@@ -132,12 +132,18 @@ describe('sandbox toys stay in the sandbox', () => {
     const { s, p } = sandbox();
     grab(s, p, duckPickup(s));
     expect(p.guns[LEGENDARY_SLOT]).toBeTruthy();
-    start(s, 'waves', { leaveSandbox: true });
+    start(s, 'waves', { freshLoadout: true });
     expect(p.guns.filter(Boolean).map((g) => g.source)).toEqual(['start']);
     // Wave Mode to Wave Mode keeps what you looted, flag or not
     const g = generateGun({ seed: 12, forced: { type: 'sniper', quality: 'epic' } });
     g.id = 4242; p.guns[1] = g;
-    start(s, 'waves', { leaveSandbox: true });
+    start(s, 'waves', { freshLoadout: true });
+    expect(p.guns[1]).toBe(g);
+    // ...but Wave Mode loot does not walk into the campaign, and campaign guns carry level to level
+    start(s, 'campaign', { level: 'L06', freshLoadout: true });
+    expect(p.guns.filter(Boolean).map((x) => x.source)).toEqual(['start']);
+    p.guns[1] = g;
+    start(s, 'campaign', { level: 'L07', freshLoadout: true });
     expect(p.guns[1]).toBe(g);
   });
 });

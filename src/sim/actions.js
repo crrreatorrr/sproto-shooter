@@ -64,9 +64,10 @@ export function startMode(state, p, mode, tier = 1, opts = {}) {
   p.pos = { x: 0, y: 0, z: 8 }; p.prevPos = { ...p.pos }; p.vel = { x: 0, y: 0, z: 0 };
   // leaving the test range takes its free loadout and infinite ammo back
   if (state.testMode && mode !== 'test') { resetLoadout(state, p); state.tuning.infiniteAmmo = false; setGodMode(state, p, false); }
-  // ...and so does leaving the sandbox, when the client says this is a real start (opts.leaveSandbox).
-  // A state that was never started in a mode also reads 'sandbox', so the sim cannot tell by itself.
-  if (opts.leaveSandbox && real && state.mode === 'sandbox' && !state.testMode) resetLoadout(state, p);
+  // ...and so does leaving the sandbox, or walking into the campaign from another mode, when the
+  // client asks (opts.freshLoadout). A state that was never started in a mode also reads 'sandbox',
+  // so the sim cannot tell a real sandbox by itself. Wave Mode loot, saved or not, stays out of the campaign.
+  if (opts.freshLoadout && real && ((state.mode === 'sandbox' && !state.testMode) || (mode === 'campaign' && state.mode !== 'campaign'))) resetLoadout(state, p);
   // ...and so does leaving a boss fight
   if (state.bossFight && mode !== 'boss' && mode !== 'test') resetLoadout(state, p);
   state.testMode = mode === 'test';

@@ -25,7 +25,7 @@ Rule used for scope: `docs/campaign/PLAN.md` (campaign plan v2) owns campaign le
 | Item | State | What changed |
 |---|---|---|
 | A1 | Done | `src/game/campaignFlow.js` decides when to send `transitionDone`; `Game.step` queues it. Section cards stay 2.5 s or until fire. Rewarded runs are left alone. |
-| A3, decision 5 | Done | `startMode` removes sandbox-placed and debug-spawned gun pickups when Wave Mode, Boss Fight or a campaign level starts. The client asks for the starting loadout back on leaving the Sandbox. |
+| A3, decision 5 | Done | `startMode` removes sandbox-placed and debug-spawned gun pickups when Wave Mode, Boss Fight or a campaign level starts. The client asks for the starting loadout back on leaving the Sandbox, and on entering the campaign from another mode (Wave Mode loot used to walk into a campaign level; with saved loadouts that would have been persistent). |
 | A4 | Done | Shop on O; B is only the grapple. Weapon Box panel, resources row and craft handlers removed from the HUD. Spell slots a mode cannot open are hidden; the lock toast names the mode. |
 | A5 | Partly | `floorIsLava` is 4 health/s on the ground for 20 s (was 6/s for the rest of the level). `taxSeason`, `redTape`, `confetti` and `duckHunt` are left to v2's secrets (section 7.2 there). |
 | A6 | Done | Title order Wave Mode, Boss Fight, Play free, Campaign; Practice row; controls fold away. `eventCoverage.js` matches the code and a test holds its audio column to `sfx.js`. The "Find free match" note in `docs/shooter-release.md` was not re-checked (needs a hub). |

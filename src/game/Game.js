@@ -266,10 +266,12 @@ export class Game {
     this.audio.ensure();
     if (mode === 'boss') this.lastBoss = extra.boss;
     this._campaignShown = false;
-    // Guns picked up or spawned in the sandbox stay there (the Test Range and Boss Fight already work this way).
+    // Guns picked up or spawned in the sandbox stay there (the Test Range and Boss Fight already work this
+    // way), and a campaign entered from another mode starts from the starting gun, not Wave Mode's loot.
     const s = this.state;
     const leaveSandbox = s.mode === 'sandbox' && !s.testMode && mode !== 'sandbox' && mode !== 'test';
-    this.queue({ type: 'startMode', mode, tier, ...extra, ...(leaveSandbox ? { leaveSandbox: true } : {}) });
+    const enterCampaign = mode === 'campaign' && s.mode !== 'campaign';
+    this.queue({ type: 'startMode', mode, tier, ...extra, ...(leaveSandbox || enterCampaign ? { freshLoadout: true } : {}) });
     // Coming into Wave Mode from anywhere else picks the saved Wave Mode loadout back up. Tier to tier
     // inside Wave Mode keeps what you are carrying.
     if (mode === 'waves' && s.mode !== 'waves') {
