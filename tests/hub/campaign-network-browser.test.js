@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { decodeFrames } from '../../src/server/protocol.js';
 import { verifyRun } from '../../src/server/verify.js';
-import { owner, ack, snapshot } from './campaign-transport-fixtures.js';
+import { owner, ack, snapshot, issued, sealed } from './campaign-transport-fixtures.js';
 let server, browser, url;
 const evidenceDir = path.resolve('ci-artifacts/campaign-transport');
 beforeAll(async () => {
@@ -23,11 +23,13 @@ afterAll(async () => { if (browser) await browser.close(); if (server) await ser
 it('keeps real input/render alive during lost native response, recovers bytes, bounds pressure and ignores logout completion', async () => {
   const page = await browser.newPage();
   const errors = [], requests = [], committed = new Map();
-  let releaseFirst, releaseLogout, first = true, retrySecond = true, expired = false, holdLogout = false;
+  let releaseFirst, releaseLogout, first = true, firstSeal = true, retrySecond = true, expired = false, holdLogout = false;
+  const issuanceDto = issued(); let sealDto = null;
   const serverStatus = (body) => {
     const batches = [...committed.values()];
     const end = batches.reduce((n, b) => n + b.n, 0);
-    return snapshot({ state: expired ? 'expired' : 'open', revision: 1,
+    return snapshot({ state: expired ? 'expired' : sealDto ? 'sealed' : 'open', revision: end ? 1 : 0,
+      issuanceAck: issuanceDto, sealAck: sealDto,
       received: { sequence: batches.length - 1, tick: end, bytes: end * 16, actions: 0, batches: batches.length },
       verified: { sequence: -1, tick: end ? 1 : 0, simulationTick: end ? 1 : 0, bytes: end ? 16 : 0, batches: 0 },
       authorization: expired ? 'session_expired' : 'live',
@@ -35,10 +37,16 @@ it('keeps real input/render alive during lost native response, recovers bytes, b
       receivedAck: body.sequence === undefined ? null : committed.has(body.sequence) ? ack(committed.get(body.sequence)) : null });
   };
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.route(/\/v2\/rpc\/shooter\.run\.(append|status)\?unwrap=true$/, async (route) => {
+  await page.route(/\/v2\/rpc\/shooter\.run\.(append|status|issue|finish)\?unwrap=true$/, async (route) => {
     const request = route.request(), body = request.postDataJSON();
-    const operation = request.url().includes('run.append') ? 'append' : 'status';
+    const operation = request.url().match(/run\.(append|status|issue|finish)/)[1];
     requests.push({ operation, wire: request.postData() });
+    if (operation === 'issue') { await route.fulfill({ json: issuanceDto }); return; }
+    if (operation === 'finish') {
+      sealDto ||= sealed(body.lastSequence, body.lastTick, { sealedAt: '2026-11-11T00:00:02.250Z' });
+      if (firstSeal) { firstSeal = false; await route.abort('failed'); return; }
+      await route.fulfill({ json: sealDto }); return;
+    }
     if (operation === 'append') {
       if (body.sequence === 1 && retrySecond) {
         retrySecond = false;
@@ -54,7 +62,8 @@ it('keeps real input/render alive during lost native response, recovers bytes, b
     }
     if (holdLogout) {
       await new Promise((resolve) => { releaseLogout = resolve; });
-      // This late response must not change the logged-out controller.
+      // Deliberately malformed adversarial noise, not a valid Hub fixture.
+      // It must be ignored before parsing after logout.
       try { await route.fulfill({ json: { ...serverStatus(body), payment: { state: 'paid', tickets: 20 } } }); } catch { /* native request was cancelled */ }
       return;
     }
@@ -64,29 +73,30 @@ it('keeps real input/render alive during lost native response, recovers bytes, b
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!window.__game, null, { timeout: 45000 });
     await page.addScriptTag({ type: 'module', content: `
-      import { createCampaignTransport } from '/src/hub/campaignRewards/transport.js';
+      import { createCampaignIssuer } from '/src/hub/campaignRewards/transport.js';
       import { createCampaignController } from '/src/hub/campaignRewards/controller.js';
-      import { buildIssuance, buildIssuedState } from '/src/server/runContract.js';
+      import { buildIssuedState } from '/src/server/runContract.js';
       import { verifyStateHash } from '/src/sim/hash.js';
       import { DT } from '/src/sim/simulate.js';
-      window.__networkFixture = { createCampaignTransport, createCampaignController, buildIssuance, buildIssuedState, verifyStateHash, DT };
+      window.__networkFixture = { createCampaignIssuer, createCampaignController, buildIssuedState, verifyStateHash, DT };
     ` });
     await page.waitForFunction(() => !!window.__networkFixture);
-    await page.evaluate(({ owner, url }) => {
-      const { createCampaignTransport, createCampaignController, buildIssuance, buildIssuedState, DT } = window.__networkFixture;
+    await page.evaluate(async ({ owner, url }) => {
+      const { createCampaignIssuer, createCampaignController, buildIssuedState, DT } = window.__networkFixture;
       const token = 'header.' + btoa(JSON.stringify({ uid: owner.accountId,
         vrs: { scope: 'game', game: 'sproto-shooter', sid: owner.sessionId } })).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_') + '.signature';
       const session = { token, playerId: owner.accountId, game: 'sproto-shooter' };
-      const transport = createCampaignTransport({ enabled: true, ...owner, serverUrl: url, getSession: () => session });
-      window.__networkClock = 1000;
-      const controller = createCampaignController({ enabled: true, transport, uploadDeadlineMs: 5000,
+      const api = createCampaignIssuer({ enabled: true, ...owner, key: 'browser-issue-key', canonicalBoss: 'sahil',
+        serverUrl: url, getSession: () => session });
+      const issuanceAck = await api.issue(); const binding = await api.bindIssued(issuanceAck);
+      window.__networkEpoch = Date.parse(issuanceAck.issuedAt);
+      window.__networkClock = window.__networkEpoch + 1000;
+      const controller = createCampaignController({ enabled: true, transport: binding.transport, uploadDeadlineMs: Date.parse(issuanceAck.uploadDeadline),
         now: () => window.__networkClock, random: () => 0,
         recorderOptions: { bufferLimits: { batchFrames: 2, maxFrames: 6 } } });
       const game = window.__game;
       game.crash.halted = true; game.input.buildCommand(game.state.tick);
-      const built = buildIssuance({ ...owner, day: '2026-11-11', seed: 7, canonicalBoss: 'sahil' });
-      if (!built.ok) throw new Error(built.reason);
-      game.state = buildIssuedState(built.issuance);
+      game.state = buildIssuedState(issuanceAck.issuance);
       game.playing = true; game.paused = false; game.timeScale = 1; game.settings.hitstop = false;
       game.hideScreen(); game.input.setEnabled(true); game.input.dropAim();
       const player = game.state.players[game.state.localPlayerId]; game.input.setLook(player.yaw, player.pitch);
@@ -104,12 +114,12 @@ it('keeps real input/render alive during lost native response, recovers bytes, b
         const before = performance.now(); game.step(now); stepMs.push(performance.now() - before);
       };
       window.__controller = controller;
-      window.__capture = { issuance: built.issuance, observed, failures, recordMs, stepMs,
+      window.__capture = { issuance: issuanceAck.issuance, issuanceAck, observed, failures, recordMs, stepMs,
         get renders() { return renders; } };
       for (let i = 0; i < 3; i++) window.__manualStep();
       window.__pendingPump = controller.pump();
     }, { owner, url });
-    await expect.poll(() => requests.length).toBe(1);
+    await expect.poll(() => requests.filter((r) => r.operation === 'append').length).toBe(1);
     const waiting = await page.evaluate(() => {
       for (let i = 0; i < 4; i++) window.__manualStep();
       return { tick: window.__game.state.tick, renders: window.__capture.renders, state: window.__controller.status(), failures: window.__capture.failures };
@@ -120,25 +130,35 @@ it('keeps real input/render alive during lost native response, recovers bytes, b
     releaseFirst();
     await page.evaluate(() => window.__pendingPump);
     const recovered = await page.evaluate(async () => {
-      window.__networkClock = 1250; await window.__controller.pump();
+      window.__networkClock = window.__networkEpoch + 1250; await window.__controller.pump();
       window.__controller.flushTail(); return window.__controller.status();
     });
     expect(recovered).toMatchObject({ accepted: { sequence: 0, tick: 2 },
       progress: { verified: { sequence: -1, tick: 1 }, payment: { state: 'none' } }, recorder: { retainedFrames: 4 } });
     await page.evaluate(() => window.__controller.pump()); // too_fast for seq1
     const beforeMinimum = requests.length;
-    await page.evaluate(async () => { window.__networkClock = 2249; await window.__controller.pump(); });
+    await page.evaluate(async () => { window.__networkClock = window.__networkEpoch + 2249; await window.__controller.pump(); });
     expect(requests).toHaveLength(beforeMinimum);
     await page.evaluate(async () => {
-      window.__networkClock = 2250; await window.__controller.pump(); await window.__controller.pump();
+      window.__networkClock = window.__networkEpoch + 2250; await window.__controller.pump(); await window.__controller.pump();
     });
     const allReceived = await page.evaluate(() => window.__controller.status());
     expect(allReceived).toMatchObject({ accepted: { sequence: 2, tick: 6 }, recorder: { totalFrames: 6, retainedFrames: 0 } });
     const secondWires = requests.filter((r) => r.operation === 'append' && JSON.parse(r.wire).sequence === 1).map((r) => r.wire);
     expect(secondWires).toHaveLength(2); expect(secondWires[0]).toBe(secondWires[1]);
+    const unknownSeal = await page.evaluate(async () => {
+      window.__controller.finish(); await window.__controller.pump(); return window.__controller.status();
+    });
+    expect(unknownSeal).toMatchObject({ finishRequested: true, sealUnknown: true, sealAck: null });
+    const recoveredSeal = await page.evaluate(async () => {
+      window.__networkClock = window.__networkEpoch + 2500; await window.__controller.pump(); return window.__controller.status();
+    });
+    expect(recoveredSeal).toMatchObject({ sealAck: { state: 'sealed', lastSequence: 2, lastTick: 6 },
+      progress: { payment: { state: 'none' } } });
+    expect(requests.filter((r) => r.operation === 'finish')).toHaveLength(1);
     expired = true;
-    const denied = await page.evaluate(async () => { window.__networkClock = 5000; await window.__controller.pump({ poll: true }); return window.__controller.status(); });
-    expect(denied).toMatchObject({ writesStopped: 'upload_expired', progress: { authorization: 'session_expired',
+    const denied = await page.evaluate(async () => { window.__networkClock = Date.parse(window.__capture.issuanceAck.uploadDeadline); await window.__controller.pump({ poll: true }); return window.__controller.status(); });
+    expect(denied).toMatchObject({ sealAck: { state: 'sealed' }, progress: { authorization: 'session_expired',
       payment: { state: 'authorization_denied', reason: 'session_expired' } } });
     holdLogout = true;
     const beforeLogout = requests.length;
@@ -154,14 +174,16 @@ it('keeps real input/render alive during lost native response, recovers bytes, b
     expect(capture.state).toMatchObject({ paused: true, problem: 'logout', progress: { payment: { state: 'authorization_denied' } } });
     expect(capture.tick).toBe(6); expect(errors).toEqual([]);
     const batches = [...committed.values()].sort((a, b) => a.sequence - b.sequence);
-    expect(batches.flatMap((b) => decodeFrames(b.frames, b.n, b.actions).commands)).toEqual(capture.observed.slice(0, 6).map((o) => o.command));
+    const commands = batches.flatMap((b) => decodeFrames(b.frames, b.n, b.actions).commands);
+    expect(commands).toEqual(capture.observed.slice(0, 6).map((o) => o.command));
+    expect(commands[0].moveZ).not.toBe(0);
     const { accountId, sessionId, day, runId } = capture.issuance;
     const log = { v: 1, binding: { accountId, sessionId, day, runId }, segments: [{ i: 0, from: null, tick0: 0,
       n: 6, frames: batches.map((b) => b.frames).join(''), actions: [] }] };
     expect(verifyRun(log, { issuance: capture.issuance })).toMatchObject({ ok: true, outcome: 'incomplete', tick: 6, stateHash: capture.hash, ticketsMinted: 0 });
     const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
     await page.screenshot({ path: path.join(evidenceDir, 'network-pressure.png') });
-    fs.writeFileSync(path.join(evidenceDir, 'recordings.json'), JSON.stringify({ sourceCommit, requests, batches, capture, waiting, recovered, denied }, null, 2));
+    fs.writeFileSync(path.join(evidenceDir, 'recordings.json'), JSON.stringify({ sourceCommit, requests, batches, capture, waiting, recovered, unknownSeal, recoveredSeal, denied }, null, 2));
     fs.writeFileSync(path.join(evidenceDir, 'cpu-advisory.json'), JSON.stringify({ sourceCommit, advisoryOnly: true,
       browser: browser.version(), softwareGL: true, method: '7 manual actual Game.step calls while native append reply was held/dropped; mocked Hub responses',
       note: 'Tiny instrumented fault-case sample; no frame pacing, isolated cost, human feel, regression or capacity conclusion.',

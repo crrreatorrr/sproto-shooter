@@ -6,7 +6,7 @@ import { finiteLimit, recorderError } from './storage.js';
 export const TRANSPORT_LIMITS = Object.freeze({ maxCalls: 65536, maxBatchCalls: 16, maxPolls: 540,
   baseDelayMs: 250, maxDelayMs: 30000, pollDelayMs: 5000, maxOfflineMs: 30000 });
 const CONTRACT_ERRORS = ['client_contract_error', 'receipt_conflict', 'response_oversized', 'unprepared_batch', 'malformed_data',
-  'malformed_frame', 'storage_quota', 'buffer_pressure', 'run_limit', 'tick_discontinuity'];
+  'malformed_frame', 'unconfirmed_receipt', 'storage_quota', 'buffer_pressure', 'run_limit', 'tick_discontinuity'];
 const IDENTITY_ERRORS = ['identity_changed', 'transport_suspended'];
 
 /** Inactive controller core. Explicit start/pump only; no Game/UI wiring. One
@@ -24,6 +24,7 @@ export function createCampaignController({ enabled = false, transport, uploadDea
     .map(([key, value]) => [key, finiteLimit(limits[key] ?? value, value)])));
   const recorder = createRewardRecorder({ ...recorderOptions, enabled: true, ...owner, acceptReceipt: transport.acceptReceipt });
   let accepted = Object.freeze({ sequence: -1, tick: 0 });
+  let sealing = null, sealAck = null, sealUnknown = false, sealWithheld = false, sealCalls = 0, finishRequested = false;
   let progress = null, current = null, busy = false, timer = null, running = false, paused = false, epoch = 0;
   let calls = 0, polls = 0, nextAt = 0, nextPollAt = 0, offlineSince = null;
   let recordingStopped = null, writesStopped = null, problem = null, callbackFailed = false, tail = false;
@@ -35,18 +36,22 @@ export function createCampaignController({ enabled = false, transport, uploadDea
     return Object.freeze({ owner, accepted, progress, busy, running, paused, calls, polls, nextAt, offlineSince,
       recordingStopped, writesStopped, problem, callbackFailed,
       currentSequence: current?.prepared.body.sequence ?? null, batchCalls: current?.calls ?? 0,
+      withheldTail: !!current?.withheld, finishRequested, sealAck, sealCalls, sealUnknown, sealWithheld,
       recorder: recorder.status() });
   }
   function notify() { if (onState) { try { onState(state()); } catch { callbackFailed = true; } } }
   function budget(isPoll) {
-    if (calls >= cap.maxCalls || (isPoll && polls >= cap.maxPolls) || (current && current.calls >= cap.maxBatchCalls)) {
+    const batchPending = current && !current.withheld;
+    const sealPending = sealing && !sealAck && !sealWithheld;
+    if (calls >= cap.maxCalls || (isPoll && polls >= cap.maxPolls)
+      || (batchPending && current.calls >= cap.maxBatchCalls) || (sealPending && sealCalls >= cap.maxBatchCalls)) {
       pause('retry_budget_exhausted'); return false;
     }
-    calls++; if (isPoll) polls++; if (current) current.calls++;
+    calls++; if (isPoll) polls++; if (batchPending) current.calls++; if (sealPending) sealCalls++;
     return true;
   }
   function delay(serverMinimum = 0) {
-    const attempt = Math.min(current?.calls || 1, 16);
+    const attempt = Math.min(current?.calls || sealCalls || 1, 16);
     const exponential = Math.min(cap.maxDelayMs, cap.baseDelayMs * 2 ** (attempt - 1));
     const jitter = random();
     if (!Number.isFinite(jitter) || jitter < 0 || jitter > 1) { pause('invalid_random'); return; }
@@ -56,11 +61,19 @@ export function createCampaignController({ enabled = false, transport, uploadDea
   function release(receipt) {
     recorder.acknowledge(receipt, owner);
     if (receipt.acceptedTick >= accepted.tick) accepted = Object.freeze({ sequence: receipt.acceptedSequence, tick: receipt.acceptedTick });
-    current = null; offlineSince = null; nextAt = 0;
+    current = null; offlineSince = null; nextAt = 0; problem = null;
+  }
+  function recordSeal(ack) {
+    if (sealAck && (sealAck.sealedAt !== ack.sealedAt || sealAck.lastSequence !== ack.lastSequence
+      || sealAck.lastTick !== ack.lastTick || sealAck.runId !== ack.runId)) throw recorderError('receipt_conflict');
+    sealAck = ack; sealUnknown = false; nextAt = 0; offlineSince = null;
+    haltWrites('sealed');
+    if (problem === 'transport_unknown' || problem === 'run_closed') problem = null;
   }
   function snapshot(value) {
     progress = mergeProgress(progress, value);
     if (progress.received.tick >= accepted.tick) accepted = Object.freeze({ sequence: progress.received.sequence, tick: progress.received.tick });
+    problem = value.operational?.reason || (value.authorization === 'live' ? null : value.authorization);
     // A received cursor alone is not a receipt and cannot delete history.
     if (value.received.tick > recorder.status().totalFrames) haltWrites('local_history_missing');
     if (value.authorization !== 'live') haltWrites(value.authorization);
@@ -68,11 +81,31 @@ export function createCampaignController({ enabled = false, transport, uploadDea
     if (value.operational?.supportRequired) haltWrites('pending_support');
     if (value.terminal) haltWrites('terminal_verified');
     if (current && value.receivedAck) release(value.receivedAck);
+    // Closed accepted highwater is authoritative. Keep the never-accepted local
+    // tail, but stop retransmitting/recovering it as though it were still in
+    // flight. Payment/status polling has its own bounded cadence/budget.
+    if (current && value.state !== 'open' && !value.receivedAck
+      && value.received.sequence < current.prepared.body.sequence && value.received.tick <= current.prepared.body.tick0) {
+      current.withheld = true; nextAt = 0; nextPollAt = time() + cap.pollDelayMs;
+    }
+    if (sealing && value.sealAck) recordSeal(value.sealAck);
+    else if (sealing && value.state !== 'open') {
+      sealWithheld = true; nextAt = 0; nextPollAt = time() + cap.pollDelayMs;
+    }
   }
   function failure(value) {
     problem = value.reason;
-    if (value.state === 'authorization_denied') { haltWrites(value.reason); if (current) current.needsStatus = true; delay(value.retryAfterMs); }
-    else if (value.state === 'invalid') pause(`server_invalid_${value.reason}`);
+    if (value.reason === 'run_closed' && value.state === 'invalid') {
+      haltWrites('run_closed');
+      if (current) current.needsStatus = true;
+      if (sealing) sealUnknown = true;
+      delay(value.retryAfterMs);
+    } else if (value.state === 'authorization_denied') {
+      haltWrites(value.reason);
+      if (current) current.needsStatus = true;
+      if (sealing) sealUnknown = true;
+      delay(value.retryAfterMs);
+    } else if (value.state === 'invalid') pause(`server_invalid_${value.reason}`);
     else delay(value.retryAfterMs);
   }
   function schedule() {
@@ -96,7 +129,7 @@ export function createCampaignController({ enabled = false, transport, uploadDea
           current = { prepared, calls: 0, needsStatus: false };
         }
       }
-      if (current) {
+      if (current && !current.withheld) {
         const recovering = current.needsStatus || !!writesStopped;
         if (!budget(recovering)) return state();
         const response = recovering ? await transport.status(current.prepared) : await transport.append(current.prepared);
@@ -105,13 +138,33 @@ export function createCampaignController({ enabled = false, transport, uploadDea
         if (response.state === 'received') release(response);
         else if ('received' in response) {
           snapshot(response);
-          if (current) { current.needsStatus = false; delay(); }
+          if (current && !current.withheld) { current.needsStatus = false; delay(); }
         } else failure(response);
-      } else if ((poll || time() >= nextPollAt) && budget(true)) {
-        const response = await transport.status();
-        if (generation !== epoch) return state();
-        offlineSince = null; nextPollAt = time() + cap.pollDelayMs;
-        if ('received' in response) snapshot(response); else failure(response);
+      } else {
+        const local = recorder.status();
+        if (!sealing && !current && finishRequested && !writesStopped && local.retainedFrames === 0
+          && local.totalFrames === accepted.tick && local.totalBatches === accepted.sequence + 1) {
+          sealing = transport.prepareFinish(accepted.sequence, accepted.tick);
+        }
+        if (sealing && !sealAck && !sealWithheld) {
+          const recovering = sealUnknown || !!writesStopped;
+          if (!budget(recovering)) return state();
+          const response = recovering ? await transport.status(null, sealing) : await transport.finish(sealing);
+          if (generation !== epoch) return state();
+          offlineSince = null;
+          // Owner status lifecycle can also be 'sealed'; distinguish its
+          // projection before the standalone immutable seal acknowledgment.
+          if ('received' in response) {
+            snapshot(response);
+            if (!sealAck && !sealWithheld) { sealUnknown = false; delay(); }
+          } else if (response.state === 'sealed') recordSeal(response);
+          else failure(response);
+        } else if ((poll || time() >= nextPollAt) && budget(true)) {
+          const response = await transport.status(null, sealing && !sealAck ? sealing : null);
+          if (generation !== epoch) return state();
+          offlineSince = null; nextPollAt = time() + cap.pollDelayMs;
+          if ('received' in response) snapshot(response); else failure(response);
+        }
       }
     } catch (error) {
       if (generation !== epoch) return state();
@@ -120,6 +173,7 @@ export function createCampaignController({ enabled = false, transport, uploadDea
       else {
         problem = 'transport_unknown'; offlineSince ??= time();
         if (current) current.needsStatus = true;
+        if (sealing) sealUnknown = true;
         delay();
       }
     } finally { busy = false; notify(); schedule(); }
@@ -144,7 +198,10 @@ export function createCampaignController({ enabled = false, transport, uploadDea
     flushTail() { tail = true; recordingStopped ||= 'local_end'; recorder.suspend(); },
     stop(reason = 'logout') { epoch++; running = false; pause(reason); transport.suspend(); },
     status: state,
-    issue() { throw recorderError('issuance_unavailable'); },
-    finish() { throw recorderError('finish_unavailable'); },
+    issue() { throw recorderError('pre_run_issuer_required'); },
+    finish() {
+      finishRequested = true; tail = true; recordingStopped ||= 'local_end'; recorder.suspend();
+      schedule(); return state();
+    },
   });
 }

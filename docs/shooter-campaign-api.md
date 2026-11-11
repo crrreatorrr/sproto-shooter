@@ -1,4 +1,4 @@
-# Dormant campaign API adapter and upload core (PR13 / staged PR15)
+# Dormant campaign API adapter and recovery (PR13 / PR15 follow-up)
 
 The current generic `NakamaClient.rpc(id, body, {token})` and SDK
 `getSession`/`refreshSession` are sufficient for a narrow campaign adapter.
@@ -9,11 +9,10 @@ the narrow runtime schemas describe the supported consumer contract.
 
 No Game, Hub link or UI imports/creates this capability. Factories reject absent
 explicit `enabled:true`; scheduling starts only through explicit `start()` or
-background `pump()`. There is no deployment or public activation. This is the
-append/status controller core, **not completion of PR15 or PR16**. Server v2
-issuance and finish schemas are being defined in a separate reviewed lifecycle
-companion. `issue()` and `finish()` fail explicitly with `issuance_unavailable`
-and `finish_unavailable`; they must not fabricate a run or seal. Payment remains
+background `pump()`. There is no deployment or public activation. PR109 supplied the
+staged append/status core. The follow-up below binds the reviewed0056 public
+issuance/finish contract, pending strict client/server checks and final review.
+It is not PR16 Game/UI activation and never fabricates a run or seal. Payment remains
 server-owned; there is no public client settlement/credit operation.
 
 ## Existing generic SDK composition
@@ -50,7 +49,8 @@ malformed/oversized response pauses with a client contract/support error.
 
 ## Public request, digest and response schema
 
-The adapter exposes only existing `shooter.run.append` and `shooter.run.status`.
+The bound adapter exposes `shooter.run.append`, `shooter.run.status` and reviewed0056
+`shooter.run.finish`; the separate pre-run issuer calls `shooter.run.issue`.
 `prepare(batch)` runs outside the input loop, copies bounded immutable wire
 primitives, validates the existing codec and computes lowercase SHA256 of UTF-8
 JSON with this exact alphabetical insertion order:
@@ -131,8 +131,8 @@ A status ahead of local history halts recording as local_history_missing; it doe
 not reconstruct or import a checkpoint. Terminal/closed/support states stop new
 distinct uploads while preserving uncertain local tails. There is no automatic
 resume/rebind method. `flushTail()` suspends new local recording and seals the
-remaining local tail for ordered append; it is not server finish. Reviewed
-finish must eventually name the exact fully acknowledged tail.
+remaining local tail for ordered append; it does not request server finish. `finish()` requests sealing only after
+the exact fully acknowledged tail, as described in the follow-up below.
 
 Finite default bounds (only lowered by controller configuration):
 
@@ -178,5 +178,74 @@ software-GL CPU fault-case samples. No local application tests/builds execute.
 Mocked Hub responses are not real Nakama/PostgreSQL integration. PR18 must cover
 that boundary. Software-GL fault timing proves neither human feel, frame pacing,
 isolated encoding cost, regression, low-memory capacity nor production capacity.
-The missing issuance/finish lifecycle, PR12 final contract/review, real integration
+Strict0056/PR12 dependency checks and final review, real integration
 and PR16 honest UI activation remain explicit gates. No rollout is authorized.
+
+## Reviewed0056 lifecycle binding follow-up (pending client/server checks)
+
+`createCampaignIssuer` is a separate explicitly enabled pre-run capability, since
+run ID is server-chosen. One instance captures one stable `{canonicalBoss,key}`
+request and permits at most16 issue/bind calls total with one private request
+slot. Retry that same instance/key after a lost response; never select protocol,
+seed/loadout/run ID or regenerate a fallback key to enter legacy. Server legacy
+selection is reported as unsupported for this v2 controller. Unknown protocol or
+retained manifest support blocks start; it does not trigger a completed-log path.
+The currently supported exact retained executable is source05f7a0a245af921fc65a99588564175c19658e38,
+SHA256797029721efe6124b718d84349cd255cd52529d3105b2da1d33e97da8d734aa9,
+shooter-sim/simulator1/upload2/API2/CP2/economy1/fingerprintcea1f88b. It is a
+compatibility identity, not proof the official browser ran.
+
+An issued response must have the exact0056 shape and limits, canonical engine
+issuance/start hash, owner/run binding, fixed45-minute upload deadline and an
+issue-time lease snapshot. Only a transport-validated acknowledgment can be
+bound. `bindIssued` then fetches current owner status and requires the same
+original session, open/live authorization, empty accepted input and no terminal
+or seal before returning the inactive bound transport. An old issue-key response
+by itself grants no fresh play authority. Another original session, expired or
+nonempty history cannot be rebound into a fresh recorder. The issuer is closed
+before returning the bound capability. This does not implement Game/UI start.
+
+Status accepts backward-compatible omitted fields for pre0056 rows and otherwise
+strict nullable `issuanceAck`/`sealAck`. Historical acknowledgments remain read-only
+facts after expiry. Canonical issuance validation constructs a state only once
+per run; later immutable comparisons walk the small expected DTO shape rather
+than repeatedly rebuilding levels or recursively serializing arbitrary response
+graphs. Owned issue/seal/terminal/paid facts cannot regress on stale snapshots.
+
+`controller.finish()` requests a local final-tail stop and background seal. The
+same single stream first drains every local batch through a strict matching
+received receipt, then captures one immutable
+`{lastSequence,lastTick,protocol:2,runId}` finish request. There is no outcome or
+payment field. The exact acknowledgment is
+`{protocol:2,state:'sealed',runId,lastSequence,lastTick,sealedAt}`. Retry bytes and
+persisted sealedAt are stable. A seal is neither verified nor paid. Empty -1/0
+can close as server incomplete/ineligible at terminal0/revision0; only paid clear
+requires positive verified progress under the policy contract.
+
+A lost finish reply is reconciled with owner status and its exact sealAck,
+including after original-session expiry. An acknowledgment of a prior seal does
+not authorize new finish, append or settlement after expiry. A client clock is
+only conservative scheduling; backend live-session and fixed-deadline checks
+remain authoritative. The historical sessionLeaseUntil field is not assumed to
+be the current lease, nor used to revive a session.
+
+The server may finish verification before the next local append arrives. An
+`invalid/run_closed` response therefore triggers exact-sequence owner-status
+recovery before classification. A matching older receivedAck still releases
+that already accepted history. If authoritative closed state instead confirms
+that the current local tail was never accepted, it stays retained as withheld
+input. The stream does not retransmit/drop it or exhaust its per-batch retry
+budget merely while payment is pending. Ordinary owner status polling uses the
+existing finite cadence/budget, and authoritative pending→paid remains distinct
+from a rejected post-terminal local tail. There is no raw rewarded fallback.
+
+The follow-up Actions adds issued/legacy/unsupported/version/canonical DTO tests,
+historical-key no-start tests, lost stable seal recovery, finite issuer/session
+cancellation, empty closure, terminal run_closed races and withheld-tail payment
+polling. Native-browser capture now starts from a mocked server-issued canonical
+response plus fresh owner status, asserts real W movement, and recovers a lost
+committed seal before expiry/logout checks. The deliberately malformed late
+logout response is adversarial noise ignored before parsing, not a valid Hub
+fixture. Real Nakama/PostgreSQL coverage remains PR18. Client and0056 strict
+server tests/review must both pass before treating PR15 as complete; no PR16 UI
+activation or production deployment is included.

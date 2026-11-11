@@ -1,5 +1,7 @@
 // Mocked current Hub PR07 JSON shapes. Not authenticated real-server receipts.
 import { createHash, webcrypto } from 'node:crypto';
+import { buildIssuance } from '../../src/server/runContract.js';
+import { SUPPORTED_MANIFEST, ISSUED_LIMITS } from '../../src/hub/campaignRewards/clientProtocol.js';
 import { canonicalCommand } from '../../src/server/canonicalCommand.js';
 export const owner = Object.freeze({ accountId: '00000000-0000-4000-8000-000000000001',
   sessionId: '00000000-0000-4000-8000-000000000002', runId: '00000000-0000-4000-8000-000000000003' });
@@ -35,3 +37,16 @@ export function receivedSnapshot(body, extra = {}) {
     bytes: (body.tick0 + body.n) * 16, actions: 0, batches: body.sequence + 1 }, receivedAck: ack(body), ...extra });
 }
 export const jsonResponse = (body, status = 200) => new Response(JSON.stringify(body), { status });
+
+export function issued(extra = {}) {
+  const built = buildIssuance({ ...owner, day: '2026-11-11', seed: 7, canonicalBoss: 'sahil' });
+  if (!built.ok) throw new Error(built.reason);
+  return { protocol: 2, state: 'issued', runId: owner.runId, issuance: built.issuance,
+    manifest: { ...SUPPORTED_MANIFEST }, issuedAt: '2026-11-11T00:00:00.000Z',
+    uploadDeadline: '2026-11-11T00:45:00.000Z', sessionLeaseUntil: '2026-11-11T00:20:00.000Z',
+    limits: { ...ISSUED_LIMITS }, ...extra };
+}
+export function sealed(lastSequence = -1, lastTick = 0, extra = {}) {
+  return { protocol: 2, state: 'sealed', runId: owner.runId, lastSequence, lastTick,
+    sealedAt: '2026-11-11T00:01:00.000Z', ...extra };
+}

@@ -1,7 +1,8 @@
 import { createNakamaClient } from '@metaverse/hub-sdk';
-import { captureBatch, parseFailure, parseReceived, parseStatus, UUID } from './clientProtocol.js';
+import { captureBatch, parseFailure, parseReceived, parseStatus, parseIssued, parseSealed, legacySelected, supportsManifest, captureHighwater, UUID } from './clientProtocol.js';
 import { finiteLimit, recorderError } from './storage.js';
-const RPC = Object.freeze({ append: 'shooter.run.append', status: 'shooter.run.status' });
+const RPC = Object.freeze({ append: 'shooter.run.append', status: 'shooter.run.status',
+  issue: 'shooter.run.issue', finish: 'shooter.run.finish' });
 
 /** Dedicated generic SDK fetch seam: bounded body, deadline through body read,
  * no redirects or parallel requests. Injected fetch must respect AbortSignal;
@@ -71,64 +72,86 @@ function binding(session, accountId, originalSessionId, write, cache) {
   return session.token;
 }
 
-export function createCampaignTransport({ enabled = false, accountId, sessionId, runId, serverUrl,
-  getSession, fetchImpl = fetch, deadlineMs, maxResponseBytes, subtle = globalThis.crypto?.subtle } = {}) {
-  if (enabled !== true) throw recorderError('transport_disabled');
-  if (![accountId, sessionId, runId].every((id) => typeof id === 'string' && UUID.test(id)) || typeof getSession !== 'function' || !subtle) throw recorderError('invalid_transport');
-  const owner = Object.freeze({ accountId, runId });
+// Private generic RPC channel, shared by pre-run issuance and bound uploads.
+// Each capability has one slot; the issuer is closed before returning a bound
+// start capability. No generic arbitrary-RPC method is exposed to consumers.
+function createChannel({ accountId, sessionId, serverUrl, getSession, fetchImpl = fetch, deadlineMs, maxResponseBytes }) {
+  if (![accountId, sessionId].every((id) => typeof id === 'string' && UUID.test(id)) || typeof getSession !== 'function') throw recorderError('invalid_transport');
   const wire = boundedCampaignFetch({ serverUrl, fetchImpl, deadlineMs, maxResponseBytes });
   const client = createNakamaClient({ serverUrl, fetchImpl: wire.fetch });
-  const prepared = new WeakSet(), proofs = new WeakMap(), bindingCache = { token: null, claims: null };
+  const cache = { token: null, claims: null };
   let closed = false, busy = false, epoch = 0;
   function current(write) {
     if (closed) throw recorderError('transport_suspended');
-    return binding(getSession(), accountId, sessionId, write, bindingCache);
+    return binding(getSession(), accountId, sessionId, write, cache);
   }
+  return Object.freeze({
+    current,
+    generation: () => epoch,
+    suspend() { closed = true; epoch++; cache.token = null; cache.claims = null; wire.cancel(); },
+    async rpc(id, body, write) {
+      if (busy) throw recorderError('transport_busy');
+      const token = current(write), generation = epoch; busy = true;
+      try {
+        let result;
+        try { result = await client.rpc(id, body, { token }); }
+        catch (error) {
+          if (error instanceof SyntaxError) throw recorderError('client_contract_error');
+          const authReason = ['session_closed', 'session_expired', 'not_game_session', 'unauthorized', 'revoked'].includes(error?.code) ? error.code : 'unauthorized';
+          if (error?.status !== 401 && error?.status !== 403 && authReason === 'unauthorized' && error?.code !== 'unauthorized') throw error;
+          result = { protocol: 2, state: 'authorization_denied', reason: authReason, ticketsMinted: 0 };
+        }
+        current(write);
+        if (generation !== epoch) throw recorderError('identity_changed');
+        return result;
+      } finally { busy = false; }
+    },
+  });
+}
+
+export function createCampaignTransport(options = {}) {
+  const { enabled = false, accountId, runId, subtle = globalThis.crypto?.subtle } = options;
+  if (enabled !== true) throw recorderError('transport_disabled');
+  if (typeof runId !== 'string' || !UUID.test(runId) || !subtle) throw recorderError('invalid_transport');
+  const channel = createChannel(options), owner = Object.freeze({ accountId, runId });
+  const prepared = new WeakSet(), proofs = new WeakMap(), finishRequests = new WeakSet();
+  let knownIssue = null;
   function checkPrepared(batch) { if (!prepared.has(batch)) throw recorderError('unprepared_batch'); }
+  function checkFinish(request) { if (!finishRequests.has(request)) throw recorderError('unprepared_finish'); }
   function confirm(receipt, batch) {
     if (receipt.sequence !== batch.body.sequence || receipt.tick0 !== batch.body.tick0 || receipt.n !== batch.body.n
       || receipt.digest !== batch.digest) throw recorderError('receipt_conflict');
-    proofs.set(receipt, batch);
-    return receipt;
+    proofs.set(receipt, batch); return receipt;
   }
-  async function rpc(id, body, write) {
-    if (busy) throw recorderError('transport_busy');
-    const token = current(write), generation = epoch; busy = true;
-    try {
-      let result;
-      try { result = await client.rpc(id, body, { token }); }
-      catch (error) {
-        if (error instanceof SyntaxError) throw recorderError('client_contract_error');
-        if (error?.status !== 401 && error?.status !== 403) throw error;
-        result = { protocol: 2, state: 'authorization_denied', reason: 'unauthorized', ticketsMinted: 0 };
-      }
-      current(write);
-      if (generation !== epoch) throw recorderError('identity_changed');
-      return result;
-    } finally { busy = false; }
+  function confirmSeal(ack, request) {
+    if (ack.lastSequence !== request.body.lastSequence || ack.lastTick !== request.body.lastTick) throw recorderError('receipt_conflict');
+    return ack;
   }
   return Object.freeze({
     owner,
     async prepare(batch) {
-      current(false); const generation = epoch;
+      channel.current(false); const generation = channel.generation();
       const body = captureBatch(batch, runId), text = JSON.stringify(body);
       const bytes = await subtle.digest('SHA-256', new TextEncoder().encode(text));
-      current(false);
-      if (generation !== epoch) throw recorderError('identity_changed');
+      channel.current(false);
+      if (generation !== channel.generation()) throw recorderError('identity_changed');
       const digest = Array.from(new Uint8Array(bytes), (v) => v.toString(16).padStart(2, '0')).join('');
       const result = Object.freeze({ body, wire: text, digest }); prepared.add(result); return result;
     },
     async append(batch) {
       checkPrepared(batch);
-      const result = await rpc(RPC.append, batch.body, true);
+      const result = await channel.rpc(RPC.append, batch.body, true);
       return result?.state === 'received' ? confirm(parseReceived(result, runId), batch) : parseFailure(result);
     },
-    async status(batch = null) {
+    async status(batch = null, finishRequest = null) {
       if (batch) checkPrepared(batch);
-      const result = await rpc(RPC.status, batch ? { runId, sequence: batch.body.sequence } : { runId }, false);
+      if (finishRequest) checkFinish(finishRequest);
+      const result = await channel.rpc(RPC.status, batch ? { runId, sequence: batch.body.sequence } : { runId }, false);
       if (!result || typeof result !== 'object' || !('received' in result)) return parseFailure(result);
-      const snapshot = parseStatus(result, runId);
+      const snapshot = parseStatus(result, runId, accountId, knownIssue);
+      if (snapshot.issuanceAck) knownIssue = snapshot.issuanceAck;
       if (snapshot.receivedAck && batch) confirm(snapshot.receivedAck, batch);
+      if (snapshot.sealAck && finishRequest) confirmSeal(snapshot.sealAck, finishRequest);
       return snapshot;
     },
     acceptReceipt(receipt, batch) {
@@ -138,9 +161,90 @@ export function createCampaignTransport({ enabled = false, accountId, sessionId,
         || proof.body.actions.length !== batch.actions.length) return false;
       return proof.body.actions.every((row, i) => row[0] === batch.actions[i][0] && row[1] === batch.actions[i][1]);
     },
-    assertWriteBinding() { current(true); },
-    suspend() { closed = true; epoch++; bindingCache.token = null; bindingCache.claims = null; wire.cancel(); },
-    issue() { throw recorderError('issuance_unavailable'); },
-    finish() { throw recorderError('finish_unavailable'); },
+    prepareFinish(lastSequence, lastTick) {
+      // Representation only; backend owns accepted highwater/live authorization.
+      captureHighwater(lastSequence, lastTick);
+      const body = Object.freeze({ lastSequence, lastTick, protocol: 2, runId });
+      const result = Object.freeze({ body, wire: JSON.stringify(body) }); finishRequests.add(result); return result;
+    },
+    async finish(request) {
+      checkFinish(request);
+      const result = await channel.rpc(RPC.finish, request.body, true);
+      return result?.state === 'sealed' ? confirmSeal(parseSealed(result, runId), request) : parseFailure(result);
+    },
+    assertWriteBinding() { channel.current(true); },
+    suspend: channel.suspend,
+    issue() { throw recorderError('pre_run_issuer_required'); },
   });
+}
+
+/** One stable pre-run key/boss capability. No run ID/protocol/seed is chosen
+ * here. Issue retries keep the same request; a historical ack cannot start play
+ * without a fresh authenticated empty/open/live owner-status confirmation.
+ */
+export function createCampaignIssuer(options = {}) {
+  const { enabled = false, accountId, sessionId, key, canonicalBoss, maxCalls = 16 } = options;
+  if (enabled !== true) throw recorderError('issuer_disabled');
+  if (typeof key !== 'string' || !/^[A-Za-z0-9_.:@|\-]{1,80}$/.test(key)
+    || !['sahil', 'obama', 'broccoli', 'glowie', 'tinubu'].includes(canonicalBoss)) throw recorderError('invalid_issue_request');
+  finiteLimit(maxCalls, 16);
+  const channel = createChannel(options), issued = new WeakSet();
+  const body = Object.freeze({ canonicalBoss, key });
+  let calls = 0, bound = false, stopped = false, child = null, busy = false;
+  return Object.freeze({
+    async issue() {
+      if (bound || stopped) throw recorderError('issuer_closed');
+      if (busy) throw recorderError('transport_busy');
+      if (calls >= maxCalls) throw recorderError('retry_budget_exhausted');
+      calls++; busy = true;
+      try {
+        const result = await channel.rpc(RPC.issue, body, true);
+        if (result?.ok === true) return legacySelected(result, accountId);
+        if (result?.state !== 'issued') return parseFailure(result);
+        if (Number.isSafeInteger(result.protocol) && result.protocol > 0 && result.protocol !== 2) {
+          return Object.freeze({ state: 'unsupported_version', reason: 'unsupported_protocol' });
+        }
+        const ack = parseIssued(result, { accountId });
+        if (ack.issuance.canonicalBoss !== canonicalBoss) throw recorderError('client_contract_error');
+        if (!supportsManifest(ack.manifest)) return Object.freeze({ state: 'unsupported_version', reason: 'unsupported_manifest' });
+        issued.add(ack); return ack;
+      } finally { busy = false; }
+    },
+    async bindIssued(ack) {
+      if (bound || stopped || !issued.has(ack)) throw recorderError('unconfirmed_issuance');
+      if (busy) throw recorderError('transport_busy');
+      if (calls >= maxCalls) throw recorderError('retry_budget_exhausted');
+      calls++; busy = true;
+      let transport;
+      try {
+        channel.current(true); const generation = channel.generation();
+        if (ack.issuance.sessionId !== sessionId) throw recorderError('identity_changed');
+        transport = createCampaignTransport({ ...options, runId: ack.runId }); child = transport;
+        const snapshot = await transport.status();
+        channel.current(true);
+        if (generation !== channel.generation()) throw recorderError('identity_changed');
+        if (!('received' in snapshot) || snapshot.authorization !== 'live' || snapshot.state !== 'open'
+          || snapshot.received.tick !== 0 || snapshot.terminal || snapshot.sealAck) {
+          transport.suspend(); throw recorderError('start_not_authorized');
+        }
+        if (snapshot.issuanceAck && stableAcknowledgment(snapshot.issuanceAck) !== stableAcknowledgment(ack)) {
+          transport.suspend(); throw recorderError('receipt_conflict');
+        }
+        // No cached issue-time lease is treated as present authorization. Future16
+        // must still use the fixed deadline and keep original identity binding.
+        bound = true; channel.suspend();
+        return Object.freeze({ issuanceAck: ack, transport, startStatus: snapshot });
+      } catch (error) { transport?.suspend(); child = null; throw error; }
+      finally { busy = false; }
+    },
+    stop() { stopped = true; channel.suspend(); child?.suspend(); },
+    status: () => Object.freeze({ calls, bound, stopped }),
+  });
+}
+function stableAcknowledgment(ack) {
+  // All fields here are already owned bounded DTO primitives/arrays. Compare
+  // insertion-order-independent JSON using the canonical projection helper.
+  return JSON.stringify([ack.protocol, ack.state, ack.runId, ack.issuedAt, ack.uploadDeadline,
+    ack.sessionLeaseUntil, Object.entries(ack.manifest).sort(), Object.entries(ack.limits).sort(),
+    Object.entries(ack.issuance).sort()]);
 }

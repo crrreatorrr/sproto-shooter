@@ -1,4 +1,6 @@
 // Narrow public PR07 client schema. This validates representation, not authority.
+import { buildIssuance } from '../../server/runContract.js';
+import { stableStringify } from '../../sim/hash.js';
 import { decodeFrames } from '../../server/protocol.js';
 import { frozenData, recorderError } from './storage.js';
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -69,8 +71,8 @@ function cursor(value, verified) {
   return Object.freeze(result);
 }
 
-export function parseStatus(value, runId) {
-  keys(value, ['protocol', 'runId', 'state', 'revision', 'operational', 'received', 'verified', 'terminal', 'payment', 'authorization', 'receivedAck']);
+export function parseStatus(value, runId, accountId = null, knownIssued = null) {
+  keys(value, ['protocol', 'runId', 'state', 'revision', 'operational', 'received', 'verified', 'terminal', 'payment', 'authorization', 'receivedAck'], ['issuanceAck', 'sealAck']);
   if (value.protocol !== 2 || value.runId !== runId) bad();
   const revision = integer(value.revision, 0, Number.MAX_SAFE_INTEGER);
   const received = cursor(value.received, false), verified = cursor(value.verified, true);
@@ -101,10 +103,20 @@ export function parseStatus(value, runId) {
   if (revision === 0 && verified.tick !== 0) bad();
   const receivedAck = value.receivedAck === null ? null : parseReceived(value.receivedAck, runId);
   if (receivedAck && (receivedAck.acceptedTick > received.tick || receivedAck.acceptedSequence > received.sequence)) bad();
+  const sealAck = value.sealAck == null ? null : parseSealed(value.sealAck, runId);
+  if (sealAck && (sealAck.lastSequence !== received.sequence || sealAck.lastTick !== received.tick)) bad();
+  let issuanceAck = null;
+  if (value.issuanceAck != null) {
+    if (knownIssued) {
+      if (!sameOwnedShape(value.issuanceAck, knownIssued)) throw recorderError('receipt_conflict');
+      issuanceAck = knownIssued;
+    } else issuanceAck = parseIssued(value.issuanceAck, { runId, accountId });
+  }
   return Object.freeze({ protocol: 2, runId, state: member(value.state, STATES), revision,
     received, verified, terminal, operational, payment: Object.freeze(payment),
     authorization: member(value.authorization, ['live', 'session_closed', 'session_expired', 'upload_expired', 'revoked']),
-    receivedAck });
+    receivedAck, issuanceAck,
+    sealAck });
 }
 
 function newerCursor(old, next) {
@@ -124,9 +136,98 @@ export function mergeProgress(old, next) {
   if (next.revision === old.revision && changedVerified) bad();
   if (next.revision > old.revision && Object.keys(old.verified).some((key) => next.verified[key] < old.verified[key])) bad();
   const verified = next.revision < old.revision ? old.verified : next.verified;
+  for (const field of ['issuanceAck', 'sealAck']) {
+    if (old[field] && next[field] && stableStringify(old[field]) !== stableStringify(next[field])) throw recorderError('receipt_conflict');
+  }
   if (old.terminal && next.terminal && JSON.stringify(old.terminal) !== JSON.stringify(next.terminal)) bad();
   const paymentRank = { none: 0, pending: 1, pending_retryable: 1, ineligible: 2, authorization_denied: 2, paid: 3 };
   if (old.payment.state === 'paid' && next.payment.state === 'paid' && old.payment.tickets !== next.payment.tickets) bad();
   return Object.freeze({ ...next, revision: Math.max(old.revision, next.revision), received, verified,
+    issuanceAck: old.issuanceAck || next.issuanceAck || null, sealAck: old.sealAck || next.sealAck || null,
     terminal: old.terminal || next.terminal, payment: paymentRank[old.payment.state] > paymentRank[next.payment.state] || old.payment.state === 'paid' ? old.payment : next.payment });
+}
+
+
+// Exact retained executable identity reviewed with server lifecycle0056. This
+// is compatibility, never attestation or client-chosen execution authority.
+export const SUPPORTED_MANIFEST = Object.freeze({ artifact: 'shooter-sim',
+  sourceCommit: '05f7a0a245af921fc65a99588564175c19658e38',
+  sha256: '797029721efe6124b718d84349cd255cd52529d3105b2da1d33e97da8d734aa9',
+  protocol: 1, contentFingerprint: 'cea1f88b', uploadProtocol: 2, replayApiVersion: 2,
+  checkpointSchema: 2, economyPolicy: 1 });
+export const ISSUED_LIMITS = Object.freeze({ batchFramesTextBytes: 2097152, runFramesTextBytes: 67108864,
+  bodyBytes: 2162688, batchFrames: 28800, runFrames: 162000, batches: 4096, batchActions: 32,
+  runActions: 131072, depth: 12, idLength: 80 });
+export function supportsManifest(manifest) {
+  return Object.entries(SUPPORTED_MANIFEST).every(([key, value]) => manifest[key] === value);
+}
+function timestamp(value) {
+  if (typeof value !== 'string' || value.length > 80
+    || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?(?:Z|[+-]\d\d:\d\d)$/.test(value)
+    || !Number.isFinite(Date.parse(value))) bad();
+  return value;
+}
+function manifest(value) {
+  keys(value, Object.keys(SUPPORTED_MANIFEST));
+  if (typeof value.artifact !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(value.artifact)
+    || typeof value.sourceCommit !== 'string' || !/^[0-9a-f]{40}$/.test(value.sourceCommit)
+    || typeof value.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(value.sha256)
+    || typeof value.contentFingerprint !== 'string' || !/^[0-9a-f]{8}$/.test(value.contentFingerprint)) bad();
+  const copy = { artifact: value.artifact, sourceCommit: value.sourceCommit, sha256: value.sha256,
+    contentFingerprint: value.contentFingerprint };
+  for (const key of ['protocol', 'uploadProtocol', 'replayApiVersion', 'checkpointSchema', 'economyPolicy']) copy[key] = integer(value[key], 1, 1000);
+  return Object.freeze(copy);
+}
+function canonicalIssuance(value, expected) {
+  object(value);
+  if (!UUID.test(value.runId) || !UUID.test(value.accountId) || !UUID.test(value.sessionId)
+    || (expected.runId && expected.runId !== value.runId) || (expected.accountId && expected.accountId !== value.accountId)) bad();
+  const built = buildIssuance({ accountId: value.accountId, sessionId: value.sessionId, runId: value.runId,
+    day: value.day, canonicalBoss: value.canonicalBoss, seed: value.seed });
+  if (!built.ok) bad();
+  keys(value, Object.keys(built.issuance));
+  if (!sameOwnedShape(value, built.issuance)) bad();
+  return Object.freeze({ ...built.issuance, parts: Object.freeze([...built.issuance.parts]),
+    distinctFrom: Object.freeze([...built.issuance.distinctFrom]) });
+}
+export function parseIssued(value, expected = {}) {
+  keys(value, ['protocol', 'state', 'runId', 'issuance', 'manifest', 'issuedAt', 'uploadDeadline', 'sessionLeaseUntil', 'limits']);
+  if (value.protocol !== 2 || value.state !== 'issued' || !UUID.test(value.runId)
+    || (expected.runId && value.runId !== expected.runId)) bad();
+  const issuance = canonicalIssuance(value.issuance, { ...expected, runId: value.runId });
+  const issuedAt = timestamp(value.issuedAt), uploadDeadline = timestamp(value.uploadDeadline), sessionLeaseUntil = timestamp(value.sessionLeaseUntil);
+  if (Date.parse(uploadDeadline) - Date.parse(issuedAt) !== 45 * 60 * 1000 || Date.parse(sessionLeaseUntil) < Date.parse(issuedAt)) bad();
+  keys(value.limits, Object.keys(ISSUED_LIMITS));
+  if (Object.keys(ISSUED_LIMITS).some((key) => value.limits[key] !== ISSUED_LIMITS[key])) bad();
+  return Object.freeze({ protocol: 2, state: 'issued', runId: value.runId, issuance, manifest: manifest(value.manifest),
+    issuedAt, uploadDeadline, sessionLeaseUntil, limits: ISSUED_LIMITS });
+}
+export function legacySelected(value, accountId) {
+  keys(value, ['ok', 'replay', 'paid', 'tickets', 'ticketsMinted', 'issuance']);
+  if (value.ok !== true || typeof value.replay !== 'boolean' || value.paid !== false || value.tickets !== 0 || value.ticketsMinted !== 0) bad();
+  canonicalIssuance(value.issuance, { accountId });
+  return Object.freeze({ state: 'unsupported_version', reason: 'legacy_selected', protocol: 1 });
+}
+export function parseSealed(value, runId) {
+  keys(value, ['protocol', 'state', 'runId', 'lastSequence', 'lastTick', 'sealedAt']);
+  if (value.protocol !== 2 || value.state !== 'sealed' || value.runId !== runId) bad();
+  const { lastSequence, lastTick } = captureHighwater(value.lastSequence, value.lastTick);
+  return Object.freeze({ protocol: 2, state: 'sealed', runId, lastSequence, lastTick, sealedAt: timestamp(value.sealedAt) });
+}
+
+export function captureHighwater(sequence, tick) {
+  const lastSequence = integer(sequence, -1, 4095), lastTick = integer(tick, 0, 162000);
+  if ((lastSequence === -1) !== (lastTick === 0) || lastSequence + 1 > lastTick || lastTick > 28800 * (lastSequence + 1)) bad();
+  return Object.freeze({ lastSequence, lastTick });
+}
+
+// Walk only the small already-owned expected shape. Unexpected/deep response
+// graphs are rejected without recursive serialization or arbitrary traversal.
+function sameOwnedShape(value, expected) {
+  if (expected === null || typeof expected !== 'object') return value === expected;
+  if (!value || typeof value !== 'object' || Array.isArray(value) !== Array.isArray(expected)) return false;
+  if (Array.isArray(expected) && value.length !== expected.length) return false;
+  const fields = Object.keys(expected);
+  if (Object.keys(value).length !== fields.length) return false;
+  return fields.every((key) => own(value, key) && sameOwnedShape(value[key], expected[key]));
 }
