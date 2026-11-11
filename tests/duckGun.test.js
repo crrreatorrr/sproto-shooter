@@ -94,3 +94,50 @@ describe('Duck Gun (legendary) and the legendary slot', () => {
     expect(p.guns.slice(0, 4).map((g) => g && g.type)).toEqual(['mg', 'shotgun', 'sniper', 'bazooka']);
   });
 });
+
+describe('sandbox toys stay in the sandbox', () => {
+  const start = (s, mode, extra = {}) => run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode, tier: 1, ...extra }] }));
+
+  it('removes the sandbox Duck Gun and debug-spawned guns when a real mode starts', () => {
+    for (const [mode, extra] of [['waves', {}], ['boss', { boss: 'monster' }], ['campaign', { level: 'L06' }]]) {
+      const { s } = sandbox();
+      run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'spawnGun', args: { type: 'sniper', quality: 'legendary' } }] }));
+      expect(s.pickups.filter((k) => k.gun).length).toBe(2);
+      start(s, mode, extra);
+      expect(s.pickups.filter((k) => k.gun), mode).toEqual([]);
+    }
+  });
+
+  it('removes them even when both mode changes arrive in one command (page opened with ?mode=waves)', () => {
+    const s = createGameState({ seed: 3 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'sandbox', tier: 1 }, { type: 'startMode', mode: 'waves', tier: 1, leaveSandbox: true }] }));
+    expect(s.mode).toBe('waves');
+    expect(duckPickup(s)).toBeFalsy();
+  });
+
+  it('keeps the Duck Gun on the floor in the sandbox and the Test Range, and a dropped run gun in Wave Mode', () => {
+    const { s } = sandbox();
+    start(s, 'test');
+    expect(duckPickup(s)).toBeTruthy();
+    start(s, 'sandbox');
+    expect(duckPickup(s)).toBeTruthy();
+    const t = createGameState({ seed: 5 });
+    start(t, 'waves');
+    spawnGunPickup(t, generateGun({ seed: 9, forced: { type: 'shotgun', quality: 'rare' } }), { x: 3, z: 3 }, 'boss');
+    start(t, 'waves');
+    expect(t.pickups.filter((k) => k.gun).length).toBe(1);
+  });
+
+  it('gives the starting loadout back on leaving the sandbox when the client asks for it', () => {
+    const { s, p } = sandbox();
+    grab(s, p, duckPickup(s));
+    expect(p.guns[LEGENDARY_SLOT]).toBeTruthy();
+    start(s, 'waves', { leaveSandbox: true });
+    expect(p.guns.filter(Boolean).map((g) => g.source)).toEqual(['start']);
+    // Wave Mode to Wave Mode keeps what you looted, flag or not
+    const g = generateGun({ seed: 12, forced: { type: 'sniper', quality: 'epic' } });
+    g.id = 4242; p.guns[1] = g;
+    start(s, 'waves', { leaveSandbox: true });
+    expect(p.guns[1]).toBe(g);
+  });
+});

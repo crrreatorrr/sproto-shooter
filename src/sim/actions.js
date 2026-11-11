@@ -51,12 +51,19 @@ function handle(state, p, a) {
 export function startMode(state, p, mode, tier = 1, opts = {}) {
   state.enemies.length = 0; state.projectiles.length = 0; state.hazards.length = 0; state.allies.length = 0;
   state.pickups = state.pickups.filter((k) => k.kind === 'gun');
+  // Sandbox toys stay in the sandbox: the Duck Gun it places and anything the debug panel spawned
+  // do not follow you into a real mode.
+  const real = mode === 'waves' || mode === 'campaign' || mode === 'boss';
+  if (real) state.pickups = state.pickups.filter((k) => !SANDBOX_SOURCES.includes(k.gun && k.gun.source));
   state.run = newRunStats();
   if (p.dead || p.downed) respawn(state, p);
   p.hp = p.maxHp; p.shield = p.maxShield; p.mana = p.maxMana;
   p.pos = { x: 0, y: 0, z: 8 }; p.prevPos = { ...p.pos }; p.vel = { x: 0, y: 0, z: 0 };
   // leaving the test range takes its free loadout and infinite ammo back
   if (state.testMode && mode !== 'test') { resetLoadout(state, p); state.tuning.infiniteAmmo = false; setGodMode(state, p, false); }
+  // ...and so does leaving the sandbox, when the client says this is a real start (opts.leaveSandbox).
+  // A state that was never started in a mode also reads 'sandbox', so the sim cannot tell by itself.
+  if (opts.leaveSandbox && real && state.mode === 'sandbox' && !state.testMode) resetLoadout(state, p);
   // ...and so does leaving a boss fight
   if (state.bossFight && mode !== 'boss' && mode !== 'test') resetLoadout(state, p);
   state.testMode = mode === 'test';
@@ -109,6 +116,9 @@ export function bossFightDirector(state) {
   if (!boss || boss.dead) { f.over = 'won'; emit(state, 'bossFightOver', { won: true, boss: f.type, time: f.time }); }
   else if (p.dead) { f.over = 'lost'; emit(state, 'bossFightOver', { won: false, boss: f.type, hpLeft: boss.hp / boss.maxHp }); }
 }
+
+/** Gun pickups with these sources are removed when a real mode starts. */
+const SANDBOX_SOURCES = ['sandbox', 'debug'];
 
 /** Sandbox: a Duck Gun (always legendary) waiting just ahead of the spawn point, unless you already have one. */
 export const SANDBOX_DUCK_POS = { x: 1.5, z: 4.5 };

@@ -87,11 +87,11 @@ Keyboard, mouse and controller all work at once. The HUD prompts and the control
 | F or middle-click | Aim toggle: press to aim and stay aiming; with a sniper press again to zoom closer (3× stronger); press again to stop. Shift cancels it |
 | Wheel while zoomed | Sniper: switch between zoom 1 and zoom 2 (instead of switching guns) |
 | Shift · Space · C · Ctrl+Shift · B · V (or Alt) | Sprint (stamina) · jump/double jump · slide · crouch-slide · grapple · dash |
-| R | Reload. Hold R: pick up gun / open Weapon Box (when one is in reach; E or G also work) |
+| R | Reload. Hold R: pick up gun (when one is in reach; E or G also work) |
 | 1–4, L / wheel | Switch gun (L = legendary slot) |
 | H | Use medkit |
 | Q · Y Z X T | Next spell (the HUD highlights it) · quick cast Chain Zap, Sproto Swarm, Mana Shield, Meteor Bonk |
-| Tab (hold) · B · I · 5 | Skills · shop (between waves) · your guns · stats & powers |
+| Tab (hold) · O · I · 5 | Skills · shop (between waves) · your guns · stats & powers |
 | Enter | Ready for next wave |
 | Esc | Pause (the browser releases the mouse); closes a panel; back in menus |
 | N twice | Send feedback: the game pauses and a small window opens (options, a note, a screenshot). Esc closes it and play continues where it stopped. Free 1v1 keeps running. Needs a signed-in hub visit. Also on the pause screen |
