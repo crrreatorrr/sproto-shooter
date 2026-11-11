@@ -349,7 +349,7 @@ One per tick (30 Hz) per connected seat, plus the spawn snapshot at go-live, one
   "winner": null,
   "reason": null,
   "players": [
-    {"seat":0,"x":0,"y":0,"z":0,"yaw":0,"pitch":0,"vx":0,"vz":0,"hp":100000,"shield":50000,"alive":true,"slot":0}
+    {"seat":0,"x":0,"y":0,"z":0,"yaw":0,"pitch":0,"vx":0,"vz":0,"hp":100000,"shield":50000,"alive":true,"slot":0,"slideT":0}
   ],
   "you": {
     "seat": 0,
@@ -374,6 +374,7 @@ One per tick (30 Hz) per connected seat, plus the spawn snapshot at go-live, one
 - `you.rttMs` / `you.interpMs` / `you.rewindCap`: the director's own round trip for this seat, the seat's announced interpolation delay as clamped, and the rewind cap they give (sim 2).
 - `hits` (sim 2): the server-confirmed hits stepped since the previous snapshot, `[{ tick, shooter, dmg, hits, rewind }]` (`dmg` in milli-HP after invuln; `hits` pellets that connected; `rewind` the applied ticks). Same list to both seats; `[]` on HELLO/RESYNC snapshots. Clients draw hitmarkers and damage numbers from these only.
 - `buffer`: frames queued at or after the cursor. `late`: late frames so far. `held` / `neutral`: substitute ticks so far.
+- `players[].slideT`: seconds remaining in the slide, or 0; used to show the slide pose for the other seat. Clients also accept older snapshots that omit it.
 - `private`: the rest of this seat's exact sim state; with `players[seat]` it is the whole player (S3 reconciles from it). The combat RNG is never sent.
 - `hash` (`publicStateHash`: FNV-1a over the sim state **without the players' RNG**, floats quantized to micro-units, the same `verifyStateHash` the campaign bundle uses) is present once per second (`tick % 30 === 0`) and on the final snapshot. It is not a receipt the client can submit for Tickets.
 

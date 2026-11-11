@@ -78,7 +78,7 @@
   ],
   "counts": {
     "runtimeFiles": 65,
-    "runtimeBytes": 25198360,
+    "runtimeBytes": 25197240,
     "decodedBytes": 236679812,
     "referenced": 65,
     "dynamic": 39,
@@ -3164,8 +3164,8 @@
     },
     {
       "path": "ui/characters/pepe-general.webp",
-      "bytes": 10712,
-      "sha256": "6a7349af46aa774ad60b97b057dadceee0e0a763cb8f2f5257be579b0fb3e091",
+      "bytes": 10774,
+      "sha256": "098ef67e18866ad9c6016cf7cdba221bb0ccbd4a9a4579da5202b6f369da4413",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -3179,8 +3179,8 @@
     },
     {
       "path": "ui/characters/pepe-tux.webp",
-      "bytes": 10076,
-      "sha256": "6eaf0d14957d0c957643a99685934fa0ae6ab4fb7226b10c4938e16b2cbf4ed7",
+      "bytes": 9830,
+      "sha256": "159df1e7e19cab3ef3731fa6988e8a55fc4896d848db424bf01a1c6472b38f54",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -3194,8 +3194,8 @@
     },
     {
       "path": "ui/characters/pepe.webp",
-      "bytes": 10818,
-      "sha256": "f94b88955e656d6e8c60b4ecef578c50d872b0f6d3bbe4c053d2de3d64e541c3",
+      "bytes": 9882,
+      "sha256": "2203e738bc9c9009c098430d3cf67324b92f69a6aacb918604863b43e14a3adc",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [

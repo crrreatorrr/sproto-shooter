@@ -89,7 +89,7 @@ function checkCeiling(rttCeilingMs) {
 
 // Fields every snapshot already carries in `players`, and the combat RNG, which stays secret.
 const PRIVATE_SKIP = new Set([
-  'rng', 'seat', 'x', 'y', 'z', 'yaw', 'pitch', 'vx', 'vz', 'hp', 'shield', 'alive', 'slot',
+  'rng', 'seat', 'x', 'y', 'z', 'yaw', 'pitch', 'vx', 'vz', 'hp', 'shield', 'alive', 'slot', 'slideT',
 ]);
 
 function presence(userId, sessionId) {
@@ -389,6 +389,7 @@ export function createDirector({
         hp: p.hp, shield: p.shield,
         alive: p.alive,
         slot: p.slot,
+        slideT: p.slideT,
         grapple: p.grapple ? { x: p.grapple.x, y: p.grapple.y, z: p.grapple.z, id: p.grapple.id } : null,
       })),
       you: {
