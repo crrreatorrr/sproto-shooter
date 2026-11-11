@@ -91,12 +91,16 @@ verified input may advance over accepted trailing bytes. `verified.sequence`
 advances only after a complete batch; partial verified ticks are valid while
 sequence is still -1. `revision` versions verification; received counters can
 advance at the same revision. Independent cursor merge ignores stale dominated
-projections rather than rejecting legitimate same-revision acceptance. Terminal
+received projections rather than rejecting legitimate same-revision acceptance.
+The verified projection must be identical at equal verification revision; lower
+verification revisions cannot overwrite newer progress. Fixed-codec byte counters
+must equal16times their tick cursor, and action counts stay within tick/batch
+ceilings. Terminal
 facts and receipt-backed paid facts cannot be overwritten by older projections.
 
 `payment.state` is separately none/pending/paid/ineligible/authorization_denied,
-or a pending_retryable receipt-unavailable projection. Paid includes only the
-server's authoritative receipt-backed tickets. A verified terminal, transport
+or a pending_retryable receipt-unavailable projection. Paid requires the current policy's fixed20-ticket receipt projection, a clear terminal and fully resolved
+accepted input; a partially verified accepted tail cannot already be paid. A verified terminal, transport
 success, local clear or received acknowledgment is never displayed as paid by
 this core. Pending operational/support results remain distinct from invalid
 input. Original-session expiry/closure is authorization denial, with no grace.

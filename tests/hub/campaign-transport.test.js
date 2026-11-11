@@ -117,21 +117,52 @@ describe('bounded body/deadline and origin composition with generic SDK', () => 
 });
 
 it('validates partial verified ticks and merges independent accepted progress at equal revision', () => {
-  const first = parseStatus(receivedSnapshot(batch(0, 0, 2), { verified: { sequence: -1, tick: 1, simulationTick: 1, bytes: 16, batches: 0 } }), owner.runId);
-  const next = parseStatus(receivedSnapshot(batch(2, 1, 2), { verified: first.verified }), owner.runId);
+  const first = parseStatus(receivedSnapshot(batch(0, 0, 2), { revision: 1, verified: { sequence: -1, tick: 1, simulationTick: 1, bytes: 16, batches: 0 } }), owner.runId);
+  const next = parseStatus(receivedSnapshot(batch(2, 1, 2), { revision: 1, verified: first.verified }), owner.runId);
   const merged = mergeProgress(first, next);
-  expect(merged.revision).toBe(0);
+  expect(merged.revision).toBe(1);
   expect(merged.received).toMatchObject({ sequence: 1, tick: 4 });
   expect(merged.verified).toMatchObject({ sequence: -1, tick: 1 });
   expect(mergeProgress(merged, first).received.tick).toBe(4);
 });
 
-it('keeps stable paid/terminal facts while verification advances over accepted trailing input', () => {
+it('keeps terminal simulation frozen while pending tail resolves, and preserves fully verified paid facts against stale pending status', () => {
   const terminal = { tick: 1, outcome: 'clear', canonicalBoss: 'sahil' };
   const first = parseStatus(receivedSnapshot(batch(0, 0, 2), { state: 'terminal', revision: 1, terminal,
-    verified: { sequence: -1, tick: 1, simulationTick: 1, bytes: 16, batches: 0 }, payment: { state: 'paid', tickets: 20 } }), owner.runId);
-  const next = parseStatus({ ...first, revision: 2, verified: { sequence: 0, tick: 2, simulationTick: 1, bytes: 32, batches: 1 }, payment: { state: 'pending' } }, owner.runId);
-  const merged = mergeProgress(first, next);
-  expect(merged).toMatchObject({ terminal, payment: { state: 'paid', tickets: 20 }, verified: { tick: 2, simulationTick: 1 } });
-  expect(() => parseStatus({ ...snapshot(), payment: { state: 'paid' } }, owner.runId)).toThrow('client_contract_error');
+    verified: { sequence: -1, tick: 1, simulationTick: 1, bytes: 16, batches: 0 }, payment: { state: 'pending', reason: null } }), owner.runId);
+  const resolved = parseStatus({ ...first, revision: 2,
+    verified: { sequence: 0, tick: 2, simulationTick: 1, bytes: 32, batches: 1 } }, owner.runId);
+  expect(mergeProgress(first, resolved)).toMatchObject({ terminal, verified: { tick: 2, simulationTick: 1 }, payment: { state: 'pending' } });
+  const paid = parseStatus({ ...resolved, payment: { state: 'paid', tickets: 20 } }, owner.runId);
+  const merged = mergeProgress(mergeProgress(first, resolved), paid);
+  expect(mergeProgress(merged, first)).toMatchObject({ terminal, revision: 2,
+    payment: { state: 'paid', tickets: 20 }, verified: { tick: 2, simulationTick: 1 } });
+});
+
+it('rejects malformed paid/byte/action projections against actual Hub policy and codec invariants', () => {
+  const good = receivedSnapshot(batch(), { state: 'terminal', revision: 1,
+    terminal: { tick: 1, outcome: 'clear', canonicalBoss: 'sahil' },
+    verified: { sequence: 0, tick: 1, simulationTick: 1, bytes: 16, batches: 1 }, payment: { state: 'paid', tickets: 20 } });
+  expect(parseStatus(good, owner.runId).payment).toEqual({ state: 'paid', tickets: 20 });
+  const wrong = [
+    ...[0, 19, 21, Number.MAX_SAFE_INTEGER].map((tickets) => ({ ...good, payment: { state: 'paid', tickets } })),
+    { ...good, terminal: null }, { ...good, terminal: { ...good.terminal, outcome: 'assisted' } },
+    { ...good, verified: { sequence: -1, tick: 0, simulationTick: 0, bytes: 0, batches: 0 }, terminal: { ...good.terminal, tick: 0 } },
+    { ...good, received: { ...good.received, bytes: 15 } },
+    { ...good, verified: { ...good.verified, bytes: 15 } },
+    { ...good, received: { ...good.received, actions: 2 } },
+    { ...receivedSnapshot(batch(0, 0, 100)), received: { sequence: 0, tick: 100, bytes: 1600, actions: 33, batches: 1 } },
+  ];
+  for (const malformed of wrong) expect(() => parseStatus(malformed, owner.runId)).toThrow('client_contract_error');
+});
+
+it('rejects verification changes at equal revision and regressions at higher revision, while ignoring older verification', () => {
+  const first = parseStatus(receivedSnapshot(batch(0, 0, 2), { revision: 1,
+    verified: { sequence: -1, tick: 1, simulationTick: 1, bytes: 16, batches: 0 } }), owner.runId);
+  const advanced = parseStatus({ ...first, revision: 2,
+    verified: { sequence: 0, tick: 2, simulationTick: 2, bytes: 32, batches: 1 } }, owner.runId);
+  expect(() => mergeProgress(first, { ...advanced, revision: 1 })).toThrow('client_contract_error');
+  expect(() => mergeProgress(advanced, { ...first, revision: 3 })).toThrow('client_contract_error');
+  expect(mergeProgress(advanced, first).verified).toEqual(advanced.verified);
+  expect(() => parseStatus({ ...first, revision: 0 }, owner.runId)).toThrow('client_contract_error');
 });

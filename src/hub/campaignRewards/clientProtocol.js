@@ -59,11 +59,12 @@ function cursor(value, verified) {
   keys(value, verified ? ['sequence', 'tick', 'simulationTick', 'bytes', 'batches'] : ['sequence', 'tick', 'bytes', 'actions', 'batches']);
   const result = { sequence: integer(value.sequence, -1, 4095), tick: integer(value.tick, 0, 162000),
     bytes: integer(value.bytes, 0, 67108864), batches: integer(value.batches, 0, 4096) };
-  if (result.batches !== result.sequence + 1) bad();
+  if (result.batches !== result.sequence + 1 || result.bytes !== result.tick * 16) bad();
   if (verified) result.simulationTick = integer(value.simulationTick, 0, result.tick);
   else {
     result.actions = integer(value.actions, 0, 131072);
-    if ((result.sequence === -1) !== (result.tick === 0)) bad();
+    if ((result.sequence === -1) !== (result.tick === 0) || result.actions > result.tick
+      || result.actions > 32 * result.batches || result.tick > 28800 * result.batches) bad();
   }
   return Object.freeze(result);
 }
@@ -89,9 +90,14 @@ export function parseStatus(value, runId) {
   const paymentState = member(value.payment?.state, ['none', 'pending', 'paid', 'ineligible', 'authorization_denied', 'pending_retryable']);
   keys(value.payment, ['state'], ['reason', 'tickets']);
   const payment = { state: paymentState };
-  if (paymentState === 'paid') payment.tickets = integer(value.payment.tickets, 0, Number.MAX_SAFE_INTEGER);
+  if (paymentState === 'paid') {
+    if (value.payment.tickets !== 20 || terminal?.outcome !== 'clear' || verified.tick !== received.tick
+      || verified.sequence !== received.sequence) bad();
+    payment.tickets = 20;
+  }
   else if (value.payment.tickets !== undefined) bad();
   if (value.payment.reason !== undefined) payment.reason = value.payment.reason === null ? null : reason(value.payment.reason);
+  if (value.revision === 0 && verified.tick !== 0) bad();
   const receivedAck = value.receivedAck === null ? null : parseReceived(value.receivedAck, runId);
   if (receivedAck && (receivedAck.acceptedTick > received.tick || receivedAck.acceptedSequence > received.sequence)) bad();
   return Object.freeze({ protocol: 2, runId, state: member(value.state, STATES), revision: integer(value.revision, 0, Number.MAX_SAFE_INTEGER),
@@ -113,7 +119,10 @@ function newerCursor(old, next) {
 export function mergeProgress(old, next) {
   if (!old) return next;
   const received = newerCursor(old.received, next.received);
-  const verified = next.revision < old.revision ? old.verified : newerCursor(old.verified, next.verified);
+  const changedVerified = Object.keys(old.verified).some((key) => old.verified[key] !== next.verified[key]);
+  if (next.revision === old.revision && changedVerified) bad();
+  if (next.revision > old.revision && Object.keys(old.verified).some((key) => next.verified[key] < old.verified[key])) bad();
+  const verified = next.revision < old.revision ? old.verified : next.verified;
   if (old.terminal && next.terminal && JSON.stringify(old.terminal) !== JSON.stringify(next.terminal)) bad();
   const paymentRank = { none: 0, pending: 1, pending_retryable: 1, ineligible: 2, authorization_denied: 2, paid: 3 };
   if (old.payment.state === 'paid' && next.payment.state === 'paid' && old.payment.tickets !== next.payment.tickets) bad();
