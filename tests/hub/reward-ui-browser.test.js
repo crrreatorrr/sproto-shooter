@@ -38,10 +38,11 @@ function dto(actor, runId, boss = 'sahil', seed = 7) {
 }
 async function fixture({ enabled = true, holdIssue = false, offline = false, lostSeal = false, endOutcome = 'incomplete' } = {}) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-  const url = enabled ? onUrl : offUrl, requests = [], errors = [], runs = new Map();
+  const url = enabled ? onUrl : offUrl, requests = [], errors = [], consoleErrors = [], runs = new Map();
   let releaseIssue = null, currentActor = { ...owner }, serial = 10, sealLost = false;
   const cors = { 'Access-Control-Allow-Origin': url, 'Access-Control-Allow-Headers': 'authorization,content-type', 'Access-Control-Allow-Methods': 'POST,OPTIONS' };
   page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => { if (message.type() === 'error' && consoleErrors.length < 8) consoleErrors.push(message.text().slice(0, 256)); });
   await page.route(origin + '/v2/rpc/**', async (route) => {
     const request = route.request();
     if (request.method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: cors }); return; }
@@ -101,7 +102,7 @@ async function fixture({ enabled = true, holdIssue = false, offline = false, los
     </script></body></html>` }));
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!window.__uiFixture, null, { timeout: 45000 });
-  return { page, requests, errors, runs,
+  return { page, requests, errors, consoleErrors, runs,
     release: () => releaseIssue?.(),
     swap: async (extra) => { currentActor = { accountId: extra?.playerId || owner.accountId, sessionId: extra?.sid || owner.sessionId };
       await page.evaluate((next) => window.__switchIdentity(next), extra === null ? null : session(extra)); },
@@ -271,6 +272,27 @@ it('two unresolved accounts bound retained input globally and a third start cann
 it('real-rAF full frozen1001-tick failure stops the actual Game at its first local candidate and never claims paid', async () => {
   const frozen = JSON.parse(fs.readFileSync('tests/fixtures/replay-corpus/sahil-fail-7.json', 'utf8'));
   const f = await fixture({ endOutcome: 'fail' });
+  const probes = []; let probeBusy = false, probeTimer = null;
+  const probe = async () => {
+    if (probeBusy || probes.length >= 20) return;
+    probeBusy = true;
+    try {
+      const sample = await f.page.evaluate(() => {
+        const g = window.__game, flow = g.rewardedCampaign, c = flow.current?.controller?.status();
+        return { tick: g.state.tick, phase: flow.snapshot(), paused: g.paused, acc: g.acc,
+          screen: { hidden: g.screen.hidden, pause: !!g.screen.querySelector('.pause'), reward: !!g.screen.querySelector('[data-reward-panel]') },
+          visibility: document.visibilityState, input: g.input.enabled, scale: g.timeScale,
+          feel: { hitstopMs: g.feel.hitstopMs, presentScale: g.feel.presentScale },
+          crash: { halted: g.crash.halted, total: g.crash.total, consecutive: g.crash.consecutive, suppressed: g.crash.suppressed },
+          failure: g.canonicalRewardFailure ? { stage: g.canonicalRewardFailure.stage, reason: g.canonicalRewardFailure.error?.reason || g.canonicalRewardFailure.error?.code || null } : null,
+          controller: c ? { paused: c.paused, problem: c.problem, stopped: c.recordingStopped, writesStopped: c.writesStopped,
+            calls: c.calls, recorder: { total: c.recorder.totalFrames, retained: c.recorder.retainedFrames,
+              active: c.recorder.activeFrames, queued: c.recorder.queuedBatches, ready: c.recorder.readyBatches } } : null };
+      });
+      probes.push(sample);
+      console.info('reward-ui-rAF-progress', JSON.stringify(sample));
+    } finally { probeBusy = false; }
+  };
   try {
     await f.page.addScriptTag({ type: 'module', content: `
       import { decodeFrames } from '/src/server/protocol.js'; window.__decodeRewardTrace = decodeFrames;
@@ -286,6 +308,7 @@ it('real-rAF full frozen1001-tick failure stops the actual Game at its first loc
     }, frozen.log);
     await startFromUI(f);
     await f.page.evaluate(() => { window.__runWallStart = performance.now(); window.__game.crash.halted = false; });
+    await probe(); probeTimer = setInterval(() => { void probe().catch(() => {}); }, 5000);
     await f.page.waitForFunction(() => window.__game.rewardedCampaign.snapshot().phase === 'ended', null, { timeout: 90000 });
     const result = await f.page.evaluate(() => ({ tick: window.__game.state.tick,
       hash: window.__uiFixture.verifyStateHash(window.__game.state), wallMs: performance.now() - window.__runWallStart,
@@ -304,5 +327,11 @@ it('real-rAF full frozen1001-tick failure stops the actual Game at its first loc
       note: 'Actual Game/real-rAF frozen failure trace; mocked service. PR18 supplies real Hub/retained05f oracle and full9634 clear.',
       result, requests: f.requests, expected: frozen.expected }, null, 2));
     expect(f.errors).toEqual([]);
-  } finally { await f.close(); }
+  } catch (error) {
+    await probe().catch(() => {});
+    fs.writeFileSync(path.join(dir, 'full-failure-diagnostics.json'), JSON.stringify({ probes, errors: f.errors,
+      consoleErrors: f.consoleErrors, requests: f.requests }, null, 2));
+    await f.page.screenshot({ path: path.join(dir, 'full-failure-diagnostics.png'), timeout: 3000 }).catch(() => {});
+    throw error;
+  } finally { if (probeTimer) clearInterval(probeTimer); await f.close(); }
 }, 120000);

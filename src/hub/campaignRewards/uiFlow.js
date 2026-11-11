@@ -99,7 +99,7 @@ export class RewardedCampaignUI {
     this.game.screen.querySelector('[data-reward-detail]').textContent = view.detail;
     const live = this.game.screen.querySelector('[data-reward-progress]');
     const state = item?.snapshot;
-    live.textContent = state ? `Server received ${state.accepted.tick} ticks · verified ${state.progress?.verified.tick || 0} ticks` : '';
+    live.textContent = state ? `Server received ${state.accepted?.tick ?? state.progress?.received?.tick ?? 0} ticks · verified ${state.progress?.verified.tick || 0} ticks` : '';
     const resume = this.game.screen.querySelector('[data-reward-action="resume"]');
     if (resume) resume.hidden = !context?.gameActive || context.halted || context.localEnded;
     const unranked = this.game.screen.querySelector('[data-reward-action="unranked"]');
