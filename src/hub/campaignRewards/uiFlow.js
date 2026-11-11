@@ -168,7 +168,9 @@ export class RewardedCampaignUI {
     slots.push(slot); this.current = slot; this.startBusy = true; this.schedulePaint();
     try {
       await this.game.hub.api.refreshSession?.();
-      if (!this.sameSession(slot)) throw Object.assign(new Error('identity_changed'), { code: 'identity_changed' });
+      if (slot.generation !== this.epoch || slot.identityStopped || !slot.wantPlay || !this.sameSession(slot)) {
+        throw Object.assign(new Error('identity_changed'), { code: 'identity_changed' });
+      }
       slot.issuer = createCampaignIssuer({ enabled: true, ...who, key, canonicalBoss: boss,
         serverUrl: nakamaUrl(), getSession: () => this.game.hub.api.getSession?.() });
       await this.issue(slot);

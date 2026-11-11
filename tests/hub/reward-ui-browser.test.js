@@ -233,6 +233,27 @@ it('login interruption before issuance and transient account switch during issua
   } finally { await f.close(); }
 }, 90000);
 
+it.each(['identity round trip', 'Back'])('cancels an unissued start during deferred refresh after %s without issuing or retaining a slot', async (interruption) => {
+  const f = await fixture();
+  try {
+    await f.page.locator('[data-go="rewarded"]').click();
+    await f.page.evaluate(() => { window.__holdRefresh = true; });
+    await f.page.locator('[data-reward-start]').click();
+    await f.page.waitForFunction(() => typeof window.__releaseRefresh === 'function');
+    if (interruption === 'Back') await f.page.locator('[data-reward-action="back"]').click();
+    else { await f.swap({ playerId: owner.runId, sid: owner.accountId }); await f.swap({}); }
+    await f.page.evaluate(() => window.__releaseRefresh());
+    await f.page.waitForFunction(() => !window.__game.rewardedCampaign.startBusy);
+    expect(f.requests).toEqual([]); // Cancellation precedes even the first issue write.
+    expect(await f.page.evaluate(() => ({ seed: window.__game.state.seed, gate: window.__game.canonicalRewardRecorder,
+      current: window.__game.rewardedCampaign.current, view: window.__game.rewardedCampaign.snapshot() })))
+      .toMatchObject({ seed: 123, gate: null, current: null, view: { active: false, pendingSlots: 0 } });
+    if (interruption === 'Back') expect(await f.page.locator('[data-go="waves"]').isVisible()).toBe(true);
+    else expect(await f.page.locator('[data-reward-start]').isEnabled()).toBe(true);
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+}, 90000);
+
 it('keeps native keyboard focus inside the reward dialog and leaves normal menus usable after closing', async () => {
   const f = await fixture();
   try {
