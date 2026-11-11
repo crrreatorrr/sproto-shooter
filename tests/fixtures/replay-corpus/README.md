@@ -1,0 +1,15 @@
+# Campaign replay regression corpus
+
+PR 02 stores test inputs before checkpoint/incremental-verifier changes. These are deterministic bot recordings, not human mouse/controller recordings and not proof of official-client execution. No user recordings were available or collected.
+
+The generator `scripts/build-replay-corpus.mjs <output-directory>` runs in GitHub Actions. Ten attempted-success cases use every canonical boss at seeds **7 and 11**, selected before execution; Sahil failure seed 7 and assisted seed 9 preserve the existing goldens. No seed search or replacement is permitted. A mode named `success` describes the controller strategy, not a guaranteed outcome. Preserve incomplete/failed outcomes rather than quietly substituting easier seeds. The long Sahil seed 7 trace must retain all **9634 frames**; do not shorten it to satisfy a budget.
+
+Each JSON stores immutable canonical inputs, issuance, SHA-256 of the input envelope, expected legacy receipt, recorder state hash, recorder/verifier parity flag, observed terminal tick and semantic milestones. Generation source commit identifies the exact code that produced the candidate; review the resulting hashes/outcomes before committing. Runtime byte/artifact hashes remain supplied by the existing bundle build/pins, not by a fabricated future manifest. The fixtures pin protocol 1/content `cea1f88b`; they are not v2 receipts.
+
+Replay tests consume the **stored bytes**, not regenerated bot choices. They compare source, fresh Node bundle, Goja and Chromium receipts. The existing four boss goldens stay unchanged. Whole/segmented/checkpoint cases derive ranges from the same inputs, including near-terminal and Obama part-death boundaries. Legacy per-call frame accounting is explicitly asserted as an existing limitation, not mistaken for cumulative timing.
+
+Recorder parity observations are separate from verifier receipt correctness. A mismatched recorder hash is evidence to investigate in canonical-input work (PR 05), not authority to weaken replay validation or approve a reward. Known limitations must remain labeled and reproducible until fixed in their own reviewed change.
+
+Short synthetic scenarios live in `tests/server/campaign-corpus-scenarios.js`: lockdown rewind, void rescue, pickups/projectile damage and section transition actions. They explicitly use trusted setup/mutations and are **not issued reward traces**. The lockdown regression shows that equal JSON state hashes do not restore WeakMap rewind history. PR 03 must replace this known-limit assertion with actual supported fresh-process snapshot restoration, including future behavior parity.
+
+Generation and execution checks run in GitHub Actions to honor the GitHub-only execution workflow. Generated candidates are artifacts first, then checked into this directory for review. Do not regenerate/accept new expectations automatically in tests. CPU timeouts remain real failures; no verification clock override or increased legacy timeout is used.
