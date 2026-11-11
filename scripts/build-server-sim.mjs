@@ -13,6 +13,7 @@ import {
   REPLAY_LIMITS, REWIND, matchmakerQuery,
 } from '../src/sim/pvp/rules.js';
 import { DIRECTOR_STATE_VERSION } from '../src/sim/pvp/director.js';
+import { UPLOAD_PROTOCOL_VERSION, REPLAY_API_VERSION, INCREMENTAL_CHECKPOINT_SCHEMA_VERSION } from '../src/server/incremental.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PLACEHOLDER = '0000000000000000000000000000000000000000';
@@ -52,6 +53,9 @@ export async function buildCampaignBundle(dir) {
     global: 'SprotoShooterSim',
     entry: 'verifyRun',
     jsonEntry: 'verifyRunJSON',
+    uploadProtocol: UPLOAD_PROTOCOL_VERSION,
+    replayApiVersion: REPLAY_API_VERSION,
+    checkpointSchema: INCREMENTAL_CHECKPOINT_SCHEMA_VERSION,
     sourceCommit: built.commit,
     contentFingerprint: contentFingerprint(PROTOCOL_VERSION),
     bundlePath: 'build/shooter-sim.js',

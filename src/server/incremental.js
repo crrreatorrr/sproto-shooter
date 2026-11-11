@@ -10,7 +10,9 @@ import { validId, inspectValue, decodeFrames, movementDelta, LIMITS } from './pr
 import { runtimeCheat, inventoryCheat, noteParts, classify, checkpointRestored } from './replayChecks.js';
 import { createPrivateCheckpoint, restorePrivateCheckpoint, boundedCheckpointJSON, CHECKPOINT_LIMITS } from './checkpoint.js';
 
-export const INCREMENTAL_VERSION = 2;
+export const UPLOAD_PROTOCOL_VERSION = 2;
+export const REPLAY_API_VERSION = 2;
+export const INCREMENTAL_CHECKPOINT_SCHEMA_VERSION = 2;
 export const INCREMENTAL_LIMITS = Object.freeze({
   batchFramesTextBytes: 2097152, runFramesTextBytes: 67108864, bodyBytes: 2162688,
   batchFrames: 28800, runFrames: 162000, batches: 4096, batchActions: 32, runActions: 131072,
@@ -29,13 +31,13 @@ const equal = (a, b) => stableStringify(a) === stableStringify(b);
 const bindingOf = (issuance) => ({ accountId: issuance.accountId, sessionId: issuance.sessionId, day: issuance.day, runId: issuance.runId });
 function clone(value) { return boundedCheckpointJSON(value, false, PRIVATE_LIMITS); }
 function resultError(reason) {
-  return { publicResult: { version: 2, status: 'invalid', reason, retryable: false, eligible: false, ranked: false, ticketsMinted: 0 }, privateCheckpoint: null };
+  return { publicResult: { version: REPLAY_API_VERSION, status: 'invalid', reason, retryable: false, eligible: false, ranked: false, ticketsMinted: 0 }, privateCheckpoint: null };
 }
 function guard(operation) {
   try { return operation(); } catch (error) {
     if (!error.operationalReason && (error.reason || error.message === 'bad_private_checkpoint')) return resultError(error.reason || 'bad_private_checkpoint');
     // An unexpected engine/runtime failure is operational, not invalid play.
-    return { publicResult: { version: 2, status: 'pending_retryable', reason: error.operationalReason || 'execution_failure', retryable: true,
+    return { publicResult: { version: REPLAY_API_VERSION, status: 'pending_retryable', reason: error.operationalReason || 'execution_failure', retryable: true,
       eligible: false, ranked: false, ticketsMinted: 0 }, privateCheckpoint: null };
   }
 }
@@ -52,7 +54,7 @@ export function decodeReplayBatch(text) {
   try { batch = boundedCheckpointJSON(parsed, false, WIRE_LIMITS); } catch { bad('malformed'); }
   const hostile = inspectValue(batch); if (hostile) bad(hostile);
   exact(batch, ['protocol', 'runId', 'sequence', 'tick0', 'n', 'frames', 'actions']);
-  if (batch.protocol !== 2) bad('unsupported_version');
+  if (batch.protocol !== UPLOAD_PROTOCOL_VERSION) bad('unsupported_version');
   if (!validId(batch.runId) || !/^[\x21-\x7e]+$/.test(batch.runId) || batch.runId.length > 80) bad('malformed');
   if (!int(batch.sequence) || !int(batch.tick0) || !int(batch.n) || batch.n < 1) bad('malformed');
   if (batch.n > INCREMENTAL_LIMITS.batchFrames || typeof batch.frames !== 'string'
@@ -94,7 +96,8 @@ function original(ctx) {
   if (manifest.contentFingerprint !== issuance.contentFingerprint || manifest.contentFingerprint !== contentFingerprint(1)) bad('fingerprint_mismatch');
   return { issuance, manifest, binding };
 }
-function checkAccounting(a, snapshot, pending, terminal, issuance) {
+function checkAccounting(a, snapshot, pending, terminal, issuance, validatePendingWire = true) {
+  let commands = null;
   exact(a, ['acceptedFrames', 'verifiedFrames', 'simFrames', 'framesTextBytes', 'verifiedFramesTextBytes', 'actions', 'verifiedActions', 'batches', 'verifiedBatches']);
   if (Object.values(a).some((n) => !int(n))) bad('bad_private_checkpoint');
   if (a.acceptedFrames > Math.min(issuance.maxFrames, INCREMENTAL_LIMITS.runFrames)
@@ -120,8 +123,12 @@ function checkAccounting(a, snapshot, pending, terminal, issuance) {
   }
   if (pending) {
     exact(pending, ['batch', 'cursor', 'sha256']);
-    const { batch } = decodeReplayBatch(JSON.stringify(pending.batch));
-    if (!int(pending.cursor) || pending.cursor >= batch.n || pending.sha256 !== replayBatchDigest(batch)
+    // Import validates immutable wire bytes and decodes once. Export only changes
+    // the cursor/counters; accepted batches were already fully validated.
+    const decoded = validatePendingWire ? decodeReplayBatch(JSON.stringify(pending.batch)) : null;
+    const batch = decoded ? decoded.batch : pending.batch;
+    commands = decoded ? decoded.commands : null;
+    if (!int(pending.cursor) || pending.cursor >= batch.n || (validatePendingWire && pending.sha256 !== replayBatchDigest(batch))
       || batch.runId !== issuance.runId || batch.sequence !== a.batches - 1
       || batch.tick0 + batch.n !== a.acceptedFrames || batch.tick0 + pending.cursor !== a.verifiedFrames
       || batch.tick0 > a.verifiedBatches * INCREMENTAL_LIMITS.batchFrames
@@ -131,14 +138,15 @@ function checkAccounting(a, snapshot, pending, terminal, issuance) {
       || a.actions - a.verifiedActions !== unverifiedActions) bad('bad_private_checkpoint');
   } else if (a.acceptedFrames !== a.verifiedFrames || a.framesTextBytes !== a.verifiedFramesTextBytes
     || a.actions !== a.verifiedActions || a.batches !== a.verifiedBatches) bad('bad_private_checkpoint');
+  return commands;
 }
 function save(state, parts, metadata, origin) {
   try {
-    const body = { v: 2, issuance: origin.issuance,
+    const body = { v: INCREMENTAL_CHECKPOINT_SCHEMA_VERSION, issuance: origin.issuance,
       snapshot: createPrivateCheckpoint(state, { manifest: origin.manifest, binding: origin.binding, parts,
         counters: { frames: metadata.accounting.verifiedFrames, segments: metadata.accounting.verifiedBatches } }),
       accounting: metadata.accounting, pending: metadata.pending, firstTerminal: metadata.firstTerminal };
-    checkAccounting(body.accounting, { state, parts, counters: body.snapshot.counters }, body.pending, body.firstTerminal, origin.issuance);
+    checkAccounting(body.accounting, { state, parts, counters: body.snapshot.counters }, body.pending, body.firstTerminal, origin.issuance, false);
     const copy = clone(body);
     return { ...copy, privateHash: fnv1a(stableStringify(copy)) };
   } catch {
@@ -153,16 +161,16 @@ function load(checkpoint, origin) {
   const copy = clone(checkpoint);
   exact(copy, ['v', 'issuance', 'snapshot', 'accounting', 'pending', 'firstTerminal', 'privateHash']);
   const { privateHash, ...body } = copy;
-  if (body.v !== 2 || privateHash !== fnv1a(stableStringify(body)) || !equal(body.issuance, origin.issuance)) bad('bad_private_checkpoint');
+  if (body.v !== INCREMENTAL_CHECKPOINT_SCHEMA_VERSION || privateHash !== fnv1a(stableStringify(body)) || !equal(body.issuance, origin.issuance)) bad('bad_private_checkpoint');
   const restored = restorePrivateCheckpoint(body.snapshot, { manifest: origin.manifest, binding: origin.binding });
   const cheat = runtimeCheat(restored.state) || inventoryCheat(restored.state); if (cheat) bad(cheat);
-  checkAccounting(body.accounting, restored, body.pending, body.firstTerminal, origin.issuance);
-  return { ...body, state: restored.state, parts: restored.parts };
+  const commands = checkAccounting(body.accounting, restored, body.pending, body.firstTerminal, origin.issuance);
+  return { ...body, state: restored.state, parts: restored.parts, commands };
 }
 function response(checkpoint, status, reason, retryable = false) {
   const a = checkpoint.accounting, terminal = checkpoint.firstTerminal;
   return { privateCheckpoint: checkpoint, publicResult: {
-    version: 2, status, reason, retryable, ticketsMinted: 0,
+    version: REPLAY_API_VERSION, status, reason, retryable, ticketsMinted: 0,
     eligible: !!terminal?.eligible, ranked: !!terminal?.ranked,
     acceptedInputTick: a.acceptedFrames, verifiedInputTick: a.verifiedFrames, simulationTick: a.simFrames,
     acceptedBatches: a.batches, verifiedBatches: a.verifiedBatches,
@@ -211,7 +219,7 @@ export function stepReplaySlice(checkpoint, ctx) {
     if (!int(work) || work < 1 || work > INCREMENTAL_LIMITS.batchFrames) bad('bad_work_limit');
     if (!current.pending) return response(checkpoint, current.firstTerminal ? 'terminal_verified' : 'verified', 'idle');
     const pending = current.pending;
-    const { commands } = decodeReplayBatch(JSON.stringify(pending.batch));
+    const commands = current.commands;
     const boss = bossById(origin.issuance.canonicalBoss), playerId = current.state.localPlayerId;
     let timedOut = false, count = 0;
     while (pending.cursor < pending.batch.n && count < work) {

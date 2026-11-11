@@ -214,5 +214,7 @@ export {
   PROTOCOL_VERSION, LIMITS, ECONOMY, SOURCE_COMMIT, buildIssuance, bossById, pureClone,
 };
 
-// Dormant private protocol-2 worker API; legacy protocol-1 entry points above remain unchanged.
-export { beginIncrementalReplay, acceptReplayBatch, stepReplaySlice, publicReplayJSON } from './incremental.js';
+// Dormant upload-v2/private replay API. The campaign engine remains protocol 1;
+// upload, replay API and checkpoint schema versions are independent exports.
+export { beginIncrementalReplay, acceptReplayBatch, stepReplaySlice, publicReplayJSON,
+  UPLOAD_PROTOCOL_VERSION, REPLAY_API_VERSION, INCREMENTAL_CHECKPOINT_SCHEMA_VERSION } from './incremental.js';

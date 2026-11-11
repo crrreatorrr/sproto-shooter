@@ -5,6 +5,15 @@ settlement integration. Legacy `verifyRun` and `verifyRunJSON` retain protocol 1
 semantics, limits and goldens. Incremental append envelopes use protocol 2 and a
 separate private checkpoint schema 2. Do not submit them to protocol 1 endpoints.
 
+Versions are named independently: `UPLOAD_PROTOCOL_VERSION=2` identifies the
+append envelope, `REPLAY_API_VERSION=2` the private replay API, and
+`INCREMENTAL_CHECKPOINT_SCHEMA_VERSION=2` its persisted wrapper. The campaign
+engine's legacy `PROTOCOL_VERSION=1` and simulation `CHECKPOINT_VERSION=1` remain
+unchanged. The campaign artifact pin advertises `uploadProtocol`,
+`replayApiVersion` and `checkpointSchema` separately, while retaining its legacy
+`protocol:1` and `verifyRun` entry. Approval must use this exact built manifest,
+not infer checkpoint or engine versions from a different version field.
+
 The worker must run an approved artifact selected by trusted service code. Its
 context contains the original server-owned issuance and an immutable manifest
 `{artifact:"shooter-sim",sourceCommit,sha256,protocol:1,contentFingerprint}`. The

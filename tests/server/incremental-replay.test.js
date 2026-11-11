@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { chromium } from 'playwright';
 import { beginIncrementalReplay, acceptReplayBatch, stepReplaySlice, publicReplayJSON,
   decodeReplayBatch, replayBatchDigest, INCREMENTAL_LIMITS, utf8Bytes } from '../../src/server/incremental.js';
+import { UPLOAD_PROTOCOL_VERSION, REPLAY_API_VERSION, INCREMENTAL_CHECKPOINT_SCHEMA_VERSION } from '../../src/server/incremental.js';
 import { createPrivateCheckpoint, restorePrivateCheckpoint } from '../../src/server/checkpoint.js';
 import * as checkpointModule from '../../src/server/checkpoint.js';
 import { stableStringify, fnv1a } from '../../src/sim/hash.js';
@@ -77,10 +78,25 @@ beforeAll(() => {
   execFileSync(process.execPath, ['scripts/build-server-sim.mjs'], { cwd: root, stdio: 'inherit' });
   bundle = path.join(root, 'build/shooter-sim.js');
   const pin = JSON.parse(fs.readFileSync(path.join(root, 'build/shooter-sim.pin.json'), 'utf8'));
+  expect(pin).toMatchObject({ protocol: 1, entry: 'verifyRun', jsonEntry: 'verifyRunJSON',
+    uploadProtocol: UPLOAD_PROTOCOL_VERSION, replayApiVersion: REPLAY_API_VERSION, checkpointSchema: INCREMENTAL_CHECKPOINT_SCHEMA_VERSION });
   manifest = { artifact: 'shooter-sim', sourceCommit: pin.sourceCommit, sha256: pin.bundleSha256, protocol: pin.protocol, contentFingerprint: pin.contentFingerprint };
 });
 
 describe('dormant private incremental replay v2', () => {
+  it('keeps upload, replay API and private checkpoint versions distinct from legacy protocol 1', () => {
+    expect(UPLOAD_PROTOCOL_VERSION).toBe(2);
+    expect(REPLAY_API_VERSION).toBe(2);
+    expect(INCREMENTAL_CHECKPOINT_SCHEMA_VERSION).toBe(2);
+    const f = fixtures[0], initial = beginIncrementalReplay(context(f));
+    expect(initial.publicResult.version).toBe(REPLAY_API_VERSION);
+    expect(initial.privateCheckpoint.v).toBe(INCREMENTAL_CHECKPOINT_SCHEMA_VERSION);
+    expect(initial.privateCheckpoint.snapshot.v).toBe(1);
+    expect(initial.privateCheckpoint.issuance.protocol).toBe(1);
+    const wrongVersion = roundtrip(initial.privateCheckpoint); wrongVersion.v = 3;
+    expect(stepReplaySlice(resign(wrongVersion), { ...context(f), maxWorkFrames: 1 }).publicResult.status).toBe('invalid');
+    expect(stepReplaySlice(initial.privateCheckpoint.snapshot, { ...context(f), maxWorkFrames: 1 }).publicResult.status).toBe('invalid');
+  });
   for (const f of fixtures) {
     it(`preserves the entire frozen trace across public batches and work slices: ${f.provenance.spec.id}`, () => {
       const n = f.log.segments[0].n;
@@ -310,12 +326,24 @@ describe('dormant private incremental replay v2', () => {
     terminal.publicResult.terminal.parts = terminal.privateCheckpoint.snapshot.parts;
     expect(JSON.parse(publicReplayJSON(terminal)).terminal).not.toHaveProperty('parts');
   });
+
+  it('revalidates pending wire content identity on every private import', () => {
+    const f = fixtures[0], batch = batches(f, [64])[0];
+    const r = checked(acceptReplayBatch(JSON.stringify(batch), beginIncrementalReplay(context(f)).privateCheckpoint, admitted(f, batch)));
+    const alternate = encodeFrames([{ yaw: 0.123, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [] }]);
+    const e = roundtrip(r.privateCheckpoint);
+    e.pending.batch.frames = alternate.frames + e.pending.batch.frames.slice(16);
+    expect(e.pending.batch.frames).not.toBe(batch.frames);
+    expect(stepReplaySlice(resign(e), { ...context(f), maxWorkFrames: 1 }).publicResult)
+      .toMatchObject({ status: 'invalid', reason: 'bad_private_checkpoint' });
+  });
 });
 
 // Test-only runtime harness appended to a temporary bundle. The shipped artifact
 // has no JSON endpoint that accepts private context/checkpoints from a client.
 const harness = `
 SprotoShooterSim.testIncrementalReplayJSON = function(text) {
+  if(SprotoShooterSim.UPLOAD_PROTOCOL_VERSION!==2 || SprotoShooterSim.REPLAY_API_VERSION!==2 || SprotoShooterSim.INCREMENTAL_CHECKPOINT_SCHEMA_VERSION!==2)throw new Error('version exports mismatch');
   const jobs=JSON.parse(text), out=[];
   for (const job of jobs) {
     let r=SprotoShooterSim.beginIncrementalReplay(job.context);
