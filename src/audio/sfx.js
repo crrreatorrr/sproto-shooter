@@ -154,6 +154,45 @@ export function createAudio(bus) {
     defeat() { [392, 330, 262, 196].forEach((f, i) => tone({ freq: f, dur: 0.35, type: 'triangle', vol: 0.25, delay: i * 0.25 })); },
     duckBounce() { if (throttle('quack', 2, 80)) { tone({ freq: j(700, 0.15), end: 500, dur: 0.08, type: 'square', vol: 0.12 }); } },
     allyShot() { if (throttle('ally', 2, 60)) tone({ freq: j(1200, 0.2), end: 1600, dur: 0.04, type: 'square', vol: 0.06 }); },
+    // Campaign: one short sound per event, so a lockdown, an alarm and a rewind can be told apart by ear.
+    levelCard() { tone({ freq: 110, end: 82, dur: 0.9, type: 'sawtooth', vol: 0.22 }); tone({ freq: 165, end: 123, dur: 0.9, type: 'triangle', vol: 0.16, delay: 0.05 }); },
+    checkpoint() { [784, 1047].forEach((f, i) => tone({ freq: f, dur: 0.14, type: 'triangle', vol: 0.18, delay: i * 0.09 })); },
+    lockdown(ev) {
+      if (ev.sealed) { noise({ dur: 0.35, vol: 0.5, freq: 500, end: 70 }); tone({ freq: 90, end: 45, dur: 0.4, type: 'square', vol: 0.3 }); }
+      else [523, 784].forEach((f, i) => tone({ freq: f, dur: 0.16, type: 'triangle', vol: 0.18, delay: i * 0.1 }));
+    },
+    lockdownReset() { tone({ freq: 1400, end: 180, dur: 0.7, type: 'sine', vol: 0.28 }); noise({ dur: 0.6, vol: 0.18, freq: 3000, end: 300 }); },
+    alarm(ev) {
+      if (ev.cut) { tone({ freq: 600, end: 200, dur: 0.25, type: 'square', vol: 0.15 }); return; }
+      if (throttle('alarm', 1, 1500)) for (let i = 0; i < 4; i++) tone({ freq: i % 2 ? 620 : 880, dur: 0.22, type: 'square', vol: 0.2, delay: i * 0.24 });
+    },
+    secret() { [659, 880, 1175].forEach((f, i) => tone({ freq: f, dur: 0.12, type: 'triangle', vol: 0.18, delay: i * 0.07 })); },
+    modifier() { tone({ freq: 300, end: 1200, dur: 0.5, type: 'triangle', vol: 0.2, delay: 0.25 }); },
+    shrine() { [392, 523, 659, 784, 1047].forEach((f, i) => tone({ freq: f, dur: 0.2, type: 'sine', vol: 0.2, delay: i * 0.08 })); },
+    worldGun() { tone({ freq: 500, end: 1000, dur: 0.15, type: 'square', vol: 0.15 }); },
+    door() { noise({ dur: 0.3, vol: 0.25, freq: 300, end: 120 }); },
+    switch() { tone({ freq: 900, end: 1300, dur: 0.06, type: 'square', vol: 0.15 }); },
+    jumpPad() { tone({ freq: 200, end: 900, dur: 0.25, type: 'sine', vol: 0.25 }); },
+    portal() { tone({ freq: 1200, end: 300, dur: 0.35, type: 'sine', vol: 0.2 }); },
+    barrel() { tone({ freq: 160, end: 60, dur: 0.12, type: 'square', vol: 0.2 }); },
+    sectionExit() { tone({ freq: 440, end: 660, dur: 0.2, type: 'triangle', vol: 0.15 }); },
+    encounterClear() { [523, 659, 784].forEach((f, i) => tone({ freq: f, dur: 0.14, type: 'triangle', vol: 0.18, delay: i * 0.08 })); },
+    levelClear() { [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone({ freq: f, dur: 0.2, type: 'square', vol: 0.2, delay: i * 0.12 })); },
+    levelLost() { [392, 330, 262, 196].forEach((f, i) => tone({ freq: f, dur: 0.35, type: 'triangle', vol: 0.25, delay: i * 0.25 })); },
+    voidRescue() { tone({ freq: 150, end: 700, dur: 0.35, type: 'sine', vol: 0.25 }); },
+    playerFell() { tone({ freq: 700, end: 60, dur: 0.9, type: 'sine', vol: 0.3 }); },
+    partDestroyed() { noise({ dur: 0.5, vol: 0.45, freq: 1500, end: 100 }); tone({ freq: 880, end: 1320, dur: 0.2, type: 'square', vol: 0.18, delay: 0.1 }); },
+    whiteoutWarn() { tone({ freq: 500, end: 350, dur: 0.6, type: 'sine', vol: 0.18 }); },
+    grapple() { noise({ dur: 0.18, vol: 0.2, freq: 2500, type: 'bandpass', q: 3 }); tone({ freq: 300, end: 900, dur: 0.18, type: 'sawtooth', vol: 0.12 }); },
+    grappleRelease() { tone({ freq: 700, end: 400, dur: 0.07, type: 'triangle', vol: 0.1 }); },
+    jetpack() { [330, 494, 659].forEach((f, i) => tone({ freq: f, dur: 0.14, type: 'square', vol: 0.15, delay: i * 0.07 })); },
+    geyser() { if (throttle('geyser', 2, 150)) noise({ dur: 0.5, vol: 0.25, freq: 1800, end: 400 }); },
+    droneStrike() { tone({ freq: 1600, end: 300, dur: 0.6, type: 'sawtooth', vol: 0.2 }); },
+    plateBreak() { noise({ dur: 0.25, vol: 0.4, freq: 3000, end: 500 }); },
+    bossMeleeHit() { tone({ freq: 90, end: 40, dur: 0.2, type: 'sine', vol: 0.4 }); noise({ dur: 0.15, vol: 0.3, freq: 800, end: 100 }); },
+    bossEscape() { tone({ freq: 300, end: 1600, dur: 0.6, type: 'sine', vol: 0.2 }); },
+    whiteout() { noise({ dur: 1.4, vol: 0.3, freq: 4000, end: 1200, type: 'highpass' }); },
+    spellUnlocked() { [523, 659, 880, 1175].forEach((f, i) => tone({ freq: f, dur: 0.18, type: 'sine', vol: 0.2, delay: i * 0.08 })); },
     stagger() { if (throttle('stag', 2, 100)) tone({ freq: 300, end: 150, dur: 0.1, type: 'triangle', vol: 0.12 }); },
   };
 

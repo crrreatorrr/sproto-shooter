@@ -173,6 +173,7 @@ export function campaignPost(state, dt) {
     tickDuelBoss(state, e, dt);
   }
   if (lv.format === 'v2') {
+    tickLava(state, state.players[state.localPlayerId], dt);
     v2Post(state, dt);
     const again = state.level;
     if (again && again._rewind) {
@@ -352,6 +353,7 @@ function touchMechanism(state, p, lv, sec, m, dt) {
 }
 
 const MOD_SPEED = { turbo: 1.35, taxSeason: 0.82, redTape: 0.9 };
+const LAVA_TIME = 20, LAVA_DPS = 4;
 
 function grantModifier(state, p, id) {
   if (!id || state.level.modifiers[id]) return;
@@ -381,8 +383,21 @@ function grantModifier(state, p, id) {
 function applyModifiers(state, p, dt) {
   const mods = state.level.modifiers;
   if (mods.bigHead) for (const e of state.enemies) if (!e.dead) e.bigHeadT = 999;
-  if (mods.floorIsLava) damagePlayer(state, p, { base: 6 * dt, sourceKind: 'world', fromPos: p.pos });
+  tickLava(state, p, dt);
   if (mods.fuelInfinite) state.level.fuel = 100;
+}
+
+/**
+ * The Floor Is Lava: 4 health a second while you stand on the ground, for 20 seconds after the pickup.
+ * Jump and it stops. Called on both level formats: the only level with this secret (L03) is a v2
+ * level, and v2 levels return from campaignPost before applyModifiers.
+ */
+function tickLava(state, p, dt) {
+  const lv = state.level, mods = lv.modifiers;
+  if (!mods || !mods.floorIsLava) return;
+  lv.lavaT = (lv.lavaT == null ? LAVA_TIME : lv.lavaT) - dt;
+  if (lv.lavaT <= 0) { mods.floorIsLava = false; delete lv.lavaT; }
+  else if (p.onGround && !p.dead) damagePlayer(state, p, { base: LAVA_DPS * dt, sourceKind: 'world', fromPos: p.pos });
 }
 
 function giveWorldGun(state, p, type) {

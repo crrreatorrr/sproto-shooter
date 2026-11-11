@@ -17,17 +17,18 @@ export function rollGunType(rng) {
   return weighted(rng, GUN_TYPES).id;
 }
 
-// every boss kill drops a boss weapon, including bosses whose table doesn't list one (or has no table)
+// a boss whose table doesn't list a boss weapon (or that has no table: the campaign bosses) always drops one
 const BOSS_WEAPON_DROP = { kind: 'bossGun', chance: 1, table: 'boss' };
 
-/** Pure: returns drop specs. ctx = {elite, tier, playerGunTypes(ammoTypes), summoned, boss} */
+/** Pure: returns drop specs. ctx = {elite, tier, playerGunTypes(ammoTypes), summoned, boss, arena} */
 export function rollDrops(rng, tableId, ctx = {}) {
   let table = DROP_TABLES[tableId] || [];
   if (ctx.boss && !table.some((e) => e.kind === 'bossGun')) table = [...table, BOSS_WEAPON_DROP];
   const tierM = 1 + 0.1 * ((ctx.tier || 1) - 1);
   const eliteM = ctx.elite ? ELITE.dropMult : 1;
   const out = [];
-  for (const entry of table) {
+  for (const base of table) {
+    const entry = ctx.arena && base.arena ? { ...base, ...base.arena } : base;
     let chance = entry.chance;
     if (entry.kind === 'gun' && ctx.elite) chance = Math.min(0.6, chance * ELITE.gunMult);
     if (ctx.summoned && entry.kind === 'gun') chance *= 0.25;
@@ -64,9 +65,9 @@ export function rollDrops(rng, tableId, ctx = {}) {
           break;
         }
         case 'bossGun': {
-          // boss-only weapon (Ray Gun / Big Bullets), at least rare
+          // boss-only weapon (Ray Gun / Big Bullets), at least rare; one quality step up unless the table says otherwise
           const type = BOSS_GUN_TYPES[Math.min(BOSS_GUN_TYPES.length - 1, Math.floor(float(rng) * BOSS_GUN_TYPES.length))];
-          const quality = rollQuality(rng, entry.table, 1);
+          const quality = rollQuality(rng, entry.table, entry.shift ?? 1);
           out.push({ kind: 'gun', type, quality, seed: next(rng), level: ctx.tier || 1, source: 'boss' });
           break;
         }

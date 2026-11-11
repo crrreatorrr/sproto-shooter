@@ -18,7 +18,9 @@ are the hub contracts.
   - PvP golden state hash `532a562e` (`scriptedMatch(7, 180)`, `GOLDEN_HASH` in
     `tests/pvp-sim.test.js`). Was `6545ca0a`. The director golden is `55419e4e` (was `b661a684`).
   - Wave Mode and Sandbox hashes in `tests/fixtures/baseline-hashes.json`
-    (`tests/levels/baseline.test.js`).
+    (`tests/levels/baseline.test.js`). The Wave Mode hashes at ticks 3000 and 6000 moved on
+    2026-11-11 with the arena balance pass (boss gun drops, wave spell unlocks); tick 600 and the
+    Sandbox hashes did not. `tests/performance-baseline.test.js` repeats all of them.
 - Never edit `src/sim/pvp/`, `src/net/inputCodec.js`, `src/net/protocol.js` or `src/server/`
   without rebuilding and re-pinning. `npm run build:server-sim` writes `build/shooter-sim.js`
   (campaign verifier, global `SprotoShooterSim`) and `build/shooter-pvp-sim.js` (Free 1v1,

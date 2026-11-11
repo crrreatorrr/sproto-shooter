@@ -106,7 +106,8 @@ kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var
 #prompt b { font-family: var(--display); color: var(--sun); }
 /* Holding reload toward a pick up fills the button tag (--hold is 0%..100%). */
 #prompt b { background: linear-gradient(90deg, rgba(255,209,102,.45) var(--hold, 0%), transparent 0); border-radius: 4px; }
-#lootcard { position: absolute; left: calc(50% + 60px); top: 50%; transform: translateY(-50%); display: none; }
+/* Docked to the right edge so it never sits under the wave banners in the middle of the screen. */
+#lootcard { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); display: none; }
 #lootcard.on { display: block; }
 .gcard { width: 270px; background: var(--panel); border: 2px solid var(--q, #888); border-radius: 12px; padding: 10px 12px; box-shadow: 0 0 20px color-mix(in srgb, var(--q) 50%, transparent); font-size: 13px; }
 .gcard.empty { display: grid; place-items: center; min-height: 120px; color: var(--ink-dim); border-style: dashed; text-align: center; }
@@ -139,6 +140,13 @@ kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var
 #vignette { position: absolute; inset: 0; opacity: 0; }
 #vignette.hurt { animation: vg .4s; background: radial-gradient(circle, transparent 45%, rgba(255,30,60,.55)); }
 #vignette.shield { animation: vg .3s; background: radial-gradient(circle, transparent 55%, rgba(90,215,255,.4)); }
+#dmgdir { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+/* Not drawn at all until a hit lands, so an idle HUD pays nothing for it. */
+.dmgarc { display: none; position: absolute; left: -150px; top: -150px; width: 300px; height: 300px; box-sizing: border-box; border-radius: 50%; border: 8px solid transparent; border-top-color: rgba(255, 40, 70, .95); opacity: 0; }
+.dmgarc.on { display: block; animation: dmgarc .9s ease-out; }
+@keyframes dmgarc { 0% { opacity: 1; } 60% { opacity: .8; } 100% { opacity: 0; } }
+.banner.card { color: #fff7ec; font-size: clamp(24px, 3.6vw, 44px); background: rgba(12, 6, 24, .72); padding: 12px 28px; border-radius: 14px; width: min(720px, 86vw); box-sizing: border-box; }
+.toast.tip { background: rgba(12, 6, 24, .9); border: 2px solid var(--sun); color: #fff7ec; }
 @keyframes vg { from { opacity: 1; } to { opacity: 0; } }
 
 #dmgnums { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
@@ -232,6 +240,9 @@ label.nav-focus { padding: 2px 6px; }
 .wager-live { top: 16px; }
 .wager-overlay { bottom: 72px; }
 .menu { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center; }
+.menu.minor { gap: 8px; } .menu.minor .btn { font-size: 14px; padding: 8px 14px; }
+.menu.practice { opacity: .85; } .menu.practice .row-label { font-family: var(--display); font-size: 12px; letter-spacing: .15em; text-transform: uppercase; color: var(--ink-dim); }
+.title-controls { width: 100%; }
 .boss-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; width: min(900px, 100%); margin: 0 auto 16px; }
 .btn.boss-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 14px 16px; border: 2px solid var(--c); }
 .btn.boss-card b { font-family: var(--display); font-size: 20px; color: var(--c); }
@@ -248,7 +259,7 @@ label.nav-focus { padding: 2px 6px; }
 .lil-gui.root { pointer-events: auto; position: fixed; right: 0; top: 0; max-height: 100vh; overflow: auto; }
 
 @media (max-width: 700px) {
-  #spells { bottom: 120px; } #lootcard { left: 50%; transform: translate(-50%, 10%); }
+  #spells { bottom: 120px; } #lootcard { left: 50%; right: auto; transform: translate(-50%, 10%); }
 }
 @media (prefers-reduced-motion: reduce) {
   .banner, .toast { animation: none; } #hitmarker.on, #hitmarker.weak, #hitmarker.kill { animation-duration: .01s; }

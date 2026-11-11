@@ -28,6 +28,8 @@ import { MAX_TIER } from '../data/waves.js';
 import { createPerfCounters } from '../render/debug/perfCounters.js';
 import { createStatsOverlay } from '../render/debug/StatsOverlay.js';
 import { createFeel, wireHitstop } from './feel.js';
+import { createCampaignFlow, campaignFlowStep } from './campaignFlow.js';
+import { debugTaints, loadoutAction, loadoutEmpty, loadoutFromState, readLoadout, writeLoadout } from '../save/loadout.js';
 import { crashGuard } from '../core/crashGuard.js';
 import { createPadController } from '../input/padController.js';
 import { NAV_KEYS, keyLabel } from '../input/input.js';
@@ -58,6 +60,7 @@ export class Game {
     this.timeScale = 1;
     this.settings = { hitstop: true, shake: 1, sensitivity: 1, ...loadProfile().settings };
     this.feel = createFeel();
+    this.campaignFlow = createCampaignFlow();
     // Optional observer for a server-issued run log. Null leaves gameplay unchanged.
     this.onSimCommand = null;
     // Dormant until a later authenticated rewarded-start controller enables it.
@@ -80,6 +83,8 @@ export class Game {
     this.waveRelic = createWaveRelicReporter({ hub: this.hub, onGranted: (id) => this.ui.toast(`Relic: ${relicName(id)}`, 'good') });
     this.bus.on('modeStart', (ev) => this.waveRelic.modeStart(ev));
     this.bus.on('waveCleared', (ev) => this.waveRelic.waveCleared(ev, this.state));
+    // Wave Mode progress (skills, carried guns, best tier) is kept on this device: src/save/loadout.js.
+    for (const type of ['waveCleared', 'victory', 'defeat']) this.bus.on(type, (ev) => this.saveWaveLoadout(ev));
     // Menu focus for keyboard and gamepad, and the gamepad itself (polled every frame).
     this.nav = createMenuNav();
     this.padStyle = 'xbox';
@@ -152,7 +157,10 @@ export class Game {
     this.statsOverlay.setVisible(this.statsOn);
   }
 
-  queue(a) { this.input.queueAction(a); }
+  queue(a) {
+    if (debugTaints(a)) this.debugSession = true; // no Wave Mode saves for the rest of this page load
+    this.input.queueAction(a);
+  }
 
   /** Internal capability, default off. PR16 owns server-issued start and UI lifecycle. */
   configureCanonicalRewardCommands({ enabled = false, record = null, onError = null } = {}) {
@@ -206,6 +214,17 @@ export class Game {
     }
     return true;
   }
+  /**
+   * Save Wave Mode progress after a wave clear, a victory or a defeat, and on the way out of Wave Mode.
+   * Never from a rewarded run, never while god mode is on, and never in a session that has used the
+   * debug panel (it can spawn guns and max every skill).
+   */
+  saveWaveLoadout(ev) {
+    const s = this.state;
+    if (s.mode !== 'waves' || this.rewardedCampaign?.active || s.tuning.godMode || this.debugSession) return;
+    const best = readLoadout().bestTier;
+    writeLoadout(loadoutFromState(s, ev.type === 'victory' ? Math.max(best, s.tier) : best));
+  }
   findGun(id) {
     const p = this.state.players[this.state.localPlayerId];
     return p.guns.find((g) => g && g.id === id) || this.state.pickups.find((k) => k.gun && k.gun.id === id)?.gun;
@@ -251,7 +270,20 @@ export class Game {
     this.audio.ensure();
     if (mode === 'boss') this.lastBoss = extra.boss;
     this._campaignShown = false;
-    this.queue({ type: 'startMode', mode, tier, ...extra });
+    // Guns picked up or spawned in the sandbox stay there (the Test Range and Boss Fight already work this
+    // way), and a campaign entered from another mode starts from the starting gun, not Wave Mode's loot.
+    const s = this.state;
+    const leaveSandbox = s.mode === 'sandbox' && !s.testMode && mode !== 'sandbox' && mode !== 'test';
+    const enterCampaign = mode === 'campaign' && s.mode !== 'campaign';
+    // Leaving Wave Mode wipes its progress from the player (the sim does that), so write it down first.
+    if (s.mode === 'waves' && mode !== 'waves') this.saveWaveLoadout({ type: 'leave' });
+    this.queue({ type: 'startMode', mode, tier, ...extra, ...(leaveSandbox || enterCampaign ? { freshLoadout: true } : {}) });
+    // Coming into Wave Mode from anywhere else picks the saved Wave Mode loadout back up. Tier to tier
+    // inside Wave Mode keeps what you are carrying.
+    if (mode === 'waves' && s.mode !== 'waves') {
+      const saved = readLoadout();
+      if (!loadoutEmpty(saved)) this.queue(loadoutAction(saved));
+    } else if (mode === 'waves') this.saveWaveLoadout({ type: 'nextTier' }); // keeps what you grabbed after the last boss
     this.hideScreen();
     this.paused = false;
     this.input.lock();
@@ -271,21 +303,26 @@ export class Game {
     if (kind === 'title') {
       body = `<div class="title"><h1>SPROTO<br><span>SHOOTER</span></h1>
         ${this.hubChip()}
-        <p class="tag">A wacky loot shooter. Blast blobs, grab guns, craft better ones, beat the bosses.</p>
+        <p class="tag">A wacky loot shooter. Blast blobs, grab guns, find better ones, beat the bosses.</p>
         <div class="menu">
           <button class="btn big" data-go="waves">▶ Wave Mode <small>3 waves + bosses</small></button>
-          <button class="btn big alt" data-go="sandbox">🧪 Sandbox <small>debug spawn everything</small></button>
-          <button class="btn big alt" data-go="test">🎯 Test Range <small>every gun, infinite ammo</small></button>
           <button class="btn big alt" data-go="bossSelect">👑 Boss Fight <small>pick a boss to fight</small></button>
-          <button class="btn big" data-go="campaignSelect">🗺 Campaign <small>The Great Sproto Audit</small></button>
           <button class="btn big alt" data-go="pvp">Play free <small>equal guns, no Tickets</small></button>
+          <button class="btn big" data-go="campaignSelect">🗺 Campaign <small>The Great Sproto Audit</small></button>
+          <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select>${bestTierHtml()}</div>
+        </div>
+        <div class="menu minor">
           <button class="btn alt" data-go="characters">Choose Character <small>${this.character.name}</small></button>
           <span data-wager-slot></span>
           ${this.rewardedCampaign ? '<button class="btn alt" data-go="rewarded">Rewarded campaign <small>server-verified boss runs</small></button>' : ''}
           <button class="btn alt" data-go="hub">${this.hubReturnLabel()}</button>
-          <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
         </div>
-        ${controlsHtml(this.input.device, this.padStyle)}</div>`;
+        <div class="menu minor practice"><span class="row-label">Practice</span>
+          <button class="btn alt sm" data-go="sandbox">🧪 Sandbox <small>debug spawn everything</small></button>
+          <button class="btn alt sm" data-go="test">🎯 Test Range <small>every gun, infinite ammo</small></button>
+          <button class="btn alt sm" data-go="controls" aria-expanded="${this._titleControls ? 'true' : 'false'}">⌨ Controls</button>
+        </div>
+        <div class="title-controls" ${this._titleControls ? '' : 'hidden'}>${controlsHtml(this.input.device, this.padStyle)}</div></div>`;
     } else if (kind === 'characters') {
       const asset = `${import.meta.env.BASE_URL}assets/`;
       const cards = PLAYER_CHARACTERS.map(({ id, name, portrait }) => {
@@ -332,7 +369,8 @@ export class Game {
       const idx = Math.max(0, CAMPAIGN.indexOf(lv.id));
       const next = CAMPAIGN[idx + 1];
       body = `<div class="end ${win ? 'victory' : 'defeat'}"><h1>${win ? 'AUDIT PASSED' : 'AUDIT FAILED'}</h1>
-        <p>${win ? `${lv.name} cleared in ${Math.round(lv.time)}s. Par ${Math.round((lv.parTime || 0) / 60)} min.` : `${lv.name} got the better of you.`}</p>
+        <p>${win ? `${lv.name} cleared.` : `${lv.name} got the better of you.`}</p>
+        <div class="stats"><div><b>${clock(lv.time)}</b>time · par ${clock(lv.parTime)}</div><div><b>${s.run.kills}</b>kills</div><div><b>${Math.round(s.run.damageTaken).toLocaleString()}</b>damage taken</div></div>
         <div class="menu">
           ${win && next ? `<button class="btn big" data-go="campaign" data-level="${next}">▶ Next level</button>` : ''}
           <button class="btn" data-go="retryLevel" data-level="${lv.id}">↻ Retry</button>
@@ -347,7 +385,7 @@ export class Game {
         <div class="stats">
           <div><b>${r.kills}</b>kills</div><div><b>${r.eliteKills}</b>elites</div><div><b>${r.bossKills}</b>bosses</div>
           <div><b>${Math.round(r.damageDealt).toLocaleString()}</b>damage</div><div><b>${r.bestHit}</b>best hit</div><div><b>${r.weakHits}</b>BONKs</div>
-          <div><b>${r.ticketsEarned}</b>run cash</div><div><b>${r.gunsFound}</b>guns found</div><div><b>${r.crafts}</b>crafts</div>
+          <div><b>${r.ticketsEarned}</b>run cash</div><div><b>${r.gunsFound}</b>guns found</div>
         </div>
         <div class="xpgain">${SKILL_IDS.map((k) => `<span>${k}: +${Math.round(r.xpGained[k])} XP (Lv ${p.skills[k].level})</span>`).join('')}</div>
         <div class="menu">
@@ -368,6 +406,14 @@ export class Game {
       if (!b) return;
       const go = b.dataset.go;
       if (go === 'rewarded') { this.rewardedCampaign?.open(); return; }
+      if (go === 'controls') {
+        // The controls list is long; it stays folded until asked for so the modes fit a 720p screen.
+        this._titleControls = !this._titleControls;
+        const box = this.screen.querySelector('.title-controls');
+        if (box) box.hidden = !this._titleControls;
+        b.setAttribute('aria-expanded', this._titleControls ? 'true' : 'false');
+        return;
+      }
       if (go === 'hub') { this.requestHubReturn(b); return; }
       if (go === 'continue') { this.hideScreen(); this.paused = false; this.input.lock(); return; }
       if (go === 'pvp') { this.openPvp(); return; }
@@ -672,17 +718,18 @@ export class Game {
       if (this.pvp) this.pvp.frame(stepped, cmd);
       return true;
     }
-    // Shop/crafting menus and the debug panel do NOT pause. The pause and end screens do. The title runs a demo behind it.
+    // Shop menus and the debug panel do NOT pause. The pause and end screens do. The title runs a demo behind it.
     const scr = this.screen.hidden ? null : this.screen.querySelector('.title') ? 'title' : 'other';
     const titleUp = scr === 'title';
     const advancing = (scr === null || titleUp) && !this.feedbackHold;
     if (advancing) this.acc += stepped * this.timeScale;
     const sim0 = performance.now();
-    let n = 0;
+    let n = 0, fired = false;
     while (this.acc >= DT && n < MAX_TICKS && !this.rewardedCampaign?.blocksTicks) {
       const cmd = this.input.buildCommand(this.state.tick);
       if (this._skip) { cmd.pressed.skip = true; this._skip = false; }
       if (titleUp) { cmd.held = {}; cmd.moveX = cmd.moveZ = 0; cmd.pressed = {}; cmd.yaw = this.state.time * 0.15; cmd.pitch = -0.05; this.input.setLook(cmd.yaw, cmd.pitch); }
+      fired = fired || !!cmd.held.fire;
       if (!this.applyLocalCommand(cmd)) { this.acc = 0; break; }
       this.bus.emitAll(this.state.events);
       this.acc -= DT; n++;
@@ -691,6 +738,11 @@ export class Game {
     if (n === MAX_TICKS || this.rewardedCampaign?.blocksTicks) this.acc = 0;
     const simMs = performance.now() - sim0;
     const lv = this.state.level;
+    // Section exits and section cards: the sim waits for `transitionDone`, and this is what sends it.
+    // A rewarded run starts inside its boss section and records every action it sends, so it is left alone.
+    if (!this.rewardedCampaign?.active && scr === null && campaignFlowStep(this.campaignFlow || (this.campaignFlow = createCampaignFlow()), this.state, fired)) {
+      this.queue({ type: 'transitionDone' });
+    }
     if (!this.rewardedCampaign?.active && this.state.mode === 'campaign' && lv && !this._campaignShown && this.screen.hidden) {
       if (lv.won) { this._campaignShown = true; const i = CAMPAIGN.indexOf(lv.id); if (CAMPAIGN[i + 1]) unlockLevel(CAMPAIGN[i + 1]); for (const id of Object.keys(lv.modifiers)) rememberModifier(id); this.showScreen('levelClear'); }
       else if (lv.lost) { this._campaignShown = true; this.showScreen('levelLost'); }
@@ -1150,6 +1202,15 @@ export class Game {
   }
 }
 
+/** "best 4" beside the tier picker once a Wave Mode tier has been cleared on this device. */
+function bestTierHtml() {
+  const best = readLoadout().bestTier;
+  return best > 0 ? ` <small class="best-tier">best ${best}</small>` : '';
+}
+
+/** Seconds as m:ss. */
+const clock = (t) => { const n = Math.max(0, Math.round(t || 0)); return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`; };
+
 /** One-line descriptions for the Boss Fight picker. */
 const BOSS_BLURB = {
   carMonster: 'Magnet smashes up close; hurls car tyres that bounce and explode.',
@@ -1166,9 +1227,9 @@ function controlsHtml(device = 'kbm', style = 'xbox') {
   const k = (a, b) => `<div><kbd>${a}</kbd><span>${b}</span></div>`;
   const kb = `<div class="controls" data-device="kbm">
     ${k('WASD / Arrows', 'Move')}${k('Mouse', 'Look · LMB fire')}${k('F / middle-click', 'Aim toggle: aim · sniper: zoom closer · off')}${k('Wheel while zoomed', 'Sniper zoom 1 / 2')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
-    ${k('C', 'Slide')}${k('Ctrl + Shift', 'Crouch-slide from a sprint')}${k('B / mouse back', 'Grapple')}${k('V / Alt', 'Dash')}${k('R', 'Reload · hold: pick up gun / open Weapon Box (E works too)')}${k('1-4 · L / Wheel', 'Switch gun (L = legendary slot)')}
+    ${k('C', 'Slide')}${k('Ctrl + Shift', 'Crouch-slide from a sprint')}${k('B / mouse back', 'Grapple')}${k('V / Alt', 'Dash')}${k('R', 'Reload · hold: pick up gun (E works too)')}${k('1-4 · L / Wheel', 'Switch gun (L = legendary slot)')}
     ${k('RMB', 'Cast the selected spell')}${k(keyLabel('spellSelect'), 'Next spell')}${k(['chainZap', 'swarm', 'manaShield', 'meteor'].map(keyLabel).join(' '), 'Quick cast: Chain Zap · Swarm · Mana Shield · Meteor')}${k('H', 'Use medkit')}
-    ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('5', 'Stats & powers')}${k('Enter', 'Ready / skip break')}${k('Esc', 'Pause · back in menus')}
+    ${k('Tab (hold)', 'Skills')}${k('O', 'Shop (between waves)')}${k('I', 'Your guns')}${k('5', 'Stats & powers')}${k('Enter', 'Ready / skip break')}${k('Esc', 'Pause · back in menus')}
     ${k('Arrows / WS · Enter', 'Menus: move · confirm')}${k('`', 'Debug panel')}${k('F3', 'Frame stats')}${k('M', 'Mute')}${k('N N', 'Send feedback')}${k('P', 'God mode (health stays at 99)')}
   </div>`;
   const g = (a) => padGlyph(PAD_BINDINGS[a] || a, style);
@@ -1176,7 +1237,7 @@ function controlsHtml(device = 'kbm', style = 'xbox') {
     ${k('Left stick', 'Move')}${k('Right stick', 'Look (aim assist near enemies)')}${k(g('fire'), 'Fire')}${k(g('aim'), 'Aim toggle: aim · sniper: zoom closer · off')}
     ${k(g('castSpell'), 'Cast the selected spell')}${k(g('spellSelect'), 'Next spell')}
     ${k(g('jump'), 'Jump / double jump')}${k(g('slide'), 'Slide')}${k(g('dash'), 'Dash')}${k(g('sprint'), 'Sprint (toggle)')}
-    ${k(g('reload'), `Reload · hold: pick up gun / open Weapon Box`)}${k(g('swap'), 'Next gun')}
+    ${k(g('reload'), `Reload · hold: pick up gun`)}${k(g('swap'), 'Next gun')}
     ${k(`${g('chainZap')} ${g('swarm')} ${g('manaShield')}`, 'Quick cast: Chain Zap · Sproto Swarm · Mana Shield')}${k(g('medkit'), 'Use medkit')}
     ${k(g('panel'), 'Shop (between waves) or your guns')}${k(g('pause'), 'Pause')}
     ${k(`D-pad / stick · ${padGlyph('a', style)}`, 'Menus: move · confirm')}${k(`${padGlyph('b', style)} · ${padGlyph('lb', style)} ${padGlyph('rb', style)}`, 'Back · switch tabs')}

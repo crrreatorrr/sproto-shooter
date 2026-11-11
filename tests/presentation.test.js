@@ -39,6 +39,56 @@ describe('event coverage', () => {
   });
 });
 
+describe('event coverage matches the presentation code', () => {
+  const sfx = fs.readFileSync('src/audio/sfx.js', 'utf8');
+  it("has a sound for every event that lists 'audio', and lists every sound", () => {
+    for (const [name, channels] of Object.entries(EVENT_COVERAGE)) {
+      const has = new RegExp(`\\n    ${name}\\(`).test(sfx);
+      expect(has, name).toBe(channels.includes('audio'));
+    }
+  });
+  it('announces the campaign events a player has to notice', async () => {
+    const { campaignNotice, CAMPAIGN_NOTICE_EVENTS, MODIFIER_INFO } = await import('../src/ui/hudText.js');
+    for (const type of ['levelCard', 'checkpoint', 'lockdown', 'lockdownReset', 'alarm', 'modifier', 'worldGun']) {
+      expect(CAMPAIGN_NOTICE_EVENTS, type).toContain(type);
+      expect(EVENT_COVERAGE[type], type).toContain('ui');
+    }
+    expect(campaignNotice({ type: 'levelCard', title: 'Sproto Landing', lines: ['Find the gate'] })).toMatchObject({ via: 'banner', dur: 2500 });
+    expect(campaignNotice({ type: 'lockdown', sealed: true }).html).toContain('LOCKDOWN');
+    expect(campaignNotice({ type: 'lockdown', sealed: false }).via).toBe('toast');
+    expect(campaignNotice({ type: 'lockdownReset' }).html).toContain('REWOUND');
+    expect(campaignNotice({ type: 'alarm', id: 'a' }).html).toContain('ALARM');
+    expect(campaignNotice({ type: 'alarm', id: 'a', cut: true }).via).toBe('toast');
+    expect(campaignNotice({ type: 'worldGun', gunType: 'shotgun' }).html).toBe('Picked up Shotgun');
+    // every modifier a level can hand out has a name and a line saying what it does
+    const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
+    const ids = new Set();
+    for (const f of walk('src/data/levels')) for (const m of fs.readFileSync(f, 'utf8').matchAll(/modifier: '([^']+)'/g)) ids.add(m[1]);
+    expect(ids.size).toBeGreaterThan(5);
+    for (const id of ids) expect(MODIFIER_INFO[id], id).toBeTruthy();
+  });
+  it('points the damage arc at the side the hit came from', async () => {
+    const { damageArcAngle } = await import('../src/ui/hudText.js');
+    // yaw 0 looks down -z. dir is atan2(dx, dz) from the player to the source.
+    expect(damageArcAngle(Math.PI, 0)).toBeCloseTo(0); // source at -z: straight ahead
+    expect(damageArcAngle(Math.PI / 2, 0)).toBeCloseTo(Math.PI / 2); // source at +x: from the right
+    expect(Math.abs(damageArcAngle(0, 0))).toBeCloseTo(Math.PI); // source at +z: behind
+    expect(damageArcAngle(-Math.PI / 2, 0)).toBeCloseTo(-Math.PI / 2); // source at -x: from the left
+    // turn to face +x... yaw -π/2 looks down +x, so a source at +x is ahead again
+    expect(damageArcAngle(Math.PI / 2, -Math.PI / 2)).toBeCloseTo(0);
+  });
+  it('shows each first-run tip once', async () => {
+    const { firstRunTip } = await import('../src/ui/hudText.js');
+    const seen = {};
+    expect(firstRunTip({ type: 'wavePre', waveIndex: 0 }, seen)).toMatch(/WASD/);
+    expect(firstRunTip({ type: 'wavePre', waveIndex: 0 }, seen)).toBeNull();
+    expect(firstRunTip({ type: 'damage', isWeak: false }, seen)).toBeNull();
+    expect(firstRunTip({ type: 'damage', isWeak: true }, seen)).toMatch(/BONK/);
+    expect(firstRunTip({ type: 'intermissionStart' }, seen)).toMatch(/shop/);
+    expect(firstRunTip({ type: 'intermissionStart' }, seen)).toBeNull();
+  });
+});
+
 describe('view registry', () => {
   it('reuses a keyed view instead of building another', () => {
     const scene = { add() {}, remove() {} };

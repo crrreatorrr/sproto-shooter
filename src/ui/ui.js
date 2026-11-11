@@ -1,34 +1,55 @@
-// DOM UI: HUD, crosshair, damage numbers, banners, loot card, skills, crafting, shop, boss bar, screens.
+// DOM UI: HUD, crosshair, damage numbers, banners, loot card, skills, shop, boss bar, screens.
 // UI never writes game state; it queues actions via input.queueAction().
 import { SKILLS, SKILL_IDS, PERKS, PERKS_BY_ID, SPELLS, SPELL_IDS, xpToNext } from '../data/skills.js';
 import { gunRange, hasInfiniteReserve, QUALITIES_BY_ID, ELEMENTS_BY_ID, GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, PARTS_BY_ID, SLOTS, WACKY_BY_ID, LEGENDARY_SLOT, slotUsable } from '../data/guns.js';
 import { SHOP } from '../data/shop.js';
-import { WAVES } from '../data/waves.js';
+import { WAVES, tierWave } from '../data/waves.js';
 import { BOSSES } from '../data/enemies.js';
 import { compareGuns, sellValue, dpsOf } from '../sim/guns.js';
-import { nearBox } from '../sim/economy.js';
 import { PAD_BINDINGS } from '../input/padConfig.js';
 import { padGlyph } from '../input/gamepad.js';
 import { keyLabel } from '../input/input.js';
 import { TUNING } from '../data/tuning.js';
 import { bossLabel } from './bossLabel.js';
 import { describePickup, pickupLine } from './pickupText.js';
+import { CAMPAIGN_NOTICE_EVENTS, campaignNotice, damageArcAngle, firstRunTip } from './hudText.js';
+
+/** Can a locked spell still be unlocked in the mode being played? Campaign: shrines. Wave Mode: wave clears. */
+export const spellObtainable = (s) => s.mode === 'campaign' || s.mode === 'waves';
+/** What to say when a locked spell is cast. */
+export function spellLockText(s) {
+  if (s.mode === 'campaign') return 'Locked: find its shrine in the campaign';
+  if (s.mode === 'waves') return 'Locked: clear waves to unlock more spells';
+  return 'Locked: not available in this mode';
+}
+
+// First-run tips already shown on this device. Presentation only; never read by the sim.
+const TIPS_KEY = 'sproto-shooter-tips';
+function loadTips() {
+  try { return JSON.parse(localStorage.getItem(TIPS_KEY) || '{}') || {}; } catch { return {}; }
+}
+function saveTips(seen) {
+  try { localStorage.setItem(TIPS_KEY, JSON.stringify(seen)); } catch { /* private mode: tips repeat next visit */ }
+}
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const fmt = (n, d = 0) => (Math.round(n * 10 ** d) / 10 ** d).toLocaleString();
 const SPELL_ICON = { gooBolt: '●', chainZap: 'ϟ', swarm: '✲', manaShield: '◈', meteor: '☄' };
 const TYPE_ICON = { mg: '▬', shotgun: '▮', sniper: '━', bazooka: '◉', raygun: '⚡', bigbullets: '●', duckgun: '🦆' };
-const PANEL_NAMES = { shop: 'Shop', inventory: 'Your guns', skills: 'Skills', stats: 'Stats & powers', craft: 'Weapon Box' };
+const PANEL_NAMES = { shop: 'Shop', inventory: 'Your guns', skills: 'Skills', stats: 'Stats & powers' };
+// The shop key. B is the grapple, and N (twice) is the feedback window, so the shop has its own.
+export const SHOP_KEY = 'KeyO';
+const SHOP_LABEL = 'O';
 
 export function createUI(root, { input, bus, project, game }) {
-  const st = { menu: null, tabHeld: false, statsOpen: false, craftTab: 'guns', craftType: 'mg', choice: { element: null, part: null, arcane: false }, lastKey: {}, rerollSlot: 0 };
+  const st = { menu: null, tabHeld: false, statsOpen: false, lastKey: {} };
 
   root.innerHTML = `
   <div id="hud">
     <div id="topbar">
       <div id="wave-info"></div>
-      <div id="currency"><span id="tickets"></span><span id="resources"></span></div>
+      <div id="currency"><span id="tickets"></span></div>
     </div>
     <div id="bossbars"></div>
     <div id="crosshair"><i></i><i></i><i></i><i></i></div>
@@ -55,6 +76,7 @@ export function createUI(root, { input, bus, project, game }) {
     <div id="feed"></div>
     <div id="downed"><div class="big">DOWNED!</div><div>Get a kill for a <b>Second Wind</b></div><div id="downed-t"></div></div>
     <div id="vignette"></div>
+    <div id="dmgdir"></div>
   </div>
   <div id="dmgnums"></div>
   <div id="panel" hidden></div>`;
@@ -72,14 +94,14 @@ export function createUI(root, { input, bus, project, game }) {
   });
 
   const els = {
-    wave: $('#wave-info', root), tickets: $('#tickets', root), resources: $('#resources', root), bossbars: $('#bossbars', root),
+    wave: $('#wave-info', root), tickets: $('#tickets', root), bossbars: $('#bossbars', root),
     cross: $('#crosshair', root), hit: $('#hitmarker', root),
     shield: $('.bar.shield', root), health: $('.bar.health', root), mana: $('.bar.mana', root),
     stamina: $('.bar.stamina', root), grapple: $('.bar.grapple', root),
     skills: $('#skills-mini', root),
     spells: $('#spells', root), gunName: $('#gun-name', root), mag: $('#mag', root), reserve: $('#reserve', root), slots: $('#slots', root), medkits: $('#medkits', root),
     prompt: $('#prompt', root), loot: $('#lootcard', root), banners: $('#banners', root), toasts: $('#toasts', root), feed: $('#feed', root),
-    downed: $('#downed', root), downedT: $('#downed-t', root), vignette: $('#vignette', root),
+    downed: $('#downed', root), downedT: $('#downed-t', root), vignette: $('#vignette', root), dmgdir: $('#dmgdir', root),
     dmg: $('#dmgnums', root), panel: $('#panel', root), screen: document.getElementById('screen'),
   };
 
@@ -141,10 +163,10 @@ export function createUI(root, { input, bus, project, game }) {
     setTimeout(() => b.classList.add('out'), dur);
     setTimeout(() => b.remove(), dur + 400);
   }
-  function toast(msg, cls = '') {
+  function toast(msg, cls = '', dur = 1800) {
     const t = h('div', 'toast ' + cls, msg);
     els.toasts.appendChild(t);
-    setTimeout(() => t.remove(), 1800);
+    setTimeout(() => t.remove(), dur);
     while (els.toasts.children.length > 4) els.toasts.firstChild.remove();
   }
   function feed(msg, color) {
@@ -161,7 +183,7 @@ export function createUI(root, { input, bus, project, game }) {
   bus.on('waveStart', () => banner('FIGHT!', 'fight', 900));
   bus.on('waveCleared', (ev) => banner(`<small>WAVE ${ev.waveIndex + 1}</small>CLEARED! <em>+${ev.tickets} Run Cash</em>`, 'cleared'));
   bus.on('intermissionStart', () => {
-    const msg = pad() ? `SHOP [${glyph(PAD_BINDINGS.panel)}] · CRAFT AT WEAPON BOXES<em>READY is in the shop</em>` : 'SHOP [B] · CRAFT AT WEAPON BOXES<em>ENTER when ready</em>';
+    const msg = pad() ? `SHOP [${glyph(PAD_BINDINGS.panel)}]<em>READY is in the shop</em>` : `SHOP [${SHOP_LABEL}]<em>ENTER when ready</em>`;
     banner(`<small>INTERMISSION</small>${msg}`, 'inter', 3200);
   });
   bus.on('bossIntro', (ev) => banner(`<small>⚠ BOSS INCOMING ⚠</small>${ev.types.map((t) => BOSSES[t].name).join(' + ')}`, 'boss', 3000));
@@ -172,14 +194,11 @@ export function createUI(root, { input, bus, project, game }) {
   bus.on('unkillableTriggered', () => banner('UNKILLABLE SPROTO!', 'perk', 1500));
   bus.on('actionFailed', (ev) => toast(String(ev.reason || '').replace(/tickets/gi, 'Run Cash'), 'bad'));
   bus.on('noMana', () => toast('Not enough mana', 'bad'));
-  bus.on('spellLocked', (ev) => { const pk = PERKS.find((x) => x.id === ev.spellId); toast(`Locked: Magic Lv ${pk ? pk.level : '?'}`, 'bad'); });
+  bus.on('spellLocked', () => toast(spellLockText(game.state), 'bad'));
   bus.on('gunPickedUp', (ev) => { const g = game.findGun(ev.gunId); if (g) feed(`Picked up ${g.name}`, QUALITIES_BY_ID[g.quality].color); });
-  bus.on('craftComplete', (ev) => toast(ev.category === 'gun' ? 'Gun crafted! Pick it up at the box' : 'Crafted!', 'good'));
   bus.on('purchase', (ev) => toast(`Bought (−${ev.price} Run Cash)`, 'good'));
   bus.on('sold', (ev) => toast(`Sold for ${ev.value} Run Cash`, 'good'));
   bus.on('vend', (ev) => toast({ gun: '🎰 A gun drops out!', resources: `🎰 ${String(ev.detail || '').replace(/tickets/gi, 'Run Cash')}`, jackpot: '🎰 JACKPOT! +60 Run Cash', chicken: '🎰 ...a rubber chicken. Squeak.' }[ev.outcome], 'good'));
-  bus.on('salvage', () => toast('Crafting is gone', 'bad'));
-  bus.on('reroll', () => toast('Stat rerolled!', 'good'));
   // Pickups: one feed line each, naming what it was. The same thing picked up again within the line's
   // life adds to its total instead of stacking lines, so a pile of drops stays readable.
   const pickupLines = new Map();
@@ -203,13 +222,48 @@ export function createUI(root, { input, bus, project, game }) {
     const d = describePickup(ev);
     if (d) notePickup(d);
   });
-  bus.on('secret', (ev) => feed(ev.modifier === 'bigHead' ? 'Secret found: Big Head Mode' : 'Secret found!', '#ffd166'));
+  bus.on('secret', (ev) => { if (!ev.modifier) feed('Secret found!', '#ffd166'); }); // a modifier gets its own banner below
+  // Campaign events: section cards, checkpoints, lockdowns, alarms, rewinds, secrets (src/ui/hudText.js).
+  for (const type of CAMPAIGN_NOTICE_EVENTS) {
+    bus.on(type, (ev) => {
+      let src = ev;
+      if (type === 'worldGun') { const s = game.state, g = s.players[s.localPlayerId].guns[ev.slot]; src = { ...ev, gunType: g && g.type }; }
+      const n = campaignNotice(src);
+      if (!n) return;
+      if (n.via === 'banner') banner(n.html, n.cls, n.dur);
+      else if (n.via === 'toast') toast(n.html, n.cls);
+      else feed(n.html, '#ffd166');
+    });
+  }
+  // First Wave Mode run on this device: one-line tips when they apply. Never in a rewarded run.
+  const tips = loadTips();
+  const tipFor = (ev) => {
+    if (game.state.mode !== 'waves' || game.rewardedCampaign?.active) return;
+    const t = firstRunTip(ev, tips, { pad: pad() });
+    if (t) { toast(t, 'tip', 5200); saveTips(tips); }
+  };
+  for (const type of ['wavePre', 'waveStart', 'damage', 'intermissionStart', 'playerDowned']) bus.on(type, tipFor);
+  bus.on('spellUnlocked', (ev) => { const sp = SPELLS[ev.spellId]; if (sp) setTimeout(() => banner(`<small>SPELL UNLOCKED</small>${SPELL_ICON[ev.spellId]} ${sp.name}<em>${spellKey(ev.spellId) ? `Quick cast: ${spellKey(ev.spellId)} · ` : ''}Q picks the next spell</em>`, 'perk', 2800), 900); });
   bus.on('shrine', (ev) => { const sp = SPELLS[ev.spell]; feed(`Spell unlocked: ${sp && sp.name ? sp.name : 'new spell'}`, '#7cff4a'); });
   bus.on('kill', (ev) => { if (ev.elite) feed('Elite down!', '#ffd700'); });
+  // Damage direction: a red arc on the side the hit came from. It follows the view while it fades.
+  const arcs = Array.from({ length: 4 }, () => { const el = h('div', 'dmgarc'); els.dmgdir.appendChild(el); return { el, dir: 0, until: 0 }; });
+  let arcIdx = 0;
   bus.on('playerDamaged', (ev) => {
     els.vignette.className = ''; void els.vignette.offsetWidth;
     els.vignette.className = ev.toHealth > 0 ? 'hurt' : 'shield';
+    if (ev.dir == null || ev.sourceKind === 'self' || ev.sourceKind === 'world') return;
+    if (ev.playerId != null && ev.playerId !== game.state.localPlayerId) return;
+    const a = arcs[arcIdx++ % arcs.length];
+    a.dir = ev.dir; a.until = performance.now() + 900;
+    a.el.classList.remove('on'); void a.el.offsetWidth; a.el.classList.add('on');
   });
+  function updateArcs(now, yaw) {
+    for (const a of arcs) {
+      if (a.until <= now) { if (a.until) { a.until = 0; a.el.classList.remove('on'); } continue; }
+      a.el.style.transform = `rotate(${damageArcAngle(a.dir, yaw).toFixed(3)}rad)`;
+    }
+  }
   bus.on('victory', () => game.showScreen('victory'));
   bus.on('bossFightOver', (ev) => setTimeout(() => game.showScreen(ev.won ? 'bossWon' : 'bossLost'), ev.won ? 1800 : 1200));
   bus.on('defeat', () => game.showScreen('defeat'));
@@ -227,25 +281,14 @@ export function createUI(root, { input, bus, project, game }) {
   function padMenus() { return [...(game.shopOpen() ? ['shop'] : []), 'inventory', 'skills', 'stats']; }
   /** Gamepad View button: the shop when it is open, otherwise your guns. */
   function openGearPanel() { openMenu(game.shopOpen() ? 'shop' : 'inventory'); }
-  /** Gamepad LB / RB inside a menu: Weapon Box tabs, otherwise the next menu. */
+  /** Gamepad LB / RB inside a menu: the next menu. */
   function cycleMenu(dir) {
     if (!st.menu) return;
-    if (st.menu === 'craft') {
-      const tabs = ['guns', 'items', 'workshop'];
-      st.craftTab = tabs[(tabs.indexOf(st.craftTab) + dir + tabs.length) % tabs.length];
-      renderPanel();
-      return;
-    }
     const list = padMenus();
     const i = list.indexOf(st.menu);
     st.menu = list[(Math.max(0, i) + dir + list.length) % list.length];
     renderPanel();
   }
-  // A held reload (R or X) reached pick up: the sim picks up the gun in reach; with none, open the Weapon Box.
-  input.on('holdInteract', () => {
-    const s = game.state, p = s.players[s.localPlayerId];
-    if (!st.menu && els.screen.hidden && !p.nearGunPickupId && nearBox(s, p)) openMenu('craft');
-  });
   const pad = () => input.device === 'pad';
   const glyph = (b) => padGlyph(b, game.padStyle || 'xbox');
   /** Prompt label for an action on the device in use: '[E]' on keyboard, '[Hold X]' on a pad. */
@@ -274,14 +317,11 @@ export function createUI(root, { input, bus, project, game }) {
     if (e.code === 'Tab') { st.tabHeld = true; return; }
     if (!els.screen.hidden) return;
     if (e.code === 'Digit5' && !st.menu) { st.statsOpen = !st.statsOpen; return; }
-    if ((e.code === 'KeyE' || e.code === 'KeyG') && !st.menu) {
-      const s = game.state, p = s.players[s.localPlayerId];
-      if (!p.nearGunPickupId && nearBox(s, p)) openMenu('craft');
-    } else if (e.code === 'KeyB' && !st.menu) {
-      const s = game.state;
-      if (game.shopOpen()) openMenu('shop'); else toast('Shop opens between waves', 'bad');
+    // B is the grapple and nothing else: it neither opens the shop nor raises a toast.
+    if (e.code === SHOP_KEY && !st.menu) {
+      if (game.shopOpen()) openMenu('shop'); else if (game.state.mode === 'waves') toast('Shop opens between waves', 'bad');
     } else if (e.code === 'KeyI' && !st.menu) openMenu('inventory');
-    else if ((e.code === 'Escape' || e.code === 'KeyB' || e.code === 'KeyE' || e.code === 'KeyG' || e.code === 'KeyI') && st.menu) closeMenu();
+    else if ((e.code === 'Escape' || e.code === SHOP_KEY || e.code === 'KeyI') && st.menu) closeMenu();
   });
   input.on('keyup', (e) => { if (e.code === 'Tab') st.tabHeld = false; });
 
@@ -289,19 +329,8 @@ export function createUI(root, { input, bus, project, game }) {
     const b = e.target.closest('[data-act]');
     if (!b) return;
     const a = b.dataset.act;
-    const s = game.state, p = s.players[s.localPlayerId];
-    const box = nearBox(s, p);
     switch (a) {
       case 'close': closeMenu(); break;
-      case 'craftTab': st.craftTab = b.dataset.v; renderPanel(); break;
-      case 'craftType': st.craftType = b.dataset.v; renderPanel(); break;
-      case 'element': st.choice.element = b.dataset.v === 'random' ? null : b.dataset.v; renderPanel(); break;
-      case 'part': st.choice.part = b.dataset.v === 'random' ? null : { slot: b.dataset.slot, id: b.dataset.v }; renderPanel(); break;
-      case 'arcane': st.choice.arcane = !st.choice.arcane; renderPanel(); break;
-      case 'craft': if (box) act({ type: 'craft', boxId: box.id, recipeId: b.dataset.v, choice: { ...st.choice } }); break;
-      case 'salvage': act({ type: 'salvage', slot: +b.dataset.v }); break;
-      case 'rerollSlot': st.rerollSlot = +b.dataset.v; renderPanel(); break;
-      case 'reroll': act({ type: 'reroll', slot: st.rerollSlot, stat: b.dataset.v }); break;
       case 'buy': act({ type: 'buy', offerId: +b.dataset.v }); break;
       case 'sell': act({ type: 'sell', slot: +b.dataset.v }); break;
       case 'drop': act({ type: 'dropGun', slot: +b.dataset.v }); break;
@@ -347,15 +376,14 @@ export function createUI(root, { input, bus, project, game }) {
     if (!st.menu) return;
     const s = game.state, p = s.players[s.localPlayerId];
     let body = '';
-    if (st.menu === 'craft') body = craftHtml(s, p);
-    else if (st.menu === 'shop') body = shopHtml(s, p);
+    if (st.menu === 'shop') body = shopHtml(s, p);
     else if (st.menu === 'inventory') body = inventoryHtml(s, p);
     else if (st.menu === 'skills') body = skillsHtml(p);
     else if (st.menu === 'stats') body = statsHtml(s, p);
     let padTabs = '';
     if (pad()) {
-      const names = st.menu === 'craft' ? ['Tabs'] : padMenus().map((m) => PANEL_NAMES[m]);
-      const on = st.menu === 'craft' ? 'Tabs' : PANEL_NAMES[st.menu];
+      const names = padMenus().map((m) => PANEL_NAMES[m]);
+      const on = PANEL_NAMES[st.menu];
       padTabs = `<div class="padtabs"><kbd>${glyph('lb')}</kbd>${names.map((n) => `<span class="${n === on ? 'on' : ''}">${n}</span>`).join('')}<kbd>${glyph('rb')}</kbd></div>`;
     }
     els.panel.innerHTML = `<div class="pwrap">${padTabs}${body}<button class="x" data-act="close" data-nav-back>✕ Close ${pad() ? `[${glyph('b')}]` : '[Esc]'}</button></div>`;
@@ -363,10 +391,6 @@ export function createUI(root, { input, bus, project, game }) {
 
   function resBar(p) {
     return `<div class="resbar"><span class="tk" title="Run Cash, not hub Tickets">Run Cash ${p.tickets}</span></div>`;
-  }
-
-  function craftHtml() {
-    return `<h2>Crafting is gone</h2><p>Guns are found. Ammo and medkits are picked up or bought with Run Cash.</p>`;
   }
 
   function shopHtml(s, p) {
@@ -401,7 +425,7 @@ export function createUI(root, { input, bus, project, game }) {
   function skillsHtml(p) {
     return `<div class="skills-screen">${SKILL_IDS.map((id) => {
       const sk = p.skills[id], def = SKILLS[id];
-      const need = sk.level >= 10 ? 1 : xpToNext(id, sk.level);
+      const need = sk.level >= 10 ? 1 : xpToNext(id, sk.level, game.state.mode);
       const perks = PERKS.filter((k) => k.skill === id).map((k) => `<div class="perk ${p.perks[k.id] ? 'on' : ''}"><b>Lv${k.level}</b> ${k.name}<small>${k.desc}</small></div>`).join('');
       const src = { health: 'Kill monsters, take damage, pick up healing, defeat Physical bosses', gunslinger: 'Gun kills, crits and weak spots, defeat Physical bosses' }[id];
       return `<div class="skc" style="--c:${def.color}"><div class="skh">${def.icon} ${def.name} <span>Lv ${sk.level}</span></div>
@@ -433,7 +457,7 @@ export function createUI(root, { input, bus, project, game }) {
       const cost = id === 'meteor' ? p.maxMana : sp.mana;
       const cd = p.spells.cd[id];
       const earned = !!(p.spellUnlocks && p.spellUnlocks[id]) || (id === 'gooBolt' && s.mode !== 'campaign');
-      const status = !p.perks[id] ? `<em class="lock">🔒 LOCKED · find it in the campaign</em>`
+      const status = !p.perks[id] ? `<em class="lock">🔒 LOCKED · ${s.mode === 'waves' ? 'clear waves to unlock' : 'find it in the campaign'}</em>`
         : id === 'manaShield' && p.spells.manaShieldOn ? '<em class="ok">ON</em>'
         : cd > 0 ? `<em class="wait">Cooldown ${cd.toFixed(1)} s</em>`
         : p.mana < cost - 0.5 ? '<em class="wait">Not enough mana</em>' : '<em class="ok">READY</em>';
@@ -443,7 +467,7 @@ export function createUI(root, { input, bus, project, game }) {
     }).join('');
     const perks = PERKS.filter((k) => !SPELLS[k.id]).map((k) => `<div class="power ${p.perks[k.id] ? '' : 'locked'}"><kbd>${ICON[k.skill]}</kbd><div><b>${k.name}</b> ${p.perks[k.id] ? '<em class="ok">ACTIVE</em>' : `<em class="lock">🔒 LOCKED · needs ${SKILLS[k.skill].name} Lv ${k.level} (you're Lv ${p.skills[k.skill].level})</em>`}<small>${k.desc}</small></div></div>`).join('');
     return `<div class="stats-screen">${stats}
-      <div class="skc" style="--c:#9b6bff"><div class="skh">🔮 Spells</div>${spells}<div class="src">Goo Bolt is free outside the campaign. The rest are found in campaign levels.</div></div>
+      <div class="skc" style="--c:#9b6bff"><div class="skh">🔮 Spells</div>${spells}<div class="src">Goo Bolt is free outside the campaign. Wave Mode unlocks one more spell per cleared wave. Campaign spells come from shrines.</div></div>
       <div class="skc" style="--c:#4fd1c5"><div class="skh">✨ Perks</div>${perks}</div>
     </div><div class="hint">${st.menu === 'stats' ? (pad() ? `${glyph('b')} to close` : 'Esc to close') : 'Press 5 to close'} · the game keeps running</div>`;
   }
@@ -457,12 +481,13 @@ export function createUI(root, { input, bus, project, game }) {
     lastT = now;
     const p = s.players[s.localPlayerId];
     updateNums(dt);
+    updateArcs(now, p.yaw);
 
     // vitals
     if (p.stamina != null) {
       const gLeft = p.grapple ? 1 : (p.grappleCd > 0 ? 1 - p.grappleCd / TUNING.grappleCd : 1);
       bar(els.stamina, 'sta', p.stamina, p.staminaLock ? 'STAMINA' : 'Sprint');
-      bar(els.grapple, 'grp', Math.max(0, Math.min(1, gLeft)), p.grapple ? 'HOOK' : (p.grappleCd > 0 ? 'Grapple' : 'G'));
+      bar(els.grapple, 'grp', Math.max(0, Math.min(1, gLeft)), p.grapple ? 'HOOK' : (p.grappleCd > 0 ? 'Grapple' : pad() ? 'Grapple ready' : `Grapple [${keyLabel('grapple')}]`));
       els.stamina.hidden = false;
       els.grapple.hidden = false;
     } else {
@@ -477,7 +502,7 @@ export function createUI(root, { input, bus, project, game }) {
       const sk = p.skills[id];
       const el = els.skills.querySelector(`[data-sk="${id}"]`);
       text(el.querySelector('.lv'), 'sklv' + id, 'Lv ' + sk.level);
-      const fr = sk.level >= 10 ? 1 : sk.xp / xpToNext(id, sk.level);
+      const fr = sk.level >= 10 ? 1 : Math.min(1, sk.xp / xpToNext(id, sk.level, s.mode));
       set(el, 'skxp' + id, Math.round(fr * 100), (e, v) => { e.querySelector('.xp b').style.width = v + '%'; });
     }
     // spells
@@ -488,6 +513,8 @@ export function createUI(root, { input, bus, project, game }) {
       const cost = id === 'meteor' ? p.maxMana : SPELLS[id].mana;
       const state = !unlocked ? 'locked' : (id === 'manaShield' && p.spells.manaShieldOn) ? 'active' : cd > 0 ? 'cd' : p.mana < cost - 0.5 ? 'nomana' : 'ready';
       set(el, 'sps' + id, state + (id === input.spell ? ' sel' : ''), (e, v) => { e.className = 'sp ' + v; });
+      // A slot this mode can never open is not shown at all (Boss Fight and the sandbox only ever have Goo Bolt).
+      set(el, 'sph' + id, !unlocked && !spellObtainable(s), (e, v) => { e.hidden = v; });
       text(el.querySelector('.key'), 'spk' + id, spellKey(id));
       set(el, 'spc' + id, Math.round((cd / max) * 100), (e, v) => { e.querySelector('.cd').style.height = v + '%'; });
     }
@@ -510,19 +537,18 @@ export function createUI(root, { input, bus, project, game }) {
 
     // top bar
     text(els.tickets, 'tk', `Run Cash ${p.tickets}`);
-    html(els.resources, 'rs', '');
     let wave = '';
     if (s.mode === 'campaign' && s.level) {
       const lv = s.level;
       const fuel = lv.fuel > 0 || (s.players[s.localPlayerId].jetpack) ? ` · fuel ${Math.ceil(lv.fuel)}` : '';
       wave = `<b>${lv.name}</b> · ${lv.objective || ''}${fuel}`;
     } else if (s.mode === 'boss' && s.bossFight) wave = `<b>BOSS FIGHT</b> · ${BOSSES[s.bossFight.type].name} · Tier ${s.tier}`;
-    else if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> · Tier ${s.tier} <small>${pad() ? `[${glyph(PAD_BINDINGS.panel)}] shop` : '[`] debug · [B] shop'}</small>`;
+    else if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> · Tier ${s.tier} <small>${pad() ? `[${glyph(PAD_BINDINGS.panel)}] shop` : `[\`] debug · [${SHOP_LABEL}] shop`}</small>`;
     else if (s.wave) {
       const w = s.wave;
       const left = s.enemies.filter((e) => !e.dead && e.type !== 'dummy').length + w.spawnQueue.length;
-      const remainingGroups = WAVES[w.index].groups.slice(w.groupIdx).reduce((n, gg) => n + gg.spawns.reduce((m, x) => m + x.count, 0), 0);
-      const phaseTxt = { pre: 'Get ready…', combat: `Enemies left: ${left + remainingGroups}`, bossIntro: 'BOSS INCOMING', boss: 'BOSS FIGHT', cleared: 'Cleared!', intermission: `Intermission ${Math.ceil(w.intermissionT)}s · ${pad() ? `[${glyph(PAD_BINDINGS.panel)}] Shop · Ready in the shop` : '[B] Shop · [Enter] Ready'}`, victory: 'VICTORY', defeat: 'DEFEAT' }[w.phase];
+      const remainingGroups = tierWave(w.index, s.tier).groups.slice(w.groupIdx).reduce((n, gg) => n + gg.spawns.reduce((m, x) => m + x.count, 0), 0);
+      const phaseTxt = { pre: 'Get ready…', combat: `Enemies left: ${left + remainingGroups}`, bossIntro: 'BOSS INCOMING', boss: 'BOSS FIGHT', cleared: 'Cleared!', intermission: `Intermission ${Math.ceil(w.intermissionT)}s · ${pad() ? `[${glyph(PAD_BINDINGS.panel)}] Shop · Ready in the shop` : `[${SHOP_LABEL}] Shop · [Enter] Ready`}`, victory: 'VICTORY', defeat: 'DEFEAT' }[w.phase];
       wave = `<b>WAVE ${w.index + 1}/3</b> · Tier ${s.tier} · ${phaseTxt}`;
     }
     if (s.tuning.godMode) wave += ' · <b class="god">GOD MODE</b>';
@@ -569,18 +595,15 @@ export function createUI(root, { input, bus, project, game }) {
     // prompt + loot card
     let prompt = '';
     const nearGun = p.nearGunPickupId ? s.pickups.find((k) => k.id === p.nearGunPickupId) : null;
-    const box = nearBox(s, p);
     if (p.dead) prompt = s.mode === 'sandbox' ? `Respawning in ${Math.max(0, p.respawnT).toFixed(1)}s…` : '';
     else if (nearGun) {
       const leg = nearGun.gun && nearGun.gun.quality === 'legendary';
       const full = p.guns.slice(0, p.unlockedSlots).every(Boolean);
       prompt = `<b>${keyTag(keyLabel('reload'), PAD_BINDINGS.interact, true)}</b> Pick up${leg ? (p.guns[LEGENDARY_SLOT] && full ? ' (swaps your legendary)' : ` → legendary slot${pad() ? '' : ' [L]'}`) : full ? ' (swaps with equipped)' : ''}`;
     }
-    else if (box && game.rewardedCampaign?.controlsRestricted) prompt = 'Weapon Box unavailable in rewarded mode';
-    else if (box) prompt = `<b>${keyTag(keyLabel('reload'), PAD_BINDINGS.interact, true)}</b> Open Weapon Box${box.craft ? ' (crafting…)' : ''}`;
-    else if (s.wave && s.wave.phase === 'intermission') prompt = pad() ? `<b>${keyTag('B', PAD_BINDINGS.panel)}</b> Shop · Ready` : '<b>[B]</b> Shop · <b>[Enter]</b> Ready';
+    else if (s.wave && s.wave.phase === 'intermission') prompt = pad() ? `<b>${keyTag(SHOP_LABEL, PAD_BINDINGS.panel)}</b> Shop · Ready` : `<b>[${SHOP_LABEL}]</b> Shop · <b>[Enter]</b> Ready`;
     html(els.prompt, 'prompt', prompt);
-    const hold = (nearGun || box) && !p.dead ? input.holdProgress : 0;
+    const hold = nearGun && !p.dead ? input.holdProgress : 0;
     set(els.prompt, 'hold', Math.round(hold * 100), (e, v) => e.style.setProperty('--hold', v + '%'));
     html(els.loot, 'loot', nearGun ? gunCardHtml(nearGun.gun, g) : '');
     set(els.loot, 'lootv', !!nearGun, (e, v) => e.classList.toggle('on', v));
@@ -598,9 +621,8 @@ export function createUI(root, { input, bus, project, game }) {
       if (now - statsEl.dataset.t > 200) { statsEl.dataset.t = now; statsEl.innerHTML = statsHtml(s, p); }
     } else if (statsEl) { statsEl.remove(); statsEl = null; }
 
-    // live refresh of open panel (cooldowns, intermission timer, crafting progress)
+    // live refresh of open panel (cooldowns, intermission timer)
     if (st.menu && (now - (st.lastPanel || 0) > 400)) { st.lastPanel = now; const y = els.panel.querySelector('.pwrap')?.scrollTop; renderPanel(); const w = els.panel.querySelector('.pwrap'); if (w && y) w.scrollTop = y; }
-    if (st.menu === 'craft' && !nearBox(s, p)) closeMenu();
   }
 
   function setPvp(on) {

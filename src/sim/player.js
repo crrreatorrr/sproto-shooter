@@ -501,6 +501,7 @@ export function respawn(state, p) {
   p.hp = p.maxHp; p.shield = p.maxShield; p.mana = p.maxMana;
   p.pos = { x: 0, y: 0, z: 8 }; p.prevPos = { ...p.pos }; p.vel = { x: 0, y: 0, z: 0 };
   p.invulnT = 2; p.unkillableUsed = false;
+  if (p.downCount != null) delete p.downCount;
   emit(state, 'playerRespawn', { playerId: p.id });
 }
 
