@@ -1,0 +1,34 @@
+name: checkpoint-snapshots
+on:
+  pull_request:
+    paths:
+      - src/server/checkpoint.js
+      - src/sim/campaign/campaign.js
+      - tests/server/checkpoint-serialization.test.js
+      - .github/workflows/checkpoint-snapshots.yml
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Validate complete private checkpoint serialization
+        run: npx vitest run tests/server/checkpoint-serialization.test.js --no-file-parallelism
+      - name: Build both pinned simulator artifacts from the tested source
+        run: npm run build:server-sim
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checkpoint-simulator-artifacts
+          path: |
+            build/shooter-sim.js
+            build/shooter-sim.pin.json
+            build/shooter-pvp-sim.js
+            build/shooter-pvp-sim.pin.json
+          if-no-files-found: error
