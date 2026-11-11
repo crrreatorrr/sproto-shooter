@@ -173,9 +173,18 @@ it('actual UI drains old actions, records canonical play, pauses hidden/hitstop,
     expect(await f.page.evaluate(() => ({ active: window.__game.rewardedCampaign.snapshot().active,
       gate: window.__game.canonicalRewardRecorder, scale: window.__game.timeScale, feel: window.__game.feel.presentScale }))).toEqual({ active: false, gate: null, scale: .2, feel: .3 });
     await f.page.evaluate(() => { window.__game.crash.halted = false; });
-    await f.page.waitForFunction(() => window.__game.state.tick > 6);
-    await expect.poll(() => f.requests.filter((r) => r.op === 'finish').length).toBe(1);
+    await f.page.waitForFunction(() => {
+      if (window.__game.state.tick <= 6) return false;
+      // This short fixture proves actual casual RAF resumes, then returns to
+      // its manual-frame lane. Continuous desktop SwiftShader rendering must
+      // not compete with the ordered background append/finish assertions.
+      window.__game.crash.halted = true;
+      return true;
+    });
+    // Finish follows durable append receipt in the real controller. Observe
+    // that prerequisite first; neither original one-second poll is extended.
     await expect.poll(() => [...f.runs.values()][0].batches.size).toBe(1);
+    await expect.poll(() => f.requests.filter((r) => r.op === 'finish').length).toBe(1);
     await f.page.waitForFunction(() => window.__game.rewardedCampaign.snapshot().reminders > 0, null, { timeout: 15000 });
     const data = [...f.runs.values()][0], batches = [...data.batches.values()];
     expect(batches[0].n).toBe(6);
@@ -186,6 +195,18 @@ it('actual UI drains old actions, records canonical play, pauses hidden/hitstop,
     await f.page.screenshot({ path: path.join(dir, 'explicit-unranked.png') });
     fs.writeFileSync(path.join(dir, 'ui-prefix.json'), JSON.stringify({ sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), requests: f.requests, before, log }, null, 2));
     expect(f.errors).toEqual([]);
+  } catch (error) {
+    const state = await f.page.evaluate(() => {
+      const g = window.__game, c = g.rewardedCampaign.current?.controller?.status();
+      return { tick: g.state.tick, reward: g.rewardedCampaign.snapshot(), halted: g.crash.halted,
+        controller: c ? { busy: c.busy, paused: c.paused, problem: c.problem, accepted: c.accepted,
+          finishRequested: c.finishRequested, sealUnknown: c.sealUnknown, sealCalls: c.sealCalls,
+          writesStopped: c.writesStopped, recordingStopped: c.recordingStopped, recorder: c.recorder } : null };
+    }).catch(() => ({ unavailable: true }));
+    fs.writeFileSync(path.join(dir, 'unranked-finish-diagnostics.json'), JSON.stringify({ state,
+      operations: f.requests.map(({ op, body }) => ({ op, sequence: body.sequence ?? null, n: body.n ?? null,
+        lastSequence: body.lastSequence ?? null, lastTick: body.lastTick ?? null })), pageErrorCount: f.errors.length }, null, 2));
+    throw error;
   } finally { await f.close(); }
 }, 120000);
 
