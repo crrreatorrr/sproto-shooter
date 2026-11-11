@@ -285,3 +285,12 @@ label.nav-focus { padding: 2px 6px; }
   .character-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .character-card img { max-width: 9rem; }
 }
+
+/* Dormant rewarded UI; mounted only by the default-off client feature. */
+.reward-dialog { width:min(720px,94vw); max-height:92vh; overflow:auto; padding:24px; background:#181223; border:2px solid #8064a8; border-radius:16px; }
+.reward-dialog h1 { font-size:clamp(24px,4vw,40px); margin:0 0 12px; }
+.reward-dialog p,.reward-dialog li { font-size:16px; line-height:1.45; }
+.reward-dialog li { margin:8px 0; }
+.reward-dialog label { display:block; margin:16px 0; }
+.reward-dialog select { margin-left:12px; padding:8px; font:inherit; }
+.reward-dialog :focus-visible,.reward-live:focus-visible { outline:3px solid #ffe09a; outline-offset:3px; }
