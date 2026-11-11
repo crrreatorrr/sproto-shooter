@@ -254,6 +254,43 @@ it.each(['identity round trip', 'Back'])('cancels an unissued start during defer
   } finally { await f.close(); }
 }, 90000);
 
+it('ordinary pause keyboard navigation and Escape resume preserve the rewarded gate and unsealed recording', async () => {
+  const f = await fixture();
+  try {
+    await startFromUI(f);
+    await f.page.mouse.click(500, 450);
+    await f.page.waitForFunction(() => window.__game.input.locked);
+    await f.page.evaluate(() => {
+      window.__stepUI();
+      window.__pauseGate = window.__game.canonicalRewardRecorder;
+      window.__pauseRun = window.__game.rewardedCampaign.snapshot().runId;
+      document.exitPointerLock(); // Native mouse release; Game opens its normal pause DOM.
+    });
+    await f.page.waitForSelector('.pause [data-p="resume"]');
+    await f.page.evaluate(() => window.__stepUI()); // Real Game menu-nav synchronization; no due sim tick.
+    await f.page.locator('.pause [data-p="resume"]').focus();
+    await f.page.keyboard.press('ArrowDown');
+    expect(await f.page.locator('.pause [data-p="resume"]').getAttribute('class')).toContain('nav-focus');
+    await f.page.keyboard.press('ArrowDown');
+    expect(await f.page.locator('.pause [data-p="title"]').getAttribute('class')).toContain('nav-focus');
+    expect(await f.page.evaluate(() => window.__game.state.tick)).toBe(1);
+    // Existing Game Escape handling deliberately waits out the native release
+    // edge. Wait real wall time; do not age clocks or replace input.lock().
+    await f.page.waitForFunction(() => performance.now() - window.__game._pausedAt > 400);
+    await f.page.keyboard.press('Escape');
+    await f.page.waitForFunction(() => window.__game.screen.hidden && window.__game.input.locked);
+    await f.page.evaluate(() => window.__stepUI());
+    expect(await f.page.evaluate(() => {
+      const g = window.__game, view = g.rewardedCampaign.snapshot();
+      return { sameGate: g.canonicalRewardRecorder === window.__pauseGate, sameRun: view.runId === window.__pauseRun,
+        tick: g.state.tick, view, stopped: g.rewardedCampaign.current.controller.status().recordingStopped };
+    })).toMatchObject({ sameGate: true, sameRun: true, tick: 2, stopped: null,
+      view: { phase: 'playing', active: true, recording: true, recordedTick: 2, sealed: false, pendingSlots: 1 } });
+    expect(f.requests.filter((row) => row.op === 'finish')).toEqual([]);
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+}, 90000);
+
 it('keeps native keyboard focus inside the reward dialog and leaves normal menus usable after closing', async () => {
   const f = await fixture();
   try {
