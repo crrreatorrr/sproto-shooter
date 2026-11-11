@@ -44,6 +44,7 @@ describe('local Wave Mode in Chromium', () => {
   it('pauses, changes settings, resumes, and repeatedly restarts Wave Mode', async () => {
     await visit(async (page) => {
       for (let run = 0; run < 3; run++) {
+        if (run === 0) await page.setViewportSize({ width: 1920, height: 1080 });
         await page.locator('[data-go="waves"]').click();
         await page.waitForFunction(() => window.__game.state.mode === 'waves' && window.__game.state.tick > 5);
         await page.evaluate(() => window.__game.pauseGame());
@@ -51,10 +52,16 @@ describe('local Wave Mode in Chromium', () => {
         const tick = await page.evaluate(() => window.__game.state.tick);
         await page.locator('#sens').fill('1.5');
         await page.locator('#fxq').selectOption('low');
+        await page.locator('#graphics-preset').selectOption('low');
+        if (run === 0) {
+          await page.waitForFunction(() => window.__game.renderer.canvas.width === 1280 && window.__game.renderer.canvas.height === 720);
+          await page.setViewportSize({ width: 640, height: 360 });
+          await page.waitForFunction(() => window.__game.renderer.canvas.width === 640 && window.__game.renderer.canvas.height === 360);
+        }
         expect(await page.evaluate(() => ({ sensitivity: window.__game.settings.sensitivity, fxQuality: window.__game.settings.fxQuality })))
           .toEqual({ sensitivity: 1.5, fxQuality: 'low' });
         expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sproto-campaign-profile')).settings))
-          .toMatchObject({ sensitivity: 1.5, fxQuality: 'low' });
+          .toMatchObject({ sensitivity: 1.5, fxQuality: 'low', graphicsPreset: 'low' });
         await page.waitForTimeout(100);
         expect(await page.evaluate(() => window.__game.state.tick)).toBe(tick);
         await page.locator('[data-p="resume"]').click();
@@ -62,6 +69,10 @@ describe('local Wave Mode in Chromium', () => {
         await page.evaluate(() => window.__game.pauseGame());
         await page.locator('[data-p="title"]').click();
       }
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => window.__game?.settings.graphicsPreset === 'low');
+      expect(await page.evaluate(() => ({ width: window.__game.renderer.canvas.width, height: window.__game.renderer.canvas.height })))
+        .toEqual({ width: 640, height: 360 });
     });
   }, 120000);
 

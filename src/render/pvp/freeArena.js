@@ -5,12 +5,12 @@ import { createPvpClient } from '../../net/client.js';
 
 export function mountFreeArena({
   root, match, accountId, input, onLeave, views,
-  panelHtml, paint, playSounds, createPvpSfx,
+  panelHtml, paint, playSounds, createPvpSfx, getGraphicsPreset = null,
 }) {
   root.onclick = null;
   root.innerHTML = `<div style="position:absolute;inset:0;display:flex;flex-direction:column">${panelHtml('Free match')}<button class="btn alt" data-pvp-go="back" data-nav-back style="position:absolute;top:12px;right:12px">Leave match</button></div>`;
   const canvas = root.querySelector('canvas');
-  const view = createArenaView(canvas);
+  const view = createArenaView(canvas, { getGraphicsPreset });
   views.push(view);
   const client = createPvpClient({ accountId, match });
   const panel = root.querySelector('[data-seat-panel]');

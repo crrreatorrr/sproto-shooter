@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import { TUNING } from '../../data/tuning.js';
+import { graphicsPixelRatio, normalizeGraphicsPreset } from '../graphicsPresets.js';
 
-export function createRenderContext(container) {
+export function createRenderContext(container, initialPreset = 'high') {
+  let preset = normalizeGraphicsPreset(initialPreset);
+  const initialWidth = Math.max(1, container.clientWidth), initialHeight = Math.max(1, container.clientHeight);
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.info.autoReset = false;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(graphicsPixelRatio(preset, initialWidth, initialHeight, window.devicePixelRatio));
+  renderer.setSize(initialWidth, initialHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.localClippingEnabled = true; // first-person body clipping (firstPerson.js)
   container.appendChild(renderer.domElement);
@@ -43,7 +46,7 @@ export function createRenderContext(container) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x2a1b4a);
   scene.fog = new THREE.Fog(0x2a1b4a, 40, 110);
-  const camera = new THREE.PerspectiveCamera(TUNING.fovBase, container.clientWidth / container.clientHeight, 0.05, 300);
+  const camera = new THREE.PerspectiveCamera(TUNING.fovBase, initialWidth / initialHeight, 0.05, 300);
   camera.rotation.order = 'YXZ';
   scene.add(camera);
 
@@ -64,8 +67,13 @@ export function createRenderContext(container) {
     return { x: (_v.x * 0.5 + 0.5) * renderer.domElement.clientWidth, y: (-_v.y * 0.5 + 0.5) * renderer.domElement.clientHeight, behind: _v.z > 1 };
   }
 
+  let lastWidth = initialWidth, lastHeight = initialHeight, lastRatio = renderer.getPixelRatio();
   function resize() {
-    const w = container.clientWidth, h = container.clientHeight;
+    const w = Math.max(1, container.clientWidth), h = Math.max(1, container.clientHeight);
+    const ratio = graphicsPixelRatio(preset, w, h, window.devicePixelRatio);
+    if (w === lastWidth && h === lastHeight && ratio === lastRatio) return;
+    lastWidth = w; lastHeight = h; lastRatio = ratio;
+    if (renderer.getPixelRatio() !== ratio) renderer.setPixelRatio(ratio);
     renderer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
@@ -74,6 +82,7 @@ export function createRenderContext(container) {
   return {
     renderer, scene, camera, hemi, sun, bounce, VM_LAYER, beginGpu, endGpu, pollGpu,
     takeGpuMs: () => gpuMs, project, resize, canvas: renderer.domElement,
+    setGraphicsPreset(value) { preset = normalizeGraphicsPreset(value); resize(); },
     info: () => renderer.info,
     counts() {
       const info = renderer.info;

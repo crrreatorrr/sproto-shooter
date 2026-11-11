@@ -2,6 +2,8 @@
 // SHOOTER-S3: the local player is drawn from the client's prediction, and its shots get a
 // cosmetic muzzle flash, tracer and camera recoil at once (fx.shots). Damage is never drawn here.
 import * as THREE from 'three';
+import { graphicsPixelRatio } from '../graphicsPresets.js';
+import { loadProfile } from '../../save/profile.js';
 import { TUNING } from '../../data/tuning.js';
 import { dirFromYawPitch } from '../../core/math.js';
 import { ARENA_SOLIDS, ARENA_WALL_H } from '../../sim/pvp/arena.js';
@@ -39,7 +41,9 @@ export function recoilAt(shots, now) {
   return Math.min(0.25, kick);
 }
 
-export function createArenaView(canvas) {
+export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
+  const initialPreset = loadProfile().settings.graphicsPreset;
+  const readPreset = getGraphicsPreset || (() => initialPreset);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true, alpha: false });
   renderer.setClearColor(0x120a22, 1);
   renderer.setPixelRatio(1);
@@ -195,10 +199,15 @@ export function createArenaView(canvas) {
   }).catch(() => {});
   let setLocalSkin = () => {};
 
+  let lastWidth = 0, lastHeight = 0, lastRatio = 0;
   function resize() {
-    const w = Math.max(1, canvas.clientWidth || canvas.width || 640);
-    const h = Math.max(1, canvas.clientHeight || canvas.height || 360);
-    if (canvas.width !== w || canvas.height !== h) renderer.setSize(w, h, false);
+    const w = Math.max(1, canvas.clientWidth || canvas.parentElement?.clientWidth || 640);
+    const h = Math.max(1, canvas.clientHeight || canvas.parentElement?.clientHeight || 360);
+    const ratio = graphicsPixelRatio(readPreset(), w, h, window.devicePixelRatio, 1);
+    if (w === lastWidth && h === lastHeight && ratio === lastRatio) return;
+    lastWidth = w; lastHeight = h; lastRatio = ratio;
+    if (renderer.getPixelRatio() !== ratio) renderer.setPixelRatio(ratio);
+    renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
   }

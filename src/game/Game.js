@@ -4,6 +4,7 @@ import { simulate, DT } from '../sim/simulate.js';
 import { createEventBus } from '../core/eventBus.js';
 import { createInput } from '../input/input.js';
 import { createRenderer } from '../render/renderer.js';
+import { GRAPHICS_PRESETS } from '../render/graphicsPresets.js';
 import { createAudio } from '../audio/sfx.js';
 import { createUI } from '../ui/ui.js';
 import { ENEMIES, BOSSES } from '../data/enemies.js';
@@ -66,7 +67,7 @@ export class Game {
 
     const app = document.getElementById('app');
     this.character = selectedCharacter();
-    this.renderer = createRenderer(app.querySelector('#view'), this.bus, this.character.model);
+    this.renderer = createRenderer(app.querySelector('#view'), this.bus, this.character.model, this.settings.graphicsPreset);
     this.input = createInput(this.renderer.canvas);
     this.audio = createAudio(this.bus);
     this.ui = createUI(app.querySelector('#ui'), { input: this.input, bus: this.bus, project: (p) => this.renderer.project(p), game: this });
@@ -87,6 +88,7 @@ export class Game {
     syncNonEconomicProfile(this.hub).then((decision) => {
       if (!decision?.profile?.settings) return;
       Object.assign(this.settings, decision.profile.settings);
+      this.renderer.setGraphicsPreset(this.settings.graphicsPreset);
       this.input.sensitivity = 0.0022 * this.settings.sensitivity;
       this.audio.setVolumes(this.settings.volumes);
     }).catch(() => {});
@@ -437,6 +439,7 @@ export class Game {
       <label>Controller aim assist <input id="aimassist" type="range" min="0" max="1.5" step="0.05" value="${this.settings.aimAssist ?? 1}"></label>
       <label><input id="hs" type="checkbox" ${this.settings.hitstop ? 'checked' : ''}> Hitstop on big hits</label>
       <label>Screen shake <input id="shk" type="range" min="0" max="1.5" step="0.1" value="${this.settings.shake}"></label>
+      <label>Graphics resolution <select id="graphics-preset">${Object.entries(GRAPHICS_PRESETS).map(([id, preset]) => `<option value="${id}" ${this.settings.graphicsPreset === id ? 'selected' : ''}>${preset.label}</option>`).join('')}</select></label>
       <label>FX quality <select id="fxq">${['low', 'medium', 'high'].map((q) => `<option value="${q}" ${this.settings.fxQuality === q ? 'selected' : ''}>${q}</option>`).join('')}</select></label>
       <label>Screen effects <input id="sfxs" type="range" min="0" max="1" step="0.05" value="${this.settings.screenFx}"></label>
       <label>Master <input id="vol-master" type="range" min="0" max="1" step="0.05" value="${this.settings.volumes.master}"></label>
@@ -458,6 +461,7 @@ export class Game {
       if (e.target.id === 'aimassist') this.settings.aimAssist = +e.target.value;
       if (e.target.id === 'hs') this.settings.hitstop = e.target.checked;
       if (e.target.id === 'shk') this.settings.shake = +e.target.value;
+      if (e.target.id === 'graphics-preset') { this.settings.graphicsPreset = e.target.value; this.renderer.setGraphicsPreset(this.settings.graphicsPreset); }
       if (e.target.id === 'fxq') this.settings.fxQuality = e.target.value;
       if (e.target.id === 'sfxs') this.settings.screenFx = +e.target.value;
       if (e.target.id === 'vol-master') this.settings.volumes.master = +e.target.value;
@@ -715,6 +719,7 @@ export class Game {
         input: this.input,
         hub: this.hub,
         demo: !!opts.demo,
+        getGraphicsPreset: () => this.settings.graphicsPreset,
         onExit: () => {
           this.pvpActive = false;
           this.pvpNav = false;
@@ -998,7 +1003,7 @@ export class Game {
     </div>`;
     const canvas = this.screen.querySelector('canvas');
     if (this._wagerArena) this._wagerArena.dispose();
-    const arena = createArenaView(canvas);
+    const arena = createArenaView(canvas, { getGraphicsPreset: () => this.settings.graphicsPreset });
     this._wagerArena = arena;
     const flow = this.wagerFlow;
     const client = createPvpClient({
