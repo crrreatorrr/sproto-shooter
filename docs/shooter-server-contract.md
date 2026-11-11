@@ -263,3 +263,38 @@ Guarded simulator source changes require a separate Hub generated-artifact
 companion PR. Both bundles must be built by Actions from the exact tested source
 commit, reviewed and pinned together before subsequent incremental replay work.
 No production deployment or activation is authorized by these helpers or pins.
+
+## Dormant canonical client commands (PR 05)
+
+`Game.configureCanonicalRewardCommands({enabled:true,record,onError})` is a
+client-only capability and defaults off. It selects input representation; it
+does not authenticate a player, import issuance, grant eligibility, prove official
+client execution, upload inputs or settle rewards. The later rewarded-start
+controller must install server-issued state and own start/stop/error UI lifecycle.
+
+For each enabled local campaign tick, `canonicalCommand` quantizes one command,
+encodes its fixed 12-byte frame/actions, then decodes those exact bytes. The decoded
+command and frame are frozen. The existing simulation observer sees the canonical
+command, a required synchronous recorder accepts that frame at the local state's
+tick, and the same decoded command is simulated. The recorder must return
+`undefined` or `true`; promises, refusal or errors never cause a raw-input fallback.
+Encoding/observer/record failures latch, notify once and stop rewarded simulation
+while rendering continues. Simulation exceptions also latch and go through the
+existing crash guard. Explicit disabling permits unranked continuation; it is not
+crash restoration. Casual simulation and the earlier PvP frame dispatch remain raw.
+
+The initial codec still allowlists only `transitionDone` actions. Ordinary pickup
+via `pressed.interact` is supported by the simulator, but direct UI action objects
+such as `pickupGun`, crafting/shop/drop/debug/startMode are not added to the reward
+codec. Some economy menus are already disabled in the current game. PR 16 must
+hide or explain unsupported actions, or a separately reviewed protocol change is
+needed; this helper makes no blanket claim that every UI action is reward-ready.
+
+The focused Actions suite records keyboard/mouse DOM events and synthetic
+`navigator.getGamepads()` input through the actual browser `window.__game`, then
+replays the canonical bytes independently and checks command and final-state
+parity. It uploads recordings, scene screenshots and advisory raw/canonical CPU
+samples. Those samples manually schedule real `Game.step` calls with software GL
+and include instrumentation/simulation/render/UI work. They are not human input
+recordings, frame-pacing measurements, isolated codec costs, GPU benchmarks,
+control-feel evidence or a performance/capacity guarantee.
