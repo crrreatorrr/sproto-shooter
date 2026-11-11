@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { canonicalCommand } from '../../src/server/canonicalCommand.js';
 import { decodeFrames } from '../../src/server/protocol.js';
 import { Game } from '../../src/game/Game.js';
@@ -6,6 +6,9 @@ import { buildIssuedState } from '../../src/server/runContract.js';
 import { simulate, DT } from '../../src/sim/simulate.js';
 import { verifyStateHash } from '../../src/sim/hash.js';
 import { issueBoss } from '../bossLog.js';
+import { CrashGuard } from '../../src/core/crashGuard.js';
+
+afterEach(() => vi.unstubAllGlobals());
 
 const command = (extra = {}) => ({ tick: 999, yaw: 0.1234567, pitch: 0.424242,
   moveX: 0.23125, moveZ: -0.8947, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [], ...extra });
@@ -144,6 +147,66 @@ describe('real Game local-tick integration', () => {
     expect(onError).toHaveBeenCalledTimes(1);
     expect(game.canonicalRewardFailure.stage).toBe('encoding');
     expect(game.state.tick).toBe(0);
+    expect(game.renderer.render).toHaveBeenCalledTimes(1);
+  });
+
+  it('latches an observer failure before recording or simulation and notifies once', () => {
+    const game = localGame(command()), before = verifyStateHash(game.state);
+    const observerError = new Error('observer_failed'), record = vi.fn(), onError = vi.fn();
+    game.configureCanonicalRewardCommands({ enabled: true, record, onError });
+    game.onSimCommand = vi.fn(() => { throw observerError; });
+    game.step(DT * 1000 + 1);
+    game.step(DT * 2000 + 2);
+    expect(record).not.toHaveBeenCalled();
+    expect(game.onSimCommand).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(game.canonicalRewardFailure).toMatchObject({ stage: 'observer', tick: 0, error: observerError });
+    expect(verifyStateHash(game.state)).toBe(before);
+    expect(game.renderer.render).toHaveBeenCalledTimes(2);
+  });
+
+  it('retains the primary recording failure and keeps rendering when the error notifier throws', () => {
+    const game = localGame(command()), reportError = new Error('notifier_failed');
+    const onError = vi.fn(() => { throw reportError; }), record = vi.fn(() => false);
+    game.configureCanonicalRewardCommands({ enabled: true, record, onError });
+    expect(() => game.step(DT * 1000 + 1)).not.toThrow();
+    game.step(DT * 2000 + 2);
+    expect(game.canonicalRewardFailure.stage).toBe('recording');
+    expect(game.canonicalRewardReportError).toBe(reportError);
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(game.state.tick).toBe(0);
+    expect(game.renderer.render).toHaveBeenCalledTimes(2);
+  });
+
+  it('ends a partially applied simulation frame through the existing crash guard, then renders without retrying its input', () => {
+    const game = localGame(command({ held: { fire: true } }));
+    const p = game.state.players[game.state.localPlayerId], guns = p.guns;
+    const simError = new Error('simulation_component_failed'), record = vi.fn(), onError = vi.fn();
+    // The real simulation must access the equipped gun to fire. Inject a
+    // component fault rather than replacing the simulator or the Game loop.
+    Object.defineProperty(p, 'guns', { configurable: true, enumerable: true, get() { throw simError; } });
+    game.crash = new CrashGuard(3, 5, vi.fn(), null);
+    const schedule = vi.fn(); vi.stubGlobal('requestAnimationFrame', schedule);
+    game.configureCanonicalRewardCommands({ enabled: true, record, onError });
+    game.frame(DT * 1000 + 1);
+    expect(game.crash.total).toBe(1);
+    expect(game.crash.halted).toBe(false);
+    expect(game.canonicalRewardFailure).toMatchObject({ stage: 'simulation', tick: 0, error: simError });
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(schedule).toHaveBeenCalledTimes(1);
+    expect(game.renderer.render).not.toHaveBeenCalled();
+    // Repair only the fixture's throwing accessor so the next frame can draw.
+    // The reward failure stays latched; this is not simulation restoration.
+    Object.defineProperty(p, 'guns', { value: guns, writable: true, configurable: true, enumerable: true });
+    const stoppedTick = game.state.tick;
+    game.frame(DT * 2000 + 2);
+    expect(game.state.tick).toBe(stoppedTick);
+    expect(game.crash.total).toBe(1);
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(schedule).toHaveBeenCalledTimes(2);
     expect(game.renderer.render).toHaveBeenCalledTimes(1);
   });
 
