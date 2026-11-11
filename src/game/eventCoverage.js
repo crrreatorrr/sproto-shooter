@@ -73,6 +73,8 @@ export const EVENT_COVERAGE = {
   playerDowned: ['audio'],
   playerRespawn: ['none'],
   playerRevived: ['audio'],
+  fuseLit: ['audio', 'vfx'],
+  playerFell: ['ui'],
   portal: ['audio', 'ui'],
   pound: ['audio', 'vfx'],
   purchase: ['audio', 'ui'],

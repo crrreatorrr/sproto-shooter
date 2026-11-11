@@ -8,6 +8,7 @@ import { createDragonRig } from '../dragonRig.js';
 import { createHumanoidRig } from '../humanoidRig.js';
 import { createViewRegistry } from './ViewRegistry.js';
 import { buildLookGroup } from '../level/levelView.js';
+import { KIT, kitGeometry, kitMaterial } from '../level/kitModels.js';
 import { createPrimitiveCreatureRig } from '../primitiveCreatureRig.js';
 
 export function mountCreatures(env) {
@@ -58,6 +59,15 @@ export function mountCreatures(env) {
       g.add(body);
       parts.bodyMotion = createPrimitiveCreatureRig(body, e.type, def, !!e.boss);
       Object.assign(parts, body.userData);
+    }
+    if (def.archetype && def.archetype.fuse) {
+      // The bomb it carries on its head. A red ball until the kit model has loaded.
+      const kit = kitGeometry(KIT.bomb);
+      const bomb = kit ? new THREE.Mesh(kit.geometry, kitMaterial()) : new THREE.Mesh(G.sphere, M(0x2a2a36));
+      bomb.scale.setScalar(kit ? 0.3 : 0.28);
+      bomb.position.y = def.height + 0.32;
+      g.add(bomb);
+      parts.bomb = bomb;
     }
     if (e.type === 'bigObama') {
       const shield = new THREE.Mesh(G.box, MAT.shield); shield.scale.set(1.8, 1.9, 0.14); shield.position.set(0, 1.3, 1.0);

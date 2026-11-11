@@ -12,6 +12,7 @@ import { padGlyph } from '../input/gamepad.js';
 import { keyLabel } from '../input/input.js';
 import { TUNING } from '../data/tuning.js';
 import { bossLabel } from './bossLabel.js';
+import { describePickup, pickupLine } from './pickupText.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -167,6 +168,7 @@ export function createUI(root, { input, bus, project, game }) {
   bus.on('bossPhase', (ev) => banner(`${BOSSES[ev.bossType].name}<em>${ev.phaseIdx === 2 ? 'FINAL AUDIT!' : 'IS ANGRY NOW'}</em>`, 'boss', 1800));
   bus.on('bossDefeated', (ev) => banner(`<small>BOSS DEFEATED</small>${BOSSES[ev.bossType].name}`, 'cleared', 2600));
   bus.on('playerRevived', () => banner('SECOND WIND!', 'fight', 1200));
+  bus.on('playerFell', () => banner('YOU FELL', 'fight', 1600));
   bus.on('unkillableTriggered', () => banner('UNKILLABLE SPROTO!', 'perk', 1500));
   bus.on('actionFailed', (ev) => toast(String(ev.reason || '').replace(/tickets/gi, 'Run Cash'), 'bad'));
   bus.on('noMana', () => toast('Not enough mana', 'bad'));
@@ -178,9 +180,31 @@ export function createUI(root, { input, bus, project, game }) {
   bus.on('vend', (ev) => toast({ gun: '🎰 A gun drops out!', resources: `🎰 ${String(ev.detail || '').replace(/tickets/gi, 'Run Cash')}`, jackpot: '🎰 JACKPOT! +60 Run Cash', chicken: '🎰 ...a rubber chicken. Squeak.' }[ev.outcome], 'good'));
   bus.on('salvage', () => toast('Crafting is gone', 'bad'));
   bus.on('reroll', () => toast('Stat rerolled!', 'good'));
+  // Pickups: one feed line each, naming what it was. The same thing picked up again within the line's
+  // life adds to its total instead of stacking lines, so a pile of drops stays readable.
+  const pickupLines = new Map();
+  function notePickup(d) {
+    let row = pickupLines.get(d.key);
+    if (row && !row.el.isConnected) { clearTimeout(row.timer); row = null; }
+    if (!row) {
+      row = { el: h('div', 'fi', ''), amount: 0, timer: 0 };
+      row.el.style.color = d.color;
+      els.feed.prepend(row.el);
+      pickupLines.set(d.key, row);
+      while (els.feed.children.length > 6) els.feed.lastChild.remove();
+    }
+    row.amount += d.amount;
+    row.el.textContent = pickupLine({ ...d, amount: row.amount });
+    clearTimeout(row.timer);
+    row.timer = setTimeout(() => { row.el.remove(); pickupLines.delete(d.key); }, 3000);
+  }
   bus.on('pickup', (ev) => {
-    if (ev.kind === 'resource') return;
+    if (ev.playerId != null && ev.playerId !== game.state.localPlayerId) return;
+    const d = describePickup(ev);
+    if (d) notePickup(d);
   });
+  bus.on('secret', (ev) => feed(ev.modifier === 'bigHead' ? 'Secret found: Big Head Mode' : 'Secret found!', '#ffd166'));
+  bus.on('shrine', (ev) => { const sp = SPELLS[ev.spell]; feed(`Spell unlocked: ${sp && sp.name ? sp.name : 'new spell'}`, '#7cff4a'); });
   bus.on('kill', (ev) => { if (ev.elite) feed('Elite down!', '#ffd700'); });
   bus.on('playerDamaged', (ev) => {
     els.vignette.className = ''; void els.vignette.offsetWidth;

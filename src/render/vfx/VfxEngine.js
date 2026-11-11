@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { fxRandom } from '../core/fxRandom.js';
+import { KIT, kitScene } from '../level/kitModels.js';
 
 export function mountVfx(env) {
   const { G, lerp, scene } = env;
@@ -56,7 +57,57 @@ export function mountVfx(env) {
   }
 
   const booms = [];
+  // Blender-authored blasts (art/blender/fx_*.blend): a spiky burst with smoke puffs for real
+  // explosions, a small pop for hit flares. Pooled; the plain sphere covers until the clip loads
+  // and whenever the pool is busy.
+  const FX_POOL = 16;
+  const fxPool = { explosion: [], poof: [] };
+  const fxMats = new Map();
+  function fxMaterial(color) {
+    if (!fxMats.has(color)) fxMats.set(color, new THREE.MeshBasicMaterial({ color, vertexColors: true, toneMapped: false }));
+    return fxMats.get(color);
+  }
+  function takeFx(name) {
+    const kit = kitScene(KIT.fx(name));
+    if (!kit) return null;
+    const pool = fxPool[name];
+    let fx = pool.find((f) => !f.busy);
+    if (!fx) {
+      if (pool.length >= FX_POOL) return null;
+      const root = kit.scene.clone(true);
+      root.traverse((o) => { o.frustumCulled = false; });
+      const mixer = new THREE.AnimationMixer(root);
+      const action = mixer.clipAction(kit.clip);
+      action.setLoop(THREE.LoopOnce, 1);
+      action.clampWhenFinished = true;
+      scene.add(root);
+      fx = { root, mixer, action, duration: kit.clip.duration, busy: false };
+      pool.push(fx);
+    }
+    return fx;
+  }
+  function playFx(name, pos, radius, color, life) {
+    const fx = takeFx(name);
+    if (!fx) return false;
+    const mat = fxMaterial(name === 'poof' ? color : 0xffffff); // the pop takes the hit colour, the blast keeps its own
+    fx.root.traverse((o) => { if (o.isMesh) o.material = mat; });
+    fx.root.position.set(pos.x, pos.y, pos.z);
+    fx.root.rotation.y = fxRandom() * Math.PI * 2;
+    fx.root.scale.setScalar(radius);
+    fx.root.visible = true;
+    fx.busy = true;
+    fx.action.reset();
+    fx.action.timeScale = fx.duration / life;
+    fx.action.play();
+    fx.mixer.update(0);
+    booms.push({ fx, life, max: life, radius });
+    return true;
+  }
+  // No preload: the title screen's download set is pinned. The first blast asks for the clip and
+  // draws the sphere; every one after that plays the clip.
   function addBoom(pos, radius, color, life = 0.35) {
+    // Clips need a little longer than the old flash to read.
+    if (radius >= 1 ? playFx('explosion', pos, radius * 0.62, color, Math.max(0.55, life * 1.5)) : playFx('poof', pos, radius * 1.1, color, Math.max(0.22, life * 1.4))) return;
     const m = new THREE.Mesh(G.sphereLo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false }));
     m.position.set(pos.x, pos.y, pos.z);
     scene.add(m);

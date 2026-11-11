@@ -27,6 +27,34 @@ describe('campaign archetypes', () => {
     expect(pal.hp).toBeLessThan(before);
   });
 
+  it('a kamikaze midget runs in, lights its fuse and blows up on the player', () => {
+    const { s, p } = boot();
+    const k = createEnemy(s, 'kamikazeMidget', { pos: { x: p.pos.x + 9, z: p.pos.z } });
+    k.state = 'chase';
+    const pal = createEnemy(s, 'dummy', { pos: { x: p.pos.x + 1.5, z: p.pos.z + 1.5 } });
+    const start = { hp: p.hp, shield: p.shield, pal: pal.hp };
+    let lit = false;
+    for (let i = 0; i < 300 && !k.dead; i++) {
+      simulate(s, { [p.id]: cmd() });
+      if (k.ai.fuseT != null) lit = true;
+    }
+    expect(lit).toBe(true);
+    expect(k.dead).toBe(true);
+    expect(p.hp + p.shield).toBeLessThan(start.hp + start.shield);
+    expect(pal.hp).toBeLessThan(start.pal); // the death blast still catches its neighbours
+  });
+
+  it('a kamikaze midget shot at range never reaches the player', () => {
+    const { s, p } = boot();
+    const k = createEnemy(s, 'kamikazeMidget', { pos: { x: p.pos.x + 12, z: p.pos.z } });
+    k.state = 'chase';
+    const before = p.hp + p.shield;
+    damageEnemy(s, k, { base: 400, sourceId: p.id, sourceKind: 'gun', zone: 'body' });
+    expect(k.dead).toBe(true);
+    expect(k.ai.fuseT).toBeUndefined();
+    expect(p.hp + p.shield).toBe(before);
+  });
+
   it('a riot shield faces the player', () => {
     const { s, p } = boot();
     const riot = createEnemy(s, 'riotMidget', { pos: { x: 0, z: 0 } });

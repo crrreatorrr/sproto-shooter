@@ -1,7 +1,7 @@
 // L01 Sproto Landing. Format v2. Coordinates are local to each section.
 // The boulevard, mall, roof and plaza are playable floors with the design's
 // encounters, lockdowns and finale. Prop dressing that is not on the route
-// (every car, bench and kiosk) is still a placeholder.
+// (cars, bins, planters and kiosks) is drawn by the cartoon kit: src/render/level/dressing.js.
 import { box, cone, cylinder, disc, ramp, sphere } from '../kit.js';
 import { registerLevel } from '../register.js';
 import { makeV2Level } from '../v2.js';
@@ -24,6 +24,22 @@ function squad(id, trigger, units, at, method = 'placed') {
     at,
     units: units.map(([type, count, partId]) => (partId ? { type, count, partId } : { type, count })),
   };
+}
+
+// Cover the player and the enemies both use. Sizes match the kit models that are drawn over them.
+const carAt = (id, x, z) => box({ id, at: [x, 0.7, z], size: [3, 1.4, 1.6], mat: 'metal' });
+const binAt = (id, x, z) => box({ id, at: [x, 0.7, z], size: [2.4, 1.4, 1.4], mat: 'metal' });
+const planterAt = (id, x, z) => box({ id, at: [x, 0.6, z], size: [1.6, 1.2, 1.6], mat: 'stone' });
+
+// The street is lined with shopfronts, so its sides are solid. `gapS` leaves the south side open
+// between two x values (the Overpass stair leaves the deck there). The Overpass has rails instead:
+// low enough to vault, and past them is the drop.
+function sides(id, length, { h = 6, gapS = null } = {}) {
+  const z = h < 2 ? [1.7, 30.3] : [1.4, 30.6];
+  const w = h < 2 ? 0.5 : 0.8;
+  const wall = (tag, x0, x1, zz) => box({ id: `${id}-side-${tag}`, at: [(x0 + x1) / 2, h / 2, zz], size: [x1 - x0, h, w], mat: 'concrete' });
+  const south = gapS ? [wall('s1', 0, gapS[0], z[1]), wall('s2', gapS[1], length, z[1])] : [wall('s', 0, length, z[1])];
+  return [wall('n', 0, length, z[0]), ...south];
 }
 
 function ammo(id, at, ammoType = 'bullets', amount = 60) {
@@ -49,10 +65,15 @@ const S1 = {
   exit: zone(190, 200),
   geometry: [
     floor('S1-floor', 200),
+    ...sides('S1', 200),
     box({ id: 'S1-truck', at: [62, 1.2, 8], size: [4, 2.4, 2.4], mat: 'metal' }),
     box({ id: 'S1-cover-a', at: [54, 0.7, 8], size: [2.4, 1.4, 1.4], mat: 'metal' }),
     box({ id: 'S1-cover-b', at: [54, 0.7, 24], size: [2.4, 1.4, 1.4], mat: 'metal' }),
     box({ id: 'S1-barricade', at: [150, 1.1, 8], size: [1.2, 2.2, 4], mat: 'metal' }),
+    // Party cover (E1) and a second firing line at the barricade (E2). The middle of the road stays open.
+    carAt('S1-car-a', 70, 22), carAt('S1-car-b', 77, 11),
+    carAt('S1-car-c', 132, 20), binAt('S1-bin-c', 140, 10),
+    box({ id: 'S1-barricade-s', at: [154, 1.1, 24], size: [1.2, 2.2, 4], mat: 'metal' }),
     sphere({ id: 'S1-tinubu', at: [40, 14, 48], r: 8, mat: 'gold' }),
     cone({ id: 'S1-tinubu-hat', at: [40, 22, 48], r: 5, h: 8, mat: 'gold' }),
     box({ id: 'S1-sign', at: [20, 6, -6], size: [14, 2, 0.6], mat: 'neon' }),
@@ -117,6 +138,8 @@ const S1 = {
         squad('A', { type: 'onEnter' }, [['obama', 3]], [[150, 0, 12], [152, 0, 16], [150, 0, 20]]),
         squad('B', { type: 'onKills', n: 2 }, [['midget', 3]], [[140, 0, 24]], 'door'),
         squad('C', { type: 'onKills', n: 5 }, [['obama', 2]], [[146, 4, 8]], 'hidden'),
+        // First Kamikaze Midgets. They start 20 m out on open road, so the fuse is seen before it is felt.
+        squad('K', { type: 'onKills', n: 3 }, [['kamikazeMidget', 2]], [[126, 0, 14], [126, 0, 18]], 'door'),
       ],
     },
   ],
@@ -130,10 +153,13 @@ const S2 = {
   grappleAnchors: [{ id: 'S2-hook', at: [30, 4.6, 8], r: 1.8 }],
   geometry: [
     floor('S2-floor', 180),
+    ...sides('S2', 180),
     box({ id: 'S2-alley-n', at: [40, 2, 4], size: [70, 4, 1], mat: 'concrete' }),
     box({ id: 'S2-alley-s', at: [40, 2, 28], size: [70, 4, 1], mat: 'concrete' }),
     cylinder({ id: 'S2-pillar', at: [78, 0, 12], r: 0.5, h: 4, mat: 'stone' }),
     box({ id: 'S2-tank', at: [130, 1.2, 16], size: [3, 2.4, 3], mat: 'metal' }),
+    // Shrine court corners for the hold, and a car to duck the flyers behind.
+    binAt('S2-bin-a', 88, 10), binAt('S2-bin-b', 88, 22), carAt('S2-car-a', 146, 21),
     // Walk up, or hook the crown and let go. Slide down the far side.
     ramp({ id: 'S2-slide-up', at: [22, 1.1, 8], size: [3.2, 2.2, 12], yaw: 90, mat: 'metal' }),
     box({ id: 'S2-slide-crown', at: [30, 1.95, 8], size: [4, 0.5, 3.2], mat: 'metal' }),
@@ -165,6 +191,8 @@ const S2 = {
         squad('B', { type: 'time', t: 7 }, [['midget', 3]], [[30, 0, 16]], 'door'),
         squad('C', { type: 'onKills', n: 6 }, [['midget', 2]], [[40, 4, 16]], 'drop'),
         squad('D', { type: 'onRemain', n: 1 }, [['midget', 2]], [[52, 0, 16]], 'door'),
+        // Down the corridor at you: shoot them in the pack and the swarm thins itself.
+        squad('K', { type: 'onKills', n: 4 }, [['kamikazeMidget', 2]], [[58, 0, 16]], 'door'),
       ],
     },
     {
@@ -199,7 +227,10 @@ const S3 = {
   grappleAnchors: [{ id: 'S3-hook', at: [58, 6.2, 5], r: 1.8 }],
   geometry: [
     floor('S3-floor', 90),
+    ...sides('S3', 90),
     box({ id: 'S3-kiosk', at: [40, 1, 8], size: [3, 2, 3], mat: 'neon' }),
+    box({ id: 'S3-kiosk-b', at: [64, 1, 22], size: [3, 2, 3], mat: 'neon' }),
+    planterAt('S3-planter-a', 32, 19.5), planterAt('S3-planter-b', 50, 11),
     cylinder({ id: 'S3-pillar-w', at: [28, 0, 10], r: 0.6, h: 6, mat: 'stone' }),
     cylinder({ id: 'S3-pillar-e', at: [52, 0, 22], r: 0.6, h: 6, mat: 'stone' }),
     ramp({ id: 'S3-balc-ramp', at: [48, 1.825, 5], size: [3, 3.65, 12], yaw: 90, mat: 'metal' }),
@@ -255,8 +286,11 @@ const S4 = {
   exit: zone(118, 130),
   geometry: [
     floor('S4-floor', 130),
+    ...sides('S4', 130),
     box({ id: 'S4-ramp', at: [36, 0.4, 8], size: [16, 0.5, 4], mat: 'concrete' }),
     box({ id: 'S4-car', at: [24, 0.7, 10], size: [3, 1.4, 1.6], mat: 'metal' }),
+    // It is a car park: parked rows on the south side of the ramp deck and two on the sealed roof.
+    carAt('S4-car-b', 14, 22), carAt('S4-car-c', 32, 23.5), carAt('S4-car-d', 86, 25.5), carAt('S4-car-e', 100, 9),
     box({ id: 'S4-core', at: [90, 1.5, 8], size: [4, 3, 4], mat: 'metal' }),
   ],
   weapons: [],
@@ -292,6 +326,7 @@ const S4 = {
         squad('B', { type: 'onKills', n: 3 }, [['obama', 2]], [[28, 3, 10]], 'hidden'),
         squad('C', { type: 'onKills', n: 6 }, [['midget', 2]], [[36, 0, 20]], 'hidden'),
         squad('D', { type: 'onKills', n: 8 }, [['midget', 3]], [[44, 0, 16]], 'hidden'),
+        squad('K', { type: 'onKills', n: 5 }, [['kamikazeMidget', 3]], [[50, 0, 14]], 'hidden'),
         squad('E', { type: 'onKills', n: 11 }, [['robotShooter', 1]], [[58, 0, 16]]),
         squad('G', { type: 'onEnter' }, [['gateGenerator', 1, 'S4-gen']], [[52, 0, 22]]),
       ],
@@ -320,10 +355,13 @@ const S5 = {
   exit: zone(128, 140),
   geometry: [
     floor('S5-floor', 140),
+    ...sides('S5', 140, { h: 1.1, gapS: [47, 57] }),
     box({ id: 'S5-toll', at: [52, 1.2, 8], size: [1, 2.4, 4], mat: 'metal' }),
     box({ id: 'S5-canopy', at: [52, 4.5, 16], size: [8, 0.5, 12], mat: 'concrete' }),
     box({ id: 'S5-rail-n', at: [52, 5.35, 9.7], size: [8.4, 1.2, 0.8], mat: 'concrete' }),
     box({ id: 'S5-car', at: [30, 0.7, 10], size: [3, 1.4, 1.6], mat: 'metal' }),
+    // Stalled traffic: the Big Obama is met alone among cars, and they are how you get behind him.
+    carAt('S5-car-b', 40, 20), carAt('S5-car-c', 72, 11), carAt('S5-car-d', 108, 20), carAt('S5-car-e', 116, 11),
     // Stair up to the mana battery, then a catwalk and a downhill slide back
     // to the road. The deck at z 16 stays a flat walk under the canopy.
     box({ id: 'S5-stair-pad', at: [52, -0.25, 32.5], size: [8, 0.5, 8], mat: 'concrete' }),
@@ -364,8 +402,10 @@ const S6 = {
   intro: card('Gate Plaza', ['A Big Bitcoin Obama is counting the take.', 'The gate does not open until he drops it.']),
   geometry: [
     floor('S6-floor', 110),
+    ...sides('S6', 110),
     cylinder({ id: 'S6-fountain', at: [48, 0, 8], r: 2, h: 2, mat: 'stone' }),
     box({ id: 'S6-stand', at: [40, 1.2, 8], size: [6, 2.4, 4], mat: 'stone' }),
+    planterAt('S6-planter-a', 40, 22), planterAt('S6-planter-b', 78, 10), planterAt('S6-planter-c', 78, 22),
     box({ id: 'S6-gate-l', at: [96, 6, 6], size: [2, 12, 2], mat: 'gold' }),
     box({ id: 'S6-gate-r', at: [96, 6, 26], size: [2, 12, 2], mat: 'gold' }),
     // Walk-up perch for the flying adds. No hook: a fling here leaves the floor.
@@ -410,6 +450,7 @@ const S6 = {
         squad('P2a', { type: 'onKills', n: 8 }, [['midget', 4]], [[70, 0, 8]], 'door'),
         squad('P2b', { type: 'onKills', n: 12 }, [['midget', 4]], [[70, 0, 24]], 'door'),
         squad('P2c', { type: 'onKills', n: 16 }, [['midget', 4]], [[64, 0, 16]], 'door'),
+        squad('P2k', { type: 'onKills', n: 14 }, [['kamikazeMidget', 3]], [[72, 0, 16]], 'door'),
         squad('P3a', { type: 'onKills', n: 20 }, [['flyingMidget', 3]], [[90, 8, 16]], 'air'),
         squad('P3b', { type: 'onKills', n: 24 }, [['flyingMidget', 3]], [[90, 8, 12]], 'air'),
       ],

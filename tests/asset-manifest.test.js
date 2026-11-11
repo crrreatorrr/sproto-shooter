@@ -50,6 +50,9 @@ describe('asset manifest', () => {
   it('keeps authoring Blender files out of the runtime set', () => {
     expect(manifest.authoring.blenderFiles.map((file) => file.path)).toEqual([
       'art/blender/boss_animations.blend',
+      'art/blender/cartoon_kit.blend',
+      'art/blender/fx_explosion.blend',
+      'art/blender/fx_poof.blend',
       'art/blender/new_enemies.blend',
       'art/blender/weapon_animations.blend',
     ]);

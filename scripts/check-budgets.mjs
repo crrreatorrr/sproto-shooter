@@ -26,7 +26,9 @@ export const MEASURED = {
   staticShipBytes: 23217417,
   publicAssetBytes: 22065058,
   // Includes the three Pepe rigs and the 256 × 256 Sproto Soldier portrait.
-  decodedBytes: 236679812,
+  // Raised from 236679812 when Sproto Duel's obstacles and its desert, grove and office stage sets were
+  // copied in for the campaign (+21.5 MB decoded). Those load per level, never at the title.
+  decodedBytes: 258207558,
   titleShellGzipBytes: 6669,
   criticalTransferBytes: 3761311,
   criticalFirstPartyRequests: 13,

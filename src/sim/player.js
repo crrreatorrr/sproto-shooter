@@ -1,4 +1,5 @@
 // Player input, movement, combat (firing/reload/swap), vitals. PLAN §4.4, §7.1
+import { abyssY } from './campaign/abyss.js';
 import { TUNING, ARENA_R } from '../data/tuning.js';
 import { GUN_TYPES_BY_ID, hasInfiniteReserve, gunRange, rangeFalloff, slotUsable, SLOT_COUNT } from '../data/guns.js';
 import { float, range } from '../core/rng.js';
@@ -215,6 +216,14 @@ export function playerMovement(state, dt) {
         }
       } else if (p.onGround && state.level.voids) {
         state.level.safePos = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
+      }
+      if (p.pos.y < abyssY(state.level)) {
+        // Off the level and past the death floor. No second wind down there: straight to the death screen,
+        // which offers the last checkpoint.
+        p.hp = 0; p.shield = 0; p.vel.x = p.vel.y = p.vel.z = 0;
+        p.dead = true; p.downed = false; p.respawnT = TUNING.sandboxRespawn;
+        emit(state, 'playerFell', { playerId: p.id });
+        emit(state, 'playerDied', { playerId: p.id });
       }
     } else if (p.pos.y <= 0) {
       p.pos.y = 0;

@@ -13,7 +13,7 @@ Replaces "L1: Sproto Landing" in `docs/codex/C-level-designs.md`.
 | Tier | 1 |
 | Par | 18 min. Estimate from §4: **19 min 3 s** |
 | Jetpack | No |
-| Enemy total (Normal) | **139**: 85 `midget`, 11 `obama`, 23 `flyingMidget`, 13 `robotLaser`, 5 `robotShooter`, 1 `bigObama`, 1 `gatekeeper` (mini-boss) |
+| Enemy total (Normal) | **149**: 85 `midget`, 10 `kamikazeMidget`, 11 `obama`, 23 `flyingMidget`, 13 `robotLaser`, 5 `robotShooter`, 1 `bigObama`, 1 `gatekeeper` (mini-boss) |
 | Route length | 1,031 m on the critical path (about 1,180 m with the generator loop in the finale) |
 | Sections | 6: S1 Drop Zone, S2 Alley and Fire Escapes, S3 Mall of Sproto, S4 Parking Spiral, S5 Overpass, S6 Gate Plaza |
 | Combat encounters | 9 (E1 to E9) and the finale `FIN` |
@@ -46,6 +46,19 @@ Each enemy is taught, tested and twisted:
 | `robotLaser` | E6 wave 1, mall security | E6 wave 2, at the mezzanine rail above midgets | E8 wave 4, crossing a bridge; FIN part 1 |
 | `robotShooter` | E7, guarding a generator across a 40 m deck | E8 wave 4, with Laser Bots | E9, at long range on the off-ramp; FIN part 1 |
 | `bigObama` | E9, alone among stalled cars | — | FIN, as the Gatekeeper |
+| `kamikazeMidget` | E2, two from 20 m out on open road | E3, down the corridor inside the swarm | E7, three from hiding on the ramp deck; FIN part 2 |
+
+**As built (differs from the plan below where they disagree)**
+
+- **Kamikaze Midget.** Runs at the player, lights a fuse inside 2.4 m and explodes 0.5 s later (26 damage, 3.4 m).
+  Shot first, the same blast goes off among its own side. Ten in the level, in E2, E3, E7 and the finale.
+- **Sides.** S1 to S4 and S6 have solid sides behind the shopfronts. S5, the Overpass, has 1.1 m rails that can
+  be vaulted; past them is the drop. Falling past the death floor (30 m under the lowest geometry) kills the
+  player, and an enemy that falls dies and counts as a kill.
+- **Cover.** Cars, bins and planters were added beside the fights, leaving the middle of the road open. S5 has
+  the stalled traffic the Big Obama is met among.
+- **Dressing.** Models and scenery are render-only: `src/render/level/dressing.js`, built by
+  `art/blender/scripts/build_cartoon_kit.py`.
 
 **Cutscene cards**
 

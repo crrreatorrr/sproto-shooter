@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { KIT, kitGeometry, kitMaterial } from '../level/kitModels.js';
 
 export function mountWorld(env) {
   const { E, G, M, scene } = env;
@@ -47,7 +48,12 @@ export function mountWorld(env) {
       obj = new THREE.Group();
       const ring = new THREE.Mesh(G.ring, new THREE.MeshBasicMaterial({ color: 0xff3b1a, transparent: true, opacity: 0.8, side: THREE.DoubleSide, toneMapped: false }));
       ring.rotation.x = -Math.PI / 2; ring.scale.setScalar(h.radius);
-      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(1.4), M(0x5a3b2a, { emissive: 0xff4400, emissiveIntensity: 0.6 }));
+      // A cartoon bomb falls on the marker. The rock stands in until the model has loaded.
+      const bomb = kitGeometry(KIT.bomb);
+      const rock = bomb
+        ? new THREE.Mesh(bomb.geometry, kitMaterial())
+        : new THREE.Mesh(new THREE.DodecahedronGeometry(1.4), M(0x5a3b2a, { emissive: 0xff4400, emissiveIntensity: 0.6 }));
+      if (bomb) { rock.scale.setScalar(1.3); rock.userData.kit = true; }
       obj.add(ring, rock); obj.userData = { rock, ring };
     } else if (h.kind === 'spawnPortal') {
       obj = new THREE.Mesh(G.ring, new THREE.MeshBasicMaterial({ color: 0xff5ec4, transparent: true, opacity: 0.9, side: THREE.DoubleSide, toneMapped: false }));
