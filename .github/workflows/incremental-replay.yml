@@ -1,0 +1,37 @@
+name: incremental-replay
+on:
+  pull_request:
+    paths:
+      - src/server/**
+      - src/sim/campaign/campaign.js
+      - tests/server/**
+      - .github/workflows/incremental-replay.yml
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Verify full frozen corpus and strict incremental semantics
+        run: npx vitest run tests/server/incremental-replay.test.js tests/server/checkpoint-serialization.test.js --no-file-parallelism
+      - name: Build both pinned simulator artifacts from the exact tested head
+        run: npm run build:server-sim
+      - uses: actions/upload-artifact@v4
+        with:
+          name: incremental-simulator-artifacts
+          path: |
+            build/shooter-sim.js
+            build/shooter-sim.pin.json
+            build/shooter-pvp-sim.js
+            build/shooter-pvp-sim.pin.json
+          if-no-files-found: error
