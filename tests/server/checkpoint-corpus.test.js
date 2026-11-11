@@ -43,6 +43,10 @@ describe('persisted campaign input corpus', () => {
       expect(digest(f.log)).toBe(f.inputSha256);
       expect(f.expected.contentFingerprint).toBe(contentFingerprint(1));
       expect(f.expected.ticketsMinted).toBe(0);
+      if (f.expected.outcome === 'incomplete') {
+        expect(f.expected.frames).toBe(f.provenance.spec.maxFrames);
+        expect(f.log.segments[0].n).toBe(f.provenance.spec.maxFrames);
+      }
       expect(f.recorderMatchesVerifier).toBe(f.recorderStateHash === f.expected.stateHash);
       expect(f.coverage.projectileTicks).toBeGreaterThan(0);
       expect(receiptCore(verifyRun(f.log, { issuance: f.issuance }))).toEqual(f.expected);
