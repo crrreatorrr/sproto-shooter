@@ -144,6 +144,8 @@ describe('dormant private incremental replay v2', () => {
     const done = checked(stepReplaySlice(roundtrip(accepted.privateCheckpoint), { ...context(f), maxWorkFrames: 2 }));
     const final = checked(stepReplaySlice(roundtrip(done.privateCheckpoint), { ...context(f), maxWorkFrames: 2 }));
     expect(semanticState(final)).toBe(semanticState(terminal));
+    expect(final.privateCheckpoint.snapshot.state.rng).toEqual(terminal.privateCheckpoint.snapshot.state.rng);
+    expect(final.privateCheckpoint.snapshot.state.nextId).toBe(terminal.privateCheckpoint.snapshot.state.nextId);
     expect(final.publicResult.terminal).toEqual(terminal.publicResult.terminal);
     expect(final.publicResult.simulationTick).toBe(f.expected.tick);
     expect(final.publicResult.verifiedInputTick).toBe(f.expected.frames + 3);
@@ -153,6 +155,43 @@ describe('dormant private incremental replay v2', () => {
     expect(acceptReplayBatch(JSON.stringify(tail), c, admitted(f, tail, false)).publicResult.reason).toBe('terminal_closed');
     const corrupt = { ...tail, actions: [[0, 2]] };
     expect(acceptReplayBatch(JSON.stringify(corrupt), c, admitted(f, corrupt)).publicResult.status).toBe('invalid');
+  });
+
+  it('latches terminal inside one accepted batch identically to terminal-adjacent public splits', () => {
+    const f = fixtures.find((row) => row.provenance.spec.id === 'sahil-success-7');
+    const seg = f.log.segments[0];
+    const command = { yaw: 0, pitch: 0, moveX: 0, moveZ: 1, held: { fire: true, gooBolt: true }, pressed: {}, slot: -1, wheel: 0, actions: [] };
+    const tail = encodeFrames([command, { ...command, actions: [{ type: 'transitionDone' }] }, command]);
+    const extended = { ...f, log: { ...f.log, segments: [{ ...seg, n: seg.n + tail.n,
+      frames: seg.frames + tail.frames, actions: [...(seg.actions || []), ...tail.actions.map(([at, action]) => [seg.n + at, action])] }] } };
+    const whole = run(extended, [], 4096), cut = run(extended, [seg.n - 1, seg.n, seg.n + 1], 257);
+    const original = run(f);
+    expect(semanticState(whole)).toBe(semanticState(original));
+    expect(semanticState(cut)).toBe(semanticState(whole));
+    expect(whole.publicResult.terminal).toEqual(cut.publicResult.terminal);
+    expect(whole.publicResult.terminal.simTick).toBe(f.expected.tick);
+    expect(whole.privateCheckpoint.snapshot.state.rng).toEqual(original.privateCheckpoint.snapshot.state.rng);
+    expect(whole.privateCheckpoint.snapshot.state.nextId).toBe(original.privateCheckpoint.snapshot.state.nextId);
+    for (const key of ['acceptedFrames', 'verifiedFrames', 'simFrames', 'framesTextBytes', 'verifiedFramesTextBytes', 'actions', 'verifiedActions']) {
+      expect(cut.privateCheckpoint.accounting[key], key).toBe(whole.privateCheckpoint.accounting[key]);
+    }
+    expect(whole.publicResult.verifiedInputTick).toBe(seg.n + 3);
+    expect(whole.publicResult.verifiedActions).toBe((seg.actions || []).length + 1);
+    expect(whole.publicResult.acceptedBatches).toBe(1);
+    expect(cut.publicResult.acceptedBatches).toBe(4);
+  }, 60000);
+
+  it('latches a trusted synthetic flee history as ineligible boss_fled', () => {
+    // Synthetic server-owned state-history coverage, not a fabricated rewarded
+    // client trace. Real history is populated only by the shared replay checks.
+    const f = fixtures[0], initial = beginIncrementalReplay(context(f)).privateCheckpoint;
+    const s = restorePrivateCheckpoint(initial.snapshot, { manifest, binding: bindingOf(f) });
+    s.parts.sahil.fled = true;
+    initial.snapshot = createPrivateCheckpoint(s.state, { manifest, binding: bindingOf(f), parts: s.parts, counters: s.counters });
+    const checkpoint = resign(initial), batch = batches(f, [1])[0];
+    const accepted = checked(acceptReplayBatch(JSON.stringify(batch), checkpoint, admitted(f, batch)));
+    const done = checked(stepReplaySlice(accepted.privateCheckpoint, { ...context(f), maxWorkFrames: 1 }));
+    expect(done.publicResult.terminal).toMatchObject({ outcome: 'fail', reason: 'boss_fled', eligible: false, ranked: false, simTick: 1 });
   });
 
   it('resumes a pending public batch in a fresh Node process without prior module state', () => {
@@ -174,16 +213,28 @@ describe('dormant private incremental replay v2', () => {
     const f = fixtures.find((row) => row.provenance.spec.id === 'sahil-fail-7'), base = run(f).privateCheckpoint;
     const encoded = encodeFrames([{ yaw: 0, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [{ type: 'transitionDone' }] }]);
     for (const changes of [
-      { acceptedFrames: 162000, verifiedFrames: 162000 },
-      { framesTextBytes: 67108864, verifiedFramesTextBytes: 67108864 },
-      { batches: 4096, verifiedBatches: 4096 },
-      { actions: 131072, verifiedActions: 131072 },
+      { acceptedFrames: 162000, verifiedFrames: 162000, framesTextBytes: 162000 * 16, verifiedFramesTextBytes: 162000 * 16, batches: 6, verifiedBatches: 6 },
+      { batches: 4096, verifiedBatches: 4096, acceptedFrames: 4096, verifiedFrames: 4096, framesTextBytes: 4096 * 16, verifiedFramesTextBytes: 4096 * 16 },
+      { actions: 131072, verifiedActions: 131072, batches: 4096, verifiedBatches: 4096,
+        acceptedFrames: 131072, verifiedFrames: 131072, framesTextBytes: 131072 * 16, verifiedFramesTextBytes: 131072 * 16 },
     ]) {
       const checkpoint = forgedAccounting(base, changes), a = checkpoint.accounting;
       const batch = { protocol: 2, runId: f.issuance.runId, sequence: a.batches, tick0: a.acceptedFrames, ...encoded };
       const before = JSON.stringify(checkpoint);
       expect(acceptReplayBatch(JSON.stringify(batch), checkpoint, admitted(f, batch)).publicResult).toMatchObject({ status: 'invalid', reason: 'oversized' });
       expect(JSON.stringify(checkpoint)).toBe(before);
+    }
+    // With this codec the frame cap dominates the separate encoded-text cap;
+    // an allegedly near-64MiB checkpoint would be an impossible history.
+    expect(INCREMENTAL_LIMITS.runFrames * 16).toBeLessThan(INCREMENTAL_LIMITS.runFramesTextBytes);
+    for (const changes of [
+      { framesTextBytes: 67108864, verifiedFramesTextBytes: 67108864 },
+      { actions: base.accounting.acceptedFrames + 1, verifiedActions: base.accounting.verifiedFrames + 1 },
+      { batches: base.accounting.acceptedFrames + 1, verifiedBatches: base.accounting.verifiedFrames + 1 },
+    ]) {
+      const impossible = forgedAccounting(base, changes);
+      expect(stepReplaySlice(impossible, { ...context(f), maxWorkFrames: 64 }).publicResult)
+        .toMatchObject({ status: 'invalid', reason: 'bad_private_checkpoint' });
     }
   });
 
@@ -253,31 +304,34 @@ SprotoShooterSim.testIncrementalReplayJSON = function(text) {
   return JSON.stringify(out);
 };`;
 
-it('replays every complete frozen trace in Node bundle, fresh process Goja, and Chromium using bounded slices', async () => {
-  const jobs = fixtures.map((f) => {
-    const parts = batches(f, [63, 400, Math.floor(f.log.segments[0].n / 2), f.log.segments[0].n - 1]);
-    return { context: context(f), batches: parts, accepted: parts.map((b) => admitted(f, b).accepted) };
-  });
-  const expected = fixtures.map((f) => run(f, [63, 400, Math.floor(f.log.segments[0].n / 2), f.log.segments[0].n - 1], 4096).publicResult);
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'shooter-incremental-'));
-  const augmented = path.join(temporary, 'sim-test.js');
-  fs.writeFileSync(augmented, fs.readFileSync(bundle, 'utf8') + '\n' + harness);
-  const input = JSON.stringify(jobs);
-  try {
-    const nodeScript = `import fs from 'node:fs'; import vm from 'node:vm'; vm.runInThisContext(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(SprotoShooterSim.testIncrementalReplayJSON(fs.readFileSync(0,'utf8')));`;
-    for (const [command, args, cwd] of [
-      [process.execPath, ['--input-type=module', '-e', nodeScript, augmented], root],
-      ['go', ['run', '.', augmented, 'testIncrementalReplayJSON'], path.join(root, 'tests/fixtures/goja')],
-    ]) {
-      const result = spawnSync(command, args, { cwd, input, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 180000 });
-      expect(result.status, result.stderr || result.error?.message).toBe(0);
-      expect(JSON.parse(result.stdout)).toEqual(expected);
-    }
-    const browser = await chromium.launch({ headless: true });
+for (const f of fixtures) {
+  it(`replays the COMPLETE frozen trace in Node, Goja, and Chromium: ${f.provenance.spec.id}`, async () => {
+    const cuts = [63, 400, Math.floor(f.log.segments[0].n / 2), f.log.segments[0].n - 1];
+    const parts = batches(f, cuts);
+    const job = { context: context(f), batches: parts, accepted: parts.map((b) => admitted(f, b).accepted) };
+    const expected = [run(f, cuts, 4096).publicResult];
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'shooter-incremental-'));
+    const augmented = path.join(temporary, 'sim-test.js');
+    fs.writeFileSync(augmented, fs.readFileSync(bundle, 'utf8') + '\n' + harness);
+    const input = JSON.stringify([job]);
     try {
-      const page = await browser.newPage();
-      await page.addScriptTag({ path: augmented });
-      expect(JSON.parse(await page.evaluate((text) => globalThis.SprotoShooterSim.testIncrementalReplayJSON(text), input))).toEqual(expected);
-    } finally { await browser.close(); }
-  } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
-}, 180000);
+      const nodeScript = `import fs from 'node:fs'; import vm from 'node:vm'; vm.runInThisContext(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(SprotoShooterSim.testIncrementalReplayJSON(fs.readFileSync(0,'utf8')));`;
+      for (const [command, args, cwd] of [
+        [process.execPath, ['--input-type=module', '-e', nodeScript, augmented], root],
+        ['go', ['run', '.', augmented, 'testIncrementalReplayJSON'], path.join(root, 'tests/fixtures/goja')],
+      ]) {
+        const started = Date.now();
+        const result = spawnSync(command, args, { cwd, input, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 180000 });
+        console.log(`incremental complete ${f.provenance.spec.id}: ${command} ${Date.now() - started}ms (${f.log.segments[0].n} frames)`);
+        expect(result.status, result.error?.message || result.stderr).toBe(0);
+        expect(JSON.parse(result.stdout)).toEqual(expected);
+      }
+      const browser = await chromium.launch({ headless: true });
+      try {
+        const page = await browser.newPage();
+        await page.addScriptTag({ path: augmented });
+        expect(JSON.parse(await page.evaluate((text) => globalThis.SprotoShooterSim.testIncrementalReplayJSON(text), input))).toEqual(expected);
+      } finally { await browser.close(); }
+    } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
+  }, 180000);
+}

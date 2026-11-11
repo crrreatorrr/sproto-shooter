@@ -101,6 +101,11 @@ function checkAccounting(a, snapshot, pending, terminal, issuance) {
     || a.framesTextBytes > INCREMENTAL_LIMITS.runFramesTextBytes || a.actions > INCREMENTAL_LIMITS.runActions || a.batches > INCREMENTAL_LIMITS.batches
     || a.verifiedFrames > a.acceptedFrames || a.verifiedFramesTextBytes > a.framesTextBytes || a.verifiedActions > a.actions
     || a.verifiedBatches > a.batches || a.simFrames !== snapshot.state.tick || a.simFrames > a.verifiedFrames
+    || a.framesTextBytes !== a.acceptedFrames * 16 || a.verifiedFramesTextBytes !== a.verifiedFrames * 16
+    || a.actions > a.acceptedFrames || a.verifiedActions > a.verifiedFrames
+    || a.actions > a.batches * INCREMENTAL_LIMITS.batchActions
+    || a.batches > a.acceptedFrames || a.verifiedBatches > a.verifiedFrames
+    || a.acceptedFrames > a.batches * INCREMENTAL_LIMITS.batchFrames
     || snapshot.counters.frames !== a.verifiedFrames || snapshot.counters.segments !== a.verifiedBatches) bad('bad_private_checkpoint');
   if (!terminal && a.simFrames !== a.verifiedFrames) bad('bad_private_checkpoint');
   if (terminal) {
@@ -118,6 +123,7 @@ function checkAccounting(a, snapshot, pending, terminal, issuance) {
     if (!int(pending.cursor) || pending.cursor >= batch.n || pending.sha256 !== replayBatchDigest(batch)
       || batch.runId !== issuance.runId || batch.sequence !== a.batches - 1
       || batch.tick0 + batch.n !== a.acceptedFrames || batch.tick0 + pending.cursor !== a.verifiedFrames
+      || batch.tick0 > a.verifiedBatches * INCREMENTAL_LIMITS.batchFrames
       || a.verifiedBatches !== a.batches - 1) bad('bad_private_checkpoint');
     const unverifiedActions = batch.actions.filter((action) => action[0] >= pending.cursor).length;
     if (a.framesTextBytes - a.verifiedFramesTextBytes !== (batch.n - pending.cursor) * 16
