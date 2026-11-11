@@ -21,6 +21,7 @@ import { canonicalCommand } from '../server/canonicalCommand.js';
 import { RewardedCampaignUI } from '../hub/campaignRewards/uiFlow.js';
 import { REWARDED_CAMPAIGN_ENABLED } from '../hub/campaignRewards/session.js';
 import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY, zoomLevelsOf, zoomFovFor } from '../data/guns.js';
+import { swappedWeapon } from '../input/aimRules.js';
 import { SKILL_IDS, SPELL_IDS } from '../data/skills.js';
 import { nearBox } from '../sim/economy.js';
 import { MAX_TIER } from '../data/waves.js';
@@ -650,6 +651,8 @@ export class Game {
     input.canInteract = !this.pvpActive && !!p && !p.dead && (!!p.nearGunPickupId || !!nearBox(s, p));
     input.spellsUnlocked = p ? SPELL_IDS.filter((id) => p.perks[id]) : [];
     if (p && p.dead) input.dropAim();
+    // Changing weapon always comes up unzoomed.
+    if (swappedWeapon(this._aimMemo || (this._aimMemo = {}), p)) input.dropAim();
   }
 
   /** One rendered frame. Returns false when the sim is running but no tick fell due (proves nothing). */

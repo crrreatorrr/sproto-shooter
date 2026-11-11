@@ -103,6 +103,12 @@ function dress(behavior, over) {
 }
 Object.assign(ENEMIES, {
   boomMidget: dress('midget', { name: 'Boom Midget', hp: 34, color: 0xff5533, archetype: { deathBlast: { radius: 3.2, damage: 28 } } }),
+  // Runs at you, lights its fuse inside `trigger` metres and goes off `delay` seconds later. Shot first,
+  // the same bomb goes off among its friends. It never punches: the bomb is the attack.
+  kamikazeMidget: dress('midget', {
+    name: 'Kamikaze Midget', hp: 26, speed: 9.6, damage: 0, color: 0xff3b1f,
+    archetype: { fuse: { trigger: 2.4, delay: 0.5, radius: 3.4, damage: 26 }, deathBlast: { radius: 3.4, damage: 30 } },
+  }),
   riotMidget: dress('midget', { name: 'Riot Midget', hp: 58, speed: 5.4, color: 0x88a0c0, archetype: { frontShield: 0.3 } }),
   sewerMidget: dress('midget', { name: 'Sewer Midget', hp: 36, color: 0x6aa84f, archetype: { burrow: { every: 5, duration: 0.6 } } }),
   floretSprout: dress('midget', { name: 'Floret Sprout', hp: 48, speed: 6.2, color: 0x6adf3a, archetype: { mortar: { every: 3, damage: 8, speed: 11 } } }),

@@ -356,6 +356,11 @@ export function characterReady(model, stage) {
 }
 
 /** A static prop instance fitted to `fitHeight`, standing on y=0. */
+/** Request a static prop (stage decor, Sproto Duel obstacles). Instance it with instantiateStatic. */
+export function ensureStatic(path, prio = NOW) {
+  return loadStatic(path, prio);
+}
+
 export function instantiateStatic(path, fitHeight) {
   const t = control.result(path);
   if (!t || !t.root) return null;

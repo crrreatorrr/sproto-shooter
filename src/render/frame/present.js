@@ -11,7 +11,7 @@ import { createClock } from '../core/clock.js';
 import { createFirstPersonView } from './firstPersonView.js';
 
 export function mountPresent(env) {
-  const { AMMO_COL, CONF_N, G, GUN_MODEL_LEN, PK, PK_COL, RES_COL, TRACER_N, VM_LAYER, addTracer, applyStage, arenaBits, beginGpu, booms, boxView, boxViews, buildAlly, buildBoss, buildEnemy, buildGunModel, buildGunPickup, buildHazard, camera, cl, confetti, cp, cr, cv, disposeTree, dummy, endGpu, ensureProjectileModel, inst, lerp, levelView, pollGpu, releaseUnseen, renderer, requestNeeds, scene, syncView, tracerGeo, tracerPos, tracers, updateBeams, viewKey } = env;
+  const { AMMO_COL, CONF_N, G, GUN_MODEL_LEN, PK, ensurePickupModel, PK_COL, RES_COL, TRACER_N, VM_LAYER, addTracer, applyStage, arenaBits, beginGpu, booms, boxView, boxViews, buildAlly, buildBoss, buildEnemy, buildGunModel, buildGunPickup, buildHazard, camera, cl, confetti, cp, cr, cv, disposeTree, dummy, endGpu, ensureProjectileModel, inst, lerp, levelView, pollGpu, releaseUnseen, renderer, requestNeeds, scene, syncView, tracerGeo, tracerPos, tracers, updateBeams, viewKey } = env;
   const updateFirstPersonView = createFirstPersonView(env);
   let needsT = 0;
   const clock = createClock();
@@ -47,6 +47,8 @@ export function mountPresent(env) {
     for (const [id, cue] of cues) if (state.tick - cue.tick > 60) cues.delete(id);
 
     updateFirstPersonView(p, alpha, look, opts, now, fdt, resetMotion);
+    // The sky is a dome, not a place. Campaign routes run for hundreds of metres, so it travels with the eye.
+    env.sky.position.copy(camera.position);
 
     // weapon boxes
     for (const b of state.weaponBoxes) {
@@ -94,6 +96,10 @@ export function mountPresent(env) {
       }
       const def = e.boss ? BOSSES[e.type] : ENEMY_DEFS[e.type];
       u.visYaw = creatureYaw(e, u.visYaw, motionDt);
+      if (u.bomb) { // kamikaze: the bomb swells and throbs once the fuse is lit
+        const base = u.bomb.userData.base || (u.bomb.userData.base = u.bomb.scale.x);
+        u.bomb.scale.setScalar(base * (e.ai && e.ai.fuseT != null ? 1.3 + 0.35 * Math.sin(now * 0.06) : 1));
+      }
       o.rotation.y = u.visYaw + Math.PI;
       const travel = creatureTravel(e, u.visYaw);
       // flash / status tint
@@ -201,7 +207,14 @@ export function mountPresent(env) {
       const I = inst[pr.kind]; if (!I || I.n >= I.d.cap) continue;
       dummy.position.set(lerp(pr.prevPos.x, pr.pos.x, alpha), lerp(pr.prevPos.y, pr.pos.y, alpha), lerp(pr.prevPos.z, pr.pos.z, alpha));
       const s = I.d.scale * (pr.kind === 'orb' || pr.kind === 'taxBolt' || pr.kind === 'fireball' ? 1 + Math.sin(now * 0.02 + pr.id) * 0.15 : 1) * (pr.kind === 'flame' ? 0.6 + (1.4 - pr.ttl) * 1.6 : 1);
-      if (pr.kind === 'rocket') { dummy.scale.set(s, s, s * 3); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
+      if (I.d.kit) ensureProjectileModel(I);
+      if (I.d.kit && I.modeled) { // cartoon kit round: already sized, flies nose-first
+        dummy.scale.setScalar(1);
+        dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z);
+        if (pr.kind === 'bigBullet') addTracer(pr.prevPos, dummy.position, 0xffd27a, 0.09);
+        else if (pr.kind === 'rocket' || pr.kind === 'megaBullet') dummy.rotateZ(now * 0.012 + pr.id);
+      }
+      else if (pr.kind === 'rocket') { dummy.scale.set(s, s, s * 3); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z); }
       else if (pr.kind === 'bigBullet') {
         dummy.scale.set(s, s, s * 2.4); dummy.lookAt(dummy.position.x + pr.vel.x, dummy.position.y + pr.vel.y, dummy.position.z + pr.vel.z);
         addTracer(pr.prevPos, dummy.position, 0xffd27a, 0.09); // hot streak behind the round
@@ -229,10 +242,13 @@ export function mountPresent(env) {
     for (const pk of state.pickups) {
       if (pk.kind === 'gun') continue;
       const I = PK[pk.kind]; if (!I || I.n >= 256) continue;
+      ensurePickupModel(pk.kind);
       dummy.position.set(lerp(pk.prevPos.x, pk.pos.x, alpha), lerp(pk.prevPos.y, pk.pos.y, alpha) + Math.sin(now * 0.004 + pk.id) * 0.08, lerp(pk.prevPos.z, pk.pos.z, alpha));
       const s = pk.kind === 'bigHealth' ? 0.4 : pk.kind === 'resource' ? (pk.resId === 'bossCore' || pk.resId === 'manaCrystal' ? 0.35 : 0.2) : pk.kind === 'tickets' ? 0.18 : 0.22;
-      dummy.rotation.set(pk.kind === 'tickets' ? Math.PI / 2 : 0, now * 0.003 + pk.id, 0);
-      dummy.scale.set(s, pk.kind === 'tickets' ? 0.05 / 0.18 * s : s, s);
+      const flatCoin = pk.kind === 'tickets' && !I.modeled; // the stand-in coin is a squashed cylinder on edge
+      dummy.rotation.set(flatCoin ? Math.PI / 2 : 0, now * 0.003 + pk.id, 0);
+      if (I.modeled) dummy.scale.setScalar(s * 1.5);
+      else dummy.scale.set(s, flatCoin ? 0.05 / 0.18 * s : s, s);
       if (pk.ttl < 5) dummy.scale.multiplyScalar(Math.sin(now * 0.03) > 0 ? 1 : 0.5);
       dummy.updateMatrix();
       I.im.setMatrixAt(I.n, dummy.matrix);
@@ -275,6 +291,11 @@ export function mountPresent(env) {
     for (let i = booms.length - 1; i >= 0; i--) {
       const b = booms[i];
       b.life -= fdt;
+      if (b.fx) { // Blender-authored clip
+        b.fx.mixer.update(fdt);
+        if (b.life <= 0) { b.fx.root.visible = false; b.fx.busy = false; booms.splice(i, 1); }
+        continue;
+      }
       const k = 1 - b.life / b.max;
       b.m.scale.setScalar(b.radius * (0.3 + 0.7 * Math.sqrt(k)));
       b.m.material.opacity = 0.8 * (1 - k);

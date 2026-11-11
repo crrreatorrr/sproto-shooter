@@ -254,6 +254,7 @@ export function mountViewmodel(env, playerModel) {
     addBoom(ev.pos, ev.bossTag ? 6 : 1.2, 0xffffff, 0.2);
     addTrauma(ev.bossTag ? 0.8 : 0.08);
   });
+  bus.on('fuseLit', (ev) => { addBoom({ ...ev.pos, y: ev.pos.y + 1.6 }, 0.6, 0xffe14a, 0.2); });
   bus.on('explosion', (ev) => {
     addBoom(ev.pos, ev.radius, ELEM_COL[ev.element] === 0xffe9a8 ? 0xffa040 : ELEM_COL[ev.element], 0.4);
     burstConfetti(ev.pos, 12, 6, [new THREE.Color(0xffa040), new THREE.Color(0xffe14a), new THREE.Color(0x666666)]);

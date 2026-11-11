@@ -136,6 +136,8 @@ export function createAudio(bus) {
     pound() { noise({ dur: 0.4, vol: 0.4, freq: 600, end: 60 }); },
     splat() { if (throttle('splat', 2, 80)) noise({ dur: 0.2, vol: 0.2, freq: 500, end: 150 }); },
     playerDowned() { tone({ freq: 400, end: 80, dur: 0.8, type: 'sawtooth', vol: 0.3 }); },
+    // Kamikaze Midget: a rising beep for as long as the fuse burns, so you hear it behind you.
+    fuseLit(ev) { const n = Math.max(3, Math.round((ev.delay || 0.5) / 0.1)); for (let i = 0; i < n; i++) tone({ freq: 880 + i * 140, dur: 0.06, type: 'square', vol: 0.18, delay: i * 0.1 }); },
     playerRevived() { [392, 523, 659, 784].forEach((f, i) => tone({ freq: f, dur: 0.15, type: 'triangle', vol: 0.25, delay: i * 0.07 })); },
     unkillableTriggered() { tone({ freq: 100, end: 1500, dur: 0.6, type: 'sawtooth', vol: 0.3 }); },
     waveStart() { [330, 330, 440].forEach((f, i) => tone({ freq: f, dur: 0.18, type: 'square', vol: 0.18, delay: i * 0.2 })); },
