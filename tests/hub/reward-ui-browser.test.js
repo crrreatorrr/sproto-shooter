@@ -38,17 +38,19 @@ function dto(actor, runId, boss = 'sahil', seed = 7) {
 }
 async function fixture({ enabled = true, holdIssue = false, offline = false, lostSeal = false, endOutcome = 'incomplete', viewport = { width: 1280, height: 900 } } = {}) {
   const page = await browser.newPage({ viewport });
-  const url = enabled ? onUrl : offUrl, requests = [], errors = [], consoleErrors = [], runs = new Map();
+  const url = enabled ? onUrl : offUrl, requests = [], errors = [], consoleErrors = [], runs = new Map(), requestRows = new WeakMap();
   let releaseIssue = null, currentActor = { ...owner }, serial = 10, sealLost = false;
   const cors = { 'Access-Control-Allow-Origin': url, 'Access-Control-Allow-Headers': 'authorization,content-type', 'Access-Control-Allow-Methods': 'POST,OPTIONS' };
   page.on('pageerror', (error) => errors.push(error.message));
+  page.on('response', (response) => { const row = requestRows.get(response.request()); if (row) row.responseObservedAtMs = performance.now(); });
   page.on('console', (message) => { if (message.type() === 'error' && consoleErrors.length < 8) consoleErrors.push(message.text().startsWith('WebSocket connection') ? 'WebSocket connection failed' : message.text().replace(/(?:https?|wss?):\/\/[^\s]+/g, '[url]').slice(0, 256)); });
   await page.route(origin + '/v2/rpc/**', async (route) => {
     const request = route.request();
     if (request.method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: cors }); return; }
     const op = request.url().match(/run\.(issue|append|finish|status)/)[1], body = request.postDataJSON();
-    requests.push({ op, body, wire: request.postData() });
-    const respond = async (json) => route.fulfill({ json, headers: cors });
+    const row = { op, body, wire: request.postData(), requestObservedAtMs: performance.now() };
+    requests.push(row); requestRows.set(request, row);
+    const respond = async (json) => { await route.fulfill({ json, headers: cors }); row.fulfillResolvedAtMs = performance.now(); };
     if (op === 'issue') {
       let run = [...runs.values()].find((r) => r.key === body.key && r.actor.accountId === currentActor.accountId);
       if (!run) {
@@ -169,6 +171,7 @@ it('actual UI drains old actions, records canonical play, pauses hidden/hitstop,
     expect(await f.page.evaluate(() => window.__game.state.tick)).toBe(6);
     expect(await f.page.locator('[data-reward-action="unranked"]').isVisible()).toBe(true);
     expect(await f.page.evaluate(() => !!window.__game.canonicalRewardFailure)).toBe(true);
+    await f.page.evaluate(() => { window.__unrankedController = window.__game.rewardedCampaign.current.controller; });
     await f.page.locator('[data-reward-action="unranked"]').click();
     expect(await f.page.evaluate(() => ({ active: window.__game.rewardedCampaign.snapshot().active,
       gate: window.__game.canonicalRewardRecorder, scale: window.__game.timeScale, feel: window.__game.feel.presentScale }))).toEqual({ active: false, gate: null, scale: .2, feel: .3 });
@@ -177,13 +180,19 @@ it('actual UI drains old actions, records canonical play, pauses hidden/hitstop,
       if (window.__game.state.tick <= 6) return false;
       // This short fixture proves actual casual RAF resumes, then returns to
       // its manual-frame lane. Continuous desktop SwiftShader rendering must
-      // not compete with the ordered background append/finish assertions.
+      // continue throughout unrelated background append/finish assertions.
       window.__game.crash.halted = true;
       return true;
     });
-    // Finish follows durable append receipt in the real controller. Observe
-    // that prerequisite first; neither original one-second poll is extended.
+    // Server request arrival is not client receipt completion. Await the real
+    // append operation under its existing10s transport budget before measuring
+    // finish's dependent1s assertion. Never pump or synthesize acknowledgment.
     await expect.poll(() => [...f.runs.values()][0].batches.size).toBe(1);
+    await f.page.waitForFunction(() => {
+      const state = window.__unrankedController.status();
+      return state.accepted.sequence === 0 && state.accepted.tick === 6 && state.recorder.retainedFrames === 0;
+    }, null, { timeout: 10000 });
+    const clientAckObservedAtMs = performance.now();
     await expect.poll(() => f.requests.filter((r) => r.op === 'finish').length).toBe(1);
     await f.page.waitForFunction(() => window.__game.rewardedCampaign.snapshot().reminders > 0, null, { timeout: 15000 });
     const data = [...f.runs.values()][0], batches = [...data.batches.values()];
@@ -193,19 +202,20 @@ it('actual UI drains old actions, records canonical play, pauses hidden/hitstop,
     expect(verifyRun(log, { issuance: data.dto.issuance })).toMatchObject({ ok: true, outcome: 'incomplete', stateHash: before.hash, ticketsMinted: 0 });
     expect(decodeFrames(batches[0].frames, 6, batches[0].actions).commands).toEqual(before.commands.map((r) => r.command));
     await f.page.screenshot({ path: path.join(dir, 'explicit-unranked.png') });
-    fs.writeFileSync(path.join(dir, 'ui-prefix.json'), JSON.stringify({ sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), requests: f.requests, before, log }, null, 2));
+    fs.writeFileSync(path.join(dir, 'ui-prefix.json'), JSON.stringify({ sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), requests: f.requests, clientAckObservedAtMs, before, log }, null, 2));
     expect(f.errors).toEqual([]);
   } catch (error) {
     const state = await f.page.evaluate(() => {
-      const g = window.__game, c = g.rewardedCampaign.current?.controller?.status();
+      const g = window.__game, c = window.__unrankedController?.status() || g.rewardedCampaign.current?.controller?.status();
       return { tick: g.state.tick, reward: g.rewardedCampaign.snapshot(), halted: g.crash.halted,
         controller: c ? { busy: c.busy, paused: c.paused, problem: c.problem, accepted: c.accepted,
           finishRequested: c.finishRequested, sealUnknown: c.sealUnknown, sealCalls: c.sealCalls,
           writesStopped: c.writesStopped, recordingStopped: c.recordingStopped, recorder: c.recorder } : null };
     }).catch(() => ({ unavailable: true }));
     fs.writeFileSync(path.join(dir, 'unranked-finish-diagnostics.json'), JSON.stringify({ state,
-      operations: f.requests.map(({ op, body }) => ({ op, sequence: body.sequence ?? null, n: body.n ?? null,
-        lastSequence: body.lastSequence ?? null, lastTick: body.lastTick ?? null })), pageErrorCount: f.errors.length }, null, 2));
+      operations: f.requests.map(({ op, body, requestObservedAtMs, responseObservedAtMs, fulfillResolvedAtMs }) => ({ op,
+        sequence: body.sequence ?? null, n: body.n ?? null, lastSequence: body.lastSequence ?? null, lastTick: body.lastTick ?? null,
+        requestObservedAtMs, responseObservedAtMs: responseObservedAtMs ?? null, fulfillResolvedAtMs: fulfillResolvedAtMs ?? null })), pageErrorCount: f.errors.length }, null, 2));
     throw error;
   } finally { await f.close(); }
 }, 120000);
