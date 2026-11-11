@@ -13,6 +13,7 @@ import { aim, rotateWorld, handFrame, frame, specBasis } from './viewmodel/handF
 import { preparePlayerBody, disposePlayerBody, firstPersonPose, PEPE_MG_SUPPORT } from './viewmodel/playerBody.js';
 export { FP, cleanArmWeights } from './viewmodel/fpPose.js';
 
+import { damp, smoothstep, wrapAngle } from './anim.js';
 import { PLAYER_CHARACTERS } from './playerCharacters.js';
 
 const STOCK_MODEL = PLAYER_CHARACTERS[0].model;
@@ -143,7 +144,7 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
 
   const BENDS = [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.25, -1.25];
   const _sh = V(), _dir = V(), _pole = V(), _elbow = V(), _tgt = V(), _rot = new THREE.Quaternion();
-  function solveArm(a, wrist, poleCam, handQ, dt) {
+  function solveArm(a, wrist, poleCam, handQ, dt, previousBend) {
     // 1) two-bone IK with the elbow swung around the shoulder→wrist axis to the side where the sleeve clears the gun
     a.upper.getWorldPosition(_sh);
     const reach = a.lenA + a.lenB - 1e-3;
@@ -156,18 +157,25 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
     _pole.fromArray(poleCam).applyQuaternion(camera.getWorldQuaternion(_q2));
     _pole.sub(_t.copy(_dir).multiplyScalar(_pole.dot(_dir))).normalize();
     _tgt.copy(_sh).addScaledVector(_dir, dist);
-    let pick = 0, pickClear = -Infinity;
+    let pick = 0, pickClear = -Infinity, clear = false;
     if (col && h > 1e-3) {
       for (const ang of protectBody ? pepeBends : BENDS) {
+        const score = protectBody ? Math.abs(wrapAngle(ang - previousBend)) + Math.abs(ang) * 1.1 : 0;
+        if (clear && score >= pickClear) continue;
         _rot.setFromAxisAngle(_dir, ang);
         _elbow.copy(_pole).applyQuaternion(_rot).multiplyScalar(h).addScaledVector(_dir, x).add(_sh);
         const weapon = Math.min(segClear(_sh, _elbow, 0.35, 1), segClear(_elbow, _tgt, 0, protectBody ? 0.8 : 0.7));
         const c = protectBody ? Math.min(weapon, bodyClear(_sh, _elbow, _tgt, a.name === 'Left')) : weapon;
-        if (c >= FP.armRadius) { pick = ang; pickClear = c; break; }
-        if (c > pickClear + 0.004) { pickClear = c; pick = ang; }
+        if (c >= FP.armRadius) {
+          if (!protectBody) { pick = ang; break; }
+          // Prefer a safe elbow near the previous one, with a bias back to the natural bend.
+          if (!clear || score < pickClear) { clear = true; pick = ang; pickClear = score; }
+        } else if (!clear && c > pickClear + 0.004) { pickClear = c; pick = ang; }
       }
     }
-    a.bend += (pick - a.bend) * Math.min(1, dt * (protectBody ? 24 : 12));
+    a.bend = protectBody
+      ? wrapAngle(damp(previousBend, previousBend + wrapAngle(pick - previousBend), 0.047, dt))
+      : a.bend + (pick - a.bend) * Math.min(1, dt * 12);
     _rot.setFromAxisAngle(_dir, a.bend);
     _elbow.copy(_pole).applyQuaternion(_rot).multiplyScalar(h).addScaledVector(_dir, x).add(_sh);
     aim(a.upper, a.lower.getWorldPosition(_c), _elbow);
@@ -233,7 +241,9 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
 
   const glovePoint = V(), shifted = V(), separation = V(), localAway = V();
   function poseGrasp(a, wrist, pole, orientation, dt, trigger) {
-    solveArm(a, wrist, pole, orientation, dt);
+    // Glove clearance can solve again in the same frame; those passes share one time step.
+    const previousBend = a.bend;
+    solveArm(a, wrist, pole, orientation, dt, previousBend);
     curlHand(a, trigger);
     if (!protectBody || !col) return;
     let clear = 0, bodyPush = 0;
@@ -255,12 +265,12 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
       shifted.copy(wrist).addScaledVector(a.away, clear);
       shifted.addScaledVector(supported.set(-.68, -.72, 0).applyQuaternion(camera.getWorldQuaternion(_pq)), bodyPush);
       for (const chain of [...a.fingers, a.thumb]) for (const bone of chain) bone.quaternion.copy(bind.get(bone));
-      solveArm(a, shifted, pole, orientation, dt);
+      solveArm(a, shifted, pole, orientation, dt, previousBend);
       curlHand(a, trigger);
     }
   }
 
-  const posB = V(), qB = new THREE.Quaternion(), _kn = V(), _kb = V();
+  const posB = V(), qB = new THREE.Quaternion(), _kn = V(), _kb = V(), _beforePush = V();
   const wristL = V(), wristR = V(), qL = new THREE.Quaternion(), qR = new THREE.Quaternion();
   const bodyOff = V(), _need = V();
   /** Default or blended grasp for one hand: `over` = { anchor, spec?, w } (gun local) blends toward another hold. */
@@ -273,11 +283,14 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
       // moving between holds the straight path can cut through the gun: push the hand back out of it, wrist and
       // knuckles both (the fingers curl to contact afterwards, but can't fix a palm that's already inside)
       if (col && over.w < 1) {
+        const weight = protectBody ? smoothstep(over.w / 0.15) * smoothstep((1 - over.w) / 0.15) : 1;
+        _beforePush.copy(outPos);
         pushOut(outPos, FP.wristClear);
+        outPos.lerp(_beforePush, 1 - weight);
         _kn.set(1, 0, 0).applyQuaternion(outQ).multiplyScalar(a.palmLen).add(outPos);
         _kb.copy(_kn);
         pushOut(_kn, FP.wristClear);
-        outPos.add(_kn.sub(_kb));
+        outPos.addScaledVector(_kn.sub(_kb), weight);
       }
     }
   }
@@ -306,6 +319,7 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
     get ready() { return ready; },
     get modelPath() { return desiredPath; },
     get weaponOffset() { return FP.weaponOffset; },
+    get usesPepeRig() { return protectBody; },
     selectModel,
     /** The gun mesh currently held (a child of the viewmodel root) and its type. */
     setGun(mesh, type) {
@@ -376,9 +390,12 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
         arms.Right.middle1.getWorldPosition(rightArm[2]);
         // Keep the support hand on its side of the firing hand during crossing reload paths.
         separation.subVectors(wristL, rightArm[1]);
-        const min = gunType === 'duckgun' ? .25 : opts.left?.w > 0.1 || opts.right?.w > 0.1 ? .23 : .15;
-        if (separation.lengthSq() < min * min) {
-          separation.addScaledVector(_a.set(-1, -.5, 0).applyQuaternion(camera.getWorldQuaternion(_pq)), .13);
+        const work = Math.max(opts.left?.w || 0, opts.right?.w || 0);
+        const min = gunType === 'duckgun' ? .25 : .15 + .08 * smoothstep(work / 0.45);
+        const gap = min - separation.length();
+        if (gap > 0) {
+          const bias = 0.13 * smoothstep(gap / 0.06);
+          separation.addScaledVector(_a.set(-1, -.5, 0).applyQuaternion(camera.getWorldQuaternion(_pq)), bias);
           wristL.copy(rightArm[1]).add(separation.setLength(min));
         }
         // Limit a left wrist target that still crosses the right forearm or palm.

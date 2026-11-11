@@ -51,13 +51,16 @@ export function mountViewmodel(env, playerModel) {
       idle(() => colliderFor(mesh, key));
     }
   }
-  const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, reload: 0, swap: 0, lastYaw: 0, lastPitch: 0 };
+  const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, swap: 0, lastYaw: 0, lastPitch: 0 };
 
   // ---------- reload animations ----------
   // Procedural, per gun type, driven by reload progress t (0..1) so they always fit the real reload time.
   // Returns camera-space offsets { x, y, z } and local rotations { rx, ry, rz }.
   const smooth = (a, b, t) => { const k = Math.min(1, Math.max(0, (t - a) / (b - a))); return k * k * (3 - 2 * k); };
-  const pulse = (t, c, w) => Math.exp(-(((t - c) / w) ** 2));
+  // Keep the Soldier's reload beats and contact points, with gentler accents for the heavier Pepe gloves.
+  const pulse = (t, c, w) => fp.usesPepeRig
+    ? 0.62 * Math.exp(-(((t - c) / (w * 1.3)) ** 2))
+    : Math.exp(-(((t - c) / w) ** 2));
   const RELOAD_ANIM = {
     // drum swap: roll the underside toward the support hand, pull down, then seat the drum
     mg: (t, e) => ({
@@ -80,7 +83,7 @@ export function mountViewmodel(env, playerModel) {
     // swing the back of the gun round in front, swap the power cell there, then a charge-up twirl
     raygun: (t, e) => ({
       x: -0.05 * e, y: -0.03 * e, z: -0.05 * e,
-      rx: 0.15 * e, ry: -0.6 * e, rz: 0.25 * e + (fp.weaponOffset ? 0.22 : 0.6) * pulse(t, 0.84, 0.05),
+      rx: 0.15 * e, ry: -0.6 * e, rz: 0.25 * e + (fp.usesPepeRig ? 0.22 : 0.6) * pulse(t, 0.84, 0.05),
     }),
     // roll the drum toward the left hand, thumb in four big rounds (a nudge per round), flick the drum shut
     bigbullets: (t, e) => {
@@ -107,7 +110,13 @@ export function mountViewmodel(env, playerModel) {
     if (!(reloadT > 0) || !total) return NO_RELOAD;
     const t = reloadProgress(reloadT, total);
     const e = smooth(0, 0.15, t) * (1 - smooth(0.85, 1, t)); // ease in and out of the reload pose
-    return (RELOAD_ANIM[type] || RELOAD_ANIM.mg)(t, e);
+    const pose = (RELOAD_ANIM[type] || RELOAD_ANIM.mg)(t, e);
+    if (fp.usesPepeRig) {
+      const settle = smooth(0, 0.06, t) * (1 - smooth(0.94, 1, t));
+      return { x: pose.x * settle, y: pose.y * settle, z: pose.z * settle,
+        rx: pose.rx * settle, ry: pose.ry * settle, rz: pose.rz * settle };
+    }
+    return pose;
   }
   const reloadProgress = (reloadT, total) => Math.min(1, Math.max(0, 1 - reloadT / total));
 
@@ -163,7 +172,7 @@ export function mountViewmodel(env, playerModel) {
       const cell = [0, 0.2, 0.5], out = [-0.4, 0.35, 0.95], low = [-1.3, -0.7, 0.4];
       const path = [[0.2, cell], [0.3, cell], [0.4, out], [0.5, low], [0.6, out], [0.68, cell], [0.74, cell]];
       const weights = [[0.08, 0], [0.2, 1], [0.74, 1], [0.86, 0]];
-      if (fp.weaponOffset) {
+      if (fp.usesPepeRig) {
         // The Pepe support hand exits under the emitter while it rolls back toward aim.
         path.unshift([0.08, [-0.75, -0.85, -0.22]], [0.15, low]);
         path.push([0.80, [-1.05, -0.8, 0.2]], [0.90, [-0.6, -0.95, -0.18]]);
@@ -259,7 +268,7 @@ export function mountViewmodel(env, playerModel) {
   bus.on('land', (ev) => { feel.landDip = Math.min(0.25, ev.speed / 60); });
   bus.on('dash', () => { feel.fovPunch += 8; });
   bus.on('slide', () => { feel.fovPunch += 4; });
-  bus.on('reloadStart', (ev) => { vm.reload = 1; vm.reloadTime = ev.time || 1.5; });
+  bus.on('reloadStart', (ev) => { vm.reloadTime = ev.time || 1.5; });
   bus.on('swap', () => { vm.swap = 1; });
   bus.on('gunPickedUp', () => { vm.swap = 1; });
   bus.on('stomp', (ev) => burstConfetti({ ...ev.pos, y: 0.1 }, 8, 3, [new THREE.Color(0xff5ec4)]));

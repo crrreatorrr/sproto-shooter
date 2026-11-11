@@ -271,6 +271,20 @@ describe('per-recipient messages', () => {
     expect(snaps[0].body.you.ackFrame).toBe(-1);
   });
 
+  it('reports the sliding player to both seats until the slide ends', () => {
+    const director = boot({ leadInTicks: 0 });
+    expect(send(director, 'ada', wish(1, 0, { moveZ: 1, sprint: true, slide: true }), 0).ok).toBe(true);
+    const sliding = stepTo(director, 1).messages.filter((m) => m.op === OP.SNAPSHOT);
+    expect(sliding).toHaveLength(2);
+    for (const { body } of sliding) {
+      expect(body.players[0].slideT).toBeGreaterThan(0);
+      expect(body.players[1].slideT).toBe(0);
+    }
+    const recovered = stepTo(director, 25).messages.filter((m) => m.op === OP.SNAPSHOT);
+    expect(recovered).toHaveLength(2);
+    for (const { body } of recovered) expect(body.players[0].slideT).toBe(0);
+  });
+
   it('sends a snapshot every tick and the state hash once per second', () => {
     const director = boot({ leadInTicks: 0 });
     let hashed = 0;
