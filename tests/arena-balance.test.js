@@ -72,6 +72,10 @@ describe('tier ladder: what a wave looks like at a tier', () => {
     expect(e.maxHp).toBe(Math.round(ENEMIES.obama.hp * tierArenaHpMult(5)));
     expect(e.dmgMult).toBeCloseTo(tierEnemyMult(5));
     expect(createBoss(a.s, 'monster', {}).maxHp).toBe(Math.round(BOSSES.monster.hp * tierArenaHpMult(5)));
+    const b = start('boss', 5, { boss: 'dragon' });
+    expect(b.s.enemies.find((x) => x.boss).maxHp).toBe(Math.round(BOSSES.dragon.hp * tierArenaHpMult(5)));
+    const sb = start('sandbox', 5);
+    expect(createEnemy(sb.s, 'obama', { pos: { x: 5, z: 5 } }).maxHp).toBe(Math.round(ENEMIES.obama.hp * tierEnemyMult(5)));
     const c = start('campaign', 1, { level: 'L05' });
     expect(c.s.tier).toBeGreaterThan(1);
     const ce = createEnemy(c.s, 'obama', { pos: { x: 5, z: 5 } });

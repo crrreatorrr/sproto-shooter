@@ -41,8 +41,8 @@ export const VICTORY_TICKETS = 150;
 export const MAX_TIER = 10;
 
 export const tierEnemyMult = (t) => Math.pow(1.15, t - 1);
-// Arena modes only (Wave Mode, Boss Fight, sandbox): enemy health climbs faster than enemy damage,
-// so a higher tier takes longer to clear without one-shotting you. Campaign enemies keep tierEnemyMult.
+// Wave Mode and Boss Fight only: enemy health climbs faster than enemy damage, so a higher tier takes
+// longer to clear without one-shotting you. Campaign and sandbox enemies keep tierEnemyMult.
 export const tierArenaHpMult = (t) => Math.pow(1.18, t - 1);
 
 // Arena Second Wind: every down inside one wave (or one Boss Fight) leaves less time to get the kill.
