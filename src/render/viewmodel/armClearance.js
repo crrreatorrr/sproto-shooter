@@ -32,3 +32,23 @@ export function createBodyClearance(torsoCentre, torsoHalf, bodyInverse, rightAr
 
   return { rightArmClear, bodyClear };
 }
+
+const _g = new THREE.Vector3(), _gp = new THREE.Vector3();
+
+/** Move a world point out along the distance field's gradient until it has `clear` (world m) from the gun. */
+export function pushWristOut(p, clear, gun, col, gunWorldScale) {
+  gun.worldToLocal(p);
+  const want = clear / gunWorldScale, h = col.cell;
+  for (let i = 0; i < 12; i++) {
+    const d = col.distance(p);
+    if (d >= want) break;
+    _g.set(
+      col.distance(_gp.copy(p).setX(p.x + h)) - col.distance(_gp.copy(p).setX(p.x - h)),
+      col.distance(_gp.copy(p).setY(p.y + h)) - col.distance(_gp.copy(p).setY(p.y - h)),
+      col.distance(_gp.copy(p).setZ(p.z + h)) - col.distance(_gp.copy(p).setZ(p.z - h)),
+    );
+    if (_g.lengthSq() < 1e-12) _g.set(0, -1, 0); // deep inside (flat field): drop out of the bottom
+    p.addScaledVector(_g.normalize(), Math.max(want - d, h));
+  }
+  gun.localToWorld(p);
+}

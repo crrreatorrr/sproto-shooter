@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { colliderFor } from './gunCollider.js';
-import { createBodyClearance } from './viewmodel/armClearance.js';
+import { createBodyClearance, pushWristOut } from './viewmodel/armClearance.js';
 import { enqueue, PRIORITY, retainAsset, releaseAsset, peekAsset } from './assets.js';
 import { FP as STOCK_POSE } from './viewmodel/fpPose.js';
 import { aim, rotateWorld, handFrame, frame, specBasis } from './viewmodel/handFrame.js';
@@ -285,33 +285,14 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
       if (col && over.w < 1) {
         const weight = protectBody ? smoothstep(over.w / 0.15) * smoothstep((1 - over.w) / 0.15) : 1;
         _beforePush.copy(outPos);
-        pushOut(outPos, FP.wristClear);
+        pushWristOut(outPos, FP.wristClear, gun, col, gunWorldScale);
         outPos.lerp(_beforePush, 1 - weight);
         _kn.set(1, 0, 0).applyQuaternion(outQ).multiplyScalar(a.palmLen).add(outPos);
         _kb.copy(_kn);
-        pushOut(_kn, FP.wristClear);
+        pushWristOut(_kn, FP.wristClear, gun, col, gunWorldScale);
         outPos.addScaledVector(_kn.sub(_kb), weight);
       }
     }
-  }
-
-  /** Move a world point out along the distance field's gradient until it has `clear` (world m) from the gun. */
-  const _g = V(), _gp = V();
-  function pushOut(p, clear) {
-    gun.worldToLocal(p);
-    const want = clear / gunWorldScale, h = col.cell;
-    for (let i = 0; i < 12; i++) {
-      const d = col.distance(p);
-      if (d >= want) break;
-      _g.set(
-        col.distance(_gp.copy(p).setX(p.x + h)) - col.distance(_gp.copy(p).setX(p.x - h)),
-        col.distance(_gp.copy(p).setY(p.y + h)) - col.distance(_gp.copy(p).setY(p.y - h)),
-        col.distance(_gp.copy(p).setZ(p.z + h)) - col.distance(_gp.copy(p).setZ(p.z - h)),
-      );
-      if (_g.lengthSq() < 1e-12) _g.set(0, -1, 0); // deep inside (flat field): drop out of the bottom
-      p.addScaledVector(_g.normalize(), Math.max(want - d, h));
-    }
-    gun.localToWorld(p);
   }
 
   return {

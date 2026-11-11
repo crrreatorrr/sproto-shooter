@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { instantiateGun, releaseAsset, retainAsset } from '../assets.js';
-import { GUN_MODEL_LEN, HAND_FRAC } from '../viewmodel/gunMesh.js';
+import { HAND_FRAC } from '../viewmodel/gunMesh.js';
 import { GUN_IDS, LOADOUT } from '../../sim/pvp/rules.js';
 import { createSlidePose } from './slidePose.js';
 import { wrapAngle } from '../anim.js';
+
+// World-space lengths in meters for the 1.8 m Arena character rigs.
+const ARENA_GUN_LENGTH = { mg: 0.96, shotgun: 1.04, sniper: 1.18 };
 
 const ARMS = /^(?:mixamorig)?(?:Left|Right)(?:Shoulder|Arm|ForeArm|Hand)|^weapon_/;
 
@@ -86,7 +89,7 @@ export function poseModel(body, player, shotAge, dt, yaw = null) {
   const slot = GUN_IDS[player.slot] ? player.slot : 0;
   const type = GUN_IDS[slot];
   if (motion.heldType !== type) {
-    const inst = instantiateGun(type, GUN_MODEL_LEN[type] * 0.82);
+    const inst = instantiateGun(type, ARENA_GUN_LENGTH[type]);
     if (inst) {
       motion.held?.userData.releaseAsset();
       gun.clear();
