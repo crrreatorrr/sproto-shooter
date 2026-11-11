@@ -4,6 +4,7 @@
 // wins, a tie keeps the local copy, and the other copy is a lost update.
 // Economic fields are stripped either way, so there is nothing to merge.
 import { nonEconomicSave } from '../hub/link.js';
+import { normalizeGraphicsPreset } from '../render/graphicsPresets.js';
 
 const KEY = 'sproto-campaign-profile';
 export const PROFILE_VERSION = 2;
@@ -21,6 +22,7 @@ export function defaultSettings() {
     aimAssist: 1,
     hitstop: true,
     shake: 1,
+    graphicsPreset: 'high',
     fxQuality: 'high',
     screenFx: 1,
     volumes: { master: 1, music: 1, sfx: 1 },
@@ -37,6 +39,7 @@ function settingsOf(value) {
     aimAssist: clamp(src.aimAssist, 0, 1.5, 1), // controller only; 0 turns it off
     hitstop: typeof src.hitstop === 'boolean' ? src.hitstop : true,
     shake: clamp(src.shake, 0, 1.5, 1),
+    graphicsPreset: normalizeGraphicsPreset(src.graphicsPreset),
     fxQuality: fx === 'low' || fx === 'medium' || fx === 'high' ? fx : 'high',
     screenFx: clamp(src.screenFx, 0, 1, 1),
     volumes: {

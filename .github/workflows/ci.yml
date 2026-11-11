@@ -33,7 +33,7 @@ jobs:
         run: npm run typecheck
 
       - name: playwright chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: test
         # Keep timing-sensitive Goja replays free of browser test CPU contention.

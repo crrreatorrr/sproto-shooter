@@ -57,6 +57,23 @@ Assets load per level, not all at once (`render/assets.js` priority queue + `lev
 - The next wave's stage and enemies download during the intermission.
 - Sandbox spawns load their model on demand. A small "⏳ loading" hint shows in the HUD while downloads run.
 
+## Graphics resolution
+
+Pause the game and choose **Graphics resolution**: **Low — up to 720p**,
+**Mid — up to 1080p**, or **High — up to 1440p**. High is the default for older
+profiles. The setting saves locally and follows the existing non-economic cloud
+profile sync; it applies to campaign, Wave Mode and arena views.
+
+These are drawing-buffer caps of 1280×720, 1920×1080 and 2560×1440 pixels.
+The game preserves your display's aspect ratio and never upscales above native
+pixel density. Small screens can therefore look identical across presets.
+Ultrawide, 4:3 and 16:10 views fit both edge caps without stretching. Portrait
+views use the rotated bounds. The long and short edges are capped, so the total
+pixel count also stays within the selected resolution.
+Existing DPR limits remain 1.5 for campaign/Wave Mode and 1 for arenas.
+FX quality, shake and screen effects remain separate controls. The presets make
+no frame-rate guarantee and change no gameplay, rewards or server capacity.
+
 ## Controls
 
 Keyboard, mouse and controller all work at once. The HUD prompts and the controls list on the title and pause screens follow the device you used last. The layout follows the shared Sproto convention, so the hub and every Sproto game feel the same.

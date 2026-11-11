@@ -22,7 +22,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       - name: Verify full frozen corpus and strict incremental semantics
         run: npx vitest run tests/server/incremental-replay.test.js tests/server/checkpoint-serialization.test.js --no-file-parallelism
       - name: Build both pinned simulator artifacts from the exact tested head

@@ -18,8 +18,8 @@ import { mountPresent } from './frame/present.js';
 const lerp = (a, b, t) => a + (b - a) * t;
 const ELEM_COL = { none: 0xffe9a8, fire: 0xff7a1a, shock: 0x4fe3ff, goo: 0x9be33b };
 
-export function createRenderer(container, bus, playerModel) {
-  const env = { bus, lerp, ELEM_COL, ARENA_R, ...createRenderContext(container), ...createMaterials() };
+export function createRenderer(container, bus, playerModel, graphicsPreset = 'high') {
+  const env = { bus, lerp, ELEM_COL, ARENA_R, ...createRenderContext(container, graphicsPreset), ...createMaterials() };
   env.stageOverride = null;
   mountStage(env);
   mountWorld(env);
@@ -97,7 +97,8 @@ export function createRenderer(container, bus, playerModel) {
   env.requestNeeds = requestNeeds;
   mountPresent(env);
   return {
-    render: env.render,
+    render(...args) { env.resize(); env.render(...args); },
+    setGraphicsPreset: env.setGraphicsPreset,
     project: env.project,
     resize: env.resize,
     canvas: env.canvas,

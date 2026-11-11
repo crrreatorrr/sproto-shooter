@@ -18,7 +18,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       - name: Validate actual dormant UI, canonical Game lifecycle and ordinary controls
         run: npx vitest run tests/hub/reward-presentation.test.js tests/hub/reward-ui-browser.test.js tests/server/client-command-parity.test.js --no-file-parallelism
       - uses: actions/upload-artifact@v4

@@ -126,7 +126,7 @@ function mountScreen(screen) {
   screen.onclick = null;
 }
 
-export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
+export function startPvpSession({ screen, input, hub, demo = false, onExit, getGraphicsPreset = null }) {
   mountScreen(screen);
   const root = document.createElement('div');
   root.dataset.pvpRoot = '1';
@@ -189,7 +189,7 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
     root.onclick = null;
     root.innerHTML = `<div style="position:absolute;inset:0;display:flex;flex-direction:column">${panelHtml('Practice')}<button class="btn alt" data-pvp-go="back" data-nav-back style="position:absolute;top:12px;right:12px">Leave practice</button></div>`;
     const canvas = root.querySelector('canvas');
-    const view = createArenaView(canvas);
+    const view = createArenaView(canvas, { getGraphicsPreset });
     views.push(view);
     const director = createDirector({ seed: 11, matchId: 'practice' });
     let now = 0;
@@ -258,7 +258,7 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
     for (const rt of realtime) joined.push(await rt.joinMatch({ matchId }));
     const clients = joined.map((match, i) => createPvpClient({ accountId: accounts[i], match, clock: () => clock.now }));
     const localViews = panels.map((panel) => {
-      const view = createArenaView(panel.querySelector('canvas'));
+      const view = createArenaView(panel.querySelector('canvas'), { getGraphicsPreset });
       views.push(view);
       return view;
     });
@@ -305,7 +305,7 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit }) {
   function mountFreeMatch(match) {
     mode = mountFreeArena({
       root, match, accountId: (hub && hub.playerId) || '', input, onLeave: leave, views,
-      panelHtml, paint, playSounds, createPvpSfx,
+      panelHtml, paint, playSounds, createPvpSfx, getGraphicsPreset,
     });
   }
 
