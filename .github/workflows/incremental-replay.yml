@@ -5,6 +5,7 @@ on:
       - src/server/**
       - src/sim/campaign/campaign.js
       - tests/server/**
+      - .github/workflows/ci.yml
       - .github/workflows/incremental-replay.yml
 permissions:
   contents: read
