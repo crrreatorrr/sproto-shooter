@@ -190,8 +190,7 @@ describe('browser mock', () => {
       browser = await chromium.launch({ headless: true });
     }
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-    const dir = '/opt/cursor/artifacts';
-    fs.mkdirSync(dir, { recursive: true });
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shooter-pvp-'));
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('[data-go="pvp"]', { timeout: 45000 });
@@ -230,6 +229,7 @@ describe('browser mock', () => {
       for (const file of shots) expect(fs.statSync(file).size).toBeGreaterThan(1000);
     } finally {
       await browser.close();
+      fs.rmSync(dir, { recursive: true, force: true });
     }
   }, 120000);
 });

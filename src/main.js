@@ -16,7 +16,7 @@ document.addEventListener('visibilitychange', () => {
 });
 crashGuard.onHalt((info) => {
   if (document.pointerLockElement) document.exitPointerLock?.();
-  crashPanel.show(info.source === 'boot' ? 'retry' : 'reload');
+  crashPanel.show(info.source === 'boot' ? 'retry' : 'reload', info, window.__game?.state);
 });
 
 async function boot() {

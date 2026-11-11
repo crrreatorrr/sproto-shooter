@@ -15,6 +15,13 @@ npm test           # Vitest: unit, sim, golden, goja and browser tests (156 in 2
 npm run build      # static build in dist/
 ```
 
+`npm run test:local` runs the Chromium Wave Mode QA: pause/settings and restarts,
+all three waves and four bosses with real rendering, every weapon and spell,
+ammo-pickup rendering, and defeat/retry. The full-wave combat test uses accelerated
+simulation and god mode with sampled rendered frames. Any uncaught error or crash-guard
+error fails the checks. If a crash occurs during play, expand **Error details** before
+reloading to see the exception and the run's seed, tick, wave and phase.
+
 URL params: `?mode=waves|sandbox|test&tier=1-10&seed=123&debug=1&stats=1`
 
 Hub (same shape as the other games):

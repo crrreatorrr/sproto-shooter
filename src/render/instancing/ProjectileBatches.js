@@ -94,7 +94,11 @@ export function mountProjectiles(env) {
     PK[k] = { im, n: 0 };
   }
   const RES_COL = Object.fromEntries(RESOURCES.map((r) => [r.id, new THREE.Color(r.color)]));
-  const AMMO_COL = { bullets: new THREE.Color(0xffd166), shells: new THREE.Color(0xff6a3d), sniper: new THREE.Color(0x4fe3ff), rockets: new THREE.Color(0xb07cff) };
-  const PK_COL = { health: new THREE.Color(0xff4d6d), bigHealth: new THREE.Color(0xff2255), mana: new THREE.Color(0x6aa8ff), tickets: new THREE.Color(0xffd700) };
+  const AMMO_COL = {
+    bullets: new THREE.Color(0xffd166), shells: new THREE.Color(0xff6a3d),
+    sniper: new THREE.Color(0x4fe3ff), rockets: new THREE.Color(0xb07cff),
+    energy: new THREE.Color(0x6ff6ff), heavy: new THREE.Color(0xffa21f), rubber: new THREE.Color(0xffd23a),
+  };
+  const PK_COL = { health: new THREE.Color(0xff4d6d), bigHealth: new THREE.Color(0xff2255), mana: new THREE.Color(0x6aa8ff), tickets: new THREE.Color(0xffd700), ammo: AMMO_COL.bullets, resource: new THREE.Color(0xffffff) };
   Object.assign(env, { loadProjectileModel, PROJ_KINDS, inst, dummy, ensureProjectileModel, PK, pickupKinds, RES_COL, AMMO_COL, PK_COL });
 }

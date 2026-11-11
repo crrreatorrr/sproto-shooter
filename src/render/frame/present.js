@@ -311,7 +311,9 @@ export function mountPresent(env) {
       if (pk.ttl < 5) dummy.scale.multiplyScalar(Math.sin(now * 0.03) > 0 ? 1 : 0.5);
       dummy.updateMatrix();
       I.im.setMatrixAt(I.n, dummy.matrix);
-      const col = pk.kind === 'resource' ? RES_COL[pk.resId] : pk.kind === 'ammo' ? AMMO_COL[pk.ammoType] : PK_COL[pk.kind];
+      // Infinite-reserve guns can still appear in rolled ammo drops (notably the Duck Gun).
+      // A new ammo/resource id must keep its placeholder drawable instead of halting every frame.
+      const col = (pk.kind === 'resource' ? RES_COL[pk.resId] : pk.kind === 'ammo' ? AMMO_COL[pk.ammoType] : PK_COL[pk.kind]) ?? PK_COL[pk.kind];
       I.im.setColorAt(I.n, col);
       I.n++;
     }

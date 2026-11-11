@@ -259,6 +259,9 @@ label.nav-focus { padding: 2px 6px; }
 .crash-card { max-width: 420px; text-align: center; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px 26px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .crash-card h2 { font-family: var(--display); color: var(--sun); margin: 0; font-size: 28px; }
 .crash-card p { color: var(--ink-dim); margin: 0 0 6px; font-size: 16px; }
+.crash-details { width: 100%; text-align: left; color: var(--ink-dim); font-size: 14px; }
+.crash-details summary { cursor: pointer; }
+.crash-details pre { max-height: 28vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; font: 12px/1.5 monospace; }
 
 .character-grid {
   display: grid;
