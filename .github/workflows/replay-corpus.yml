@@ -1,0 +1,29 @@
+name: replay-corpus-generation
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - scripts/build-replay-corpus.mjs
+      - tests/bossLog.js
+      - tests/server/replay-corpus.js
+      - .github/workflows/replay-corpus.yml
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Generate all preselected traces without replacing failures
+        run: node scripts/build-replay-corpus.mjs ci-artifacts/replay-corpus
+      - uses: actions/upload-artifact@v4
+        with:
+          name: replay-corpus
+          path: ci-artifacts/replay-corpus
+          if-no-files-found: error
