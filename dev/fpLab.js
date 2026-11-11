@@ -5,7 +5,7 @@
 //   await lab.pose(0, 'reload', 0.4); lab.side()   // freeze a pose, look at it from an outside camera
 //   lab.fpv()                     // back to the first-person view
 // Counts are skinned vertices strictly inside the gun mesh (voxel parity test), grouped by side (L/R/B = body)
-// and part; vertices hidden by the first-person clip planes are skipped. "clean" = nothing inside.
+// and part. "clean" = nothing inside.
 const game = () => window.__game;
 const R = () => game().renderer;
 const player = () => game().state.players[game().state.localPlayerId];
@@ -141,7 +141,6 @@ export function measure() {
   for (let i = 0; i < part.length; i++) {
     sm.getVertexPosition(i, v); v.applyMatrix4(sm.matrixWorld);
     w.copy(v).applyMatrix4(camInv);
-    if (w.y > FP.clipY && w.z > FP.clipZ) continue; // clipped away, never drawn
     if (!col.inside(v.applyMatrix4(inv))) continue;
     res[side[i]][part[i]] = (res[side[i]][part[i]] || 0) + 1;
     const d = -w.z;

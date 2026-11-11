@@ -15,7 +15,8 @@ export const GUN_MODEL_LEN = { mg: 0.7, shotgun: 0.75, sniper: 0.8, bazooka: 0.9
 export const HAND_FRAC = {
   mg: { grip: [0, -0.26, 0.23], fore: [0, 0.02, -0.25], left: 'cup', rake: -0.6 },
   shotgun: { grip: [0, -0.29, 0.373], fore: [0, -0.041, -0.373], left: 'cup', rake: -0.6 },
-  sniper: { grip: [0, -0.4, 0.1375], fore: [0.108, 0.067, -0.175], left: 'foregrip', rake: -0.35 },
+  // sniper: the pistol grip spans y -0.49..-0.09 of the model; the hand sits at its middle, under the trigger guard
+  sniper: { grip: [0, -0.27, 0.145], fore: [0.108, 0.067, -0.175], left: 'foregrip', rake: -0.35 },
   bazooka: { grip: [0, -0.415, 0.208], fore: [0, -0.32, -0.042], left: 'foregrip', rake: -0.35 },
   // boss pistols: right hand wrapped round the grip's middle, left hand cupped under the front of the body
   raygun: { grip: [0, -0.298, 0.31], fore: [-0.113, -0.059, -0.13], left: 'cup', rake: -1.2 },
