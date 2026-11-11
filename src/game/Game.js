@@ -33,6 +33,7 @@ import { NAV_KEYS, keyLabel } from '../input/input.js';
 import { padGlyph } from '../input/gamepad.js';
 import { PAD_BINDINGS } from '../input/padConfig.js';
 import { createMenuNav } from '../ui/menuNav.js';
+import { installGameFeedback } from '../hub/feedback.js';
 import { PLAYER_CHARACTERS, saveCharacter, selectedCharacter } from '../render/playerCharacters.js';
 
 const MAX_FRAME = 0.25, MAX_TICKS = 5;
@@ -51,6 +52,8 @@ export class Game {
     this.bus = createEventBus();
     this.state = createGameState({ seed });
     this.paused = true;
+    // True while the feedback window is open over a mode that can pause (src/hub/feedback.js).
+    this.feedbackHold = false;
     this.timeScale = 1;
     this.settings = { hitstop: true, shake: 1, sensitivity: 1, ...loadProfile().settings };
     this.feel = createFeel();
@@ -97,6 +100,8 @@ export class Game {
     wireHitstop(this);
     this.audio.setVolumes(this.settings.volumes);
     this.wireInput();
+    // N twice, or the pause screen's button: the hub feedback window.
+    this.feedback = installGameFeedback(this);
     this.rewardedCampaign = REWARDED_CAMPAIGN_ENABLED ? new RewardedCampaignUI(this) : null;
     if (debug) this.openDebugPanel();
 
@@ -219,7 +224,7 @@ export class Game {
       this._lockChangedAt = performance.now();
       if (this.pvpActive) return;
       if (locked) { this.paused = false; this.hidePause(); }
-      else if (!this.ui.menuOpen && this.screen.hidden && !this.debugOpen) this.showPause();
+      else if (!this.ui.menuOpen && this.screen.hidden && !this.debugOpen && !this.feedbackHold) this.showPause();
     });
     inp.on('key', (e) => {
       if (this.navRoot() && this.handleNavKey(e)) { e.preventDefault(); e.sprotoMenuKey = true; return; }
@@ -432,6 +437,7 @@ export class Game {
     this._pausedAt = performance.now();
     this.screen.innerHTML = `<div class="pause"><h1>PAUSED</h1><button class="btn big" data-p="resume" data-nav-default>Resume</button>
       <button class="btn" data-p="title">Main menu</button>
+      <button class="btn" data-p="feedback">Send feedback</button>
       ${this.rewardedCampaign ? '<button class="btn" data-p="rewarded">Reward status</button>' : ''}
       <button class="btn alt" data-p="hub">${this.hubReturnLabel()}</button>
       <label>Mouse sensitivity <input id="sens" type="range" min="0.3" max="3" step="0.05" value="${this.settings.sensitivity}"></label>
@@ -451,6 +457,7 @@ export class Game {
       const b = e.target.closest('[data-p]');
       if (!b) return;
       if (b.dataset.p === 'rewarded') { this.rewardedCampaign?.open(); return; }
+      if (b.dataset.p === 'feedback') { this.feedback.open(); return; }
       if (b.dataset.p === 'resume') { this.hideScreen(); this.input.lock(); }
       else if (b.dataset.p === 'hub') this.requestHubReturn(b);
       else this.showScreen('title');
@@ -654,7 +661,7 @@ export class Game {
     this.nav.setRoot(this.navRoot());
     this.nav.sync();
     this.syncInputContext();
-    this.pad.frame(ft, now);
+    if (!this.feedbackHold) this.pad.frame(ft, now); // the feedback window owns input while it is open
     this.input.frame();
     const stepped = this.feel.scaleFrame(ft, this.settings.hitstop);
     if (this.pvpActive) {
@@ -665,7 +672,7 @@ export class Game {
     // Shop/crafting menus and the debug panel do NOT pause. The pause and end screens do. The title runs a demo behind it.
     const scr = this.screen.hidden ? null : this.screen.querySelector('.title') ? 'title' : 'other';
     const titleUp = scr === 'title';
-    const advancing = scr === null || titleUp;
+    const advancing = (scr === null || titleUp) && !this.feedbackHold;
     if (advancing) this.acc += stepped * this.timeScale;
     const sim0 = performance.now();
     let n = 0;
@@ -704,9 +711,17 @@ export class Game {
     return n > 0 || !advancing;
   }
 
+  /** Draw the current state once, outside the loop (the feedback screenshot). */
+  renderNow() {
+    const p = this.state.players[this.state.localPlayerId];
+    if (!p) return;
+    this.renderer.render(this.state, Math.min(1, this.acc / DT), this.input.liveLook(), { shake: 0, zoomLevel: Math.max(1, this.input.zoomLevel) });
+  }
+
   async openPvp(opts = {}) {
     if (this.rewardedCampaign?.controlsRestricted) { this.rewardedCampaign.unsupportedControl(); return; }
     if (this.pvpActive) return;
+    this.feedback?.breadcrumb('pvp_open', { demo: !!opts.demo });
     this.pvpActive = true;
     this.pvpNav = false;
     this.playing = false;
@@ -1151,7 +1166,7 @@ function controlsHtml(device = 'kbm', style = 'xbox') {
     ${k('C', 'Slide')}${k('Ctrl + Shift', 'Crouch-slide from a sprint')}${k('B / mouse back', 'Grapple')}${k('V / Alt', 'Dash')}${k('R', 'Reload · hold: pick up gun / open Weapon Box (E works too)')}${k('1-4 · L / Wheel', 'Switch gun (L = legendary slot)')}
     ${k('RMB', 'Cast the selected spell')}${k(keyLabel('spellSelect'), 'Next spell')}${k(['chainZap', 'swarm', 'manaShield', 'meteor'].map(keyLabel).join(' '), 'Quick cast: Chain Zap · Swarm · Mana Shield · Meteor')}${k('H', 'Use medkit')}
     ${k('Tab (hold)', 'Skills')}${k('B', 'Shop (between waves)')}${k('I', 'Your guns')}${k('5', 'Stats & powers')}${k('Enter', 'Ready / skip break')}${k('Esc', 'Pause · back in menus')}
-    ${k('Arrows / WS · Enter', 'Menus: move · confirm')}${k('`', 'Debug panel')}${k('F3', 'Frame stats')}${k('M', 'Mute')}${k('P', 'God mode (health stays at 99)')}
+    ${k('Arrows / WS · Enter', 'Menus: move · confirm')}${k('`', 'Debug panel')}${k('F3', 'Frame stats')}${k('M', 'Mute')}${k('N N', 'Send feedback')}${k('P', 'God mode (health stays at 99)')}
   </div>`;
   const g = (a) => padGlyph(PAD_BINDINGS[a] || a, style);
   const pad = `<div class="controls" data-device="pad">
