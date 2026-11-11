@@ -77,23 +77,11 @@ describe('persisted campaign input corpus', () => {
       [process.execPath, ['--input-type=module', '-e', script, bundle], root],
       ['go', ['run', '.', bundle], path.join(root, 'tests/fixtures/goja')],
     ]) {
-      const result = spawnSync(cmd, args, { cwd, input, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 180000 });
+      const selected = cmd === 'go' ? fixtures.filter((f) => f.provenance.spec.id !== 'obama-success-7') : fixtures;
+      const payload = JSON.stringify(selected.map((f) => ({ log: f.log, ctx: { issuance: f.issuance } })));
+      const result = spawnSync(cmd, args, { cwd, input: payload, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 180000 });
       expect(result.status, result.stderr || result.error?.message).toBe(0);
-      const receipts = JSON.parse(result.stdout).map(receiptCore);
-      expect(receipts).toHaveLength(expected.length);
-      for (let i = 0; i < fixtures.length; i++) {
-        if (cmd === 'go' && fixtures[i].provenance.spec.id === 'obama-success-7') {
-          longGojaReceipt = receipts[i];
-          // Operational rejection is a known regression, never a successful gameplay verdict.
-          expect(longGojaReceipt).toMatchObject({
-            ok: false, reason: 'cpu_budget', outcome: 'rejected', eligible: false, ranked: false, ticketsMinted: 0,
-          });
-          expect(longGojaReceipt.tick).toBeGreaterThan(0);
-          expect(longGojaReceipt.tick).toBeLessThan(24000);
-        } else {
-          expect(receipts[i], `${cmd}:${fixtures[i].provenance.spec.id}`).toEqual(expected[i]);
-        }
-      }
+      expect(JSON.parse(result.stdout).map(receiptCore)).toEqual(selected.map((f) => f.expected));
     }
     const browser = await chromium.launch({ headless: true });
     try {
@@ -106,9 +94,27 @@ describe('persisted campaign input corpus', () => {
     }
   }, 180000);
 
-  it.fails('[known expected failure] full 24000-frame Obama7 Goja receipt matches Node/Chromium', () => {
-    // Full inputs execute above with the real 15s budget. An unexpected pass requires review.
-    expect(longGojaReceipt).toEqual(fixtures.find((f) => f.provenance.spec.id === 'obama-success-7').expected);
+  describe('known full-run Goja budget limitation', () => {
+    beforeAll(() => {
+      const f = fixtures.find((row) => row.provenance.spec.id === 'obama-success-7');
+      const result = spawnSync('go', ['run', '.', bundle], {
+        cwd: path.join(root, 'tests/fixtures/goja'),
+        input: JSON.stringify({ log: f.log, ctx: { issuance: f.issuance } }),
+        encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 180000,
+      });
+      expect(result.status, result.stderr || result.error?.message).toBe(0);
+      longGojaReceipt = receiptCore(JSON.parse(result.stdout));
+      // Hook executes even when the expected-failure test is selected in isolation.
+      expect(longGojaReceipt).toMatchObject({
+        ok: false, reason: 'cpu_budget', outcome: 'rejected', eligible: false, ranked: false, ticketsMinted: 0,
+      });
+      expect(longGojaReceipt.tick).toBeGreaterThan(0);
+      expect(longGojaReceipt.tick).toBeLessThan(24000);
+    }, 180000);
+
+    it.fails('[known expected failure] full 24000-frame Obama7 Goja receipt matches Node/Chromium', () => {
+      expect(longGojaReceipt).toEqual(fixtures.find((f) => f.provenance.spec.id === 'obama-success-7').expected);
+    });
   });
 
   for (const id of ['sahil-success-7', 'obama-success-11']) {
