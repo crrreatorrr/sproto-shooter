@@ -174,7 +174,7 @@ it('actual UI drains old actions, records canonical play, pauses hidden/hitstop,
       gate: window.__game.canonicalRewardRecorder, scale: window.__game.timeScale, feel: window.__game.feel.presentScale }))).toEqual({ active: false, gate: null, scale: .2, feel: .3 });
     await f.page.evaluate(() => { window.__game.crash.halted = false; });
     await f.page.waitForFunction(() => window.__game.state.tick > 6);
-    await expect.poll(() => f.requests.filter((r) => r.op === 'finish').length, { timeout: 15000 }).toBe(1);
+    await expect.poll(() => f.requests.filter((r) => r.op === 'finish').length).toBe(1);
     await expect.poll(() => [...f.runs.values()][0].batches.size).toBe(1);
     await f.page.waitForFunction(() => window.__game.rewardedCampaign.snapshot().reminders > 0, null, { timeout: 15000 });
     const data = [...f.runs.values()][0], batches = [...data.batches.values()];
@@ -271,7 +271,7 @@ it('two unresolved accounts bound retained input globally and a third start cann
 
 it('real-rAF full frozen1001-tick failure stops the actual Game at its first local candidate and never claims paid', async () => {
   const frozen = JSON.parse(fs.readFileSync('tests/fixtures/replay-corpus/sahil-fail-7.json', 'utf8'));
-  // SwiftShader is fill-rate limited at desktop resolution on shared runners.
+  // The desktop SwiftShader run exceeded this trace deadline on shared runners.
   // Use a real small viewport, retaining the actual renderer/RAF and full trace.
   const f = await fixture({ endOutcome: 'fail', viewport: { width: 640, height: 480 } });
   const probes = []; let probeBusy = false, probeTimer = null;
