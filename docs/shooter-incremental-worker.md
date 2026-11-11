@@ -53,6 +53,12 @@ does not increment accepted counters. Deterministic validation failures return
 `invalid` and no checkpoint. Infrastructure crashes, artifact unavailability and
 authorization failures require distinct service handling.
 
+Failure to export trusted simulation output (including a private snapshot size
+bound) reports retryable `checkpoint_export_failure`, with no replacement
+checkpoint. Retain the predecessor and recover/quarantine operationally; such a
+failure is not evidence of invalid gameplay. Malformed imported checkpoints are
+rejected separately before simulation.
+
 ## Accounting and terminal state
 
 Limits are unchanged from the dormant Hub v2 contract: 2097152 canonical frame

@@ -2,14 +2,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { chromium } from 'playwright';
 import { beginIncrementalReplay, acceptReplayBatch, stepReplaySlice, publicReplayJSON,
   decodeReplayBatch, replayBatchDigest, INCREMENTAL_LIMITS, utf8Bytes } from '../../src/server/incremental.js';
 import { createPrivateCheckpoint, restorePrivateCheckpoint } from '../../src/server/checkpoint.js';
+import * as checkpointModule from '../../src/server/checkpoint.js';
 import { stableStringify, fnv1a } from '../../src/sim/hash.js';
 import { bytesToB64, b64ToBytes, encodeFrames, LIMITS } from '../../src/server/protocol.js';
 import { CASES } from './replay-corpus.js';
+import { classify } from '../../src/server/replayChecks.js';
+import { bossById } from '../../src/data/serverManifest.js';
 
 const root = path.resolve('.');
 const fixtures = CASES.map((spec) => JSON.parse(fs.readFileSync(path.join('tests/fixtures/replay-corpus', `${spec.id}.json`), 'utf8')));
@@ -134,6 +137,24 @@ describe('dormant private incremental replay v2', () => {
     expect(resumed.privateCheckpoint.accounting.batches).toBe(1);
   }, 60000);
 
+  it('treats a trusted post-simulation snapshot export failure as operational pending', () => {
+    const f = fixtures[0], batch = batches(f, [64])[0];
+    const accepted = checked(acceptReplayBatch(JSON.stringify(batch), beginIncrementalReplay(context(f)).privateCheckpoint, admitted(f, batch)));
+    const predecessor = JSON.stringify(accepted.privateCheckpoint);
+    // Inject the export resource failure, not a replay/clock override. This
+    // exercises phase handling without allocating a giant simulation fixture.
+    const spy = vi.spyOn(checkpointModule, 'createPrivateCheckpoint').mockImplementationOnce(() => { throw new Error('bad_private_checkpoint'); });
+    try {
+      const failed = stepReplaySlice(accepted.privateCheckpoint, { ...context(f), maxWorkFrames: 1 });
+      expect(failed.publicResult).toMatchObject({ status: 'pending_retryable', reason: 'checkpoint_export_failure', retryable: true, eligible: false });
+      expect(failed.privateCheckpoint).toBeNull();
+      expect(JSON.stringify(accepted.privateCheckpoint)).toBe(predecessor);
+    } finally { spy.mockRestore(); }
+    const retry = checked(stepReplaySlice(accepted.privateCheckpoint, { ...context(f), maxWorkFrames: 1 }));
+    expect(retry.publicResult.acceptedBatches).toBe(1);
+    expect(retry.publicResult.verifiedInputTick).toBe(1);
+  });
+
   it('accounts for accepted trailing input without advancing the first terminal state', () => {
     const f = fixtures.find((row) => row.provenance.spec.id === 'sahil-fail-7');
     const terminal = run(f), c = terminal.privateCheckpoint;
@@ -181,17 +202,25 @@ describe('dormant private incremental replay v2', () => {
     expect(cut.publicResult.acceptedBatches).toBe(4);
   }, 60000);
 
-  it('latches a trusted synthetic flee history as ineligible boss_fled', () => {
+  it('preserves shared flee classification and rejects a missing private terminal latch', () => {
     // Synthetic server-owned state-history coverage, not a fabricated rewarded
     // client trace. Real history is populated only by the shared replay checks.
     const f = fixtures[0], initial = beginIncrementalReplay(context(f)).privateCheckpoint;
     const s = restorePrivateCheckpoint(initial.snapshot, { manifest, binding: bindingOf(f) });
     s.parts.sahil.fled = true;
     initial.snapshot = createPrivateCheckpoint(s.state, { manifest, binding: bindingOf(f), parts: s.parts, counters: s.counters });
+    expect(classify(s.parts, bossById('sahil'), false, s.state.localPlayerId))
+      .toMatchObject({ outcome: 'fail', reason: 'boss_fled', eligible: false });
     const checkpoint = resign(initial), batch = batches(f, [1])[0];
-    const accepted = checked(acceptReplayBatch(JSON.stringify(batch), checkpoint, admitted(f, batch)));
-    const done = checked(stepReplaySlice(accepted.privateCheckpoint, { ...context(f), maxWorkFrames: 1 }));
-    expect(done.publicResult.terminal).toMatchObject({ outcome: 'fail', reason: 'boss_fled', eligible: false, ranked: false, simTick: 1 });
+    expect(acceptReplayBatch(JSON.stringify(batch), checkpoint, admitted(f, batch)).publicResult)
+      .toMatchObject({ status: 'invalid', reason: 'bad_private_checkpoint' });
+    // A real terminal record cannot be deleted even if a corruption checksum is
+    // recomputed. Canonical authored boss encounters currently have fleeAt=0;
+    // this synthetic history is not claimed to be an authored reward trace.
+    const ended = roundtrip(run(fixtures.find((row) => row.provenance.spec.id === 'sahil-fail-7')).privateCheckpoint);
+    ended.firstTerminal = null;
+    expect(stepReplaySlice(resign(ended), { ...context(f), issuance: fixtures.find((row) => row.provenance.spec.id === 'sahil-fail-7').issuance, maxWorkFrames: 1 }).publicResult)
+      .toMatchObject({ status: 'invalid', reason: 'bad_private_checkpoint' });
   });
 
   it('resumes a pending public batch in a fresh Node process without prior module state', () => {

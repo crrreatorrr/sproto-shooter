@@ -33,9 +33,9 @@ function resultError(reason) {
 }
 function guard(operation) {
   try { return operation(); } catch (error) {
-    if (error.reason || error.message === 'bad_private_checkpoint') return resultError(error.reason || 'bad_private_checkpoint');
+    if (!error.operationalReason && (error.reason || error.message === 'bad_private_checkpoint')) return resultError(error.reason || 'bad_private_checkpoint');
     // An unexpected engine/runtime failure is operational, not invalid play.
-    return { publicResult: { version: 2, status: 'pending_retryable', reason: 'execution_failure', retryable: true,
+    return { publicResult: { version: 2, status: 'pending_retryable', reason: error.operationalReason || 'execution_failure', retryable: true,
       eligible: false, ranked: false, ticketsMinted: 0 }, privateCheckpoint: null };
   }
 }
@@ -107,12 +107,13 @@ function checkAccounting(a, snapshot, pending, terminal, issuance) {
     || a.batches > a.acceptedFrames || a.verifiedBatches > a.verifiedFrames
     || a.acceptedFrames > a.batches * INCREMENTAL_LIMITS.batchFrames
     || snapshot.counters.frames !== a.verifiedFrames || snapshot.counters.segments !== a.verifiedBatches) bad('bad_private_checkpoint');
-  if (!terminal && a.simFrames !== a.verifiedFrames) bad('bad_private_checkpoint');
+  const classified = classify(snapshot.parts, bossById(issuance.canonicalBoss), snapshot.state.players[snapshot.state.localPlayerId].dead, snapshot.state.localPlayerId);
+  if (!terminal && (a.simFrames !== a.verifiedFrames || classified.outcome !== 'incomplete')) bad('bad_private_checkpoint');
   if (terminal) {
     exact(terminal, ['outcome', 'reason', 'eligible', 'ranked', 'canonicalCount', 'parts', 'stateHash', 'simTick', 'inputFrame']);
     if (!['clear', 'assisted', 'fail'].includes(terminal.outcome) || terminal.simTick !== a.simFrames
       || terminal.inputFrame !== terminal.simTick || terminal.stateHash !== verifyStateHash(snapshot.state)) bad('bad_private_checkpoint');
-    const expected = classify(snapshot.parts, bossById(issuance.canonicalBoss), snapshot.state.players[snapshot.state.localPlayerId].dead, snapshot.state.localPlayerId);
+    const expected = classified;
     if (!equal(terminal.parts, expected.parts) || terminal.outcome !== expected.outcome || terminal.reason !== expected.reason
       || terminal.eligible !== expected.eligible || terminal.ranked !== (expected.outcome === 'clear')
       || terminal.canonicalCount !== (['clear', 'assisted'].includes(expected.outcome) ? 1 : 0)) bad('bad_private_checkpoint');
@@ -132,13 +133,21 @@ function checkAccounting(a, snapshot, pending, terminal, issuance) {
     || a.actions !== a.verifiedActions || a.batches !== a.verifiedBatches) bad('bad_private_checkpoint');
 }
 function save(state, parts, metadata, origin) {
-  const body = { v: 2, issuance: origin.issuance,
-    snapshot: createPrivateCheckpoint(state, { manifest: origin.manifest, binding: origin.binding, parts,
-      counters: { frames: metadata.accounting.verifiedFrames, segments: metadata.accounting.verifiedBatches } }),
-    accounting: metadata.accounting, pending: metadata.pending, firstTerminal: metadata.firstTerminal };
-  checkAccounting(body.accounting, { state, parts, counters: body.snapshot.counters }, body.pending, body.firstTerminal, origin.issuance);
-  const copy = clone(body);
-  return { ...copy, privateHash: fnv1a(stableStringify(copy)) };
+  try {
+    const body = { v: 2, issuance: origin.issuance,
+      snapshot: createPrivateCheckpoint(state, { manifest: origin.manifest, binding: origin.binding, parts,
+        counters: { frames: metadata.accounting.verifiedFrames, segments: metadata.accounting.verifiedBatches } }),
+      accounting: metadata.accounting, pending: metadata.pending, firstTerminal: metadata.firstTerminal };
+    checkAccounting(body.accounting, { state, parts, counters: body.snapshot.counters }, body.pending, body.firstTerminal, origin.issuance);
+    const copy = clone(body);
+    return { ...copy, privateHash: fnv1a(stableStringify(copy)) };
+  } catch {
+    // Exporting trusted simulation output can hit a storage/schema resource
+    // bound. Keep the predecessor for recovery; never accuse the input of cheat.
+    const error = new Error('checkpoint_export_failure');
+    error.operationalReason = 'checkpoint_export_failure';
+    throw error;
+  }
 }
 function load(checkpoint, origin) {
   const copy = clone(checkpoint);
