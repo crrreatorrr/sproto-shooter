@@ -152,11 +152,13 @@ export function createCampaignController({ enabled = false, transport, uploadDea
           const response = recovering ? await transport.status(null, sealing) : await transport.finish(sealing);
           if (generation !== epoch) return state();
           offlineSince = null;
-          if (response.state === 'sealed') recordSeal(response);
-          else if ('received' in response) {
+          // Owner status lifecycle can also be 'sealed'; distinguish its
+          // projection before the standalone immutable seal acknowledgment.
+          if ('received' in response) {
             snapshot(response);
             if (!sealAck && !sealWithheld) { sealUnknown = false; delay(); }
-          } else failure(response);
+          } else if (response.state === 'sealed') recordSeal(response);
+          else failure(response);
         } else if ((poll || time() >= nextPollAt) && budget(true)) {
           const response = await transport.status(null, sealing && !sealAck ? sealing : null);
           if (generation !== epoch) return state();

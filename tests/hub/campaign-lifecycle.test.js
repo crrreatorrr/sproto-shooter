@@ -193,3 +193,13 @@ it('maps existing generic SDK body auth errors to explicit denial without treati
   const api = issuer(async () => jsonResponse({ error: 'session_closed', message: 'original session is closed' }));
   expect(await api.issue()).toEqual({ state: 'authorization_denied', reason: 'session_closed' });
 });
+
+
+it('distinguishes owner-status lifecycle sealed from the standalone seal acknowledgment during lost reply recovery', async () => {
+  const fixture = controller(async (url) => url.includes('run.finish')
+    ? Promise.reject(new Error('lost_seal_reply'))
+    : jsonResponse(snapshot({ state: 'sealed', issuanceAck: issued(), sealAck: sealed() })));
+  fixture.control.finish(); await fixture.control.pump(); fixture.advance(250); await fixture.control.pump();
+  expect(fixture.control.status().sealAck).toEqual(sealed());
+  expect(fixture.control.status().progress).toMatchObject({ state: 'sealed', received: { tick: 0 } });
+});
