@@ -231,3 +231,35 @@ Those four, plus the rejection matrix, replay to the same receipt in Node, Chrom
 - Auth, rate limits, the 20-Ticket amount, the 200/1000 caps, and the UTC-day bucket live in Nakama, not here.
 - Persist checkpoints and consumed digests in SQL. This bundle does not.
 - Wager escrow is a later phase. Transfers may be uncapped. Creation stays impossible.
+
+## Private checkpoint persistence foundation (PR 03)
+
+`src/server/checkpoint.js` adds unused, server-owned `createPrivateCheckpoint` and
+`restorePrivateCheckpoint` helpers. Legacy protocol 1 issuance, `verifyRun`, public
+JSON receipts, state hashes, reward policy and payouts are unchanged. This is not
+an incremental replay API or a public state upload endpoint.
+
+The version-1 private envelope stores complete live simulation state (including
+RNG and ID counters), a flat list of campaign rewind states, boss-part history
+and input accounting. Import restores the campaign WeakMap on a new state;
+rewind entries do not themselves contain checkpoint envelopes. Exact expected
+artifact SHA-256, source commit, simulator protocol, content fingerprint and
+run/account/session/day binding must match the trusted caller's context. The
+caller remains responsible for loading approved artifacts and server-owned data.
+The envelope's FNV `privateHash` detects accidental corruption; it provides no
+authenticity or collision-resistance guarantee and cannot authorize client state.
+
+Resource limits are explicit and never truncate state: 16 MiB of aggregate JSON,
+64 levels of structure, one million nodes, 100000 array entries, 16384 string
+code units and 64 rewind entries. These are provisional validation ceilings,
+not measured service capacity. Export/import enforce aggregate UTF-8 size during
+bounded traversal before constructing an unbounded clone. Nonfinite values,
+cycles, accessors, prototype keys, inconsistent state identity and unknown or
+duplicate authored checkpoint IDs are refused. The Actions checkpoint suite
+reports actual corpus sizes and verifies native/JSON/fresh-process rewind and
+future behavior against the frozen traces.
+
+Guarded simulator source changes require a separate Hub generated-artifact
+companion PR. Both bundles must be built by Actions from the exact tested source
+commit, reviewed and pinned together before subsequent incremental replay work.
+No production deployment or activation is authorized by these helpers or pins.

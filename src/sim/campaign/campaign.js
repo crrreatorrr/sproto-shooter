@@ -17,6 +17,20 @@ import { noteSafeGround, tickRides, tickVoid } from './sectionMotion.js';
 
 const snaps = new WeakMap();
 
+// Private server snapshots only. Entries are plain states, never envelopes or
+// other buckets, so repeated save/restore cannot recursively nest checkpoints.
+// Validation of serialized data belongs to server/checkpoint.js.
+export function exportCampaignCheckpoints(state, clone = structuredClone) {
+  const saved = snaps.get(state);
+  return saved ? Object.keys(saved).sort().map((id) => ({ id, state: clone(saved[id]) })) : [];
+}
+
+export function importCampaignCheckpoints(state, entries) {
+  const saved = Object.create(null);
+  for (const entry of entries) saved[entry.id] = structuredClone(entry.state);
+  snaps.set(state, saved);
+}
+
 export function startCampaign(state, p, levelId) {
   const rt = getLevelRuntime(levelId || 'L01');
   const first = rt.sections[0];
