@@ -67,7 +67,9 @@ profile sync; it applies to campaign, Wave Mode and arena views.
 These are drawing-buffer caps of 1280×720, 1920×1080 and 2560×1440 pixels.
 The game preserves your display's aspect ratio and never upscales above native
 pixel density. Small screens can therefore look identical across presets.
-Ultrawide and portrait views fit the same pixel budget and long-edge cap.
+Ultrawide, 4:3 and 16:10 views fit both edge caps without stretching. Portrait
+views use the rotated bounds. The long and short edges are capped, so the total
+pixel count also stays within the selected resolution.
 Existing DPR limits remain 1.5 for campaign/Wave Mode and 1 for arenas.
 FX quality, shake and screen effects remain separate controls. The presets make
 no frame-rate guarantee and change no gameplay, rewards or server capacity.

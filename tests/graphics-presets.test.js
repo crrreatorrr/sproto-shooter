@@ -19,6 +19,14 @@ describe('graphics resolution budgets', () => {
     expect(w / h).toBeCloseTo(3440 / 1440, 2);
   });
 
+  it('fits both edges for 4:3 and 16:10 displays, including rotated views', () => {
+    expect(buffer('low', 1280, 960)).toEqual([960, 720]);
+    expect(buffer('low', 1920, 1200)).toEqual([1152, 720]);
+    expect(buffer('low', 1200, 1920)).toEqual([720, 1152]);
+    expect(buffer('mid', 2560, 1920)).toEqual([1440, 1080]);
+    expect(buffer('high', 2560, 1920)).toEqual([1920, 1440]);
+  });
+
   it('retains native density and campaign/PvP DPR caps without upscaling small views', () => {
     expect(buffer('high', 640, 360)).toEqual([640, 360]);
     expect(buffer('high', 640, 360, 3)).toEqual([960, 540]);
