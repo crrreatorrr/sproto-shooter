@@ -258,7 +258,11 @@ it('ordinary pause keyboard navigation and Escape resume preserve the rewarded g
   const f = await fixture();
   try {
     await startFromUI(f);
-    await f.page.mouse.click(500, 450);
+    if (!await f.page.evaluate(() => window.__game.input.locked)) {
+      const box = await f.page.locator('#view canvas').boundingBox();
+      expect(box).not.toBeNull();
+      await f.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    }
     await f.page.waitForFunction(() => window.__game.input.locked);
     await f.page.evaluate(() => {
       window.__stepUI();
