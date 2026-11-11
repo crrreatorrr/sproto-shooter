@@ -17,6 +17,8 @@ import {
 import { createWaveRelicReporter, relicName } from '../hub/waveRelic.js';
 import { restoreCheckpoint } from '../sim/campaign/campaign.js';
 import { canonicalCommand } from '../server/canonicalCommand.js';
+import { RewardedCampaignUI } from '../hub/campaignRewards/uiFlow.js';
+import { REWARDED_CAMPAIGN_ENABLED } from '../hub/campaignRewards/session.js';
 import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY, zoomLevelsOf, zoomFovFor } from '../data/guns.js';
 import { SKILL_IDS, SPELL_IDS } from '../data/skills.js';
 import { nearBox } from '../sim/economy.js';
@@ -93,6 +95,7 @@ export class Game {
     wireHitstop(this);
     this.audio.setVolumes(this.settings.volumes);
     this.wireInput();
+    this.rewardedCampaign = REWARDED_CAMPAIGN_ENABLED ? new RewardedCampaignUI(this) : null;
     if (debug) this.openDebugPanel();
 
     // initial sandbox content so the title screen has something going on behind it
@@ -226,12 +229,15 @@ export class Game {
       if (e.code === 'Backquote') this.toggleDebug();
       if (e.code === 'F3') { e.preventDefault(); this.toggleStats(); }
       if (e.code === 'KeyM') this.audio.toggleMute();
-      if (e.code === 'KeyP' && !e.repeat && !this.ui.menuOpen) this.queue({ type: 'debug', op: 'toggleGod' });
+      if (e.code === 'KeyP' && !e.repeat && !this.ui.menuOpen) {
+        if (!this.rewardedCampaign?.unsupportedControl()) this.queue({ type: 'debug', op: 'toggleGod' });
+      }
       if (e.code === 'Enter' && this.state.wave && this.state.wave.phase === 'intermission' && !this.ui.menuOpen) this._skip = true;
     });
   }
 
   start(mode, tier = 1, extra = {}) {
+    if (this.rewardedCampaign?.controlsRestricted) { this.rewardedCampaign.unsupportedControl(); return; }
     this.playing = true;
     this.hubLeaveArmed = false;
     this.audio.ensure();
@@ -245,6 +251,8 @@ export class Game {
 
   // ---------- screens ----------
   showScreen(kind) {
+    if (kind === 'title') this.rewardedCampaign?.leave();
+    else if (this.rewardedCampaign?.controlsRestricted) { this.rewardedCampaign.unsupportedControl(); return; }
     if (kind === 'victory' || kind === 'defeat' || kind === 'bossWon' || kind === 'bossLost' || kind === 'levelClear' || kind === 'levelLost') {
       this.playing = false;
     }
@@ -265,6 +273,7 @@ export class Game {
           <button class="btn big alt" data-go="pvp">Play free <small>equal guns, no Tickets</small></button>
           <button class="btn alt" data-go="characters">Choose Character <small>${this.character.name}</small></button>
           <span data-wager-slot></span>
+          ${this.rewardedCampaign ? '<button class="btn alt" data-go="rewarded">Rewarded campaign <small>server-verified boss runs</small></button>' : ''}
           <button class="btn alt" data-go="hub">${this.hubReturnLabel()}</button>
           <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
         </div>
@@ -350,6 +359,7 @@ export class Game {
       const b = e.target.closest('[data-go]');
       if (!b) return;
       const go = b.dataset.go;
+      if (go === 'rewarded') { this.rewardedCampaign?.open(); return; }
       if (go === 'hub') { this.requestHubReturn(b); return; }
       if (go === 'continue') { this.hideScreen(); this.paused = false; this.input.lock(); return; }
       if (go === 'pvp') { this.openPvp(); return; }
@@ -374,6 +384,11 @@ export class Game {
     return this.playing && this.hubLeaveArmed ? 'Leave this run?' : '⌂ Return to Hub';
   }
   requestHubReturn(button) {
+    if (this.rewardedCampaign?.active && !this.hubLeaveArmed) {
+      this.hubLeaveArmed = true;
+      if (button) button.textContent = 'Leave? A pending reward may be lost when this session closes.';
+      return;
+    }
     if (this.wagerFlow && this.wagerFlow.needsLeaveWarning() && !this.wagerLeaveArmed) {
       this.wagerLeaveArmed = true;
       if (button) button.textContent = 'Leave this wager?';
@@ -386,6 +401,7 @@ export class Game {
     }
     if (this.wagerFlow) void this.wagerFlow.abandon();
     this.stopWagerPlay();
+    this.rewardedCampaign?.identityChanged();
     this.hub.exitHub();
   }
   hubChip() {
@@ -408,11 +424,13 @@ export class Game {
     if (this.hub.bankable && this.hub.saveCloud) this.hub.saveCloud(cloudBody(profile));
   }
   showPause() {
+    if (this.rewardedCampaign?.blocksTicks) { this.rewardedCampaign.open(); return; }
     if (!this.screen.hidden) return;
     this.paused = true;
     this._pausedAt = performance.now();
     this.screen.innerHTML = `<div class="pause"><h1>PAUSED</h1><button class="btn big" data-p="resume" data-nav-default>Resume</button>
       <button class="btn" data-p="title">Main menu</button>
+      ${this.rewardedCampaign ? '<button class="btn" data-p="rewarded">Reward status</button>' : ''}
       <button class="btn alt" data-p="hub">${this.hubReturnLabel()}</button>
       <label>Mouse sensitivity <input id="sens" type="range" min="0.3" max="3" step="0.05" value="${this.settings.sensitivity}"></label>
       <label>Controller look speed <input id="padsens" type="range" min="0.3" max="3" step="0.05" value="${this.settings.padSensitivity ?? 1}"></label>
@@ -429,6 +447,7 @@ export class Game {
     this.screen.onclick = (e) => {
       const b = e.target.closest('[data-p]');
       if (!b) return;
+      if (b.dataset.p === 'rewarded') { this.rewardedCampaign?.open(); return; }
       if (b.dataset.p === 'resume') { this.hideScreen(); this.input.lock(); }
       else if (b.dataset.p === 'hub') this.requestHubReturn(b);
       else this.showScreen('title');
@@ -486,6 +505,7 @@ export class Game {
   }
   /** Gamepad B (and Esc on screens): close, go back or resume. */
   navBack() {
+    if (this.screen.querySelector('[data-reward-panel]')) { this.rewardedCampaign?.back(); return; }
     if (this.pvpActive) {
       if (this.pvpNav) this.pvpNav = false;
       else this.nav.back();
@@ -528,14 +548,16 @@ export class Game {
 
   // ---------- debug panel ----------
   openDebugPanel() {
+    if (this.rewardedCampaign?.unsupportedControl()) return;
     if (this.gui) { this.gui.show(); this.debugOpen = true; this.input.unlock(); return; }
     if (this._guiLoading) return;
     this._guiLoading = import(/* webpackChunkName: "debug-gui" */ 'lil-gui').then(({ default: GUI }) => {
-      this.buildDebug(GUI, true);
+      if (!this.rewardedCampaign?.controlsRestricted) this.buildDebug(GUI, true);
       this._guiLoading = null;
     });
   }
   buildDebug(GUI, open) {
+    if (this.rewardedCampaign?.unsupportedControl()) return;
     const gui = new GUI({ title: 'Sproto Debug [`]', width: 300 });
     this.gui = gui;
     const d = { enemy: 'midget', count: 1, elite: false, tier: 1, boss: 'monster', gunType: 'random', quality: 'random', element: 'random', wacky: 'random',
@@ -584,6 +606,7 @@ export class Game {
     gui.domElement.style.zIndex = 50;
   }
   toggleDebug() {
+    if (this.rewardedCampaign?.unsupportedControl()) return;
     if (!this.gui) { this.openDebugPanel(); return; }
     this.debugOpen = !this.debugOpen;
     if (this.debugOpen) {
@@ -620,6 +643,7 @@ export class Game {
 
   /** One rendered frame. Returns false when the sim is running but no tick fell due (proves nothing). */
   step(now) {
+    this.rewardedCampaign?.observeIdentity();
     const frameMs = now - this.last;
     let ft = Math.min(frameMs / 1000, MAX_FRAME);
     this.last = now;
@@ -641,18 +665,19 @@ export class Game {
     if (advancing) this.acc += stepped * this.timeScale;
     const sim0 = performance.now();
     let n = 0;
-    while (this.acc >= DT && n < MAX_TICKS) {
+    while (this.acc >= DT && n < MAX_TICKS && !this.rewardedCampaign?.blocksTicks) {
       const cmd = this.input.buildCommand(this.state.tick);
       if (this._skip) { cmd.pressed.skip = true; this._skip = false; }
       if (titleUp) { cmd.held = {}; cmd.moveX = cmd.moveZ = 0; cmd.pressed = {}; cmd.yaw = this.state.time * 0.15; cmd.pitch = -0.05; this.input.setLook(cmd.yaw, cmd.pitch); }
       if (!this.applyLocalCommand(cmd)) { this.acc = 0; break; }
       this.bus.emitAll(this.state.events);
       this.acc -= DT; n++;
+      if (this.rewardedCampaign?.afterTick()) { this.acc = 0; break; }
     }
-    if (n === MAX_TICKS) this.acc = 0;
+    if (n === MAX_TICKS || this.rewardedCampaign?.blocksTicks) this.acc = 0;
     const simMs = performance.now() - sim0;
     const lv = this.state.level;
-    if (this.state.mode === 'campaign' && lv && !this._campaignShown && this.screen.hidden) {
+    if (!this.rewardedCampaign?.active && this.state.mode === 'campaign' && lv && !this._campaignShown && this.screen.hidden) {
       if (lv.won) { this._campaignShown = true; const i = CAMPAIGN.indexOf(lv.id); if (CAMPAIGN[i + 1]) unlockLevel(CAMPAIGN[i + 1]); for (const id of Object.keys(lv.modifiers)) rememberModifier(id); this.showScreen('levelClear'); }
       else if (lv.lost) { this._campaignShown = true; this.showScreen('levelLost'); }
     }
@@ -676,6 +701,7 @@ export class Game {
   }
 
   async openPvp(opts = {}) {
+    if (this.rewardedCampaign?.controlsRestricted) { this.rewardedCampaign.unsupportedControl(); return; }
     if (this.pvpActive) return;
     this.pvpActive = true;
     this.pvpNav = false;

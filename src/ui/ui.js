@@ -192,6 +192,7 @@ export function createUI(root, { input, bus, project, game }) {
 
   // ---------- menus ----------
   function openMenu(name) {
+    if (!['skills', 'stats'].includes(name) && game.rewardedCampaign?.unsupportedControl()) return;
     st.menu = name;
     input.setEnabled(false);
     input.unlock();
@@ -239,7 +240,10 @@ export function createUI(root, { input, bus, project, game }) {
     input.setEnabled(true);
     if (els.screen.hidden) input.lock();
   }
-  function act(a) { input.queueAction(a); setTimeout(renderPanel, 60); }
+  function act(a) {
+    if (game.rewardedCampaign?.unsupportedControl()) return;
+    input.queueAction(a); setTimeout(renderPanel, 60);
+  }
 
   input.on('key', (e) => {
     if (e.repeat) return;
@@ -281,7 +285,9 @@ export function createUI(root, { input, bus, project, game }) {
       case 'rerollShop': act({ type: 'rerollShop' }); break;
       case 'upgrade': act({ type: 'buyUpgrade', id: b.dataset.v }); break;
       case 'supply': act({ type: 'buySupply', id: b.dataset.v }); break;
-      case 'ready': input.queueAction({ type: 'noop' }); game.skipIntermission(); closeMenu(); break;
+      case 'ready':
+        if (!game.rewardedCampaign?.unsupportedControl()) { input.queueAction({ type: 'noop' }); game.skipIntermission(); closeMenu(); }
+        break;
     }
   });
 
@@ -546,6 +552,7 @@ export function createUI(root, { input, bus, project, game }) {
       const full = p.guns.slice(0, p.unlockedSlots).every(Boolean);
       prompt = `<b>${keyTag(keyLabel('reload'), PAD_BINDINGS.interact, true)}</b> Pick up${leg ? (p.guns[LEGENDARY_SLOT] && full ? ' (swaps your legendary)' : ` → legendary slot${pad() ? '' : ' [L]'}`) : full ? ' (swaps with equipped)' : ''}`;
     }
+    else if (box && game.rewardedCampaign?.controlsRestricted) prompt = 'Weapon Box unavailable in rewarded mode';
     else if (box) prompt = `<b>${keyTag(keyLabel('reload'), PAD_BINDINGS.interact, true)}</b> Open Weapon Box${box.craft ? ' (crafting…)' : ''}`;
     else if (s.wave && s.wave.phase === 'intermission') prompt = pad() ? `<b>${keyTag('B', PAD_BINDINGS.panel)}</b> Shop · Ready` : '<b>[B]</b> Shop · <b>[Enter]</b> Ready';
     html(els.prompt, 'prompt', prompt);

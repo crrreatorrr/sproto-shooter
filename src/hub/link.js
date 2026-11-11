@@ -198,9 +198,20 @@ export class HubLink {
     this.code = null;
     this.balanceJob = null;
     this.balanceAt = -Infinity;
+    this.rewardIdentityListener = null;
+  }
+
+  watchRewardIdentity(listener) {
+    this.rewardIdentityListener = typeof listener === 'function' ? listener : null;
+    return () => { if (this.rewardIdentityListener === listener) this.rewardIdentityListener = null; };
+  }
+
+  notifyRewardIdentity() {
+    try { this.rewardIdentityListener?.(); } catch { /* identity changes must still complete */ }
   }
 
   markOffline() {
+    this.notifyRewardIdentity();
     this.status = 'offline';
     this.connected = false;
     this.bankable = false;
@@ -212,6 +223,7 @@ export class HubLink {
   }
 
   fail(err) {
+    this.notifyRewardIdentity();
     this.status = 'error';
     this.connected = false;
     this.bankable = false;
@@ -223,6 +235,7 @@ export class HubLink {
   /** Keep the balance and the cloud retry only for this player. */
   adopt(session, username) {
     const nextId = session.playerId;
+    if (this.playerId && this.playerId !== nextId) this.notifyRewardIdentity();
     const previous = readJson(PLAYER_KEY);
     if (previous && previous !== nextId) this.dropIdentity();
     writeJson(PLAYER_KEY, nextId);
@@ -244,6 +257,7 @@ export class HubLink {
   }
 
   dropIdentity() {
+    this.notifyRewardIdentity();
     this.balance = null;
     this.balanceJob = null;
     this.balanceAt = -Infinity;
@@ -400,7 +414,7 @@ export async function connectHub(api) {
   return link;
 }
 
-function nakamaUrl() {
+export function nakamaUrl() {
   return (import.meta.env.VITE_NAKAMA_URL || 'http://127.0.0.1:7350').replace(/\/$/, '');
 }
 
