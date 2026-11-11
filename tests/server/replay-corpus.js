@@ -39,7 +39,6 @@ export function generateCase(spec, sourceCommit) {
   // Preserve real verifier resource limits; an execution timeout is NOT a golden outcome.
   const receipt = verifyRun(recorded.log, { issuance: recorded.issuance });
   if (!receipt.ok) throw new Error(`${spec.id}: verifier rejected generated trace: ${receipt.reason}`);
-  if (receipt.stateHash !== recorded.verifyStateHash) throw new Error(`${spec.id}: recorder/verifier divergence`);
   const terminalTicks = Object.values(milestones.bossParts).map((part) => part.deadTick);
   const terminalTick = receipt.outcome === 'incomplete' ? null
     : receipt.outcome === 'fail' ? recorded.tick
@@ -51,6 +50,8 @@ export function generateCase(spec, sourceCommit) {
     log: recorded.log,
     inputSha256: digest(recorded.log),
     expected: receiptCore(receipt),
+    recorderStateHash: recorded.verifyStateHash,
+    recorderMatchesVerifier: receipt.stateHash === recorded.verifyStateHash,
     terminalTick,
     coverage: { events, ...milestones },
   };

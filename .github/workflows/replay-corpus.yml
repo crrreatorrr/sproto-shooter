@@ -23,6 +23,7 @@ jobs:
       - name: Generate all preselected traces without replacing failures
         run: node scripts/build-replay-corpus.mjs ci-artifacts/replay-corpus
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: replay-corpus
           path: ci-artifacts/replay-corpus
