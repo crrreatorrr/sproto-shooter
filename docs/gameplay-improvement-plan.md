@@ -2,11 +2,65 @@
 
 ## 1. Status
 
-Plan only. No game code has changed as part of this document.
+Partly implemented on branch `claude/trusting-ramanujan-63h582`. Section 1.1 says what was done, what was found already fixed and what is left to campaign plan v2 (`docs/campaign/PLAN.md`). Sections 2 to 10 are the plan as written at `d8596be`; where 1.1 and a later section disagree, 1.1 is current.
 
 - First audit: 2026-11-09, commit `06b5c16`.
 - Re-validated: 2026-11-11, commit `d8596be` (114 commits later). Every finding and plan item was re-checked against that tree and every line number below is from it.
+- Re-validated again and implemented: 2026-11-11, commit `b9b4591` (`main` after #115 to #117). Line numbers below were not refreshed.
 - What moved between the two commits: campaign levels L01–L05 were rebuilt on a new level format with world collision, navigation, line of sight and scripted bosses; crafting and the Magic and Crafting skills were removed; slide, grapple and sprint stamina were added; Free 1v1 gained pillars and the new movement; a default-off rewarded campaign screen was added; graphics resolution presets were added. Section 4.1 lists what that resolved.
+
+### 1.1 Re-validated at `b9b4591` and implemented
+
+Rule used for scope: `docs/campaign/PLAN.md` (campaign plan v2) owns campaign levels, collision, boss scripting, spell and gun numbers and the campaign content fingerprint, and about forty campaign branches are open. So nothing here changes level data, `GUN_TYPES`, `SPELLS`, `TUNING` or a paid boss fight, and every balance change is limited to the arena modes.
+
+**Fixed on `main` since `d8596be`**
+
+| Item | What fixed it |
+|---|---|
+| F2 / A2, falling forever off the L01 spawn | `src/sim/campaign/abyss.js` (#117): a death floor under every campaign level kills the player and offers the checkpoint. Enemies that fall die and count. |
+| A4, shop key suggestion "N" | N twice is now the feedback window (#115), so the shop moved to O instead. |
+
+**Done on this branch**
+
+| Item | State | What changed |
+|---|---|---|
+| A1 | Done | `src/game/campaignFlow.js` decides when to send `transitionDone`; `Game.step` queues it. Section cards stay 2.5 s or until fire. Rewarded runs are left alone. |
+| A3, decision 5 | Done | `startMode` removes sandbox-placed and debug-spawned gun pickups when Wave Mode, Boss Fight or a campaign level starts. The client asks for the starting loadout back on leaving the Sandbox. |
+| A4 | Done | Shop on O; B is only the grapple. Weapon Box panel, resources row and craft handlers removed from the HUD. Spell slots a mode cannot open are hidden; the lock toast names the mode. |
+| A5 | Partly | `floorIsLava` is 4 health/s on the ground for 20 s (was 6/s for the rest of the level). `taxSeason`, `redTape`, `confetti` and `duckHunt` are left to v2's secrets (section 7.2 there). |
+| A6 | Done | Title order Wave Mode, Boss Fight, Play free, Campaign; Practice row; controls fold away. `eventCoverage.js` matches the code and a test holds its audio column to `sfx.js`. The "Find free match" note in `docs/shooter-release.md` was not re-checked (needs a hub). |
+| B1 | Partly | Arena bosses drop a boss gun some of the time (Jade Dragon 25%, others 50%) at the boss table's own quality, and the Jade Dragon leaves two ordinary guns. The stat cut (Ray Gun 24 to 19, Big Bullets 340 to 240) was not made: it moves `cea1f88b`, and v2 section 7.4 already plans the gun-definition change (finite reserve for boss guns) that addresses the same thing. |
+| B2 | Done | `tierWave` in `src/data/waves.js`: more elites and a higher alive cap by tier; arena enemy health 1.18 per tier, damage still 1.15. Tier 1 is unchanged. Campaign enemies keep 1.15. |
+| B3 | Done, arena only | Second Wind is 10, 7, 4, 3 s within one wave or Boss Fight; summoned enemies do not revive. The campaign keeps the flat timer, because the change would alter paid boss fights. |
+| B4 | Option 1, without the number changes | Each cleared wave teaches the next spell (two at tier 1, all four from tier 2). Mana regeneration and Goo Bolt damage are untouched: both are in the fingerprint and v2 section 6.2 reworks spell numbers. |
+| B5 | Done, Wave Mode only | Skill levels cost 1.75× per level in Wave Mode (plan said 1.6; the bots still reached level 10 by tier 4). A global change moved the boss goldens, so other modes keep 1.45. |
+| C1 | Done except the alarm marker | Banners, toasts and sounds for section cards, checkpoints, lockdowns, rewinds, alarms, secrets, world guns; time against par, kills and damage on the level end screen. No HUD marker toward an alarm (the event carries no position) and no looping klaxon. |
+| C2 | Done | Skills, carried guns and best tier are kept under their own `localStorage` key and applied by a new `loadLoadout` action that only works in Wave Mode (`src/save/loadout.js`, `tests/save-loadout.test.js`). |
+| C3 | Done | Damage direction arc; gun card docked to the right edge. |
+| C5 | Done | One-line tips on a first Wave Mode run. |
+| D1 | Done | From tier 4, Laser Bots and a Shooter Bot in waves 2 and 3 and a rotating wave-2 boss; from tier 7 the Sproto Beast joins the final pair. |
+| D3 | Practice bot only | `practiceBotWish` strafes, jumps, dashes, slides, grapples, swaps guns and misses some shots. `practiceWish` is unchanged (the network tests measure against it). Best of three was not built: it changes `src/sim/pvp/sim.js`, the protocol and the PvP pins. |
+
+**Left to campaign plan v2**: B6 (telegraphs for Broccoli Head, Glowie and Tinubu), D2 (real-health clear tests, L06 to L10 rebuilds), F3, F4, the rest of A5, B1's stat change, B4's spell numbers, and the campaign side of B3.
+
+**Skipped**: C4 music (needs tracks the owner supplies or approves). H1 to H5 (hub side or owner decisions; rewards stay off).
+
+**Pins**: only the Wave Mode baseline moved. `tests/fixtures/baseline-hashes.json` and `tests/performance-baseline.test.js`, ticks 3000 and 6000 of seeds 11, 12 and 13: `988ba524` to `7464bac2`, `9329eb5a` to `cbe61fc3`, `39d1b1ef` to `3965d05e`, `202a18f5` to `3af76c81`, `54d3c408` to `621c6d4a`, `680a0543` to `61b202e0`. Tick 600 and the Sandbox hashes are unchanged. Campaign fingerprint `cea1f88b`, the boss goldens, the replay corpus and all PvP pins are unchanged.
+
+**Bot numbers** (rebuilt harness; it is a little weaker than the first audit's, so compare columns, not documents):
+
+| Measure | `b9b4591` | This branch |
+|---|---|---|
+| Looting bot, single tier 1, 20 seeds: wins / mean win time | 19 of 20 / 285 s | 13 of 20 / 383 s (14 of 20 / 357 s if it also casts) |
+| Same, tier 3 from a fresh start | 18 of 20 / 315 s | 15 of 20 / 491 s (10 of 20 casting; the two runs differ only by RNG, so read this as 10 to 15) |
+| Single tier-1 runs where a boss gun is the top gun | 20 of 20 | 10 of 20 |
+| Ladder, first-try wins at tiers 1 / 3 / 6 / 10 (3 seeds before, 5 after) | 2 of 3 / 3 of 3 / 3 of 3 / 3 of 3 | 4 of 5 / 4 of 5 / 4 of 5 / 1 of 5 (casting bot: 3, 5, 4, 1 of 5) |
+| Ladder tier clears where a boss gun is the top gun | 30 of 30 | 44 of 46 |
+| Mean time per cleared tier at tier 10 | 247 s | 262 to 297 s |
+| Tier at which Health reaches level 10 | 2 to 3 | 5 to 7 |
+| Goo Bolt on cooldown: wave 1 clear | 73.1 s without, 67.1 s with | Same (numbers untouched) |
+
+What the numbers say: the ladder now climbs and has a wall around tier 7 to 10; a fresh tier 1 is harder for a bot that never dodges, because it used to lean on a boss gun from the first boss; inside a ladder a boss gun, once found, is still the best gun for the rest of the run. That last point needs the gun-definition change in v2.
 
 ## 2. How this was audited and how far to trust it
 
