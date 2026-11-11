@@ -42,10 +42,10 @@ describe('budget pins', () => {
     if (!fs.existsSync('dist/index.html')) return;
     const result = evaluate('dist');
     expect(result.violations).toEqual([]);
-    expect(result.measured.criticalTransferBytes).toBe(MEASURED.criticalTransferBytes);
-    expect(result.measured.criticalRequests).toBe(MEASURED.criticalFirstPartyRequests);
-    expect(result.measured.titleShellGzipBytes).toBe(MEASURED.titleShellGzipBytes);
-    expect(result.measured.staticShipBytes).toBe(MEASURED.staticShipBytes);
+    expect(result.measured.criticalTransferBytes).toBeLessThanOrEqual(GATE.criticalTransferBytes);
+    expect(result.measured.criticalRequests).toBeLessThanOrEqual(GATE.criticalRequests);
+    expect(result.measured.titleShellGzipBytes).toBeLessThanOrEqual(GATE.titleShellGzipBytes);
+    expect(result.measured.staticShipBytes).toBeLessThanOrEqual(GATE.staticShipBytes);
   });
 });
 

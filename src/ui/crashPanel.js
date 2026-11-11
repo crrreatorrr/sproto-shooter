@@ -13,7 +13,7 @@ export class CrashPanel {
   }
 
   /** Shows the panel ('reload' | 'retry'), once; later calls do nothing. */
-  show(kind) {
+  show(kind, info, state) {
     if (this.shown) return;
     this.shown = true;
     const doc = this.doc;
@@ -38,6 +38,25 @@ export class CrashPanel {
     card.appendChild(title);
     card.appendChild(detail);
     card.appendChild(button);
+    if (info) {
+      const details = doc.createElement('details');
+      details.className = 'crash-details';
+      const summary = doc.createElement('summary');
+      summary.textContent = 'Error details';
+      const report = doc.createElement('pre');
+      report.tabIndex = 0;
+      report.textContent = [
+        `Mode: ${state?.mode ?? 'loading'} · Tier: ${state?.tier ?? '-'}`,
+        `Seed: ${state?.seed ?? '-'} · Tick: ${state?.tick ?? '-'}`,
+        ...(state?.wave ? [`Wave: ${state.wave.index + 1} · Phase: ${state.wave.phase}`] : []),
+        `Source: ${info.source}`,
+        info.message,
+        info.stack,
+      ].filter(Boolean).join('\n').slice(0, 8000);
+      details.appendChild(summary);
+      details.appendChild(report);
+      card.appendChild(details);
+    }
     root.appendChild(card);
     doc.body.appendChild(root);
     button.focus();

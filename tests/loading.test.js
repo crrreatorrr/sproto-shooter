@@ -9,6 +9,19 @@ function deferred() {
 }
 
 describe('load control', () => {
+  it('settles an empty model result as a retryable failure and continues the queue', async () => {
+    const book = createLoadControl({ maxParallel: 1 });
+    const pending = book.schedule('empty.glb', async () => null, 0);
+    const next = book.schedule('next.glb', async () => ({ ok: true }), 0);
+    await expect(pending).resolves.toBeNull();
+    await expect(next).resolves.toEqual({ ok: true });
+    expect(book.status('empty.glb')).toBe('error');
+    expect(book.failures()).toEqual([{ path: 'empty.glb', message: 'load failed' }]);
+    expect(book.retryPaths()).toEqual(['empty.glb']);
+    await expect(book.schedule('empty.glb', async () => ({ recovered: true }), 0))
+      .resolves.toEqual({ recovered: true });
+  });
+
   it('keeps a failure out of the ready set until retry', async () => {
     const book = createLoadControl({ maxParallel: 4 });
     const job = deferred();

@@ -347,6 +347,21 @@ class FakeElement {
 }
 
 describe('CrashPanel', () => {
+  it('keeps the local reproduction context and exception readable without interpreting HTML', () => {
+    const body = new FakeElement('body');
+    const panel = new CrashPanel({ body, createElement: (t) => new FakeElement(t) }, () => {});
+    panel.show('reload', { source: 'frame', message: '<img src=x onerror=bad()>', stack: 'at render (game.js:10)' }, {
+      mode: 'waves', tier: 4, seed: 123, tick: 456, wave: { index: 1, phase: 'boss' },
+    });
+    const report = body.find('pre');
+    expect(report.textContent).toContain('Mode: waves · Tier: 4');
+    expect(report.textContent).toContain('Seed: 123 · Tick: 456');
+    expect(report.textContent).toContain('Wave: 2 · Phase: boss');
+    expect(report.textContent).toContain('<img src=x onerror=bad()>');
+    expect(report.textContent).toContain('at render (game.js:10)');
+    expect(report.children).toEqual([]);
+  });
+
   it('shows "Something broke" with RELOAD, once; RETRY for boot', () => {
     const body = new FakeElement('body');
     const reload = vi.fn();

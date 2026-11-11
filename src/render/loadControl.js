@@ -34,22 +34,20 @@ export function createLoadControl({ maxParallel = 4, capBytes = 128 * 1024 * 102
       if (urgent) activeNow += 1;
       Promise.resolve()
         .then(() => item.start())
-        .then(
-          (result) => {
-            if (result == null) throw new Error('load failed');
-            item.job.status = 'ready';
-            item.job.result = result;
-            item.job.error = null;
-            item.job.lastUsed = ++clock;
-            item.resolve(result);
-          },
-          (err) => {
-            item.job.status = 'error';
-            item.job.result = null;
-            item.job.error = err instanceof Error ? err.message : String(err);
-            item.resolve(null);
-          },
-        )
+        .then((result) => {
+          if (result == null) throw new Error('load failed');
+          item.job.status = 'ready';
+          item.job.result = result;
+          item.job.error = null;
+          item.job.lastUsed = ++clock;
+          item.resolve(result);
+        })
+        .catch((err) => {
+          item.job.status = 'error';
+          item.job.result = null;
+          item.job.error = err instanceof Error ? err.message : String(err);
+          item.resolve(null);
+        })
         .finally(() => {
           active -= 1;
           if (urgent) activeNow -= 1;
