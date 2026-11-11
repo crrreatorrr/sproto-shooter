@@ -36,13 +36,13 @@ function dto(actor, runId, boss = 'sahil', seed = 7) {
   return issued({ runId, issuance: built.issuance, issuedAt: new Date(now).toISOString(),
     uploadDeadline: new Date(now + 2700000).toISOString(), sessionLeaseUntil: new Date(now + 1800000).toISOString() });
 }
-async function fixture({ enabled = true, holdIssue = false, offline = false, lostSeal = false, endOutcome = 'incomplete' } = {}) {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+async function fixture({ enabled = true, holdIssue = false, offline = false, lostSeal = false, endOutcome = 'incomplete', viewport = { width: 1280, height: 900 } } = {}) {
+  const page = await browser.newPage({ viewport });
   const url = enabled ? onUrl : offUrl, requests = [], errors = [], consoleErrors = [], runs = new Map();
   let releaseIssue = null, currentActor = { ...owner }, serial = 10, sealLost = false;
   const cors = { 'Access-Control-Allow-Origin': url, 'Access-Control-Allow-Headers': 'authorization,content-type', 'Access-Control-Allow-Methods': 'POST,OPTIONS' };
   page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => { if (message.type() === 'error' && consoleErrors.length < 8) consoleErrors.push(message.text().slice(0, 256)); });
+  page.on('console', (message) => { if (message.type() === 'error' && consoleErrors.length < 8) consoleErrors.push(message.text().startsWith('WebSocket connection') ? 'WebSocket connection failed' : message.text().replace(/(?:https?|wss?):\/\/[^\s]+/g, '[url]').slice(0, 256)); });
   await page.route(origin + '/v2/rpc/**', async (route) => {
     const request = route.request();
     if (request.method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: cors }); return; }
@@ -174,7 +174,7 @@ it('actual UI drains old actions, records canonical play, pauses hidden/hitstop,
       gate: window.__game.canonicalRewardRecorder, scale: window.__game.timeScale, feel: window.__game.feel.presentScale }))).toEqual({ active: false, gate: null, scale: .2, feel: .3 });
     await f.page.evaluate(() => { window.__game.crash.halted = false; });
     await f.page.waitForFunction(() => window.__game.state.tick > 6);
-    await expect.poll(() => f.requests.filter((r) => r.op === 'finish').length).toBe(1);
+    await expect.poll(() => f.requests.filter((r) => r.op === 'finish').length, { timeout: 15000 }).toBe(1);
     await expect.poll(() => [...f.runs.values()][0].batches.size).toBe(1);
     await f.page.waitForFunction(() => window.__game.rewardedCampaign.snapshot().reminders > 0, null, { timeout: 15000 });
     const data = [...f.runs.values()][0], batches = [...data.batches.values()];
@@ -271,7 +271,9 @@ it('two unresolved accounts bound retained input globally and a third start cann
 
 it('real-rAF full frozen1001-tick failure stops the actual Game at its first local candidate and never claims paid', async () => {
   const frozen = JSON.parse(fs.readFileSync('tests/fixtures/replay-corpus/sahil-fail-7.json', 'utf8'));
-  const f = await fixture({ endOutcome: 'fail' });
+  // SwiftShader is fill-rate limited at desktop resolution on shared runners.
+  // Use a real small viewport, retaining the actual renderer/RAF and full trace.
+  const f = await fixture({ endOutcome: 'fail', viewport: { width: 640, height: 480 } });
   const probes = []; let probeBusy = false, probeTimer = null;
   const probe = async () => {
     if (probeBusy || probes.length >= 20) return;
@@ -280,6 +282,7 @@ it('real-rAF full frozen1001-tick failure stops the actual Game at its first loc
       const sample = await f.page.evaluate(() => {
         const g = window.__game, flow = g.rewardedCampaign, c = flow.current?.controller?.status();
         return { tick: g.state.tick, phase: flow.snapshot(), paused: g.paused, acc: g.acc,
+          perf: g.perfCounters.report(5, performance.now()), viewport: { width: innerWidth, height: innerHeight },
           screen: { hidden: g.screen.hidden, pause: !!g.screen.querySelector('.pause'), reward: !!g.screen.querySelector('[data-reward-panel]') },
           visibility: document.visibilityState, input: g.input.enabled, scale: g.timeScale,
           feel: { hitstopMs: g.feel.hitstopMs, presentScale: g.feel.presentScale },
@@ -325,7 +328,7 @@ it('real-rAF full frozen1001-tick failure stops the actual Game at its first loc
     expect(await f.page.locator('[data-reward-title]').textContent()).not.toContain('paid');
     fs.writeFileSync(path.join(dir, 'full-failure-ui.json'), JSON.stringify({ sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
       note: 'Actual Game/real-rAF frozen failure trace; mocked service. PR18 supplies real Hub/retained05f oracle and full9634 clear.',
-      result, requests: f.requests, expected: frozen.expected }, null, 2));
+      result, probes, viewport: { width: 640, height: 480 }, requests: f.requests, expected: frozen.expected }, null, 2));
     expect(f.errors).toEqual([]);
   } catch (error) {
     await probe().catch(() => {});
