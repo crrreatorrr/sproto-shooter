@@ -1,0 +1,43 @@
+name: canonical-client
+on:
+  pull_request:
+    paths:
+      - src/game/Game.js
+      - src/server/canonicalCommand.js
+      - tests/server/client-command-*.test.js
+      - .github/workflows/canonical-client.yml
+permissions:
+  contents: read
+jobs:
+  canonical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Validate canonical local input and actual browser recordings
+        run: npx vitest run tests/server/client-command-parity.test.js tests/server/client-command-browser.test.js --no-file-parallelism
+      - name: Build both simulator artifacts from the exact reviewed head
+        run: npm run build:server-sim
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canonical-simulator-artifacts
+          path: |
+            build/shooter-sim.js
+            build/shooter-sim.pin.json
+            build/shooter-pvp-sim.js
+            build/shooter-pvp-sim.pin.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: canonical-client-evidence
+          path: ci-artifacts/canonical-client
+          if-no-files-found: warn

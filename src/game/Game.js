@@ -16,6 +16,7 @@ import {
 } from '../hub/wagers.js';
 import { createWaveRelicReporter, relicName } from '../hub/waveRelic.js';
 import { restoreCheckpoint } from '../sim/campaign/campaign.js';
+import { canonicalCommand } from '../server/canonicalCommand.js';
 import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY, zoomLevelsOf, zoomFovFor } from '../data/guns.js';
 import { SKILL_IDS, SPELL_IDS } from '../data/skills.js';
 import { nearBox } from '../sim/economy.js';
@@ -52,6 +53,12 @@ export class Game {
     this.feel = createFeel();
     // Optional observer for a server-issued run log. Null leaves gameplay unchanged.
     this.onSimCommand = null;
+    // Dormant until a later authenticated rewarded-start controller enables it.
+    // This chooses command representation; it grants no reward authority.
+    this.canonicalRewardRecorder = null;
+    this.canonicalRewardOnError = null;
+    this.canonicalRewardFailure = null;
+    this.canonicalRewardReportError = null;
     // Counts frames that throw; halts the loop and shows the "Something broke" panel after a streak.
     this.crash = crashGuard;
 
@@ -135,6 +142,59 @@ export class Game {
   }
 
   queue(a) { this.input.queueAction(a); }
+
+  /** Internal capability, default off. PR16 owns server-issued start and UI lifecycle. */
+  configureCanonicalRewardCommands({ enabled = false, record = null, onError = null } = {}) {
+    if (typeof enabled !== 'boolean') throw new TypeError('canonical_reward_enabled_must_be_boolean');
+    if (enabled && (this.pvpActive || this.state.mode !== 'campaign')) throw new Error('canonical_reward_campaign_only');
+    if (enabled && (typeof record !== 'function' || typeof onError !== 'function')) {
+      throw new TypeError('canonical_reward_requires_synchronous_recorder_and_error_handler');
+    }
+    this.canonicalRewardRecorder = enabled ? record : null;
+    this.canonicalRewardOnError = enabled ? onError : null;
+    this.canonicalRewardFailure = null;
+    this.canonicalRewardReportError = null;
+  }
+
+  failCanonicalRewardCommand(error, stage, tick) {
+    const failure = Object.freeze({ error, stage, tick });
+    this.canonicalRewardFailure = failure;
+    // Notify once, without awaiting UI or network work. The failure remains
+    // inspectable even if the UI handler itself fails.
+    try { this.canonicalRewardOnError(failure); }
+    catch (reportError) { this.canonicalRewardReportError = reportError; }
+  }
+
+  /** Simulates one local tick. False pauses rewarded simulation while rendering continues. */
+  applyLocalCommand(rawCommand) {
+    if (!this.canonicalRewardRecorder) {
+      if (this.onSimCommand) this.onSimCommand(rawCommand, this.state);
+      simulate(this.state, { [this.state.localPlayerId]: rawCommand }, DT);
+      return true;
+    }
+    if (this.canonicalRewardFailure) return false;
+    const tick = this.state.tick;
+    let packet, stage = 'encoding';
+    try {
+      if (this.pvpActive || this.state.mode !== 'campaign') throw new Error('canonical_reward_campaign_only');
+      packet = canonicalCommand(rawCommand);
+      stage = 'observer';
+      if (this.onSimCommand) this.onSimCommand(packet.command, this.state);
+      stage = 'recording';
+      const accepted = this.canonicalRewardRecorder(packet.frame, tick);
+      if (accepted !== undefined && accepted !== true) throw new Error('canonical_recorder_must_accept_synchronously');
+    } catch (error) {
+      this.failCanonicalRewardCommand(error, stage, tick);
+      return false; // Never silently simulate a raw or unrecorded reward command.
+    }
+    try {
+      simulate(this.state, { [this.state.localPlayerId]: packet.command }, DT);
+    } catch (error) {
+      this.failCanonicalRewardCommand(error, 'simulation', tick);
+      throw error; // Existing crash guard ends a partially-applied frame.
+    }
+    return true;
+  }
   findGun(id) {
     const p = this.state.players[this.state.localPlayerId];
     return p.guns.find((g) => g && g.id === id) || this.state.pickups.find((k) => k.gun && k.gun.id === id)?.gun;
@@ -585,8 +645,7 @@ export class Game {
       const cmd = this.input.buildCommand(this.state.tick);
       if (this._skip) { cmd.pressed.skip = true; this._skip = false; }
       if (titleUp) { cmd.held = {}; cmd.moveX = cmd.moveZ = 0; cmd.pressed = {}; cmd.yaw = this.state.time * 0.15; cmd.pitch = -0.05; this.input.setLook(cmd.yaw, cmd.pitch); }
-      if (this.onSimCommand) this.onSimCommand(cmd, this.state);
-      simulate(this.state, { [this.state.localPlayerId]: cmd }, DT);
+      if (!this.applyLocalCommand(cmd)) { this.acc = 0; break; }
       this.bus.emitAll(this.state.events);
       this.acc -= DT; n++;
     }
