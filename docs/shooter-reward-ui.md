@@ -59,7 +59,7 @@ Actions-only checks cover feature-on/off actual Game/DOM, ordering and frozen
 canonical capture, unsupported controls, hitstop/visibility, explicit unranked
 choice, stable repeated start/Back, login/account interruptions, accessibility,
 finite account memory and the full frozen1001-tick failure at real rAF cadence.
-The shorter fault lane halts automatic RAF and manually schedules actual Game
+The full trace uses a 320×240 SwiftShader viewport, with frame/GPU/CPU samples retained as advisory evidence; desktop rendering exceeded the same 90-second deadline. The shorter fault lane halts automatic RAF and manually schedules actual Game
 steps; it is not evidence of ordinary RAF cadence or human control feel. Service
 responses in this UI workflow are mocked and are not real Nakama/PostgreSQL or
 retained05f execution proof. PR18 must run the actual public UI/random-seed prefix

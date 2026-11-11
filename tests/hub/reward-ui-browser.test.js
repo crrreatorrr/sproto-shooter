@@ -273,7 +273,7 @@ it('real-rAF full frozen1001-tick failure stops the actual Game at its first loc
   const frozen = JSON.parse(fs.readFileSync('tests/fixtures/replay-corpus/sahil-fail-7.json', 'utf8'));
   // The desktop SwiftShader run exceeded this trace deadline on shared runners.
   // Use a real small viewport, retaining the actual renderer/RAF and full trace.
-  const f = await fixture({ endOutcome: 'fail', viewport: { width: 640, height: 480 } });
+  const f = await fixture({ endOutcome: 'fail', viewport: { width: 320, height: 240 } });
   const probes = []; let probeBusy = false, probeTimer = null;
   const probe = async () => {
     if (probeBusy || probes.length >= 20) return;
@@ -282,7 +282,7 @@ it('real-rAF full frozen1001-tick failure stops the actual Game at its first loc
       const sample = await f.page.evaluate(() => {
         const g = window.__game, flow = g.rewardedCampaign, c = flow.current?.controller?.status();
         return { tick: g.state.tick, phase: flow.snapshot(), paused: g.paused, acc: g.acc,
-          perf: g.perfCounters.report(5, performance.now()), viewport: { width: innerWidth, height: innerHeight },
+          perf: g.perfCounters.report(5, performance.now()), viewport: { width: innerWidth, height: innerHeight, canvasWidth: g.renderer.canvas.width, canvasHeight: g.renderer.canvas.height },
           screen: { hidden: g.screen.hidden, pause: !!g.screen.querySelector('.pause'), reward: !!g.screen.querySelector('[data-reward-panel]') },
           visibility: document.visibilityState, input: g.input.enabled, scale: g.timeScale,
           feel: { hitstopMs: g.feel.hitstopMs, presentScale: g.feel.presentScale },
@@ -328,7 +328,7 @@ it('real-rAF full frozen1001-tick failure stops the actual Game at its first loc
     expect(await f.page.locator('[data-reward-title]').textContent()).not.toContain('paid');
     fs.writeFileSync(path.join(dir, 'full-failure-ui.json'), JSON.stringify({ sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
       note: 'Actual Game/real-rAF frozen failure trace; mocked service. PR18 supplies real Hub/retained05f oracle and full9634 clear.',
-      result, probes, viewport: { width: 640, height: 480 }, requests: f.requests, expected: frozen.expected }, null, 2));
+      result, probes, viewport: { width: 320, height: 240 }, requests: f.requests, expected: frozen.expected }, null, 2));
     expect(f.errors).toEqual([]);
   } catch (error) {
     await probe().catch(() => {});

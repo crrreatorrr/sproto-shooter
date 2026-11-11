@@ -136,7 +136,7 @@ export class RewardedCampaignUI {
         <button class="btn alt" data-reward-action="back" data-nav-back>Back to main menu</button>
       </div>
       <p data-reward-busy></p><p data-reward-progress></p>
-      <p>Reloading loses unacknowledged local inputs. Status can be checked later; gameplay cannot be restored from it.</p>
+      <p>Reloading loses unacknowledged local inputs. Received work remains on the server; gameplay cannot be restored.</p>
     </div>`;
     g.screen.onclick = (event) => {
       if (event.target.closest('[data-reward-start]')) {
