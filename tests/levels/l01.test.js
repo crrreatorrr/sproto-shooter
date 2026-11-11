@@ -35,7 +35,7 @@ describe('L01 Sproto Landing', () => {
     const tally = unitsOf(L01);
     expect(tally).toEqual({
       midget: 85, obama: 11, flyingMidget: 23, robotLaser: 13, robotShooter: 5, bigObama: 1, gatekeeper: 1,
-      gateGenerator: 4,
+      gateGenerator: 4, kamikazeMidget: 10,
     });
     expect(L01.sections.map((s) => s.id)).toEqual(['S1', 'S2', 'S3', 'S4', 'S5', 'S6']);
     expect(L01.parTime).toBe(18 * 60);
@@ -96,7 +96,7 @@ describe('L01 Sproto Landing', () => {
   it('replays a full god-mode clear to the same hash', () => {
     const frames = [];
     const first = runClear(1, frames);
-    expect(first.level.won).toBe(true);
+    expect(first.level.won, JSON.stringify({ section: first.level.section, pos: first.players[first.localPlayerId].pos, cleared: first.level.cleared })).toBe(true);
     const second = runClear(1, null, frames);
     expect(second.level.won).toBe(true);
     expect(stateHash(second)).toBe(stateHash(first));
@@ -123,7 +123,7 @@ function runClear(seed, record, replay) {
 }
 
 function makeAim() {
-  let px = null, pz = null, stuck = 0;
+  let px = null, pz = null, stuck = 0, detour = 0, dir = -1;
   return (st) => {
     const pl = st.players[st.localPlayerId];
     const lv = st.level;
@@ -154,8 +154,12 @@ function makeAim() {
     const moved = px == null ? 1 : Math.hypot(pl.pos.x - px, pl.pos.z - pz);
     px = pl.pos.x; pz = pl.pos.z;
     stuck = moved < 0.02 && dist > 1.4 ? stuck + 1 : 0;
+    // Blocked head-on by cover: step aside for a fixed stretch, the other way each time.
+    if (stuck > 40 && detour <= 0) { detour = 40; dir = -dir; }
+    const aside = detour > 0;
+    if (aside) detour--;
     return cmd({
-      yaw, pitch, moveZ: dist > 1.1 ? 1 : 0, moveX: stuck > 40 ? 1 : 0,
+      yaw, pitch, moveZ: aside ? 0 : (dist > 1.1 ? 1 : 0), moveX: aside ? dir : 0,
       held: { fire: !!(best && best.state !== 'spawning'), sprint: true },
     });
   };

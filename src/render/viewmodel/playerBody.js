@@ -45,7 +45,7 @@ export function disposePlayerBody(holder) {
 }
 
 /** Independent geometry and materials allow per-character cleanup without altering the cache or arena copies. */
-export function preparePlayerBody(source, camera, root, FP, protectBody, clipPlanes) {
+export function preparePlayerBody(source, camera, root, FP, protectBody) {
   const body = cloneSkeleton(source);
   const bones = {};
   const bind = new Map();
@@ -61,12 +61,9 @@ export function preparePlayerBody(source, camera, root, FP, protectBody, clipPla
     if (o.isSkinnedMesh) {
       o.frustumCulled = false; o.renderOrder = 2;
       o.geometry = o.geometry.clone();
-      const material = (m) => {
-        const own = m.clone();
-        own.clippingPlanes = clipPlanes;
-        own.clipIntersection = true;
-        return own;
-      };
+      // Own materials, never clipped: cutting the body open near the camera showed the inside of the model (a
+      // hollow sleeve or vest you could see the ground through). The head and neck are collapsed below instead.
+      const material = (m) => m.clone();
       o.material = Array.isArray(o.material) ? o.material.map(material) : material(o.material);
       cleanArmWeights(o);
     }

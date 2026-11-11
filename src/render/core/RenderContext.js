@@ -10,7 +10,6 @@ export function createRenderContext(container, initialPreset = 'high') {
   renderer.setPixelRatio(graphicsPixelRatio(preset, initialWidth, initialHeight, window.devicePixelRatio));
   renderer.setSize(initialWidth, initialHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.localClippingEnabled = true; // first-person body clipping (firstPerson.js)
   container.appendChild(renderer.domElement);
 
   // One timer query in flight. The result lands a frame or two later; disjoint results are dropped.

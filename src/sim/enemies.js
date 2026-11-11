@@ -9,9 +9,10 @@ import { activeSolids, pushHorizontal, snapToGround } from './campaign/solids.js
 import { sensePlayer } from './campaign/perception.js';
 import { clampFlyer, navWaypoint } from './campaign/nav.js';
 import { tickArchetype } from './campaign/archetypes.js';
+import { abyssY } from './campaign/abyss.js';
 import { enemyZoneSlow } from './campaign/mechanisms.js';
 import { runnerSteer } from './campaign/alarms.js';
-import { hitPlayerSphere, enemyAoE, knockPlayer } from './combat.js';
+import { damageEnemy, hitPlayerSphere, enemyAoE, knockPlayer } from './combat.js';
 import { createProjectile, createHazard } from './state.js';
 
 export function nearestPlayer(state, pos) {
@@ -349,6 +350,18 @@ export function enemyAI(state, dt) {
       }
       if (e.ai.bubble > 0) e.ai.bubble -= dt;
       tickArchetype(state, e, target, dt);
+      if (state.mode === 'campaign' && e.pos.y < abyssY(state.level)) {
+        // Walked or was knocked off the level. It dies and counts, so the encounter can still finish.
+        damageEnemy(state, e, { base: e.maxHp * 100, sourceId: state.localPlayerId, sourceKind: 'world', zone: 'body' });
+        if (!e.dead) { e.dead = true; e.hp = 0; } // shielded or mid-spawn: nothing survives the fall
+      }
+      if (e.ai.detonate && !e.dead) {
+        // Kamikaze: the blast hits players here. Its own death then sets off the death blast,
+        // which hurts nearby enemies and draws the explosion.
+        const fuse = def.archetype.fuse;
+        enemyAoE(state, { x: e.pos.x, y: e.pos.y + def.height * 0.5, z: e.pos.z }, fuse.radius, fuse.damage, 'enemy');
+        damageEnemy(state, e, { base: e.maxHp * 100, sourceId: 0, sourceKind: 'world', zone: 'body' });
+      }
     }
     // integrate (flyers hold altitude themselves; staggered flyers sag a bit)
     if (def.flying) { if (e.state === 'stagger' || e.state === 'spawning') e.vel.y += ((e.state === 'spawning' ? 2 : -3) - e.vel.y) * Math.min(1, 5 * dt); }

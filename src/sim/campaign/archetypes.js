@@ -2,6 +2,7 @@
 // `archetype`, so this file never writes their state.
 import { ENEMIES } from '../../data/enemies.js';
 import { createProjectile } from '../state.js';
+import { emit } from '../events.js';
 
 export function archetypeOf(e) {
   const def = ENEMIES[e.type];
@@ -40,6 +41,19 @@ export function tickArchetype(state, e, target, dt) {
   const a = archetypeOf(e);
   if (!a || !target) return;
   const ai = e.ai;
+  if (a.fuse && !ai.detonate) {
+    if (ai.fuseT == null) {
+      const d = Math.hypot(target.pos.x - e.pos.x, target.pos.z - e.pos.z);
+      if (d <= a.fuse.trigger && Math.abs(target.pos.y - e.pos.y) < 3) {
+        ai.fuseT = a.fuse.delay;
+        emit(state, 'fuseLit', { id: e.id, pos: { ...e.pos }, delay: a.fuse.delay });
+      }
+    } else {
+      // Lit: it does not go out, so backing off only buys the delay.
+      ai.fuseT -= dt;
+      if (ai.fuseT <= 0) ai.detonate = true;
+    }
+  }
   if (a.burrow) {
     ai.burrowCd = (ai.burrowCd == null ? a.burrow.every : ai.burrowCd) - dt;
     if (ai.burrowCd <= 0) {

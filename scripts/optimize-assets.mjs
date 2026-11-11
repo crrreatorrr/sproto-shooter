@@ -18,7 +18,10 @@ export const EDGE_RULES = [
   { test: /\/dragon\.glb$/, maxEdge: 1024 },
   { test: /^models\/characters\//, maxEdge: 512 },
   { test: /^models\/projectiles\//, maxEdge: 512 },
+  // The campaign-only sets are far scenery. They ship at half the edge of the arena sets.
+  { test: /^models\/stages\/(desert|grove|office)\//, maxEdge: 256 },
   { test: /^models\/stages\//, maxEdge: 512 },
+  { test: /^models\/obstacles\//, maxEdge: 512 },
   { test: /^textures\/stages\//, maxEdge: 1024 },
   { test: /^ui\//, maxEdge: 512, palette: true },
 ];

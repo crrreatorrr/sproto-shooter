@@ -63,8 +63,8 @@ export const STAGES = {
 };
 export const STAGE_IDS = Object.keys(STAGES);
 
-// New campaign stages reuse an existing texture folder so stageAssets does not 404.
-const STAGE_TEXTURE = { desert: 'city', office: 'city', grove: 'glacier', moonlit: 'void' };
+// Desert, grove and office have their own Sproto Duel sets. Moonlit has none yet and borrows the void's.
+const STAGE_TEXTURE = { moonlit: 'void' };
 export const stageAssets = (id) => {
   const folder = STAGE_TEXTURE[id] || id;
   return {
