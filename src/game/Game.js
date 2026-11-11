@@ -713,7 +713,7 @@ export class Game {
     const lv = this.state.level;
     // Section exits and section cards: the sim waits for `transitionDone`, and this is what sends it.
     // A rewarded run starts inside its boss section and records every action it sends, so it is left alone.
-    if (!this.rewardedCampaign?.active && scr === null && campaignFlowStep(this.campaignFlow, this.state, fired)) {
+    if (!this.rewardedCampaign?.active && scr === null && campaignFlowStep(this.campaignFlow || (this.campaignFlow = createCampaignFlow()), this.state, fired)) {
       this.queue({ type: 'transitionDone' });
     }
     if (!this.rewardedCampaign?.active && this.state.mode === 'campaign' && lv && !this._campaignShown && this.screen.hidden) {
