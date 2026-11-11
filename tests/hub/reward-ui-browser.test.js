@@ -179,8 +179,8 @@ it('actual UI drains old actions, records canonical play, pauses hidden/hitstop,
     await f.page.waitForFunction(() => {
       if (window.__game.state.tick <= 6) return false;
       // This short fixture proves actual casual RAF resumes, then returns to
-      // its manual-frame lane. Continuous desktop SwiftShader rendering must
-      // continue throughout unrelated background append/finish assertions.
+      // its manual-frame lane for the background protocol assertions. This
+      // return to the fixture lane makes no claim about the ACK delay cause.
       window.__game.crash.halted = true;
       return true;
     });
