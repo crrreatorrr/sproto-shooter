@@ -1,0 +1,31 @@
+name: reward-recorder
+on:
+  pull_request:
+    paths:
+      - src/hub/campaignRewards/**
+      - tests/hub/reward-recorder*.test.js
+      - .github/workflows/reward-recorder.yml
+permissions:
+  contents: read
+jobs:
+  recorder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Validate bounded recorder and actual browser rollover/quota handling
+        run: npx vitest run tests/hub/reward-recorder.test.js tests/hub/reward-recorder-browser.test.js --no-file-parallelism
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reward-recorder-evidence
+          path: ci-artifacts/reward-recorder
+          if-no-files-found: warn
