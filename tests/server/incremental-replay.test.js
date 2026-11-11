@@ -2,14 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
 import { chromium } from 'playwright';
 import { beginIncrementalReplay, acceptReplayBatch, stepReplaySlice, publicReplayJSON,
   decodeReplayBatch, replayBatchDigest, INCREMENTAL_LIMITS, utf8Bytes } from '../../src/server/incremental.js';
 import { UPLOAD_PROTOCOL_VERSION, REPLAY_API_VERSION, INCREMENTAL_CHECKPOINT_SCHEMA_VERSION } from '../../src/server/incremental.js';
 import { createPrivateCheckpoint, restorePrivateCheckpoint } from '../../src/server/checkpoint.js';
 import * as checkpointModule from '../../src/server/checkpoint.js';
-import { stableStringify, fnv1a } from '../../src/sim/hash.js';
+import { stableStringify, fnv1a, verifyStateHash } from '../../src/sim/hash.js';
 import { bytesToB64, b64ToBytes, encodeFrames, LIMITS } from '../../src/server/protocol.js';
 import { CASES } from './replay-corpus.js';
 import { classify } from '../../src/server/replayChecks.js';
@@ -346,6 +346,21 @@ SprotoShooterSim.testIncrementalReplayJSON = function(text) {
   if(SprotoShooterSim.UPLOAD_PROTOCOL_VERSION!==2 || SprotoShooterSim.REPLAY_API_VERSION!==2 || SprotoShooterSim.INCREMENTAL_CHECKPOINT_SCHEMA_VERSION!==2)throw new Error('version exports mismatch');
   const jobs=JSON.parse(text), out=[];
   for (const job of jobs) {
+    if(job.workerRange) {
+      let r=job.checkpoint?{privateCheckpoint:job.checkpoint}:SprotoShooterSim.beginIncrementalReplay(job.context);
+      if(!r.privateCheckpoint)throw new Error(JSON.stringify(r));
+      if(job.batch)r=SprotoShooterSim.acceptReplayBatch(JSON.stringify(job.batch),JSON.parse(JSON.stringify(r.privateCheckpoint)),{...job.context,accepted:job.accepted});
+      if(!r.privateCheckpoint)throw new Error(JSON.stringify(r));
+      let calls=0;
+      while(r.privateCheckpoint.accounting.verifiedFrames<job.targetInputTick) {
+        const before=r.privateCheckpoint.accounting.verifiedFrames;
+        r=SprotoShooterSim.stepReplaySlice(JSON.parse(JSON.stringify(r.privateCheckpoint)),{...job.context,maxWorkFrames:Math.min(4096,job.targetInputTick-before)});
+        if(!r.privateCheckpoint)throw new Error(JSON.stringify(r));
+        if(r.privateCheckpoint.accounting.verifiedFrames<=before)throw new Error('worker made zero progress: '+JSON.stringify(r.publicResult));
+        if(++calls>4096)throw new Error('worker range exceeded finite iteration bound');
+      }
+      out.push(r); continue;
+    }
     let r=SprotoShooterSim.beginIncrementalReplay(job.context);
     for (let i=0;i<job.batches.length;i++) {
       if (!r.privateCheckpoint) throw new Error(JSON.stringify(r));
@@ -356,39 +371,98 @@ SprotoShooterSim.testIncrementalReplayJSON = function(text) {
         if (!r.privateCheckpoint) throw new Error(JSON.stringify(r));
       }
     }
-    out.push(r.publicResult);
+    out.push(job.returnCheckpoint?r:r.publicResult);
   }
   return JSON.stringify(out);
 };`;
 
 for (const f of fixtures) {
-  it(`replays the COMPLETE frozen trace in Node, Goja, and Chromium: ${f.provenance.spec.id}`, async () => {
-    const cuts = [63, 400, Math.floor(f.log.segments[0].n / 2), f.log.segments[0].n - 1];
-    const parts = batches(f, cuts);
-    const job = { context: context(f), batches: parts, accepted: parts.map((b) => admitted(f, b).accepted) };
-    const expected = [run(f, cuts, 4096).publicResult];
-    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'shooter-incremental-'));
-    const augmented = path.join(temporary, 'sim-test.js');
-    fs.writeFileSync(augmented, fs.readFileSync(bundle, 'utf8') + '\n' + harness);
-    const input = JSON.stringify([job]);
-    try {
-      const nodeScript = `import fs from 'node:fs'; import vm from 'node:vm'; vm.runInThisContext(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(SprotoShooterSim.testIncrementalReplayJSON(fs.readFileSync(0,'utf8')));`;
-      for (const [command, args, cwd] of [
-        [process.execPath, ['--input-type=module', '-e', nodeScript, augmented], root],
-        ['go', ['run', '.', augmented, 'testIncrementalReplayJSON'], path.join(root, 'tests/fixtures/goja')],
-      ]) {
-        const started = Date.now();
-        const result = spawnSync(command, args, { cwd, input, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 180000 });
-        console.log(`incremental complete ${f.provenance.spec.id}: ${command} ${Date.now() - started}ms (${f.log.segments[0].n} frames)`);
-        expect(result.status, result.error?.message || result.stderr).toBe(0);
-        expect(JSON.parse(result.stdout)).toEqual(expected);
+  describe(`COMPLETE single-public-batch cross-runtime trace: ${f.provenance.spec.id}`, () => {
+    const n = f.log.segments[0].n;
+    const targets = Array.from({ length: Math.ceil(n / 4096) }, (_, index) => Math.min(n, (index + 1) * 4096));
+    let temporary, augmented, wholeBatch, expectedStages, gojaCheckpoint = null, aggregateWorkerMs = 0;
+    beforeAll(() => {
+      temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'shooter-incremental-'));
+      augmented = path.join(temporary, 'sim-test.js');
+      fs.writeFileSync(augmented, fs.readFileSync(bundle, 'utf8') + '\n' + harness);
+      wholeBatch = batches(f)[0];
+      let result = checked(acceptReplayBatch(JSON.stringify(wholeBatch), beginIncrementalReplay(context(f)).privateCheckpoint, admitted(f, wholeBatch)));
+      expectedStages = [];
+      for (const target of targets) {
+        while (result.privateCheckpoint.accounting.verifiedFrames < target) result = checked(stepReplaySlice(roundtrip(result.privateCheckpoint), {
+          ...context(f), maxWorkFrames: target - result.privateCheckpoint.accounting.verifiedFrames,
+        }));
+        expectedStages.push(roundtrip(result));
       }
+    }, 180000);
+    afterAll(() => { if (temporary) fs.rmSync(temporary, { recursive: true, force: true }); });
+
+    it('matches the entire accepted batch in a fresh Node bundle and Chromium', async () => {
+      const job = { returnCheckpoint: true, context: context(f), batches: [wholeBatch], accepted: [admitted(f, wholeBatch).accepted] };
+      const input = JSON.stringify([job]), expected = expectedStages[expectedStages.length - 1];
+      function assertWhole(actual) {
+        checked(actual);
+        expect(actual.publicResult).toEqual(expected.publicResult);
+        expect(verifyStateHash(actual.privateCheckpoint.snapshot.state)).toBe(verifyStateHash(expected.privateCheckpoint.snapshot.state));
+        expect(actual.privateCheckpoint.snapshot.state.rng).toEqual(expected.privateCheckpoint.snapshot.state.rng);
+        expect(actual.privateCheckpoint.snapshot.state.nextId).toBe(expected.privateCheckpoint.snapshot.state.nextId);
+        expect(actual.privateCheckpoint.snapshot.parts).toEqual(expected.privateCheckpoint.snapshot.parts);
+        expect(actual.privateCheckpoint.firstTerminal).toEqual(expected.privateCheckpoint.firstTerminal);
+        expect(actual.privateCheckpoint.accounting).toEqual(expected.privateCheckpoint.accounting);
+      }
+      const nodeScript = `import fs from 'node:fs'; import vm from 'node:vm'; vm.runInThisContext(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(SprotoShooterSim.testIncrementalReplayJSON(fs.readFileSync(0,'utf8')));`;
+      const result = spawnSync(process.execPath, ['--input-type=module', '-e', nodeScript, augmented], {
+        cwd: root, input, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 180000,
+      });
+      expect(result.status, result.error?.message || result.stderr).toBe(0);
+      assertWhole(JSON.parse(result.stdout)[0]);
       const browser = await chromium.launch({ headless: true });
       try {
         const page = await browser.newPage();
         await page.addScriptTag({ path: augmented });
-        expect(JSON.parse(await page.evaluate((text) => globalThis.SprotoShooterSim.testIncrementalReplayJSON(text), input))).toEqual(expected);
+        assertWhole(JSON.parse(await page.evaluate((text) => globalThis.SprotoShooterSim.testIncrementalReplayJSON(text), input))[0]);
       } finally { await browser.close(); }
-    } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
-  }, 180000);
+    }, 180000);
+
+    targets.forEach((target, index) => {
+      const start = index ? targets[index - 1] : 0;
+      it(`restores the real Goja predecessor in a fresh worker and verifies input [${start},${target})`, () => {
+        // Order is intentional. Filtering a noninitial worker must fail clearly;
+        // never replace a missing Goja predecessor with a Node checkpoint.
+        if (index > 0) {
+          expect(gojaCheckpoint, 'missing ordered Goja predecessor; run the complete trace group').toBeTruthy();
+          expect(gojaCheckpoint.accounting.verifiedFrames, 'previous Goja worker did not commit its complete range').toBe(start);
+        }
+        const job = { workerRange: true, context: context(f), targetInputTick: target,
+          ...(index === 0 ? { batch: wholeBatch, accepted: admitted(f, wholeBatch).accepted } : { checkpoint: gojaCheckpoint }) };
+        const started = Date.now();
+        const result = spawnSync('go', ['run', '.', augmented, 'testIncrementalReplayJSON'], {
+          cwd: path.join(root, 'tests/fixtures/goja'), input: JSON.stringify([job]), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 180000,
+        });
+        const elapsed = Date.now() - started;
+        aggregateWorkerMs += elapsed;
+        console.log(`Goja COMPLETE ${f.provenance.spec.id} worker [${start},${target}): ${elapsed}ms; aggregate ${aggregateWorkerMs}ms; public sequence 0, n=${n}`);
+        expect(result.status, result.error?.message || result.stderr).toBe(0);
+        const actual = JSON.parse(result.stdout)[0], expected = expectedStages[index];
+        checked(actual);
+        expect(actual.publicResult).toEqual(expected.publicResult);
+        const restored = restorePrivateCheckpoint(actual.privateCheckpoint.snapshot, { manifest, binding: bindingOf(f) });
+        expect(verifyStateHash(restored.state)).toBe(verifyStateHash(expected.privateCheckpoint.snapshot.state));
+        expect(restored.state.rng).toEqual(expected.privateCheckpoint.snapshot.state.rng);
+        expect(restored.state.nextId).toBe(expected.privateCheckpoint.snapshot.state.nextId);
+        expect(restored.parts).toEqual(expected.privateCheckpoint.snapshot.parts);
+        expect(actual.privateCheckpoint.firstTerminal).toEqual(expected.privateCheckpoint.firstTerminal);
+        expect(actual.privateCheckpoint.accounting).toEqual(expected.privateCheckpoint.accounting);
+        expect(actual.privateCheckpoint.accounting.acceptedFrames).toBe(n);
+        expect(actual.privateCheckpoint.accounting.batches).toBe(1);
+        expect(actual.privateCheckpoint.accounting.verifiedFrames).toBe(target);
+        gojaCheckpoint = roundtrip(actual.privateCheckpoint);
+        if (target === n) {
+          expect(gojaCheckpoint.pending).toBeNull();
+          expect(gojaCheckpoint.accounting).toMatchObject({ acceptedFrames: n, verifiedFrames: n, batches: 1, verifiedBatches: 1,
+            framesTextBytes: n * 16, verifiedFramesTextBytes: n * 16, actions: wholeBatch.actions.length, verifiedActions: wholeBatch.actions.length });
+        }
+      }, 180000);
+    });
+  });
 }

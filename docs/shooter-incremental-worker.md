@@ -104,7 +104,15 @@ GitHub Actions checks the exact PR head. The incremental suite preserves all 12
 frozen traces, including the entire 24000-frame Obama seed 7 trace, through whole
 and segmented public input, bounded work slices and JSON resumes. It exercises
 the built artifact in a fresh Node process, Goja and Chromium without raising
-the legacy CPU ceiling. Separate tests cover failure/assisted terminal ticks,
+the legacy CPU ceiling. Each complete fixture is accepted as one public batch;
+ordered fresh Goja worker processes consume ranges of at most 4096 inputs using
+the real predecessor checkpoint. Every range has the unchanged 180-second
+process/test ceiling and each API call keeps its 15-second ceiling. Aggregate
+run time and individual worker timings are reported separately. A missing chain
+predecessor or zero-progress worker fails explicitly. The final input coverage,
+state hash, RNG, parts, terminal result and all counters must match whole-run
+Node and Chromium; no long trace is shortened to fit a single process.
+Separate tests cover failure/assisted terminal ticks,
 trailing-input accounting, timeout continuation, immutable predecessors,
 cumulative caps, strict wire schemas and public redaction. The existing full
 suite continues to check legacy outcomes. Both simulator artifacts are uploaded
