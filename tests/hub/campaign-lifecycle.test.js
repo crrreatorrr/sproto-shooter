@@ -187,3 +187,9 @@ it('conflicting seal acknowledgments stop with retained evidence and never becom
   const raw = transport(async () => jsonResponse(sealed()));
   await expect(raw.finish({ body: { lastSequence: -1, lastTick: 0 } })).rejects.toThrow('unprepared_finish');
 });
+
+
+it('maps existing generic SDK body auth errors to explicit denial without treating them as transport success', async () => {
+  const api = issuer(async () => jsonResponse({ error: 'session_closed', message: 'original session is closed' }));
+  expect(await api.issue()).toEqual({ state: 'authorization_denied', reason: 'session_closed' });
+});

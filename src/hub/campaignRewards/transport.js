@@ -97,8 +97,9 @@ function createChannel({ accountId, sessionId, serverUrl, getSession, fetchImpl 
         try { result = await client.rpc(id, body, { token }); }
         catch (error) {
           if (error instanceof SyntaxError) throw recorderError('client_contract_error');
-          if (error?.status !== 401 && error?.status !== 403) throw error;
-          result = { protocol: 2, state: 'authorization_denied', reason: 'unauthorized', ticketsMinted: 0 };
+          const authReason = ['session_closed', 'session_expired', 'not_game_session', 'unauthorized', 'revoked'].includes(error?.code) ? error.code : 'unauthorized';
+          if (error?.status !== 401 && error?.status !== 403 && authReason === 'unauthorized' && error?.code !== 'unauthorized') throw error;
+          result = { protocol: 2, state: 'authorization_denied', reason: authReason, ticketsMinted: 0 };
         }
         current(write);
         if (generation !== epoch) throw recorderError('identity_changed');
