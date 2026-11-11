@@ -362,12 +362,12 @@ describe('provenance and ledger boundary', () => {
     const iife = readFileSync(new URL('../vendor/hub-sdk/dist/hub-sdk.iife.js', import.meta.url));
     const hash = createHash('sha256').update(iife).digest('hex');
     const pin = JSON.parse(readFileSync(new URL('../vendor/hub-sdk/SOURCE.pin.json', import.meta.url), 'utf8'));
-    expect(hash).toBe('e7626595184dc132e72ffd707c87149b266c7b3933d40670e55eb2fb0a64eda6');
+    expect(hash).toBe('092603b61a3511fbbcaa3b674b16f02b24d581752e1fa1dc69eeb577bc5ae5e8');
     expect(pin.iifeSha256).toBe(hash);
-    expect(pin.version).toBe('0.6.4');
+    expect(pin.version).toBe('0.7.0');
     expect(pin.global).toBe('HubSDK');
     const vendor = readFileSync(new URL('../vendor/hub-sdk/VENDOR.md', import.meta.url), 'utf8');
-    expect(vendor).toMatch(/a1281c9/);
+    expect(vendor).toMatch(/b9ac308/);
     expect(vendor).not.toMatch(/94f10af/);
     expect(vendor).not.toMatch(/metaverse-hub\.patch/);
     expect(existsSync(new URL('../vendor/hub-sdk/metaverse-hub.patch', import.meta.url))).toBe(false);
