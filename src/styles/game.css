@@ -141,8 +141,9 @@ kbd { font-family: var(--display); font-size: 11px; background: #fff; color: var
 #vignette.hurt { animation: vg .4s; background: radial-gradient(circle, transparent 45%, rgba(255,30,60,.55)); }
 #vignette.shield { animation: vg .3s; background: radial-gradient(circle, transparent 55%, rgba(90,215,255,.4)); }
 #dmgdir { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
-.dmgarc { position: absolute; left: -150px; top: -150px; width: 300px; height: 300px; box-sizing: border-box; border-radius: 50%; border: 8px solid transparent; border-top-color: rgba(255, 40, 70, .95); opacity: 0; filter: drop-shadow(0 0 6px rgba(255, 40, 70, .8)); }
-.dmgarc.on { animation: dmgarc .9s ease-out; }
+/* Not drawn at all until a hit lands, so an idle HUD pays nothing for it. */
+.dmgarc { display: none; position: absolute; left: -150px; top: -150px; width: 300px; height: 300px; box-sizing: border-box; border-radius: 50%; border: 8px solid transparent; border-top-color: rgba(255, 40, 70, .95); opacity: 0; }
+.dmgarc.on { display: block; animation: dmgarc .9s ease-out; }
 @keyframes dmgarc { 0% { opacity: 1; } 60% { opacity: .8; } 100% { opacity: 0; } }
 .banner.card { color: #fff7ec; font-size: clamp(24px, 3.6vw, 44px); background: rgba(12, 6, 24, .72); padding: 12px 28px; border-radius: 14px; width: min(720px, 86vw); box-sizing: border-box; }
 .toast.tip { background: rgba(12, 6, 24, .9); border: 2px solid var(--sun); color: #fff7ec; }
