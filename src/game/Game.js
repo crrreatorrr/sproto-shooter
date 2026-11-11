@@ -29,6 +29,7 @@ import { createPerfCounters } from '../render/debug/perfCounters.js';
 import { createStatsOverlay } from '../render/debug/StatsOverlay.js';
 import { createFeel, wireHitstop } from './feel.js';
 import { createCampaignFlow, campaignFlowStep } from './campaignFlow.js';
+import { loadoutAction, loadoutEmpty, loadoutFromState, readLoadout, writeLoadout } from '../save/loadout.js';
 import { crashGuard } from '../core/crashGuard.js';
 import { createPadController } from '../input/padController.js';
 import { NAV_KEYS, keyLabel } from '../input/input.js';
@@ -82,6 +83,8 @@ export class Game {
     this.waveRelic = createWaveRelicReporter({ hub: this.hub, onGranted: (id) => this.ui.toast(`Relic: ${relicName(id)}`, 'good') });
     this.bus.on('modeStart', (ev) => this.waveRelic.modeStart(ev));
     this.bus.on('waveCleared', (ev) => this.waveRelic.waveCleared(ev, this.state));
+    // Wave Mode progress (skills, carried guns, best tier) is kept on this device: src/save/loadout.js.
+    for (const type of ['waveCleared', 'victory', 'defeat']) this.bus.on(type, (ev) => this.saveWaveLoadout(ev));
     // Menu focus for keyboard and gamepad, and the gamepad itself (polled every frame).
     this.nav = createMenuNav();
     this.padStyle = 'xbox';
@@ -208,6 +211,16 @@ export class Game {
     }
     return true;
   }
+  /**
+   * Save Wave Mode progress after a wave clear, a victory or a defeat. Never from a rewarded run, and
+   * not while god mode is on (it lends every gun and the debug panel can max every skill).
+   */
+  saveWaveLoadout(ev) {
+    const s = this.state;
+    if (s.mode !== 'waves' || this.rewardedCampaign?.active || s.tuning.godMode) return;
+    const best = readLoadout().bestTier;
+    writeLoadout(loadoutFromState(s, ev.type === 'victory' ? Math.max(best, s.tier) : best));
+  }
   findGun(id) {
     const p = this.state.players[this.state.localPlayerId];
     return p.guns.find((g) => g && g.id === id) || this.state.pickups.find((k) => k.gun && k.gun.id === id)?.gun;
@@ -257,6 +270,12 @@ export class Game {
     const s = this.state;
     const leaveSandbox = s.mode === 'sandbox' && !s.testMode && mode !== 'sandbox' && mode !== 'test';
     this.queue({ type: 'startMode', mode, tier, ...extra, ...(leaveSandbox ? { leaveSandbox: true } : {}) });
+    // Coming into Wave Mode from anywhere else picks the saved Wave Mode loadout back up. Tier to tier
+    // inside Wave Mode keeps what you are carrying.
+    if (mode === 'waves' && s.mode !== 'waves') {
+      const saved = readLoadout();
+      if (!loadoutEmpty(saved)) this.queue(loadoutAction(saved));
+    } else if (mode === 'waves') this.saveWaveLoadout({ type: 'nextTier' }); // keeps what you grabbed after the last boss
     this.hideScreen();
     this.paused = false;
     this.input.lock();
@@ -282,7 +301,7 @@ export class Game {
           <button class="btn big alt" data-go="bossSelect">👑 Boss Fight <small>pick a boss to fight</small></button>
           <button class="btn big alt" data-go="pvp">Play free <small>equal guns, no Tickets</small></button>
           <button class="btn big" data-go="campaignSelect">🗺 Campaign <small>The Great Sproto Audit</small></button>
-          <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
+          <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select>${bestTierHtml()}</div>
         </div>
         <div class="menu minor">
           <button class="btn alt" data-go="characters">Choose Character <small>${this.character.name}</small></button>
@@ -1173,6 +1192,12 @@ export class Game {
       graph: this.perfCounters.tail(120),
     });
   }
+}
+
+/** "best 4" beside the tier picker once a Wave Mode tier has been cleared on this device. */
+function bestTierHtml() {
+  const best = readLoadout().bestTier;
+  return best > 0 ? ` <small class="best-tier">best ${best}</small>` : '';
 }
 
 /** Seconds as m:ss. */

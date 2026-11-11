@@ -1,5 +1,5 @@
 // Wave director: 3 waves, staggered groups, bosses, intermission, victory/defeat. PLAN §4.12
-import { WAVES, INTERMISSION_TIME, VICTORY_TICKETS, tierRewardMult } from '../data/waves.js';
+import { WAVES, INTERMISSION_TIME, VICTORY_TICKETS, tierRewardMult, tierWave, nextWaveSpell } from '../data/waves.js';
 import { range, float, next } from '../core/rng.js';
 import { emit } from './events.js';
 import { createEnemy, createBoss, createHazard, nextId } from './state.js';
@@ -7,6 +7,7 @@ import { rollShopOffers } from './economy.js';
 import { generateGun, } from './guns.js';
 import { spawnGunPickup } from './drops.js';
 import { rollGunType } from './drops.js';
+import { grantSpell } from './spellbook.js';
 
 export function startWaves(state, tier) {
   state.mode = 'waves';
@@ -23,7 +24,7 @@ export function startWaves(state, tier) {
 
 function initWave(state, idx) {
   const w = state.wave;
-  const cfg = WAVES[idx];
+  const cfg = tierWave(idx, state.tier);
   w.index = idx; w.phase = 'pre'; w.t = 0; w.groupIdx = 0; w.spawnQueue = []; w.spawnedCount = 0; w.killedCount = 0;
   w.totalCount = cfg.groups.reduce((n, g) => n + g.spawns.reduce((m, s) => m + s.count, 0), 0);
   w.bossIds = [];
@@ -54,7 +55,7 @@ function pickPoints(state, pattern, n) {
 export function waveDirector(state, dt) {
   const w = state.wave;
   if (state.mode !== 'waves' || !w) return;
-  const cfg = WAVES[w.index];
+  const cfg = tierWave(w.index, state.tier);
   const p = state.players[state.localPlayerId];
   w.t += dt;
   state.run.time += dt;
@@ -100,11 +101,12 @@ export function waveDirector(state, dt) {
     }
     case 'bossIntro':
       if (w.t >= cfg.boss.introDelay) {
-        const paired = cfg.boss.types.length > 1;
-        // spawn across the arena from the player; paired bosses spread ±50°
+        const count = cfg.boss.types.length;
+        const paired = count > 1;
+        // spawn across the arena from the player; paired bosses spread ±50° (a third stands between them)
         const away = Math.atan2(-p.pos.x, -p.pos.z) + (Math.hypot(p.pos.x, p.pos.z) < 1 ? Math.PI : 0);
         cfg.boss.types.forEach((type, i) => {
-          const ang = away + (paired ? (i === 0 ? -0.9 : 0.9) : 0);
+          const ang = away + (paired ? (i === 0 ? -0.9 : i === 1 ? 0.9 : 0) : 0);
           const pos = { x: Math.sin(ang) * 22, z: Math.cos(ang) * 22 };
           const b = createBoss(state, type, { pos, paired });
           w.bossIds.push(b.id);
@@ -149,10 +151,15 @@ export function waveDirector(state, dt) {
 
 function clearWave(state) {
   const w = state.wave;
-  const cfg = WAVES[w.index];
+  const cfg = tierWave(w.index, state.tier);
   const p = state.players[state.localPlayerId];
   const tk = Math.round(cfg.clearTickets * tierRewardMult(state.tier));
   p.tickets += tk; state.run.ticketsEarned += tk;
   emit(state, 'waveCleared', { waveIndex: w.index, tickets: tk });
   emit(state, 'ticketsGained', { amount: tk, reason: 'Wave clear' });
+  // Each cleared wave teaches the next spell (data/waves.js WAVE_SPELLS).
+  const spell = nextWaveSpell(p.spellUnlocks, state.tier);
+  if (spell) { grantSpell(state, p, spell); emit(state, 'spellUnlocked', { playerId: p.id, spellId: spell }); }
+  // A new wave is a fresh start for Second Wind.
+  for (const pl of Object.values(state.players)) if (pl.downCount != null) delete pl.downCount;
 }

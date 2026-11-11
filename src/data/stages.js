@@ -1,6 +1,6 @@
 // Stages (environments) and character models reused from Sproto Duel. Paths are under public/assets/.
 // Lighting values are copied from sproto-duel src/arena/themes.ts.
-import { WAVES } from './waves.js';
+import { WAVES, tierWave } from './waves.js';
 import { ENEMIES, BOSSES, enemyStage } from './enemies.js';
 export const STAGES = {
   city: {
@@ -96,7 +96,7 @@ export function stageFor(state, override = null) {
  * - `bosses`: every boss model for every phase (loaded after the rest, before the boss fight).
  */
 export function levelAssets(waveIdx, tier) {
-  const w = WAVES[waveIdx];
+  const w = tierWave(waveIdx, tier);
   if (!w) return null;
   const set = new Map();
   const add = (model, stage) => set.set(`${model}:${stage}`, { model, stage });

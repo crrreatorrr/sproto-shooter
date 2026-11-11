@@ -4,6 +4,7 @@ import { emit } from './events.js';
 import { ENEMIES, ELITE, ALLY } from '../data/enemies.js';
 import { ELEMENTS_BY_ID, GUN_TYPES_BY_ID } from '../data/guns.js';
 import { TUNING } from '../data/tuning.js';
+import { secondWindTime } from '../data/waves.js';
 import { distToCapsule, entityDef, sphereHitsPlayer } from './collision.js';
 import { rollDrops, spawnDrops } from './drops.js';
 import { createEnemy, createHazard, nextId } from './state.js';
@@ -179,8 +180,8 @@ export function onEnemyKilled(state, e) {
   for (const pid of Object.keys(state.players)) {
     const p = state.players[pid];
     if (p.perks.killFrenzy && killer === p) { p.buffs.killFrenzy.stacks = Math.min(10, p.buffs.killFrenzy.stacks + 1); p.buffs.killFrenzy.t = 4; }
-    // Second wind: any kill revives a downed player
-    if (p.downed && !p.dead) revivePlayer(state, p);
+    // Second wind: a kill revives a downed player. In the arena modes a boss's summoned helpers do not count.
+    if (p.downed && !p.dead && !(e.summoned && state.mode !== 'campaign')) revivePlayer(state, p);
   }
   if (lh.wacky === 'confettiKill') {
     explode(state, centerOf(e), { radius: 4, damage: 40, minFalloff: 0.4, selfMult: 0, knockback: 6 }, lh.sourceId, 'none', 'splash', true);
@@ -260,7 +261,14 @@ export function damagePlayer(state, p, hit) {
 
 export function startDowned(state, p) {
   p.downed = true;
-  p.downedT = TUNING.secondWindTime;
+  if (state.mode === 'campaign') p.downedT = TUNING.secondWindTime;
+  else {
+    // Arena modes: each down in one wave or Boss Fight leaves less time. The count is only on the
+    // player once they have been downed, and goes when the wave clears or a mode starts.
+    const downs = p.downCount || 0;
+    p.downedT = secondWindTime(TUNING.secondWindTime, downs);
+    p.downCount = downs + 1;
+  }
   p.spells.manaShieldOn = false;
   emit(state, 'playerDowned', { playerId: p.id });
 }

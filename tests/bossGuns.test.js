@@ -23,25 +23,44 @@ describe('boss weapons (Ray Gun, Big Bullets)', () => {
     for (let seed = 1; seed < 400; seed++) expect(BOSS_GUN_TYPES).not.toContain(generateGun({ seed, level: 1 }).type);
   });
 
-  it('every boss drops one, at least rare', () => {
+  it('campaign bosses always drop one; arena bosses drop one some of the time, and never more than one', () => {
+    const rate = (boss) => {
+      let n = 0;
+      for (let seed = 1; seed <= 400; seed++) {
+        const specs = rollDrops(createRng(seed), boss, { tier: 1, boss: true });
+        const bossGuns = specs.filter((d) => d.kind === 'gun' && BOSS_GUN_TYPES.includes(d.type));
+        expect(bossGuns.length, boss).toBeLessThanOrEqual(1);
+        for (const g of bossGuns) expect(['rare', 'epic', 'legendary']).toContain(g.quality);
+        n += bossGuns.length;
+      }
+      return n / 400;
+    };
     for (const boss of Object.keys(BOSSES)) {
-      const specs = rollDrops(createRng(11), boss, { tier: 1, boss: true });
-      const bossGuns = specs.filter((d) => d.kind === 'gun' && BOSS_GUN_TYPES.includes(d.type));
-      expect(bossGuns.length, boss).toBe(1);
-      expect(['rare', 'epic', 'legendary']).toContain(bossGuns[0].quality);
+      const r = rate(boss);
+      if (BOSSES[boss].campaign) expect(r, boss).toBe(1);
+      else { expect(r, boss).toBeGreaterThan(0.15); expect(r, boss).toBeLessThan(0.6); }
     }
+    // the first boss of a run is the stingiest, and still leaves two ordinary guns behind
+    expect(rate('dragon')).toBeLessThan(rate('monster'));
+    expect(rollDrops(createRng(1), 'dragon', { tier: 1, boss: true }).filter((d) => d.kind === 'gun' && !BOSS_GUN_TYPES.includes(d.type)).length).toBe(2);
     // both kinds show up across kills
     const seen = new Set();
-    for (let seed = 1; seed < 60; seed++) for (const d of rollDrops(createRng(seed), 'monster', { tier: 1 })) if (d.kind === 'gun') seen.add(d.type);
+    for (let seed = 1; seed < 120; seed++) for (const d of rollDrops(createRng(seed), 'monster', { tier: 1 })) if (d.kind === 'gun') seen.add(d.type);
     for (const t of BOSS_GUN_TYPES) expect(seen.has(t)).toBe(true);
   });
 
-  it('a boss kill spawns a boss weapon pickup', () => {
-    const s = createGameState({ seed: 4 });
-    const b = createBoss(s, 'monster', { pos: { x: 0, z: -10 } });
-    onEnemyKilled(s, b);
-    const guns = s.pickups.filter((k) => k.kind === 'gun').map((k) => k.gun);
-    expect(guns.some((g) => BOSS_GUN_TYPES.includes(g.type) && g.source === 'boss')).toBe(true);
+  it('a boss kill can spawn a boss weapon pickup, marked as a boss drop', () => {
+    let found = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const s = createGameState({ seed });
+      const b = createBoss(s, 'monster', { pos: { x: 0, z: -10 } });
+      onEnemyKilled(s, b);
+      const guns = s.pickups.filter((k) => k.kind === 'gun').map((k) => k.gun);
+      expect(guns.length).toBeGreaterThanOrEqual(2); // ordinary guns always drop
+      if (guns.some((g) => BOSS_GUN_TYPES.includes(g.type) && g.source === 'boss')) found++;
+    }
+    expect(found).toBeGreaterThan(0);
+    expect(found).toBeLessThan(12);
   });
 
   it('roll legendaries with a wacky perk like any other gun', () => {

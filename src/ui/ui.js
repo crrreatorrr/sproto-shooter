@@ -3,7 +3,7 @@
 import { SKILLS, SKILL_IDS, PERKS, PERKS_BY_ID, SPELLS, SPELL_IDS, xpToNext } from '../data/skills.js';
 import { gunRange, hasInfiniteReserve, QUALITIES_BY_ID, ELEMENTS_BY_ID, GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, PARTS_BY_ID, SLOTS, WACKY_BY_ID, LEGENDARY_SLOT, slotUsable } from '../data/guns.js';
 import { SHOP } from '../data/shop.js';
-import { WAVES } from '../data/waves.js';
+import { WAVES, tierWave } from '../data/waves.js';
 import { BOSSES } from '../data/enemies.js';
 import { compareGuns, sellValue, dpsOf } from '../sim/guns.js';
 import { PAD_BINDINGS } from '../input/padConfig.js';
@@ -425,7 +425,7 @@ export function createUI(root, { input, bus, project, game }) {
   function skillsHtml(p) {
     return `<div class="skills-screen">${SKILL_IDS.map((id) => {
       const sk = p.skills[id], def = SKILLS[id];
-      const need = sk.level >= 10 ? 1 : xpToNext(id, sk.level);
+      const need = sk.level >= 10 ? 1 : xpToNext(id, sk.level, game.state.mode);
       const perks = PERKS.filter((k) => k.skill === id).map((k) => `<div class="perk ${p.perks[k.id] ? 'on' : ''}"><b>Lv${k.level}</b> ${k.name}<small>${k.desc}</small></div>`).join('');
       const src = { health: 'Kill monsters, take damage, pick up healing, defeat Physical bosses', gunslinger: 'Gun kills, crits and weak spots, defeat Physical bosses' }[id];
       return `<div class="skc" style="--c:${def.color}"><div class="skh">${def.icon} ${def.name} <span>Lv ${sk.level}</span></div>
@@ -487,7 +487,7 @@ export function createUI(root, { input, bus, project, game }) {
     if (p.stamina != null) {
       const gLeft = p.grapple ? 1 : (p.grappleCd > 0 ? 1 - p.grappleCd / TUNING.grappleCd : 1);
       bar(els.stamina, 'sta', p.stamina, p.staminaLock ? 'STAMINA' : 'Sprint');
-      bar(els.grapple, 'grp', Math.max(0, Math.min(1, gLeft)), p.grapple ? 'HOOK' : (p.grappleCd > 0 ? 'Grapple' : 'G'));
+      bar(els.grapple, 'grp', Math.max(0, Math.min(1, gLeft)), p.grapple ? 'HOOK' : (p.grappleCd > 0 ? 'Grapple' : pad() ? 'Grapple ready' : `Grapple [${keyLabel('grapple')}]`));
       els.stamina.hidden = false;
       els.grapple.hidden = false;
     } else {
@@ -502,7 +502,7 @@ export function createUI(root, { input, bus, project, game }) {
       const sk = p.skills[id];
       const el = els.skills.querySelector(`[data-sk="${id}"]`);
       text(el.querySelector('.lv'), 'sklv' + id, 'Lv ' + sk.level);
-      const fr = sk.level >= 10 ? 1 : sk.xp / xpToNext(id, sk.level);
+      const fr = sk.level >= 10 ? 1 : Math.min(1, sk.xp / xpToNext(id, sk.level, s.mode));
       set(el, 'skxp' + id, Math.round(fr * 100), (e, v) => { e.querySelector('.xp b').style.width = v + '%'; });
     }
     // spells
@@ -547,7 +547,7 @@ export function createUI(root, { input, bus, project, game }) {
     else if (s.wave) {
       const w = s.wave;
       const left = s.enemies.filter((e) => !e.dead && e.type !== 'dummy').length + w.spawnQueue.length;
-      const remainingGroups = WAVES[w.index].groups.slice(w.groupIdx).reduce((n, gg) => n + gg.spawns.reduce((m, x) => m + x.count, 0), 0);
+      const remainingGroups = tierWave(w.index, s.tier).groups.slice(w.groupIdx).reduce((n, gg) => n + gg.spawns.reduce((m, x) => m + x.count, 0), 0);
       const phaseTxt = { pre: 'Get ready…', combat: `Enemies left: ${left + remainingGroups}`, bossIntro: 'BOSS INCOMING', boss: 'BOSS FIGHT', cleared: 'Cleared!', intermission: `Intermission ${Math.ceil(w.intermissionT)}s · ${pad() ? `[${glyph(PAD_BINDINGS.panel)}] Shop · Ready in the shop` : `[${SHOP_LABEL}] Shop · [Enter] Ready`}`, victory: 'VICTORY', defeat: 'DEFEAT' }[w.phase];
       wave = `<b>WAVE ${w.index + 1}/3</b> · Tier ${s.tier} · ${phaseTxt}`;
     }

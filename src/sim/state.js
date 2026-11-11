@@ -2,7 +2,7 @@
 import { createRng, next } from '../core/rng.js';
 import { TUNING } from '../data/tuning.js';
 import { ENEMIES, BOSSES, ELITE, AFFINITY_POOL } from '../data/enemies.js';
-import { tierEnemyMult } from '../data/waves.js';
+import { tierEnemyMult, tierArenaHpMult } from '../data/waves.js';
 import { PERKS } from '../data/skills.js';
 import { generateGun } from './guns.js';
 import { pick, float } from '../core/rng.js';
@@ -87,7 +87,9 @@ export function createEnemy(state, type, { tier = state.tier, elite = false, pos
     ai: { strafeDir: 1, strafeT: 2, hopT: 1, airborne: false, regenT: 0 },
     lastHit: null, dead: false, boss: null, summoned, bigHeadT: 0, hitFlash: 0,
   };
-  e.maxHp = Math.round(def.hp * tm * (elite ? ELITE.hpMult : 1) * state.tuning.enemyHpMult);
+  // Health follows the arena curve outside the campaign (data/waves.js). Both curves are 1 at tier 1.
+  const hm = state.mode === 'campaign' ? tm : tierArenaHpMult(tier);
+  e.maxHp = Math.round(def.hp * hm * (elite ? ELITE.hpMult : 1) * state.tuning.enemyHpMult);
   e.hp = e.maxHp;
   if (def.archetype && def.archetype.audit) e.ai.audit = true;
   if (def.armour) e.ai.armour = 'hard';
@@ -115,7 +117,8 @@ export function createBoss(state, type, { tier = state.tier, pos = { x: 0, z: -1
     boss: { bossType: type, tag: def.tag, phaseIdx: 0, transitioning: false, invuln: false,
       action: { id: 'intro', t: 0, data: {} }, patternIdx: 0, weakAngle: 0, summonT: 0, manaOrbNext: 0.9, paired, fade: 1 },
   };
-  e.maxHp = Math.round(def.hp * tm * (paired ? 0.85 : 1) * state.tuning.enemyHpMult);
+  const hm = state.mode === 'campaign' ? tm : tierArenaHpMult(tier);
+  e.maxHp = Math.round(def.hp * hm * (paired ? 0.85 : 1) * state.tuning.enemyHpMult);
   e.hp = e.maxHp;
   state.enemies.push(e);
   return e;

@@ -11,8 +11,8 @@ export function addXp(state, p, skillId, amount) {
   s.xp += amount; s.total += amount;
   state.run.xpGained[skillId] += amount;
   emit(state, 'xpGain', { playerId: p.id, skill: skillId, amount });
-  while (s.level < SKILLS[skillId].maxLevel && s.xp >= xpToNext(skillId, s.level)) {
-    s.xp -= xpToNext(skillId, s.level);
+  while (s.level < SKILLS[skillId].maxLevel && s.xp >= xpToNext(skillId, s.level, state.mode)) {
+    s.xp -= xpToNext(skillId, s.level, state.mode);
     s.level++;
     emit(state, 'levelUp', { playerId: p.id, skill: skillId, level: s.level });
     for (const perk of PERKS) {

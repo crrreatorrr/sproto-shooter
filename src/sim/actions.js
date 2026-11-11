@@ -1,6 +1,6 @@
 // UI/debug actions arrive inside commands; dispatched here. Keeps the sim the only writer of state.
 import { next } from '../core/rng.js';
-import { SKILL_IDS, xpToNext } from '../data/skills.js';
+import { SKILLS, SKILL_IDS, PERKS, xpToNext } from '../data/skills.js';
 import { syncSpellbook } from './spellbook.js';
 import { emit } from './events.js';
 import { createEnemy, createBoss, newRunStats, nextId } from './state.js';
@@ -15,7 +15,8 @@ import { noteV2Section } from './campaign/v2.js';
 import { getLevelRuntime } from './level/runtime.js';
 import { TUNING } from '../data/tuning.js';
 import { BOSSES } from '../data/enemies.js';
-import { LEGENDARY_SLOT } from '../data/guns.js';
+import { LEGENDARY_SLOT, GUN_TYPES_BY_ID, QUALITIES_BY_ID, MANUFACTURERS_BY_ID, ELEMENTS_BY_ID, WACKY_BY_ID, PARTS_BY_ID, SLOTS } from '../data/guns.js';
+import { MAX_TIER } from '../data/waves.js';
 import {
   startCraft, salvage, reroll, pickupGun, dropGun, buyOffer, rerollShop, sellGun, vend, buyUpgrade, buySupply, rollShopOffers,
 } from './economy.js';
@@ -44,6 +45,7 @@ function handle(state, p, a) {
     case 'buySupply': return buySupply(state, p, a.id);
     case 'startMode': return startMode(state, p, a.mode, a.tier, a);
     case 'transitionDone': return transitionDone(state);
+    case 'loadLoadout': return loadLoadout(state, p, a);
     case 'debug': return debugOp(state, p, a.op, a.args || {});
   }
 }
@@ -56,6 +58,7 @@ export function startMode(state, p, mode, tier = 1, opts = {}) {
   const real = mode === 'waves' || mode === 'campaign' || mode === 'boss';
   if (real) state.pickups = state.pickups.filter((k) => !SANDBOX_SOURCES.includes(k.gun && k.gun.source));
   state.run = newRunStats();
+  if (p.downCount != null) delete p.downCount;
   if (p.dead || p.downed) respawn(state, p);
   p.hp = p.maxHp; p.shield = p.maxShield; p.mana = p.maxMana;
   p.pos = { x: 0, y: 0, z: 8 }; p.prevPos = { ...p.pos }; p.vel = { x: 0, y: 0, z: 0 };
@@ -190,6 +193,75 @@ function resetLoadout(state, p) {
   p.ammo = { ...TUNING.startAmmo };
 }
 
+/** Most guns a saved loadout may bring: the five slots, plus three that are put on the floor. */
+export const LOADOUT_MAX_GUNS = 8;
+
+/**
+ * Wave Mode only: put a loadout saved on this device (skill levels and guns) on the player. The save is
+ * untrusted input, so every field is checked and each gun is rebuilt from its seed by generateGun, never
+ * copied. Skills only ever go up. Ignored in every other mode, so it can never touch a campaign run
+ * (a rewarded run also cannot carry the action: src/server/protocol.js refuses it).
+ */
+export function loadLoadout(state, p, a) {
+  if (state.mode !== 'waves' || !a || typeof a !== 'object') return;
+  for (const id of SKILL_IDS) {
+    const src = a.skills && a.skills[id];
+    const level = Math.floor(Number(src && src.level));
+    if (!(level >= 1 && level <= SKILLS[id].maxLevel)) continue;
+    const xp = level >= SKILLS[id].maxLevel ? 0 : Math.min(Math.max(0, Number(src.xp) || 0), xpToNext(id, level, 'waves') - 1);
+    const sk = p.skills[id];
+    if (level < sk.level || (level === sk.level && xp <= sk.xp)) continue;
+    sk.level = level; sk.xp = xp; sk.total = Math.max(sk.total, Number(src.total) || 0);
+  }
+  for (const perk of PERKS) if (p.skills[perk.skill].level >= perk.level) p.perks[perk.id] = true;
+  applySkillPassives(state, p);
+  p.hp = p.maxHp;
+  const guns = [];
+  for (const spec of Array.isArray(a.guns) ? a.guns.slice(0, LOADOUT_MAX_GUNS) : []) {
+    const g = gunFromSpec(state, spec);
+    if (g) guns.push({ gun: g, slot: Math.floor(Number(spec.slot)) });
+  }
+  if (!guns.length) return;
+  p.guns = [null, null, null, null, null];
+  const spare = [];
+  for (const { gun, slot } of guns) {
+    const fits = slot === LEGENDARY_SLOT ? gun.quality === 'legendary' : slot >= 0 && slot < p.unlockedSlots;
+    if (fits && !p.guns[slot]) p.guns[slot] = gun; else spare.push(gun);
+  }
+  // Anything without a slot (a locked fourth slot, a duplicate) waits on the floor in front of you.
+  spare.forEach((gun, i) => spawnGunPickup(state, gun, aheadOf(p, 2 + i * 0.8), 'stash'));
+  if (!p.guns.some(Boolean)) { resetLoadout(state, p); return; }
+  p.activeSlot = Math.max(0, p.guns.findIndex((g, i) => g && i !== LEGENDARY_SLOT));
+  if (!p.guns[p.activeSlot]) p.activeSlot = p.guns.findIndex(Boolean);
+  p.reloadT = 0; p.swapT = 0;
+}
+
+function gunFromSpec(state, spec) {
+  if (!spec || typeof spec !== 'object') return null;
+  const def = GUN_TYPES_BY_ID[spec.type];
+  const level = Math.floor(Number(spec.level));
+  // The Duck Gun is a sandbox toy and is never found in Wave Mode, so a save cannot hold one.
+  if (!def || def.legendaryOnly || !QUALITIES_BY_ID[spec.quality] || !Number.isFinite(spec.seed) || !(level >= 1 && level <= MAX_TIER)) return null;
+  const forced = { type: def.id, quality: spec.quality };
+  if (MANUFACTURERS_BY_ID[spec.manufacturer]) forced.manufacturer = spec.manufacturer;
+  if (ELEMENTS_BY_ID[spec.element]) forced.element = spec.element;
+  if (spec.quality === 'legendary' && WACKY_BY_ID[spec.wacky] && WACKY_BY_ID[spec.wacky].allowedTypes.includes(def.id)) forced.wacky = spec.wacky;
+  if (spec.parts && typeof spec.parts === 'object') {
+    const parts = {};
+    let fitted = 0;
+    for (const slot of SLOTS) {
+      const id = spec.parts[slot];
+      if (id === 'stock') parts[slot] = id;
+      else if (PARTS_BY_ID[id] && PARTS_BY_ID[id].slot === slot) { parts[slot] = id; fitted++; }
+    }
+    // A gun never has more parts than its quality allows; a save that claims more keeps what the seed rolls.
+    if (fitted <= QUALITIES_BY_ID[spec.quality].partSlots && Object.keys(parts).length === SLOTS.length) forced.parts = parts;
+  }
+  const gun = generateGun({ seed: spec.seed >>> 0, level, forced, arcane: !!spec.arcane });
+  gun.id = nextId(state); gun.source = 'stash';
+  return gun;
+}
+
 function aheadOf(p, d = 10) { return { x: p.pos.x - Math.sin(p.yaw) * d, z: p.pos.z - Math.cos(p.yaw) * d }; }
 
 export function debugOp(state, p, op, args) {
@@ -252,7 +324,7 @@ export function debugOp(state, p, op, args) {
     case 'giveXp': addXp(state, p, args.skill, args.amount || 100); break;
     case 'levelSkill': {
       const s = p.skills[args.skill];
-      if (s && s.level < 10) addXp(state, p, args.skill, (xpToNext(args.skill, s.level) - s.xp + 1) / (1 + 0.1 * (state.tier - 1)));
+      if (s && s.level < 10) addXp(state, p, args.skill, (xpToNext(args.skill, s.level, state.mode) - s.xp + 1) / (1 + 0.1 * (state.tier - 1)));
       break;
     }
     case 'maxSkills': for (const sk of SKILL_IDS) for (let i = 0; i < 10; i++) debugOp(state, p, 'levelSkill', { skill: sk }); break;

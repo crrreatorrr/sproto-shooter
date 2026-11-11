@@ -352,6 +352,7 @@ function touchMechanism(state, p, lv, sec, m, dt) {
 }
 
 const MOD_SPEED = { turbo: 1.35, taxSeason: 0.82, redTape: 0.9 };
+const LAVA_TIME = 20, LAVA_DPS = 4;
 
 function grantModifier(state, p, id) {
   if (!id || state.level.modifiers[id]) return;
@@ -381,7 +382,14 @@ function grantModifier(state, p, id) {
 function applyModifiers(state, p, dt) {
   const mods = state.level.modifiers;
   if (mods.bigHead) for (const e of state.enemies) if (!e.dead) e.bigHeadT = 999;
-  if (mods.floorIsLava) damagePlayer(state, p, { base: 6 * dt, sourceKind: 'world', fromPos: p.pos });
+  if (mods.floorIsLava) {
+    // 4 health a second while you stand on the ground, for 20 seconds after the pickup: jump and it
+    // stops. It used to be 6 a second for the rest of the level, which killed anyone who took the secret.
+    const lv = state.level;
+    lv.lavaT = (lv.lavaT == null ? LAVA_TIME : lv.lavaT) - dt;
+    if (lv.lavaT <= 0) { mods.floorIsLava = false; delete lv.lavaT; }
+    else if (p.onGround) damagePlayer(state, p, { base: LAVA_DPS * dt, sourceKind: 'world', fromPos: p.pos });
+  }
   if (mods.fuelInfinite) state.level.fuel = 100;
 }
 

@@ -17,7 +17,7 @@ export function rollGunType(rng) {
   return weighted(rng, GUN_TYPES).id;
 }
 
-// every boss kill drops a boss weapon, including bosses whose table doesn't list one (or has no table)
+// a boss whose table doesn't list a boss weapon (or that has no table: the campaign bosses) always drops one
 const BOSS_WEAPON_DROP = { kind: 'bossGun', chance: 1, table: 'boss' };
 
 /** Pure: returns drop specs. ctx = {elite, tier, playerGunTypes(ammoTypes), summoned, boss} */
@@ -64,9 +64,9 @@ export function rollDrops(rng, tableId, ctx = {}) {
           break;
         }
         case 'bossGun': {
-          // boss-only weapon (Ray Gun / Big Bullets), at least rare
+          // boss-only weapon (Ray Gun / Big Bullets), at least rare; one quality step up unless the table says otherwise
           const type = BOSS_GUN_TYPES[Math.min(BOSS_GUN_TYPES.length - 1, Math.floor(float(rng) * BOSS_GUN_TYPES.length))];
-          const quality = rollQuality(rng, entry.table, 1);
+          const quality = rollQuality(rng, entry.table, entry.shift ?? 1);
           out.push({ kind: 'gun', type, quality, seed: next(rng), level: ctx.tier || 1, source: 'boss' });
           break;
         }

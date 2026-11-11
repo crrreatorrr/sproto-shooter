@@ -30,7 +30,11 @@ export const SPELLS = {
 };
 export const SPELL_IDS = ['gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor'];
 
-export const xpToNext = (skillId, level) => {
+// Wave Mode keeps its skill levels between sessions (src/save/loadout.js), so levels cost more there:
+// about 20,400 XP to Health 10 instead of 6,100. Every other mode, the campaign included, keeps xpGrowth.
+export const WAVE_XP_GROWTH = 1.75;
+
+export const xpToNext = (skillId, level, mode) => {
   const s = SKILLS[skillId];
-  return Math.round(s.xpBase * Math.pow(s.xpGrowth, level - 1));
+  return Math.round(s.xpBase * Math.pow(mode === 'waves' ? WAVE_XP_GROWTH : s.xpGrowth, level - 1));
 };
