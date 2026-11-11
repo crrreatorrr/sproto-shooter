@@ -33,10 +33,6 @@ export const FP = {
   triggerCurl: 0.45, // the right index finger rests on the trigger guard
   thumbMax: 1.0,
   armRadius: 0.06, // sleeve radius: elbows bend to the side where the arm keeps this clearance from the gun
-  // body geometry near the camera (collar, neck, shoulder tops) is clipped away: anything above clipY AND
-  // closer than clipZ in camera space. Arms and hands sit lower/further and stay visible.
-  clipY: -0.16,
-  clipZ: -0.16,
   poleRight: [0.6, -0.75, 0.25],
   poleLeft: [-0.55, -0.85, 0.1],
 };

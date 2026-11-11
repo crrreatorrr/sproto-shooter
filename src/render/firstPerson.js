@@ -17,6 +17,9 @@ import { damp, smoothstep, wrapAngle } from './anim.js';
 import { PLAYER_CHARACTERS } from './playerCharacters.js';
 
 const STOCK_MODEL = PLAYER_CHARACTERS[0].model;
+// Pepe sniper support hand: cupped under the handguard, as fractions of the model's size [y, z offset from the
+// gun's own fore anchor]. Calibrated with dev/fpLab.js for all three Pepe rigs at hip and aim.
+const PEPE_SNIPER_FORE = [0.06, 0.05];
 const BASE = `${import.meta.env.BASE_URL}assets/`;
 
 const V = () => new THREE.Vector3();
@@ -45,13 +48,6 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
   const holderBase = V();
   const lean = V(); // smoothed body lean toward the gun when the arms come up short
   let gun = null, gunType = 'mg', col = null;
-  const clipPlanes = [new THREE.Plane(), new THREE.Plane()];
-  const _cn = V(), _cp = V(), _cq = new THREE.Quaternion();
-  function updateClip() {
-    camera.getWorldQuaternion(_cq);
-    clipPlanes[0].setFromNormalAndCoplanarPoint(_cn.set(0, -1, 0).applyQuaternion(_cq), camera.localToWorld(_cp.set(0, FP.clipY, 0)));
-    clipPlanes[1].setFromNormalAndCoplanarPoint(_cn.set(0, 0, -1).applyQuaternion(_cq), camera.localToWorld(_cp.set(0, 0, FP.clipZ)));
-  }
 
   let desiredPath = '';
   let mountedPath = '';
@@ -60,7 +56,7 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
   function attachArms(g, path) {
     if (mountedPath === path) return;
     const nextPose = firstPersonPose(path);
-    const prepared = preparePlayerBody(g.scene, camera, root, nextPose, path !== STOCK_MODEL, clipPlanes);
+    const prepared = preparePlayerBody(g.scene, camera, root, nextPose, path !== STOCK_MODEL);
     if (!prepared) {
       invalidPath = path;
       console.warn('[firstPerson] player rig is missing arm bones', path);
@@ -240,6 +236,8 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
   }
 
   const glovePoint = V(), shifted = V(), separation = V(), localAway = V();
+  const GLOVE_SKIN = .002; // the probe ends just outside the gun surface
+  const GLOVE_SQUASH = .006; // a padded glove may sink this far before the hand moves
   function poseGrasp(a, wrist, pole, orientation, dt, trigger) {
     // Glove clearance can solve again in the same frame; those passes share one time step.
     const previousBend = a.bend;
@@ -254,9 +252,11 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
         mesh.getVertexPosition(vertex, glovePoint).applyMatrix4(mesh.matrixWorld);
         if (!trigger) cross = Math.max(cross, .017 - rightArmClear(glovePoint));
         glovePoint.applyMatrix4(gunInverse);
-        if (col.distance(glovePoint) * gunWorldScale < .009) {
-          const gap = col.clearAlong(glovePoint, localAway, .019 / gunWorldScale, .16 / gunWorldScale, col.cell);
-          push = Math.max(push, gap * gunWorldScale);
+        // Only glove geometry that sinks into the gun moves the hand, and only by how far it sank past the
+        // padding a soft glove may squash. Clearing every probe by a margin left the palm floating off the grip.
+        if (col.inside(glovePoint)) {
+          const depth = col.clearAlong(glovePoint, localAway, GLOVE_SKIN / gunWorldScale, .16 / gunWorldScale, col.cell);
+          push = Math.max(push, depth * gunWorldScale - GLOVE_SQUASH);
         }
       }
       if ((!push || clear >= .16) && (!cross || bodyPush >= .24)) break;
@@ -319,7 +319,6 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
       const dt = Math.min(0.1, opts.dt ?? 1 / 60), ads = opts.ads || 0;
       for (const [b, q] of bind) b.quaternion.copy(q);
       camera.updateMatrixWorld(true);
-      updateClip();
       gun.updateMatrixWorld(true);
       gun.getWorldQuaternion(gq);
       gunInverse.copy(gun.matrixWorld).invert();
@@ -330,9 +329,13 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
       const mgSupport = protectBody && gunType === 'mg';
       if (mgSupport) foreA = [foreA[0] - .052, foreA[1] - .079, foreA[2] + .07];
       if (protectBody && gunType === 'duckgun') foreA = [foreA[0] - .025, foreA[1], foreA[2] - .023];
+      // The sniper's side foregrip hold sits on the far (right) side of a slim stock. The Pepe forearm is too thick
+      // to reach round it, so it cut through the gun when aiming: cup the handguard from below instead.
+      const sniperCup = protectBody && gunType === 'sniper' && gun.userData.size;
+      if (sniperCup) foreA = [0, PEPE_SNIPER_FORE[0] * gun.userData.size.y, foreA[2] + PEPE_SNIPER_FORE[1] * gun.userData.size.z];
       // and its own hand frames (e.g. a vertical foregrip is held like a pistol grip, not cupped from below)
       target(arms.Right, gripA, gun.userData.rightSpec || FP.right, opts.right, wristR, qR);
-      target(arms.Left, foreA, mgSupport ? PEPE_MG_SUPPORT : gun.userData.leftSpec || FP.left, opts.left, wristL, qL);
+      target(arms.Left, foreA, mgSupport ? PEPE_MG_SUPPORT : sniperCup ? FP.left : gun.userData.leftSpec || FP.left, opts.left, wristL, qL);
       // body: stance turn and offset
       holder.rotation.y = Math.PI + FP.bodyYaw + (FP.bodyYawAds - FP.bodyYaw) * ads;
       bodyOff.fromArray(FP.bodyHip).lerp(_e.fromArray(FP.bodyAds), ads);
