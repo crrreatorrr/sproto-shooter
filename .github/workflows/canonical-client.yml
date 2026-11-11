@@ -21,7 +21,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       - name: Validate canonical local input and actual browser recordings
         run: npx vitest run tests/server/client-command-parity.test.js tests/server/client-command-browser.test.js --no-file-parallelism
       - name: Build both simulator artifacts from the exact reviewed head
