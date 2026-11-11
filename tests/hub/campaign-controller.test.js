@@ -165,3 +165,25 @@ it('has one explicit timer and catches UI observer failure without creating anot
   expect(control.status().callbackFailed).toBe(true);
   control.stop(); expect(timers.size).toBe(0);
 });
+
+
+it('an identity change observed in the input callback invalidates even a later switch back before completion', async () => {
+  let resolve;
+  const fixture = setup((_, body) => new Promise((done) => { resolve = () => done(jsonResponse(ack(body))); }));
+  prefix(fixture.control); const pending = fixture.control.pump();
+  await vi.waitFor(() => expect(fixture.requests).toHaveLength(1));
+  fixture.setIdentity(session({ playerId: owner.runId }));
+  expect(() => fixture.control.record(frame(2), 2)).toThrow('identity_changed');
+  fixture.setIdentity(session()); resolve(); await pending;
+  expect(fixture.control.status()).toMatchObject({ paused: true, problem: 'identity_changed',
+    accepted: { tick: 0 }, recorder: { retainedFrames: 2, totalFrames: 2 } });
+});
+
+it('a background codec/storage error pauses as local failure without infinite pre-request retries', async () => {
+  const { control, requests } = setup(vi.fn(), { controller: { recorderOptions: {
+    bufferLimits: { batchFrames: 2 }, storageLimits: { maxFrames: 1 } } } });
+  prefix(control, 3); await control.pump();
+  expect(control.status()).toMatchObject({ paused: true, problem: 'storage_quota', calls: 0,
+    recorder: { retainedFrames: 3, totalFrames: 3 } });
+  await control.pump(); expect(requests).toHaveLength(0);
+});

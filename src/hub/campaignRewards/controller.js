@@ -5,7 +5,8 @@ import { finiteLimit, recorderError } from './storage.js';
 // Dormant safety bounds, not service cadence/capacity recommendations.
 export const TRANSPORT_LIMITS = Object.freeze({ maxCalls: 65536, maxBatchCalls: 16, maxPolls: 540,
   baseDelayMs: 250, maxDelayMs: 30000, pollDelayMs: 5000, maxOfflineMs: 30000 });
-const CONTRACT_ERRORS = ['client_contract_error', 'receipt_conflict', 'response_oversized', 'unprepared_batch', 'malformed_data'];
+const CONTRACT_ERRORS = ['client_contract_error', 'receipt_conflict', 'response_oversized', 'unprepared_batch', 'malformed_data',
+  'malformed_frame', 'storage_quota', 'buffer_pressure', 'run_limit', 'tick_discontinuity'];
 const IDENTITY_ERRORS = ['identity_changed', 'transport_suspended'];
 
 /** Inactive controller core. Explicit start/pump only; no Game/UI wiring. One
@@ -132,7 +133,11 @@ export function createCampaignController({ enabled = false, transport, uploadDea
       if (offlineSince !== null && time() - offlineSince >= cap.maxOfflineMs) haltWrites('offline_budget_exhausted');
       if (recordingStopped) throw recorderError(recordingStopped);
       try { transport.assertWriteBinding(); return recorder.record(frame, tick); }
-      catch (error) { recordingStopped = error?.code || 'recording_failed'; recorder.suspend(); throw error; }
+      catch (error) {
+        if (IDENTITY_ERRORS.includes(error?.code)) { epoch++; pause('identity_changed'); transport.suspend(); }
+        else { recordingStopped = error?.code || 'recording_failed'; recorder.suspend(); }
+        throw error;
+      }
     },
     start() { if (!paused && !running) { running = true; schedule(); } },
     pump,
