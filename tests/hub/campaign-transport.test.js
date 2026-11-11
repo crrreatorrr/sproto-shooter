@@ -7,11 +7,11 @@ const serverUrl = 'https://campaign.example';
 const make = (fetchImpl, extra = {}) => createCampaignTransport({ enabled: true, ...owner, serverUrl,
   getSession: () => session(), subtle, fetchImpl, ...extra });
 
-it('is unavailable by default and keeps issue/finish unavailable until server contracts exist', () => {
+it('is unavailable by default and requires separate pre-run issuance and prepared finish', () => {
   expect(() => createCampaignTransport()).toThrow('transport_disabled');
   const transport = make(vi.fn());
-  expect(() => transport.issue()).toThrow('issuance_unavailable');
-  expect(() => transport.finish()).toThrow('finish_unavailable');
+  expect(() => transport.issue()).toThrow('pre_run_issuer_required');
+  expect(() => transport.prepareFinish(0, 0)).toThrow('client_contract_error');
 });
 
 it('matches independent Hub sorted-JSON SHA256 and retries identical generic SDK wire bytes', async () => {

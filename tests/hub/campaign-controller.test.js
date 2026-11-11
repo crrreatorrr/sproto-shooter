@@ -16,14 +16,14 @@ function setup(fetchImpl, { controller = {}, transport: transportOptions = {} } 
 }
 const prefix = (control, n = 2) => { for (let tick = 0; tick < n; tick++) control.record(frame(tick), tick); };
 
-it('is explicitly inactive/default-off and does not invent issuance or finish capability', () => {
+it('is explicitly inactive/default-off and separates pre-run issuance from background finish intent', () => {
   expect(() => createCampaignController()).toThrow('controller_disabled');
   const { control, requests } = setup(vi.fn());
   prefix(control);
   expect(requests).toEqual([]);
   expect(control.status().running).toBe(false);
-  expect(() => control.issue()).toThrow('issuance_unavailable');
-  expect(() => control.finish()).toThrow('finish_unavailable');
+  expect(() => control.issue()).toThrow('pre_run_issuer_required');
+  expect(control.finish().finishRequested).toBe(true);
 });
 
 it('tracks durable accepted separately from unverified/unpaid progress and flushes the final tail in order', async () => {
@@ -36,7 +36,7 @@ it('tracks durable accepted separately from unverified/unpaid progress and flush
   await control.pump();
   expect(requests.map((r) => JSON.parse(r.body).sequence)).toEqual([0, 1]);
   expect(control.status()).toMatchObject({ accepted: { sequence: 1, tick: 2 }, recorder: { retainedFrames: 0 } });
-  expect(() => control.finish()).toThrow('finish_unavailable');
+  expect(control.finish().finishRequested).toBe(true);
 });
 
 it('recovers commit-then-lost-response by strict owner status without double upload or dropped history', async () => {
