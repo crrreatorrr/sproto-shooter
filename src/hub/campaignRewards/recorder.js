@@ -1,5 +1,5 @@
 import { decodeFrames } from '../../server/protocol.js';
-import { createMemoryBatchStorage, finiteLimit, identity, recorderError } from './storage.js';
+import { createMemoryBatchStorage, finiteLimit, frozenData, identity, recorderError } from './storage.js';
 
 export const RUN_LIMITS = Object.freeze({ maxInputBytes: 64 * 1024 * 1024, maxFrames: 162000,
   maxBatches: 4096, maxActions: 131072 });
@@ -39,13 +39,18 @@ export function createRewardRecorder({ enabled = false, accountId, runId, buffer
       try {
         // One fixed frame and at most one fixed action: no whole-batch walk,
         // serialization, storage write, promise, await or network in this path.
-        if (!Object.isFrozen(frame) || frame.n !== 1 || typeof frame.frames !== 'string'
-          || !/^[A-Za-z0-9+/]{16}$/.test(frame.frames) || !Object.isFrozen(frame.actions)
-          || frame.actions.length > 1 || (frame.actions.length === 1
-            && (!Object.isFrozen(frame.actions[0]) || frame.actions[0].length !== 2
-              || frame.actions[0][0] !== 0 || frame.actions[0][1] !== 1))) throw recorderError('malformed_frame');
+        const n = frozenData(frame, 'n'), text = frozenData(frame, 'frames');
+        const rows = frozenData(frame, 'actions');
+        if (n !== 1 || typeof text !== 'string' || !/^[A-Za-z0-9+/]{16}$/.test(text)
+          || !Array.isArray(rows)) throw recorderError('malformed_frame');
+        const actions = frozenData(rows, 'length');
+        if (actions > 1) throw recorderError('malformed_frame');
+        if (actions === 1) {
+          const row = frozenData(rows, '0');
+          if (!Array.isArray(row) || frozenData(row, 'length') !== 2
+            || frozenData(row, '0') !== 0 || frozenData(row, '1') !== 1) throw recorderError('malformed_frame');
+        }
         if (tick !== totalFrames) throw recorderError('tick_discontinuity');
-        const actions = frame.actions.length;
         const needsBatch = !active || active.frames.length >= cap.batchFrames || active.actions + actions > 32;
         const nextBatches = retainedBatches + Number(needsBatch);
         if (totalFrames + 1 > runCap.maxFrames || totalInputBytes + 16 > runCap.maxInputBytes
@@ -58,7 +63,7 @@ export function createRewardRecorder({ enabled = false, accountId, runId, buffer
           active = { sequence: nextSequence++, tick0: tick, frames: [], actions: 0 };
           retainedBatches++;
         }
-        active.frames.push(frame); active.actions += actions;
+        active.frames.push(Object.freeze({ frames: text, action: actions === 1 })); active.actions += actions;
         totalFrames++; totalInputBytes += 16; totalActions += actions;
         retainedFrames++; retainedActions += actions;
         return true;
@@ -77,7 +82,7 @@ export function createRewardRecorder({ enabled = false, accountId, runId, buffer
         for (let i = 0; i < pending.frames.length; i++) {
           const frame = pending.frames[i];
           pieces.push(frame.frames);
-          if (frame.actions.length) actions.push(Object.freeze([i, 1]));
+          if (frame.action) actions.push(Object.freeze([i, 1]));
         }
         const frames = pieces.join('');
         const decoded = decodeFrames(frames, pending.frames.length, actions);

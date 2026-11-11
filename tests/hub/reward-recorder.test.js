@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { canonicalCommand } from '../../src/server/canonicalCommand.js';
 import { decodeFrames } from '../../src/server/protocol.js';
 import { createRewardRecorder, RUN_LIMITS } from '../../src/hub/campaignRewards/recorder.js';
+import receivedAck from './reward-recorder-received-ack.json';
 import { createMemoryBatchStorage } from '../../src/hub/campaignRewards/storage.js';
 
 const owner = { accountId: 'account-a', runId: 'issued-run-a' };
@@ -9,8 +10,10 @@ const make = (extra = {}) => createRewardRecorder({ enabled: true, ...owner, ...
 const command = (tick, action = false) => ({ yaw: tick / 100, moveX: 0.5, held: { fire: tick % 2 === 0 },
   pressed: { jump: tick % 7 === 0 }, actions: action ? [{ type: 'transitionDone' }] : [] });
 const frame = (tick, action = false) => canonicalCommand(command(tick, action)).frame;
-const receipt = (batch) => ({ protocol: 2, runId: batch.runId, sequence: batch.sequence,
-  tick0: batch.tick0, n: batch.n, status: 'received' });
+// Shape mirrors Hub PR07 shooter_verification_ingest_schema.ts received_ack.
+// This fixture is not an authenticated acknowledgment or a durability claim.
+const receipt = (batch) => ({ ...receivedAck, runId: batch.runId, sequence: batch.sequence,
+  tick0: batch.tick0, n: batch.n, acceptedSequence: batch.sequence, acceptedTick: batch.tick0 + batch.n });
 
 it('requires explicit opt-in and finite bounded configuration', () => {
   expect(() => createRewardRecorder()).toThrow('recorder_disabled');
@@ -122,7 +125,7 @@ it('logout suspends recording, retains evidence and cannot rebind or restore gue
 
 it('rejects mutable/malformed frame and storage data before mutation', () => {
   const recorder = make();
-  expect(() => recorder.record({ ...frame(0) }, 0)).toThrow('malformed_frame');
+  expect(() => recorder.record({ ...frame(0) }, 0)).toThrow('malformed_data');
   expect(recorder.status().totalFrames).toBe(0);
   const storage = createMemoryBatchStorage(owner);
   for (const bad of [null, {}, Object.freeze({ protocol: 2, n: 1, frames: 'bad' })]) {
@@ -164,11 +167,66 @@ it('a confirmed receipt must identify the exact stored range and cannot release 
   const first = recorder.finalizeNext();
   const second = recorder.finalizeNext({ tail: true });
   for (const wrong of [{ ...receipt(first), n: 2 }, { ...receipt(first), tick0: 1 },
-    { ...receipt(first), runId: 'other-run' }, { ...receipt(first), status: 'payment_pending' }]) {
+    { ...receipt(first), runId: 'other-run' }, { ...receipt(first), state: 'payment_pending' }]) {
     expect(() => recorder.acknowledge(wrong, owner)).toThrow('unconfirmed_receipt');
     expect(recorder.status().retainedFrames).toBe(2);
   }
   recorder.acknowledge(receipt(first), owner);
   expect(recorder.pending(owner)).toEqual([second]);
   expect(recorder.status()).toMatchObject({ totalFrames: 2, retainedFrames: 1 });
+});
+
+
+it('accepts the existing Hub-shaped received acknowledgment after internal adapter confirmation', () => {
+  const acceptReceipt = vi.fn(() => true);
+  const recorder = make({ acceptReceipt });
+  recorder.record(frame(0), 0);
+  const batch = recorder.finalizeNext({ tail: true });
+  recorder.acknowledge(receivedAck, owner);
+  expect(acceptReceipt).toHaveBeenCalledWith(receivedAck, batch);
+  expect(recorder.status()).toMatchObject({ retainedFrames: 0, totalFrames: 1 });
+});
+
+it('reads only immutable own data fields and never invokes frame accessors or inherits fields', () => {
+  const source = frame(0);
+  const getter = vi.fn(() => source.frames);
+  const accessor = Object.freeze({ n: 1, get frames() { return getter(); }, actions: source.actions });
+  expect(() => make().record(accessor, 0)).toThrow('malformed_data');
+  expect(getter).not.toHaveBeenCalled();
+  expect(() => make().record(Object.freeze(Object.create(source)), 0)).toThrow('malformed_data');
+});
+
+it('retains owned bounded primitives instead of frozen frame/action extra payload graphs', () => {
+  const payload = { arbitrary: new Array(10000).fill('unmetered') };
+  const row = Object.freeze(Object.assign([0, 1], { payload }));
+  const source = frame(0, true);
+  const extraGetter = vi.fn(() => payload);
+  const extended = Object.freeze({ ...source, actions: Object.freeze([row]), payload, get unrelated() { return extraGetter(); } });
+  const recorder = make(); recorder.record(extended, 0);
+  const batch = recorder.finalizeNext({ tail: true });
+  expect(Object.keys(batch)).toEqual(['protocol', 'runId', 'sequence', 'tick0', 'n', 'frames', 'actions']);
+  expect(batch.actions).toEqual([[0, 1]]);
+  expect(Object.keys(batch.actions[0])).toEqual(['0', '1']);
+  expect(extraGetter).not.toHaveBeenCalled();
+  expect(batch.frames).toBe(source.frames);
+});
+
+it('standalone storage captures bounded wire data and rejects own accessors/inherited fields', () => {
+  const recorder = make(); recorder.record(frame(0, true), 0);
+  const batch = recorder.finalizeNext({ tail: true });
+  const payload = { arbitrary: new Array(10000).fill('unmetered') };
+  const actions = Object.freeze([Object.freeze(Object.assign([0, 1], { payload }))]);
+  const extended = Object.freeze({ ...batch, actions, payload });
+  const storage = createMemoryBatchStorage(owner);
+  storage.put(extended, owner);
+  const stored = storage.list(owner)[0];
+  expect(stored).not.toBe(extended);
+  expect(stored.actions[0]).not.toBe(actions[0]);
+  expect(stored).toEqual(batch);
+  expect(Object.keys(stored.actions[0])).toEqual(['0', '1']);
+  const getter = vi.fn(() => batch.frames);
+  const accessor = Object.freeze({ ...batch, get frames() { return getter(); } });
+  expect(() => createMemoryBatchStorage(owner).put(accessor, owner)).toThrow('malformed_data');
+  expect(getter).not.toHaveBeenCalled();
+  expect(() => createMemoryBatchStorage(owner).put(Object.freeze(Object.create(batch)), owner)).toThrow('malformed_data');
 });

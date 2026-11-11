@@ -11,8 +11,10 @@ The Game PR05 synchronous adapter is `(frame, tick) => recorder.record(frame,
 tick)`. It accepts only frozen, fixed 16-character canonical frame strings and
 at most one frozen transitionDone row, as produced by canonicalCommand. Ticks
 start at zero and must be contiguous. The input path retains the immutable frame
-reference and updates counters; it performs no network, promise, storage write,
-whole-batch serialization or decode. It never drops frames or falls back to raw
+text/action primitives into small owned frozen slots and updates counters; it performs no network, promise, storage write,
+whole-batch serialization or decode. Only fixed own immutable data descriptors are
+read; getters/inherited fields are rejected and unrelated payload graphs are
+never retained. Ready storage similarly copies only bounded wire primitives. It never drops frames or falls back to raw
 reward inputs. An admission failure throws before recording the new tick; PR05
 latches that failure before simulation while continuing rendering. The recorder
 also permanently latches failures so bypassing/replacing the Game callback cannot
@@ -45,7 +47,7 @@ These local limits are deliberately below the protocol's 2 MiB frame-text and
 28800-frame per-batch ceilings; 120 frames require 1920 input-text bytes. They
 are dormant safety choices, not measured operating cadence or device capacity.
 The retained frame/action/batch counts bound reference objects and array slots:
-at most 3600 canonical frame objects/strings, 3600 source action rows, 64 batch
+at most 3600 owned fixed-size frame slots/strings, 3600 action flags/rows, 64 batch
 containers and 64 ready envelopes, with at most one batch's temporary decoded
 commands and copied action rows during finalization. No unbounded receipt cache
 or global run registry exists. Each retained frame reserves 512 accounting bytes,
@@ -68,7 +70,7 @@ recording on logout/account change and retains evidence in that live instance.
 The caller must retain that instance while reconciling the original run.
 `acknowledge(receipt, owner)` releases only the exact ready sequence/tick range
 when an injected synchronous `acceptReceipt` adapter returns true for a matching
-stable `received` receipt. Without that adapter no deletion is possible. This
+stable `state: received` receipt, using the existing Hub PR07 acknowledgment shape. Without that adapter no deletion is possible. This
 adapter is an internal seam for a future authenticated transport, not proof of
 authorization, durability or payment. It must never accept an arbitrary UI
 object as server evidence. Unconfirmed/async/mismatched receipts leave storage

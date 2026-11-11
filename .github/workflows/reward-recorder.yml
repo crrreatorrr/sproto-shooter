@@ -3,7 +3,7 @@ on:
   pull_request:
     paths:
       - src/hub/campaignRewards/**
-      - tests/hub/reward-recorder*.test.js
+      - tests/hub/reward-recorder*
       - .github/workflows/reward-recorder.yml
 permissions:
   contents: read

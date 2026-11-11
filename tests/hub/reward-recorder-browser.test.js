@@ -76,10 +76,10 @@ it('rolls real Game frames, retains quota-failed evidence and refuses account/re
       try { recorder.pending({ ...owner, accountId: 'other-account' }); } catch (error) { isolationCode = error.code; }
       const first = batches[0];
       let unconfirmedCode;
-      try { recorder.acknowledge({ protocol: 2, runId: owner.runId, sequence: 0, tick0: 0, n: 2, status: 'received' }, owner); }
+      try { recorder.acknowledge({ protocol: 2, runId: owner.runId, sequence: 0, tick0: 0, n: 2, state: 'received' }, owner); }
       catch (error) { unconfirmedCode = error.code; }
       recorder.acknowledge({ protocol: 2, runId: owner.runId, sequence: first.sequence,
-        tick0: first.tick0, n: first.n, status: 'received', testAuthenticated: true }, owner);
+        tick0: first.tick0, n: first.n, state: 'received', testAuthenticated: true }, owner);
       batches.push(recorder.finalizeNext());
       recorder.suspend();
       window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
