@@ -37,7 +37,9 @@ jobs:
 
       - name: test
         # Keep timing-sensitive Goja replays free of browser test CPU contention.
-        run: npm test -- --no-file-parallelism
+        # The actual reward UI browser suite runs unchanged in the always-run
+        # reward-ui workflow, on a fresh runner rather than after Goja/browser work.
+        run: npm test -- --no-file-parallelism --exclude tests/hub/reward-ui-browser.test.js
 
       - name: build
         run: npm run build

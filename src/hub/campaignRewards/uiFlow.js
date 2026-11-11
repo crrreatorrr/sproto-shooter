@@ -219,6 +219,7 @@ export class RewardedCampaignUI {
     g.configureCanonicalRewardCommands({ enabled: true, record: (frame, tick) => slot.controller.record(frame, tick),
       onError: (failure) => this.recordFailure(slot, failure) });
     slot.gameActive = true; slot.phase = 'playing'; slot.halted = false; this.panelOpen = false;
+    g.screen.removeEventListener('keydown', this.keyHandler);
     g.playing = true; g.paused = false; g.hubLeaveArmed = false; g.hideScreen(); g.input.setEnabled(true);
     g.audio.ensure(); g.input.lock(); slot.controller.start();
     g.ui.toast('Rewarded run started. Click the arena to aim.', 'good'); this.schedulePaint();
