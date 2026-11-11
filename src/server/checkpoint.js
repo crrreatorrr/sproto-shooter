@@ -15,13 +15,13 @@ const integer = (n) => Number.isSafeInteger(n) && n >= 0;
 
 // Bounded JSON projection. Export omits undefined object fields just as JSON
 // does (optional authored data); import accepts only actual plain JSON values.
-function project(value, exporting = false) {
+export function boundedCheckpointJSON(value, exporting = false, limits = CHECKPOINT_LIMITS) {
   const ancestors = new Set();
   let nodes = 0;
   let bytes = 0;
-  function add(n) { bytes += n; if (bytes > CHECKPOINT_LIMITS.bytes) fail(); }
+  function add(n) { bytes += n; if (bytes > limits.bytes) fail(); }
   function textSize(s) {
-    if (s.length > CHECKPOINT_LIMITS.string) fail();
+    if (s.length > limits.string) fail();
     // Exact UTF-8 size of the escaped JSON string, without Node/browser APIs.
     const json = JSON.stringify(s);
     let n = 0;
@@ -35,7 +35,7 @@ function project(value, exporting = false) {
     return n;
   }
   function walk(v, depth) {
-    if (++nodes > CHECKPOINT_LIMITS.nodes || depth > CHECKPOINT_LIMITS.depth) fail();
+    if (++nodes > limits.nodes || depth > limits.depth) fail();
     if (v === null) { add(4); return null; }
     if (typeof v === 'string') { add(textSize(v)); return v; }
     if (typeof v === 'boolean') { add(v ? 4 : 5); return v; }
@@ -47,7 +47,7 @@ function project(value, exporting = false) {
     ancestors.add(v);
     let result;
     if (Array.isArray(v)) {
-      if (v.length > CHECKPOINT_LIMITS.array || Object.keys(v).length !== v.length
+      if (v.length > limits.array || Object.keys(v).length !== v.length
         || Object.getOwnPropertyNames(v).length !== v.length + 1) fail();
       add(2 + Math.max(0, v.length - 1));
       result = [];
@@ -74,6 +74,8 @@ function project(value, exporting = false) {
   }
   return walk(value, 0);
 }
+const project = boundedCheckpointJSON;
+
 function keys(value, expected) {
   if (!value || Array.isArray(value) || typeof value !== 'object') fail();
   const actual = Object.keys(value).sort();
