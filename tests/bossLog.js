@@ -42,7 +42,7 @@ function finished(state, mode, parts, memory) {
 /**
  * @returns {{ issuance: object, log: object, verifyStateHash: string, tick: number, outcomeHint: string }}
  */
-export function recordBoss(canonicalBoss, seed, mode, maxFrames = 24000) {
+export function recordBoss(canonicalBoss, seed, mode, maxFrames = 24000, observe = null) {
   const issuance = issueBoss(canonicalBoss, seed, {
     ...BINDING,
     runId: `run-${canonicalBoss}-${mode}`,
@@ -56,6 +56,7 @@ export function recordBoss(canonicalBoss, seed, mode, maxFrames = 24000) {
     const q = quantizeCommand(decide(state, mode));
     qs.push(q);
     simulate(state, { [id]: dequantizeCommand(q) });
+    if (observe) observe(state);
     if (finished(state, mode, issuance.parts, memory)) break;
     if (mode !== 'fail' && state.players[id].dead) break;
   }

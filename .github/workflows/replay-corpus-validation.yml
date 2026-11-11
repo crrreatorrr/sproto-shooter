@@ -1,0 +1,27 @@
+name: replay-corpus-validation
+on:
+  pull_request:
+    paths:
+      - tests/server/**
+      - tests/fixtures/replay-corpus/**
+      - tests/bossLog.js
+      - .github/workflows/replay-corpus-validation.yml
+permissions:
+  contents: read
+jobs:
+  corpus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.0'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Replay frozen corpus and synthetic mechanism scenarios
+        run: npx vitest run tests/server/checkpoint-corpus.test.js tests/server/campaign-corpus-scenarios.test.js --no-file-parallelism
