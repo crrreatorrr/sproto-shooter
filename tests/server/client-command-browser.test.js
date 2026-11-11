@@ -38,10 +38,17 @@ async function capture(canonical) {
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!window.__game, null, { timeout: 45000 });
-    const result = await page.evaluate(async ({ canonical }) => {
-      const [{ buildIssuance, buildIssuedState }, { verifyStateHash }, { DT }] = await Promise.all([
-        import('/src/server/runContract.js'), import('/src/sim/hash.js'), import('/src/sim/simulate.js'),
-      ]);
+    // A browser module script avoids Vitest SSR rewriting import() inside the
+    // function that Playwright serializes into a separate browser realm.
+    await page.addScriptTag({ type: 'module', content: `
+      import { buildIssuance, buildIssuedState } from '/src/server/runContract.js';
+      import { verifyStateHash } from '/src/sim/hash.js';
+      import { DT } from '/src/sim/simulate.js';
+      window.__canonicalFixture = { buildIssuance, buildIssuedState, verifyStateHash, DT };
+    ` });
+    await page.waitForFunction(() => !!window.__canonicalFixture);
+    const result = await page.evaluate(({ canonical }) => {
+      const { buildIssuance, buildIssuedState, verifyStateHash, DT } = window.__canonicalFixture;
       const game = window.__game;
       const defaultOff = game.canonicalRewardRecorder === null;
       // Suspend only automatic scheduling. Manual calls below exercise the
