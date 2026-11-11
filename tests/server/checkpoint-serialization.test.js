@@ -177,6 +177,9 @@ describe('private server-owned checkpoint serialization', () => {
     expect(() => restore(polluted)).toThrow('bad_private_checkpoint');
     const getter = json(valid); Object.defineProperty(getter.state, 'getter', { get() { throw new Error('must not evaluate'); }, enumerable: true });
     expect(() => restore(getter)).toThrow('bad_private_checkpoint');
+    const exportGetter = json(valid.state);
+    Object.defineProperty(exportGetter, 'tick', { get() { throw new Error('must not evaluate'); }, enumerable: true });
+    expect(() => capture(exportGetter)).toThrow('bad_private_checkpoint');
     for (const property of [{ value: 1 }, { get() { throw new Error('must not evaluate'); } }]) {
       const hidden = json(valid);
       Object.defineProperty(hidden.state.enemies, 'hidden', property);

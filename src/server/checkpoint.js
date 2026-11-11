@@ -162,11 +162,14 @@ function validate(body) {
 }
 function privateHash(body) { return fnv1a(stableStringify(body)); }
 
-export function createPrivateCheckpoint(state, { manifest, binding, parts = {}, counters = { frames: state.tick, segments: 0 } }) {
+export function createPrivateCheckpoint(state, { manifest, binding, parts = {}, counters }) {
   const body = project({ v: CHECKPOINT_VERSION, manifest, binding, state,
     // Borrow trusted references only for the bounded projection below: do not
     // allocate a deep clone before checking the aggregate traversal budget.
-    campaignCheckpoints: exportCampaignCheckpoints(state, (value) => value), parts, counters }, true);
+    campaignCheckpoints: exportCampaignCheckpoints(state, (value) => value), parts,
+    counters: counters === undefined ? { frames: 0, segments: 0 } : counters }, true);
+  // Read defaults only from the bounded plain projection, never from an accessor.
+  if (counters === undefined) body.counters.frames = body.state?.tick;
   validate(body);
   const envelope = { ...body, privateHash: privateHash(body) };
   return project(envelope);
