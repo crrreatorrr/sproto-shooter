@@ -7,7 +7,7 @@ import { convergeAim } from './aim.js';
 import { createNetGraph, netGraphEnabled } from './netgraph.js';
 import { createAudio } from '../../audio/sfx.js';
 import { createDirector } from '../../sim/pvp/director.js';
-import { practiceWish } from '../../sim/pvp/practice.js';
+import { practiceWish, practiceBotWish } from '../../sim/pvp/practice.js';
 import { CONTENT_FINGERPRINT, LOADOUT, PVP_PROTOCOL_VERSION } from '../../sim/pvp/rules.js';
 import {
   createLoopbackTable, createMockArena, createPvpClient, freeMatchmakerRequest,
@@ -234,7 +234,7 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit, getG
           const aim = me ? convergeAim(me, { yaw: raw.yaw, pitch: raw.pitch }, sample.players[1 - seat]) : raw;
           human.updateCommand(now, { ...raw, yaw: aim.yaw, pitch: aim.pitch });
           const players = sample.players;
-          if (players[0] && players[1]) bot.update(now, () => practiceWish(Math.floor(sample.tick), players[1], players[0]));
+          if (players[0] && players[1]) bot.update(now, () => practiceBotWish(Math.floor(sample.tick), players[1], players[0]));
         }
         playSounds(sfx, human, heard);
         view.render(human.sample(now), Math.max(0, human.seat), human.phase === 'live' ? look : null, { shots: human.shots, now });
