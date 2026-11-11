@@ -42,17 +42,18 @@ function project(value, exporting = false) {
     if (typeof v === 'number') { if (!Number.isFinite(v)) fail(); add(JSON.stringify(v).length); return v; }
     if (typeof v !== 'object' || ancestors.has(v)) fail();
     const proto = Object.getPrototypeOf(v);
-    if (proto !== Object.prototype && proto !== Array.prototype && proto !== null) fail();
+    if (Array.isArray(v) ? proto !== Array.prototype : proto !== Object.prototype && proto !== null) fail();
     if (Object.getOwnPropertySymbols(v).length) fail();
     ancestors.add(v);
     let result;
     if (Array.isArray(v)) {
-      if (v.length > CHECKPOINT_LIMITS.array || Object.keys(v).length !== v.length) fail();
+      if (v.length > CHECKPOINT_LIMITS.array || Object.keys(v).length !== v.length
+        || Object.getOwnPropertyNames(v).length !== v.length + 1) fail();
       add(2 + Math.max(0, v.length - 1));
       result = [];
       for (let i = 0; i < v.length; i++) {
         const descriptor = Object.getOwnPropertyDescriptor(v, String(i));
-        if (!descriptor || !('value' in descriptor)) fail();
+        if (!descriptor || !descriptor.enumerable || !('value' in descriptor)) fail();
         result.push(walk(descriptor.value, depth + 1));
       }
     } else {
@@ -74,8 +75,10 @@ function project(value, exporting = false) {
   return walk(value, 0);
 }
 function keys(value, expected) {
-  if (!value || Array.isArray(value) || typeof value !== 'object'
-    || Object.keys(value).sort().join(',') !== expected.slice().sort().join(',')) fail();
+  if (!value || Array.isArray(value) || typeof value !== 'object') fail();
+  const actual = Object.keys(value).sort();
+  const wanted = expected.slice().sort();
+  if (actual.length !== wanted.length || actual.some((key, i) => key !== wanted[i])) fail();
 }
 function manifestOk(manifest) {
   keys(manifest, ['artifact', 'sourceCommit', 'sha256', 'contentFingerprint', 'protocol']);

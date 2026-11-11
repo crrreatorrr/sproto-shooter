@@ -89,8 +89,11 @@ describe('private server-owned checkpoint serialization', () => {
       const decoded = decodeFrames(segment.frames, segment.n, segment.actions || []);
       expect(decoded.error).toBeUndefined();
       const native = buildIssuedState(fixture.issuance);
+      const partBoundaries = Object.values(fixture.coverage.bossParts)
+        .flatMap((part) => [part.deadTick - 1, part.deadTick])
+        .filter((tick) => Number.isInteger(tick) && tick > 0 && tick < segment.n);
       const points = new Set([1, Math.floor(segment.n / 2), segment.n - 1,
-        1 + (parseInt(fnv1a(spec.id), 16) % (segment.n - 1))]);
+        1 + (parseInt(fnv1a(spec.id), 16) % (segment.n - 1)), ...partBoundaries]);
       const snapshots = [];
       for (let i = 0; i < segment.n; i++) {
         simulate(native, { [native.localPlayerId]: decoded.commands[i] });
@@ -152,6 +155,8 @@ describe('private server-owned checkpoint serialization', () => {
       (e) => { e.campaignCheckpoints[0].state.campaignCheckpoints = []; },
       (e) => { e.campaignCheckpoints[0].state.seed++; },
       (e) => { e.state.rng.a = 1.5; },
+      (e) => { e.state.rng = { 'a,b': 1, c: 2, d: 3 }; },
+      (e) => { e.binding = { 'accountId,day': 'test-account', sessionId: 'test-session', runId: 'test-run' }; },
       (e) => { e.manifest.sha256 = 'not-an-artifact-hash'; },
       (e) => { e.state.seed = 4294967296; },
       (e) => { e.state.players[e.state.localPlayerId].pos.x = '1'; },
@@ -172,6 +177,11 @@ describe('private server-owned checkpoint serialization', () => {
     expect(() => restore(polluted)).toThrow('bad_private_checkpoint');
     const getter = json(valid); Object.defineProperty(getter.state, 'getter', { get() { throw new Error('must not evaluate'); }, enumerable: true });
     expect(() => restore(getter)).toThrow('bad_private_checkpoint');
+    for (const property of [{ value: 1 }, { get() { throw new Error('must not evaluate'); } }]) {
+      const hidden = json(valid);
+      Object.defineProperty(hidden.state.enemies, 'hidden', property);
+      expect(() => restore(hidden)).toThrow('bad_private_checkpoint');
+    }
     const tooLong = json(valid); tooLong.state.text = 'x'.repeat(CHECKPOINT_LIMITS.string + 1);
     expect(() => restore(tooLong)).toThrow('bad_private_checkpoint');
     const tooDeep = json(valid); let cursor = tooDeep.state;
