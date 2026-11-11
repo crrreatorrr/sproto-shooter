@@ -89,20 +89,30 @@ describe('private server-owned checkpoint serialization', () => {
       const decoded = decodeFrames(segment.frames, segment.n, segment.actions || []);
       expect(decoded.error).toBeUndefined();
       const native = buildIssuedState(fixture.issuance);
-      const at = Math.floor(segment.n / 2);
-      for (let i = 0; i < at; i++) simulate(native, { [native.localPlayerId]: decoded.commands[i] });
-      const envelope = createPrivateCheckpoint(native, { manifest, binding: fixture.log.binding, counters: { frames: at, segments: 1 } });
-      const bytes = Buffer.byteLength(JSON.stringify(envelope));
-      console.log(`private checkpoint ${spec.id}: ${bytes} bytes, ${envelope.campaignCheckpoints.length} rewind entries`);
-      expect(bytes).toBeLessThanOrEqual(CHECKPOINT_LIMITS.bytes);
-      const resumed = restorePrivateCheckpoint(json(envelope), { manifest, binding: fixture.log.binding }).state;
-      for (let i = at; i < segment.n; i++) {
+      const points = new Set([1, Math.floor(segment.n / 2), segment.n - 1,
+        1 + (parseInt(fnv1a(spec.id), 16) % (segment.n - 1))]);
+      const snapshots = [];
+      for (let i = 0; i < segment.n; i++) {
         simulate(native, { [native.localPlayerId]: decoded.commands[i] });
-        simulate(resumed, { [resumed.localPlayerId]: decoded.commands[i] });
+        if (points.has(i + 1)) {
+          const envelope = createPrivateCheckpoint(native, { manifest, binding: fixture.log.binding,
+            counters: { frames: i + 1, segments: 1 } });
+          const bytes = Buffer.byteLength(JSON.stringify(envelope));
+          console.log(`private checkpoint ${spec.id}@${i + 1}: ${bytes} bytes, ${envelope.campaignCheckpoints.length} rewind entries`);
+          expect(bytes).toBeLessThanOrEqual(CHECKPOINT_LIMITS.bytes);
+          snapshots.push({ at: i + 1, envelope });
+        }
       }
-      expect(verifyStateHash(resumed)).toBe(verifyStateHash(native));
-      // Compare direct simulation, not legacy receipts: PR02 documented Obama
-      // recorder/verifier disagreement and this helper does not change it.
+      const expectedHash = verifyStateHash(native);
+      // The recorder's AI can mutate its own state; frozen-input direct replay
+      // must instead match the unchanged authoritative legacy verifier receipt.
+      expect(expectedHash).toBe(fixture.expected.stateHash);
+      expect(snapshots).toHaveLength(points.size);
+      for (const { at, envelope } of snapshots) {
+        const resumed = restorePrivateCheckpoint(json(envelope), { manifest, binding: fixture.log.binding }).state;
+        for (let i = at; i < segment.n; i++) simulate(resumed, { [resumed.localPlayerId]: decoded.commands[i] });
+        expect(verifyStateHash(resumed), `split at ${at}`).toBe(expectedHash);
+      }
     }, 60000);
   }
 
