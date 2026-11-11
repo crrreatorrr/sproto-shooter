@@ -59,7 +59,7 @@ function cursor(value, verified) {
   keys(value, verified ? ['sequence', 'tick', 'simulationTick', 'bytes', 'batches'] : ['sequence', 'tick', 'bytes', 'actions', 'batches']);
   const result = { sequence: integer(value.sequence, -1, 4095), tick: integer(value.tick, 0, 162000),
     bytes: integer(value.bytes, 0, 67108864), batches: integer(value.batches, 0, 4096) };
-  if (result.batches !== result.sequence + 1 || result.bytes !== result.tick * 16) bad();
+  if (result.batches !== result.sequence + 1 || result.batches > result.tick || result.bytes !== result.tick * 16) bad();
   if (verified) result.simulationTick = integer(value.simulationTick, 0, result.tick);
   else {
     result.actions = integer(value.actions, 0, 131072);
@@ -72,6 +72,7 @@ function cursor(value, verified) {
 export function parseStatus(value, runId) {
   keys(value, ['protocol', 'runId', 'state', 'revision', 'operational', 'received', 'verified', 'terminal', 'payment', 'authorization', 'receivedAck']);
   if (value.protocol !== 2 || value.runId !== runId) bad();
+  const revision = integer(value.revision, 0, Number.MAX_SAFE_INTEGER);
   const received = cursor(value.received, false), verified = cursor(value.verified, true);
   if (verified.tick > received.tick || verified.sequence > received.sequence || verified.bytes > received.bytes) bad();
   let terminal = null, operational = null;
@@ -91,16 +92,16 @@ export function parseStatus(value, runId) {
   keys(value.payment, ['state'], ['reason', 'tickets']);
   const payment = { state: paymentState };
   if (paymentState === 'paid') {
-    if (value.payment.tickets !== 20 || terminal?.outcome !== 'clear' || verified.tick !== received.tick
+    if (value.payment.tickets !== 20 || terminal?.outcome !== 'clear' || verified.tick < 1 || revision < 1 || verified.tick !== received.tick
       || verified.sequence !== received.sequence) bad();
     payment.tickets = 20;
   }
   else if (value.payment.tickets !== undefined) bad();
   if (value.payment.reason !== undefined) payment.reason = value.payment.reason === null ? null : reason(value.payment.reason);
-  if (value.revision === 0 && verified.tick !== 0) bad();
+  if (revision === 0 && verified.tick !== 0) bad();
   const receivedAck = value.receivedAck === null ? null : parseReceived(value.receivedAck, runId);
   if (receivedAck && (receivedAck.acceptedTick > received.tick || receivedAck.acceptedSequence > received.sequence)) bad();
-  return Object.freeze({ protocol: 2, runId, state: member(value.state, STATES), revision: integer(value.revision, 0, Number.MAX_SAFE_INTEGER),
+  return Object.freeze({ protocol: 2, runId, state: member(value.state, STATES), revision,
     received, verified, terminal, operational, payment: Object.freeze(payment),
     authorization: member(value.authorization, ['live', 'session_closed', 'session_expired', 'upload_expired', 'revoked']),
     receivedAck });

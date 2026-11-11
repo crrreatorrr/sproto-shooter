@@ -151,6 +151,9 @@ it('rejects malformed paid/byte/action projections against actual Hub policy and
     { ...good, received: { ...good.received, bytes: 15 } },
     { ...good, verified: { ...good.verified, bytes: 15 } },
     { ...good, received: { ...good.received, actions: 2 } },
+    { ...good, received: { ...good.received, sequence: 1, batches: 2 } },
+    { ...good, terminal: null, payment: { state: 'none' }, verified: { sequence: 0, tick: 0, simulationTick: 0, bytes: 0, batches: 1 } },
+    snapshot({ state: 'terminal', terminal: { tick: 0, outcome: 'clear', canonicalBoss: 'sahil' }, payment: { state: 'paid', tickets: 20 } }),
     { ...receivedSnapshot(batch(0, 0, 100)), received: { sequence: 0, tick: 100, bytes: 1600, actions: 33, batches: 1 } },
   ];
   for (const malformed of wrong) expect(() => parseStatus(malformed, owner.runId)).toThrow('client_contract_error');
@@ -165,4 +168,12 @@ it('rejects verification changes at equal revision and regressions at higher rev
   expect(() => mergeProgress(advanced, { ...first, revision: 3 })).toThrow('client_contract_error');
   expect(mergeProgress(advanced, first).verified).toEqual(advanced.verified);
   expect(() => parseStatus({ ...first, revision: 0 }, owner.runId)).toThrow('client_contract_error');
+});
+
+
+it('keeps empty incomplete server closure valid at revision0 without inventing gameplay progress or payment', () => {
+  const closed = snapshot({ state: 'expired', terminal: { tick: 0, outcome: 'incomplete', canonicalBoss: 'sahil' },
+    payment: { state: 'ineligible', reason: 'ineligible' }, authorization: 'session_expired' });
+  expect(parseStatus(closed, owner.runId)).toMatchObject({ revision: 0, terminal: { tick: 0, outcome: 'incomplete' },
+    verified: { tick: 0, batches: 0 }, payment: { state: 'ineligible' } });
 });
