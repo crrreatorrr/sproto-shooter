@@ -28,6 +28,7 @@ function initWave(state, idx) {
   w.index = idx; w.phase = 'pre'; w.t = 0; w.groupIdx = 0; w.spawnQueue = []; w.spawnedCount = 0; w.killedCount = 0;
   w.totalCount = cfg.groups.reduce((n, g) => n + g.spawns.reduce((m, s) => m + s.count, 0), 0);
   w.bossIds = [];
+  if (w.lateIdx != null) delete w.lateIdx;
   emit(state, 'wavePre', { waveIndex: idx, name: cfg.name });
 }
 
@@ -101,12 +102,11 @@ export function waveDirector(state, dt) {
     }
     case 'bossIntro':
       if (w.t >= cfg.boss.introDelay) {
-        const count = cfg.boss.types.length;
-        const paired = count > 1;
-        // spawn across the arena from the player; paired bosses spread ±50° (a third stands between them)
+        const paired = cfg.boss.types.length > 1;
+        // spawn across the arena from the player; paired bosses spread ±50°
         const away = Math.atan2(-p.pos.x, -p.pos.z) + (Math.hypot(p.pos.x, p.pos.z) < 1 ? Math.PI : 0);
         cfg.boss.types.forEach((type, i) => {
-          const ang = away + (paired ? (i === 0 ? -0.9 : i === 1 ? 0.9 : 0) : 0);
+          const ang = away + (paired ? (i === 0 ? -0.9 : 0.9) : 0);
           const pos = { x: Math.sin(ang) * 22, z: Math.cos(ang) * 22 };
           const b = createBoss(state, type, { pos, paired });
           w.bossIds.push(b.id);
@@ -116,8 +116,21 @@ export function waveDirector(state, dt) {
       }
       break;
     case 'boss': {
-      const bossesAlive = state.enemies.some((e) => !e.dead && w.bossIds.includes(e.id));
-      if (!bossesAlive && alive(state) === 0) { w.phase = 'cleared'; w.t = 0; clearWave(state); }
+      const bossCount = state.enemies.filter((e) => !e.dead && w.bossIds.includes(e.id)).length;
+      // A late boss (tier 7 and up) walks in once only one of the others is left standing.
+      const late = cfg.boss.late || [];
+      if ((w.lateIdx || 0) < late.length && bossCount <= 1) {
+        const type = late[w.lateIdx || 0];
+        w.lateIdx = (w.lateIdx || 0) + 1;
+        const away = Math.atan2(-p.pos.x, -p.pos.z) + (Math.hypot(p.pos.x, p.pos.z) < 1 ? Math.PI : 0);
+        const b = createBoss(state, type, { pos: { x: Math.sin(away) * 22, z: Math.cos(away) * 22 } });
+        b.maxHp = Math.round(b.maxHp * cfg.boss.lateHp); b.hp = b.maxHp;
+        w.bossIds.push(b.id);
+        emit(state, 'bossIntro', { types: [type] });
+        emit(state, 'bossSpawn', { id: b.id, bossType: type });
+        break;
+      }
+      if (bossCount === 0 && alive(state) === 0) { w.phase = 'cleared'; w.t = 0; clearWave(state); }
       break;
     }
     case 'cleared':

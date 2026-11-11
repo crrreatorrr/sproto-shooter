@@ -29,7 +29,7 @@ import { createPerfCounters } from '../render/debug/perfCounters.js';
 import { createStatsOverlay } from '../render/debug/StatsOverlay.js';
 import { createFeel, wireHitstop } from './feel.js';
 import { createCampaignFlow, campaignFlowStep } from './campaignFlow.js';
-import { loadoutAction, loadoutEmpty, loadoutFromState, readLoadout, writeLoadout } from '../save/loadout.js';
+import { debugTaints, loadoutAction, loadoutEmpty, loadoutFromState, readLoadout, writeLoadout } from '../save/loadout.js';
 import { crashGuard } from '../core/crashGuard.js';
 import { createPadController } from '../input/padController.js';
 import { NAV_KEYS, keyLabel } from '../input/input.js';
@@ -157,7 +157,10 @@ export class Game {
     this.statsOverlay.setVisible(this.statsOn);
   }
 
-  queue(a) { this.input.queueAction(a); }
+  queue(a) {
+    if (debugTaints(a)) this.debugSession = true; // no Wave Mode saves for the rest of this page load
+    this.input.queueAction(a);
+  }
 
   /** Internal capability, default off. PR16 owns server-issued start and UI lifecycle. */
   configureCanonicalRewardCommands({ enabled = false, record = null, onError = null } = {}) {
@@ -212,12 +215,13 @@ export class Game {
     return true;
   }
   /**
-   * Save Wave Mode progress after a wave clear, a victory or a defeat. Never from a rewarded run, and
-   * not while god mode is on (it lends every gun and the debug panel can max every skill).
+   * Save Wave Mode progress after a wave clear, a victory or a defeat, and on the way out of Wave Mode.
+   * Never from a rewarded run, never while god mode is on, and never in a session that has used the
+   * debug panel (it can spawn guns and max every skill).
    */
   saveWaveLoadout(ev) {
     const s = this.state;
-    if (s.mode !== 'waves' || this.rewardedCampaign?.active || s.tuning.godMode) return;
+    if (s.mode !== 'waves' || this.rewardedCampaign?.active || s.tuning.godMode || this.debugSession) return;
     const best = readLoadout().bestTier;
     writeLoadout(loadoutFromState(s, ev.type === 'victory' ? Math.max(best, s.tier) : best));
   }
@@ -271,6 +275,8 @@ export class Game {
     const s = this.state;
     const leaveSandbox = s.mode === 'sandbox' && !s.testMode && mode !== 'sandbox' && mode !== 'test';
     const enterCampaign = mode === 'campaign' && s.mode !== 'campaign';
+    // Leaving Wave Mode wipes its progress from the player (the sim does that), so write it down first.
+    if (s.mode === 'waves' && mode !== 'waves') this.saveWaveLoadout({ type: 'leave' });
     this.queue({ type: 'startMode', mode, tier, ...extra, ...(leaveSandbox || enterCampaign ? { freshLoadout: true } : {}) });
     // Coming into Wave Mode from anywhere else picks the saved Wave Mode loadout back up. Tier to tier
     // inside Wave Mode keeps what you are carrying.

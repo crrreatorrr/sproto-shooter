@@ -6,7 +6,9 @@
 // keys such as `guns` (ECONOMIC_KEY in src/hub/link.js), and nothing here has value outside this device.
 // It cannot reach a rewarded run or a wager: a rewarded run is built from the server's issuance by
 // buildIssuedState and accepts no action but transitionDone, the sim ignores `loadLoadout` outside
-// Wave Mode, and Free 1v1 and wagers run a separate sim with fixed guns.
+// Wave Mode, leaving Wave Mode for any other mode puts the player back to a clean start
+// (startMode in src/sim/actions.js), and Free 1v1 and wagers run a separate sim with fixed guns.
+// A session that used the debug panel or god mode does not save at all (debugTaints).
 import { SKILL_IDS } from '../data/skills.js';
 
 export const LOADOUT_KEY = 'sproto-shooter-loadout';
@@ -46,11 +48,23 @@ export function normalizeLoadout(raw) {
   return { v: LOADOUT_VERSION, skills, guns, bestTier: int(src.bestTier, 0, MAX_TIER, 0) };
 }
 
+/** Gun sources that are never saved: the debug panel's spawns, god mode's free guns and sandbox toys. */
+const UNSAVED_SOURCES = ['debug', 'god', 'sandbox', 'test'];
+
+/**
+ * Does this action make the session a debug session? Once one has been sent, the game stops saving
+ * Wave Mode progress until the page is reloaded, so nothing the debug panel or god mode produced
+ * (spawned guns, levelled skills, free kills) is ever written to the save.
+ */
+export function debugTaints(action) {
+  return !!action && action.type === 'debug' && action.op !== 'spawnDummies';
+}
+
 /** Read the player's Wave Mode loadout out of a game state. `bestTier` carries over from the last save. */
 export function loadoutFromState(state, bestTier = 0) {
   const p = state.players[state.localPlayerId];
   const guns = [];
-  p.guns.forEach((g, slot) => { const spec = gunSpec(g, slot); if (spec) guns.push(spec); });
+  p.guns.forEach((g, slot) => { const spec = g && !UNSAVED_SOURCES.includes(g.source) ? gunSpec(g, slot) : null; if (spec) guns.push(spec); });
   const skills = {};
   for (const id of SKILL_IDS) skills[id] = { level: p.skills[id].level, xp: p.skills[id].xp, total: p.skills[id].total };
   return normalizeLoadout({ skills, guns, bestTier });

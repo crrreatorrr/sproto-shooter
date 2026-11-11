@@ -7,9 +7,12 @@ import { buildIssuedState, canonicalLoadoutOk } from '../src/server/runContract.
 import { CANONICAL_BOSSES } from '../src/data/serverManifest.js';
 import { quantizeCommand } from '../src/server/protocol.js';
 import { cloudBody } from '../src/save/profile.js';
+import { PERKS, SKILL_IDS } from '../src/data/skills.js';
+import { onEnemyKilled } from '../src/sim/combat.js';
+import { createBoss } from '../src/sim/state.js';
 import { nonEconomicSave } from '../src/hub/link.js';
 import {
-  LOADOUT_KEY, MAX_SAVED_GUNS, gunSpec, loadoutAction, loadoutEmpty, loadoutFromState, normalizeLoadout, readLoadout, writeLoadout,
+  LOADOUT_KEY, MAX_SAVED_GUNS, debugTaints, gunSpec, loadoutAction, loadoutEmpty, loadoutFromState, normalizeLoadout, readLoadout, writeLoadout,
 } from '../src/save/loadout.js';
 
 const waves = (seed = 3) => {
@@ -150,5 +153,143 @@ describe('saved Wave Mode loadout', () => {
       mem.set(LOADOUT_KEY, '{not json');
       expect(loadoutEmpty(readLoadout())).toBe(true);
     } finally { delete globalThis.localStorage; }
+  });
+});
+
+// Saved progress is Wave Mode's alone. Whatever order the modes are visited in, every other mode starts
+// from its own clean loadout and level-1 skills, and nothing a save brought in is left on the floor.
+describe('saved progress never leaves Wave Mode', () => {
+  // The worst save there is: both skills maxed, a level-10 legendary boss gun in every slot and three spares.
+  const RICH = normalizeLoadout({
+    skills: { health: { level: 10, xp: 0, total: 99999 }, gunslinger: { level: 10, xp: 0, total: 99999 } },
+    guns: Array.from({ length: 8 }, (_, i) => gunSpec(generateGun({ seed: 500 + i, level: 10, forced: { type: i % 2 ? 'bigbullets' : 'raygun', quality: 'legendary' } }), i % 5)),
+  });
+  const OTHERS = [
+    ['campaign', { level: 'L01' }], ['campaign', { level: 'L06' }], ['campaign', { level: 'L10' }],
+    ['boss', { boss: 'monster' }], ['sandbox', {}], ['test', {}],
+  ];
+  const go = (s, mode, extra = {}, more = []) => run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode, tier: 1, ...extra }, ...more] }));
+  const enterWaves = (s) => go(s, 'waves', {}, [loadoutAction(RICH)]);
+  const expectRich = (s, why) => {
+    const p = s.players[s.localPlayerId];
+    expect(p.skills.health.level, why).toBe(10);
+    expect(p.skills.gunslinger.level, why).toBe(10);
+    expect(p.perks.unkillable, why).toBe(true);
+    expect(p.maxHp, why).toBe(172);
+    expect(p.guns.filter(Boolean).every((g) => g.source === 'stash' && g.level === 10), why).toBe(true);
+    expect(p.guns.filter(Boolean).length + s.pickups.filter((k) => k.gun && k.gun.source === 'stash').length, why).toBe(8);
+  };
+  const expectClean = (s, mode, why) => {
+    const p = s.players[s.localPlayerId];
+    for (const id of SKILL_IDS) expect(p.skills[id], why).toEqual({ level: 1, xp: 0, total: 0 });
+    for (const perk of PERKS) expect(!!p.perks[perk.id], `${why} ${perk.id}`).toBe(false);
+    expect(p.maxHp, why).toBe(100);
+    expect(p.hp, why).toBe(100);
+    for (const id of ['chainZap', 'swarm', 'manaShield', 'meteor']) expect(!!p.spellUnlocks[id], why).toBe(false);
+    // nothing from the save, carried or on the floor
+    const all = [...p.guns.filter(Boolean), ...s.pickups.map((k) => k.gun).filter(Boolean)];
+    expect(all.filter((g) => g.source === 'stash'), why).toEqual([]);
+    expect(all.filter((g) => g.level > 1 || g.type === 'raygun' || g.type === 'bigbullets'), why).toEqual([]);
+    const sources = p.guns.filter(Boolean).map((g) => g.source);
+    if (mode === 'campaign' || mode === 'sandbox') expect(sources, why).toEqual(['start']);
+    if (mode === 'boss') { expect(sources.every((x) => x === 'start' || x === 'god'), why).toBe(true); expect(p.guns[LEGENDARY_SLOT], why).toBeNull(); }
+    if (mode === 'test') expect(sources.every((x) => x === 'test'), why).toBe(true);
+    // the sandbox's own Duck Gun may lie on the floor there and in the Test Range; nowhere else has a gun pickup
+    if (mode !== 'sandbox' && mode !== 'test') expect(s.pickups.filter((k) => k.gun), why).toEqual([]);
+    else expect(s.pickups.filter((k) => k.gun && k.gun.type !== 'duckgun'), why).toEqual([]);
+  };
+
+  it('every other mode entered straight from Wave Mode is clean, with or without the client flag', () => {
+    for (const [mode, extra] of OTHERS) for (const flag of [{}, { freshLoadout: true }]) {
+      const s = createGameState({ seed: 3 });
+      go(s, 'sandbox'); // what the title screen does at boot
+      enterWaves(s);
+      run(s, 30, () => cmd());
+      expectRich(s, 'waves');
+      go(s, mode, { ...extra, ...flag });
+      expectClean(s, mode, `waves -> ${mode} ${extra.level || ''}`);
+      run(s, 30, () => cmd());
+      expectClean(s, mode, `waves -> ${mode} ${extra.level || ''} later`);
+    }
+  });
+
+  it('stays clean through every order of two further modes, and Wave Mode gets it all back each time', () => {
+    for (const a of OTHERS) for (const b of OTHERS) {
+      const s = createGameState({ seed: 5 });
+      go(s, 'sandbox');
+      enterWaves(s);
+      go(s, a[0], a[1]);
+      expectClean(s, a[0], `waves -> ${a[0]}`);
+      go(s, b[0], b[1]);
+      expectClean(s, b[0], `waves -> ${a[0]} -> ${b[0]}`);
+      enterWaves(s);
+      expectRich(s, `... -> ${b[0]} -> waves`);
+      go(s, a[0], a[1]);
+      expectClean(s, a[0], `second visit to ${a[0]}`);
+    }
+  });
+
+  it('is clean when the page was reloaded mid-run and the save came back in the same command', () => {
+    for (const [mode, extra] of OTHERS) {
+      // reload: a new state, the boot sandbox, then Wave Mode and the saved loadout queued together
+      const s = createGameState({ seed: 8 });
+      run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'sandbox', tier: 1 }, { type: 'startMode', mode: 'waves', tier: 3, freshLoadout: true }, loadoutAction(RICH)] }));
+      expectRich(s, 'reload');
+      run(s, 60 * 5, () => cmd()); // mid-wave
+      go(s, mode, extra);
+      expectClean(s, mode, `reload -> waves -> ${mode}`);
+    }
+    // even with all three mode changes in one command
+    const s = createGameState({ seed: 8 });
+    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }, loadoutAction(RICH), { type: 'startMode', mode: 'campaign', level: 'L01' }] }));
+    expectClean(s, 'campaign', 'one command');
+  });
+
+  it('takes Wave Mode loot found in the session with it too, and what a boss dropped on the floor', () => {
+    const s = createGameState({ seed: 4 });
+    go(s, 'waves');
+    const p = s.players[s.localPlayerId];
+    const b = createBoss(s, 'monster', { pos: { x: 0, z: -4 } });
+    onEnemyKilled(s, b);
+    expect(s.pickups.filter((k) => k.gun).length).toBeGreaterThan(0);
+    p.skills.health.level = 4; p.perks.quickShield = true;
+    go(s, 'boss', { boss: 'dragon' });
+    expectClean(s, 'boss', 'session loot');
+  });
+
+  it('leaves Wave Mode to Wave Mode alone, and modes that never saw Wave Mode', () => {
+    const s = createGameState({ seed: 3 });
+    enterWaves(s);
+    go(s, 'waves', { tier: 2 });
+    expectRich(s, 'next tier');
+    // a campaign run keeps what it earned from level to level
+    const c = createGameState({ seed: 3 });
+    go(c, 'campaign', { level: 'L06' });
+    const p = c.players[c.localPlayerId];
+    p.skills.health.level = 3;
+    const g = generateGun({ seed: 9, forced: { type: 'shotgun', quality: 'common' } }); g.id = 777; p.guns[1] = g;
+    go(c, 'campaign', { level: 'L07' });
+    expect(p.skills.health.level).toBe(3);
+    expect(p.guns[1]).toBe(g);
+  });
+
+  it('never saves what the debug panel made', () => {
+    expect(debugTaints({ type: 'debug', op: 'spawnGun' })).toBe(true);
+    expect(debugTaints({ type: 'debug', op: 'maxSkills' })).toBe(true);
+    expect(debugTaints({ type: 'debug', op: 'toggleGod' })).toBe(true);
+    expect(debugTaints({ type: 'debug', op: 'spawnDummies' })).toBe(false); // the title screen's own backdrop
+    expect(debugTaints({ type: 'startMode', mode: 'waves' })).toBe(false);
+    expect(debugTaints({ type: 'pickupGun', pickupId: 1 })).toBe(false);
+    // and a debug-spawned or god-mode gun is left out of a save even if one is written
+    const { s, p } = waves();
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'spawnGun', args: { type: 'sniper', quality: 'legendary' } }] }));
+    const k = s.pickups.find((x) => x.gun);
+    p.pos.x = k.pos.x; p.pos.z = k.pos.z;
+    run(s, 1, () => cmd({ actions: [{ type: 'pickupGun', pickupId: k.id }] }));
+    expect(p.guns.filter(Boolean).map((g) => g.source).sort()).toEqual(['debug', 'start']);
+    expect(loadoutFromState(s).guns.map((g) => g.type)).toEqual(['mg']);
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'toggleGod' }] }));
+    expect(p.guns.some((g) => g && g.source === 'god')).toBe(true);
+    expect(loadoutFromState(s).guns.map((g) => g.type)).toEqual(['mg']);
   });
 });

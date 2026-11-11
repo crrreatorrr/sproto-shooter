@@ -23,11 +23,11 @@ describe('boss weapons (Ray Gun, Big Bullets)', () => {
     for (let seed = 1; seed < 400; seed++) expect(BOSS_GUN_TYPES).not.toContain(generateGun({ seed, level: 1 }).type);
   });
 
-  it('campaign bosses always drop one; arena bosses drop one some of the time, and never more than one', () => {
+  it('in Wave Mode and Boss Fight a boss drops one some of the time, and never more than one', () => {
     const rate = (boss) => {
       let n = 0;
       for (let seed = 1; seed <= 400; seed++) {
-        const specs = rollDrops(createRng(seed), boss, { tier: 1, boss: true });
+        const specs = rollDrops(createRng(seed), boss, { tier: 1, boss: true, arena: true });
         const bossGuns = specs.filter((d) => d.kind === 'gun' && BOSS_GUN_TYPES.includes(d.type));
         expect(bossGuns.length, boss).toBeLessThanOrEqual(1);
         for (const g of bossGuns) expect(['rare', 'epic', 'legendary']).toContain(g.quality);
@@ -37,22 +37,53 @@ describe('boss weapons (Ray Gun, Big Bullets)', () => {
     };
     for (const boss of Object.keys(BOSSES)) {
       const r = rate(boss);
-      if (BOSSES[boss].campaign) expect(r, boss).toBe(1);
+      if (BOSSES[boss].campaign) expect(r, boss).toBe(1); // no table of their own
       else { expect(r, boss).toBeGreaterThan(0.15); expect(r, boss).toBeLessThan(0.6); }
     }
     // the first boss of a run is the stingiest, and still leaves two ordinary guns behind
     expect(rate('dragon')).toBeLessThan(rate('monster'));
-    expect(rollDrops(createRng(1), 'dragon', { tier: 1, boss: true }).filter((d) => d.kind === 'gun' && !BOSS_GUN_TYPES.includes(d.type)).length).toBe(2);
+    expect(rollDrops(createRng(1), 'dragon', { tier: 1, boss: true, arena: true }).filter((d) => d.kind === 'gun' && !BOSS_GUN_TYPES.includes(d.type)).length).toBe(2);
     // both kinds show up across kills
     const seen = new Set();
-    for (let seed = 1; seed < 120; seed++) for (const d of rollDrops(createRng(seed), 'monster', { tier: 1 })) if (d.kind === 'gun') seen.add(d.type);
+    for (let seed = 1; seed < 120; seed++) for (const d of rollDrops(createRng(seed), 'monster', { tier: 1, arena: true })) if (d.kind === 'gun') seen.add(d.type);
     for (const t of BOSS_GUN_TYPES) expect(seen.has(t)).toBe(true);
   });
 
-  it('a boss kill can spawn a boss weapon pickup, marked as a boss drop', () => {
+  // Locked against main (b9b4591): outside the two arena modes nothing about boss drops changed. The
+  // campaign uses arena bosses as mini-bosses (L03 Hex Auditor, L05 Blue Monster), so this matters there.
+  it('outside Wave Mode and Boss Fight every boss still drops exactly one, a quality step up, as before', () => {
+    const q = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    for (const boss of Object.keys(BOSSES)) {
+      const quality = { rare: 0, epic: 0, legendary: 0 };
+      for (let seed = 1; seed <= 200; seed++) {
+        const specs = rollDrops(createRng(seed), boss, { tier: 1, boss: true });
+        const bossGuns = specs.filter((d) => d.kind === 'gun' && BOSS_GUN_TYPES.includes(d.type));
+        expect(bossGuns.length, boss).toBe(1);
+        expect(q.indexOf(bossGuns[0].quality), boss).toBeGreaterThanOrEqual(3); // boss table is rare or better, plus one step
+        quality[bossGuns[0].quality]++;
+      }
+      expect(quality.rare).toBe(0);
+    }
+    // the Jade Dragon's ordinary gun count is the old one too
+    expect(rollDrops(createRng(1), 'dragon', { tier: 1, boss: true }).filter((d) => d.kind === 'gun' && !BOSS_GUN_TYPES.includes(d.type)).length).toBe(1);
+    // and a kill inside a campaign level or the sandbox goes through that path
+    for (const [mode, extra] of [['campaign', { level: 'L05' }], ['sandbox', {}]]) {
+      for (let seed = 1; seed <= 8; seed++) {
+        const s = createGameState({ seed });
+        run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode, tier: 1, ...extra }] }));
+        s.pickups.length = 0;
+        const b = createBoss(s, 'monster', { pos: { x: 0, z: -10 } });
+        onEnemyKilled(s, b);
+        expect(s.pickups.filter((k) => k.gun && BOSS_GUN_TYPES.includes(k.gun.type)).length, mode).toBe(1);
+      }
+    }
+  });
+
+  it('a Wave Mode boss kill can spawn a boss weapon pickup, marked as a boss drop', () => {
     let found = 0;
     for (let seed = 1; seed <= 12; seed++) {
       const s = createGameState({ seed });
+      run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }] }));
       const b = createBoss(s, 'monster', { pos: { x: 0, z: -10 } });
       onEnemyKilled(s, b);
       const guns = s.pickups.filter((k) => k.kind === 'gun').map((k) => k.gun);

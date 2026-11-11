@@ -109,7 +109,7 @@ export function levelAssets(waveIdx, tier) {
     }
   }
   const bosses = new Map();
-  for (const type of w.boss ? w.boss.types : []) {
+  for (const type of w.boss ? [...w.boss.types, ...(w.boss.late || [])] : []) {
     const b = BOSSES[type];
     b.phases.forEach((_, i) => bosses.set(`${b.model}:${i + 1}`, { model: b.model, stage: Math.min(3, i + 1) }));
     // bosses summon midgets

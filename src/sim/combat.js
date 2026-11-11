@@ -180,8 +180,9 @@ export function onEnemyKilled(state, e) {
   for (const pid of Object.keys(state.players)) {
     const p = state.players[pid];
     if (p.perks.killFrenzy && killer === p) { p.buffs.killFrenzy.stacks = Math.min(10, p.buffs.killFrenzy.stacks + 1); p.buffs.killFrenzy.t = 4; }
-    // Second wind: a kill revives a downed player. In the arena modes a boss's summoned helpers do not count.
-    if (p.downed && !p.dead && !(e.summoned && state.mode !== 'campaign')) revivePlayer(state, p);
+    // Second wind: any kill revives a downed player (a boss's summoned helpers included: in a Boss Fight
+    // they are the only thing to kill). The arena's shrinking timer is what stops it going on for ever.
+    if (p.downed && !p.dead) revivePlayer(state, p);
   }
   if (lh.wacky === 'confettiKill') {
     explode(state, centerOf(e), { radius: 4, damage: 40, minFalloff: 0.4, selfMult: 0, knockback: 6 }, lh.sourceId, 'none', 'splash', true);
@@ -194,7 +195,7 @@ export function onEnemyKilled(state, e) {
   // Drops
   const p = state.players[state.localPlayerId];
   // ammo drops only for guns that use spare ammo (boss weapons never run out)
-  const ctx = { elite: e.elite, tier: e.tier, playerGunTypes: p.guns.filter((g) => g && !GUN_TYPES_BY_ID[g.type].bossOnly).map((g) => g.ammoType), summoned: e.summoned, boss: !!e.boss };
+  const ctx = { elite: e.elite, tier: e.tier, playerGunTypes: p.guns.filter((g) => g && !GUN_TYPES_BY_ID[g.type].bossOnly).map((g) => g.ammoType), summoned: e.summoned, boss: !!e.boss, arena: state.mode === 'waves' || state.mode === 'boss' };
   if (!e.noAmmoDrop) {
     const specs = rollDrops(state.rng, e.type, ctx);
     spawnDrops(state, specs, centerOf(e));

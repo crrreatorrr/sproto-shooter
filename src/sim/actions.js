@@ -62,6 +62,13 @@ export function startMode(state, p, mode, tier = 1, opts = {}) {
   if (p.dead || p.downed) respawn(state, p);
   p.hp = p.maxHp; p.shield = p.maxShield; p.mana = p.maxMana;
   p.pos = { x: 0, y: 0, z: 8 }; p.prevPos = { ...p.pos }; p.vel = { x: 0, y: 0, z: 0 };
+  // Wave Mode progress (looted and saved guns, skill levels, wave spells) belongs to Wave Mode alone.
+  // Leaving it for any other mode puts the player back to a clean start and clears the floor, so
+  // nothing a save brought in can reach the campaign, Boss Fight, the sandbox or the Test Range.
+  if (state.mode === 'waves' && mode !== 'waves') {
+    state.pickups = [];
+    resetProgress(state, p);
+  }
   // leaving the test range takes its free loadout and infinite ammo back
   if (state.testMode && mode !== 'test') { resetLoadout(state, p); state.tuning.infiniteAmmo = false; setGodMode(state, p, false); }
   // ...and so does leaving the sandbox, or walking into the campaign from another mode, when the
@@ -261,6 +268,19 @@ function gunFromSpec(state, spec) {
   const gun = generateGun({ seed: spec.seed >>> 0, level, forced, arcane: !!spec.arcane });
   gun.id = nextId(state); gun.source = 'stash';
   return gun;
+}
+
+/** Back to a new player's guns, ammo, skills, perks and spells. Used when Wave Mode is left. */
+function resetProgress(state, p) {
+  resetLoadout(state, p);
+  for (const id of SKILL_IDS) p.skills[id] = { level: 1, xp: 0, total: 0 };
+  for (const perk of PERKS) if (perk.level > 1 && p.perks[perk.id]) p.perks[perk.id] = false;
+  p.buffs.killFrenzy.stacks = 0; p.buffs.killFrenzy.t = 0;
+  p.unkillableUsed = false;
+  p.spellUnlocks = { gooBolt: true };
+  syncSpellbook(state, p);
+  applySkillPassives(state, p);
+  p.hp = p.maxHp; p.shield = p.maxShield;
 }
 
 function aheadOf(p, d = 10) { return { x: p.pos.x - Math.sin(p.yaw) * d, z: p.pos.z - Math.cos(p.yaw) * d }; }

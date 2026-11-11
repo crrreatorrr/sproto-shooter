@@ -53,8 +53,10 @@ describe('tier ladder: what a wave looks like at a tier', () => {
     }
     expect([1, 2, 3, 4, 5, 6, 7].map((tier) => tierWave(1, tier).boss.types[0])).toEqual(['monster', 'monster', 'monster', 'carMonster', 'moleMonster', 'monster', 'carMonster']);
     expect(tierWave(2, 6).boss.types).toEqual(['megaSproto', 'hexAuditor']);
-    expect(tierWave(2, 7).boss.types).toEqual(['megaSproto', 'hexAuditor', 'sprotoBeast']);
-    for (let tier = 1; tier <= MAX_TIER; tier++) for (let i = 0; i < 3; i++) for (const b of tierWave(i, tier).boss.types) expect(BOSSES[b], b).toBeTruthy();
+    expect(tierWave(2, 6).boss.late).toEqual([]);
+    expect(tierWave(2, 7).boss.types).toEqual(['megaSproto', 'hexAuditor']); // never three at once
+    expect(tierWave(2, 7).boss.late).toEqual(['sprotoBeast']);
+    for (let tier = 1; tier <= MAX_TIER; tier++) for (let i = 0; i < 3; i++) for (const b of [...tierWave(i, tier).boss.types, ...(tierWave(i, tier).boss.late || [])]) expect(BOSSES[b], b).toBeTruthy();
   });
 
   it('preloads the models a tier needs', () => {
@@ -90,7 +92,9 @@ describe('tier ladder: what a wave looks like at a tier', () => {
       p.guns[0] = g;
       run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier }, { type: 'debug', op: 'setTuning', args: { key: 'godMode', value: true } }, { type: 'debug', op: 'setTuning', args: { key: 'infiniteAmmo', value: true } }, { type: 'debug', op: 'setTuning', args: { key: 'enemyHpMult', value: 0.25 } }] }));
       const seen = new Set();
+      let mostBosses = 0;
       for (let i = 0; i < 60 * 60 * 10 && s.wave.phase !== 'victory'; i++) {
+        mostBosses = Math.max(mostBosses, s.enemies.filter((e) => e.boss && !e.dead).length);
         let best = null, bd = 1e9;
         for (const e of s.enemies) { if (e.dead || e.state === 'spawning') continue; seen.add(e.type); const d = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z); if (d < bd) { bd = d; best = e; } }
         let c = cmd({ pressed: { skip: true } });
@@ -101,7 +105,8 @@ describe('tier ladder: what a wave looks like at a tier', () => {
         run(s, 1, () => c);
       }
       expect(s.wave.phase, `tier ${tier}`).toBe('victory');
-      const bosses = [0, 1, 2].flatMap((i) => tierWave(i, tier).boss.types);
+      expect(mostBosses, `tier ${tier}`).toBeLessThanOrEqual(2); // the Sproto Beast waits for one of the pair to fall
+      const bosses = [0, 1, 2].flatMap((i) => [...tierWave(i, tier).boss.types, ...(tierWave(i, tier).boss.late || [])]);
       expect(s.run.bossKills, `tier ${tier}`).toBe(bosses.length);
       for (const b of bosses) expect(seen.has(b), b).toBe(true);
       expect(seen.has('robotLaser')).toBe(true);
@@ -139,13 +144,20 @@ describe('Second Wind', () => {
     expect(down(s, p)).toBe(10);
   });
 
-  it("does not come from a boss's summoned helpers in the arena", () => {
+  it("comes from a boss's summoned helpers too, on the same shrinking timer", () => {
+    // In a Boss Fight the helpers are the only thing to kill besides the boss, so they have to count.
     const { s, p } = start('boss', 1, { boss: 'megaSproto' });
-    down(s, p);
-    kill(s, true);
-    expect(p.downed).toBe(true);
-    kill(s, false);
-    expect(p.downed).toBe(false);
+    const got = [];
+    for (let i = 0; i < 4; i++) { got.push(down(s, p)); kill(s, true); expect(p.downed).toBe(false); }
+    expect(got).toEqual([10, 7, 4, 3]);
+  });
+
+  it('runs out when nothing is killed in time', () => {
+    const { s, p } = start('boss', 1, { boss: 'megaSproto' });
+    run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'setTuning', args: { key: 'freezeEnemies', value: true } }] }));
+    down(s, p); kill(s, true); down(s, p); kill(s, true); down(s, p); // third down: 4 seconds
+    run(s, 60 * 4 + 30, () => cmd());
+    expect(p.dead).toBe(true);
   });
 
   it('is unchanged in the campaign: always the full timer, any kill counts, nothing new on the player', () => {
@@ -204,22 +216,35 @@ describe('Wave Mode skill pacing', () => {
 });
 
 describe('The Floor Is Lava secret', () => {
-  it('burns only on the ground, ends after 20 seconds and no longer kills', () => {
-    const { s, p } = start('campaign', 1, { level: 'L06' });
+  const lava = (level) => {
+    const { s, p } = start('campaign', 1, { level });
     run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'setTuning', args: { key: 'freezeEnemies', value: true } }] }));
+    run(s, 30, () => cmd()); // settle on the ground
     s.level.modifiers.floorIsLava = true;
+    return { s, p };
+  };
+
+  // L03 is the only level that has this secret, and it is a v2 level; L06 is the old format.
+  it.each(['L03', 'L06'])('burns only on the ground, ends after 20 seconds and no longer kills (%s)', (level) => {
+    const { s, p } = lava(level);
+    expect(p.onGround).toBe(true);
+    const full = p.shield + p.hp;
     run(s, 60, () => cmd());
-    expect(p.shield).toBeLessThan(p.maxShield);
-    const before = p.shield + p.hp;
-    // in the air it stops
-    p.pos.y = 50; p.onGround = false;
-    run(s, 30, () => cmd());
-    expect(p.shield + p.hp).toBeGreaterThanOrEqual(before);
+    expect(full - (p.shield + p.hp)).toBeGreaterThan(3);
+    expect(full - (p.shield + p.hp)).toBeLessThan(5);
     run(s, 60 * 60, () => cmd());
     expect(p.dead).toBe(false);
     expect(p.downed).toBe(false);
+    expect(s.level.lost).toBe(false);
     expect(s.level.modifiers.floorIsLava).toBe(false);
     expect(s.level.lavaT).toBeUndefined();
     expect(Object.keys(s.level.modifiers)).toContain('floorIsLava'); // still remembered as found
+  });
+
+  it('does nothing while you are in the air', () => {
+    const { s, p } = lava('L06');
+    const before = p.shield + p.hp;
+    for (let i = 0; i < 30; i++) { p.pos.y = 50; p.vel.y = 0; p.onGround = false; run(s, 1, () => cmd()); }
+    expect(p.shield + p.hp).toBeGreaterThanOrEqual(before);
   });
 });

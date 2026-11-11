@@ -63,8 +63,11 @@ export function nextWaveSpell(unlocks, tier) {
 //  - every group gets floor((tier - 1) / 2) more elites, and maxAlive grows by 2 every three tiers;
 //  - from tier 4, in waves 2 and 3, Laser Bots take half of each Bitcoin Obama squad and one Shooter Bot
 //    takes a Big Bitcoin Obama's place, and the wave-2 boss rotates Car Part Monster, Mole Monster, Blue Monster;
-//  - from tier 7 the Sproto Beast joins the final pair.
+//  - from tier 7 the Sproto Beast follows the final pair: it arrives (boss.late) once one of the two is down,
+//    so there are never three bosses on you at once.
 const WAVE2_BOSSES = ['carMonster', 'moleMonster', 'monster'];
+/** Health of a boss that arrives late in a boss phase, as a share of its full health. */
+export const LATE_BOSS_HP = 0.7;
 const tierWaveCache = new Map();
 export function tierWave(index, tier = 1) {
   const base = WAVES[index];
@@ -93,8 +96,8 @@ export function tierWave(index, tier = 1) {
   });
   let types = base.boss.types;
   if (index === 1 && tier >= 4) types = [WAVE2_BOSSES[(tier - 4) % WAVE2_BOSSES.length]];
-  if (index === WAVES.length - 1 && tier >= 7) types = [...types, 'sprotoBeast'];
-  const out = { ...base, maxAlive: base.maxAlive + 2 * Math.floor((tier - 1) / 3), groups, boss: { ...base.boss, types } };
+  const late = index === WAVES.length - 1 && tier >= 7 ? ['sprotoBeast'] : [];
+  const out = { ...base, maxAlive: base.maxAlive + 2 * Math.floor((tier - 1) / 3), groups, boss: { ...base.boss, types, late, lateHp: LATE_BOSS_HP } };
   tierWaveCache.set(key, out);
   return out;
 }
