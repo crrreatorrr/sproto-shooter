@@ -10,6 +10,7 @@ const HALOS = {
   void_halo: ['void_exchange_rotor', -1.45, 0xffba4a, 5.4],
   frost_beacon: ['frost_beacon_lens', 0, 0xffbd63, 1.15],
   frost_tank: ['frost_tank_core', 0, 0x6edfff, 3.6],
+  skyline_crane: ['skyline_crane_lens', .10, 0xffbd6b, 1.65],
 };
 
 const active = new WeakMap();

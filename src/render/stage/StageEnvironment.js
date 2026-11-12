@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { STAGES, stageAssets } from '../../data/stages.js';
 import { peekTexture, instantiateStatic, assetsVersion } from '../assets.js';
 import { createAuroraSky } from './auroraSky.js';
+import { SKYLINE_PANORAMA } from '../level/campaignSurfaceArt.js';
+import { createSkylineRain } from './skylineRain.js';
 import { createLevelView } from '../level/levelView.js';
 
 export function mountStage(env) {
@@ -10,7 +12,8 @@ export function mountStage(env) {
   const standardSky = sky.material;
   let blockchainSky, frostspireSky;
   sky.renderOrder = -1;
-  scene.add(sky);
+  const skylineRain = createSkylineRain();
+  scene.add(sky, skylineRain);
   const groundMat = M(0xffffff, { roughness: 0.92 });
   const ground = new THREE.Mesh(new THREE.CircleGeometry(ARENA_R, 128), groundMat);
   ground.rotation.x = -Math.PI / 2;
@@ -53,8 +56,10 @@ export function mountStage(env) {
   function applyStage(id, levelId) {
     const blockchain = id === 'void' && levelId === 'L04';
     const frostspire = id === 'glacier' && levelId === 'L05';
+    const skyline = id === 'city' && levelId === 'L06';
     const st = STAGES[id], a = stageAssets(id);
-    const key = id + ':' + (blockchain || frostspire) + ':' + assetsVersion();
+    const variant = blockchain || frostspire || skyline ? levelId : '';
+    const key = id + ':' + variant + ':' + assetsVersion();
     if (key === stageKey) return;
     stageKey = key;
     scene.background = new THREE.Color(st.background);
@@ -74,11 +79,13 @@ export function mountStage(env) {
       bounce.intensity = .45;
     }
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
-    const skyTex = peekTexture(a.sky);
+    const skylineTex = skyline ? peekTexture(SKYLINE_PANORAMA) : null;
+    const skyTex = skyline ? skylineTex : peekTexture(a.sky);
+    if (skylineTex) skylineTex.offset.y = -.16;
     sky.material = blockchain ? (blockchainSky ||= createAuroraSky())
       : frostspire ? (frostspireSky ||= createAuroraSky(true)) : standardSky;
     standardSky.map = skyTex;
-    standardSky.color.setHex(skyTex ? 0xffffff : st.background);
+    standardSky.color.setHex(skyTex ? 0xffffff : skyline ? 0x242d54 : st.background);
     standardSky.needsUpdate = true;
     if (blockchain) {
       scene.fog.color.setHex(0x312445);
@@ -101,6 +108,17 @@ export function mountStage(env) {
       sun.intensity = 1.7;
       bounce.color.setHex(0x8fbaf8);
       bounce.intensity = .45;
+    }
+    if (skyline) {
+      scene.fog.color.setHex(0x373b61);
+      hemi.color.setHex(0xbfcfff);
+      hemi.groundColor.setHex(0x797289);
+      hemi.intensity = 1.42;
+      sun.color.setHex(0xb2ccff);
+      sun.position.set(16, 23, -18);
+      sun.intensity = 1.58;
+      bounce.color.setHex(0x9f82f8);
+      bounce.intensity = .44;
     }
     const floor = peekTexture(a.floor);
     setStageMap(groundMat, floor, st.floorRepeat, st.floorRepeat);
@@ -133,5 +151,5 @@ export function mountStage(env) {
       decor.add(pr);
     }
   }
-  Object.assign(env, { sky, groundMat, ground, outerMat, outer, rimMat, rim, edgeRing, wall, decor, levelView, arenaBits, setStageMap, applyStage });
+  Object.assign(env, { sky, skylineRain, groundMat, ground, outerMat, outer, rimMat, rim, edgeRing, wall, decor, levelView, arenaBits, setStageMap, applyStage });
 }
