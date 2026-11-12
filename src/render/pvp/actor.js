@@ -10,6 +10,7 @@ import { createArenaWeaponPose } from './weaponPose.js';
 
 // World-space machine gun length for the 1.8 m Arena character rigs.
 const ARENA_MG_LENGTH = 0.96;
+export const ARENA_TRACER_MS = 90;
 
 const ARMS = /^(?:mixamorig)?(?:Left|Right)(?:Shoulder|Arm|ForeArm|Hand)|^weapon_/;
 
@@ -121,7 +122,9 @@ export function poseModel(body, player, shotAge, dt, yaw = null, grapplePose = 0
   }
   mixer?.update(dt);
   body.slide?.apply(body.slideWeight);
-  weaponPose.apply(grapplePose);
+  // A live weapon shot takes precedence over the dip while the left arm continues the grapple.
+  const dipBlend = shotAge >= 0 ? THREE.MathUtils.smoothstep(shotAge, ARENA_TRACER_MS, ARENA_TRACER_MS + 65) : 1;
+  weaponPose.apply(grapplePose * dipBlend);
   body.group.updateMatrixWorld(true);
   body.group.worldToLocal(weaponPose.grip.getWorldPosition(gripAt));
   body.group.worldToLocal(weaponPose.tip.getWorldPosition(aimAt));

@@ -173,9 +173,10 @@ export async function grapplerRun(game) {
     freezeAt(time += 30);
     game.renderer.render(state, 1, look);
   }
-  function step(grapple, ticks, zoom = false) {
+  function step(grapple, ticks, zoom = false, fire = false) {
     for (let i = 0; i < ticks; i++) {
-      simulate(state, { [player.id]: cmd({ ...look, held: { grapple, zoom } }) });
+      simulate(state, { [player.id]: cmd({ ...look, held: { grapple, zoom, fire } }) });
+      if (fire) for (const event of state.events) if (event.type === 'shot') game.bus.emit(event);
       draw();
     }
   }
@@ -251,7 +252,13 @@ export async function grapplerRun(game) {
       step(false, 1);
       const quickTap = cue && !effects.visible && stowed.visible;
       step(false, 7);
-      report[id] = { docked, flight, latch, returned, aimed, handoff, canceled, extended, quickTap, gunLowered, gunRaised, arenaFit };
+      player.grappleCd = 0;
+      step(true, 4);
+      step(true, 1, false, true);
+      const firesLevel = state.events.some((event) => event.type === 'shot') && effects.visible
+        && weapon().rotation.x > pitchAtRest - 0.09;
+      step(false, 14);
+      report[id] = { docked, flight, latch, returned, aimed, handoff, canceled, extended, quickTap, gunLowered, gunRaised, arenaFit, firesLevel };
     }
     return report;
   } finally {

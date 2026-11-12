@@ -118,7 +118,7 @@ describe('local Wave Mode in Chromium', () => {
     await visit(async (page) => {
       await page.waitForFunction(() => window.__game.renderer.scene.getObjectByName('Grapple effects')?.getObjectByName('Claw'));
       const report = await page.evaluate("import('/tests/fixtures/local-gameplay.js').then(({ grapplerRun }) => grapplerRun(window.__game))");
-      const complete = { docked: true, flight: true, latch: true, returned: true, aimed: true, handoff: true, canceled: true, extended: true, quickTap: true, gunLowered: true, gunRaised: true, arenaFit: true };
+      const complete = { docked: true, flight: true, latch: true, returned: true, aimed: true, handoff: true, canceled: true, extended: true, quickTap: true, gunLowered: true, gunRaised: true, arenaFit: true, firesLevel: true };
       expect(report).toEqual({ sproto: complete, pepe: complete, 'pepe-general': complete, 'pepe-tux': complete });
     });
   }, 90000);

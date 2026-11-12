@@ -11,7 +11,7 @@ import { ensureGunModel } from '../assets.js';
 import { loadPlayerModel } from '../firstPerson.js';
 import { PLAYER_CHARACTERS, selectedCharacter } from '../playerCharacters.js';
 import { GUN_IDS } from '../../sim/pvp/rules.js';
-import { attachModel, disposeModel, poseModel } from './actor.js';
+import { ARENA_TRACER_MS, attachModel, disposeModel, poseModel } from './actor.js';
 import { chaseCamera } from './aim.js';
 import { createGrappler } from '../vfx/grappler.js';
 
@@ -27,7 +27,6 @@ function asset(path) {
 /** Cosmetic recoil kick per slot (radians of camera pitch) and how fast it settles. */
 export const RECOIL = Object.freeze({ kick: [0.012, 0.05, 0.08], tauMs: 90 });
 const FLASH_MS = 60;
-const TRACER_MS = 90;
 const TRACER_M = 60;
 const MUZZLE_AHEAD = 0.7;
 
@@ -140,7 +139,7 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
     for (let i = shots.length - 1; i >= 0 && used < tracers.length; i--) {
       const shot = shots[i];
       const age = now - shot.at;
-      if (age < 0 || age > TRACER_MS) continue;
+      if (age < 0 || age > ARENA_TRACER_MS) continue;
       const dir = dirFromYawPitch(shot.yaw, shot.pitch);
       const eye = { x: shot.x, y: shot.y + TUNING.eyeHeight, z: shot.z };
       const weapon = bodies[seat]?.motion;
@@ -155,7 +154,7 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
       pos.setXYZ(0, muzzle.x, muzzle.y, muzzle.z);
       pos.setXYZ(1, eye.x + dir.x * len, eye.y + dir.y * len, eye.z + dir.z * len);
       pos.needsUpdate = true;
-      line.material.opacity = 1 - age / TRACER_MS;
+      line.material.opacity = 1 - age / ARENA_TRACER_MS;
       line.visible = true;
       if (age <= FLASH_MS && !flash.visible) {
         flash.position.set(muzzle.x, muzzle.y, muzzle.z);
