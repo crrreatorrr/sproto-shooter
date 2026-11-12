@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { CHARACTER_MODELS, rotationForModelPath, stageAssets } from '../data/stages.js';
+import { unpackGltf } from './loadPackedGltf.js';
 import { createLoadControl } from './loadControl.js';
 import { instantiateCharacter as buildCharacter } from './assets/characterInstance.js';
 
@@ -133,7 +134,8 @@ function loadModel(path, prio = NOW) {
   }
   if (control.status(path) === 'error') return control.schedule(path, starters.get(path), prio);
   return schedule(path, async () => {
-    const g = await parseGltf(await fetchBuf(path));
+    const bytes = await fetchBuf(path);
+    const g = await parseGltf(path.endsWith('.gz') ? await unpackGltf(bytes) : bytes);
     if (!g || !g.scene) throw new Error('load failed');
     const root = g.scene;
     root.traverse((o) => { if (o.isSkinnedMesh || o.isMesh) { o.frustumCulled = false; if (o.material) o.material.side = THREE.DoubleSide; } });

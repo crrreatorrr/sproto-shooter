@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { voidMaterial } from './voidMaterial.js';
 import { grovePaneMaterial } from './groveMaterials.js';
+import { mountFrostSearchlight } from './frostspireLights.js';
 import { createKitObject } from './kitMotion.js';
 import { KIT, kitGeometry, kitMaterial } from './kitModels.js';
 
@@ -36,6 +37,7 @@ export function decorMeshes(list, origin, replaced = null) {
         object.matrix.copy(matrix);
         object.matrixAutoUpdate = false;
         object.userData.kit = true;
+        if (d.searchlight) mountFrostSearchlight(object, d.searchlight, d.ground);
         out.push(object);
       }
       if (replaced && d.replace) for (const id of d.replace) replaced.add(id);

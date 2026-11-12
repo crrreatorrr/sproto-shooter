@@ -53,6 +53,7 @@ describe('asset manifest', () => {
       'art/blender/boss_animations.blend',
       'art/blender/campaign_art_polish.blend',
       'art/blender/cartoon_kit.blend',
+      'art/blender/frostspire_black_site.blend',
       'art/blender/fx_explosion.blend',
       'art/blender/fx_poof.blend',
       'art/blender/new_enemies.blend',

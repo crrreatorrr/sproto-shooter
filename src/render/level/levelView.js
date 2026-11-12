@@ -4,6 +4,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getLevelRuntime } from '../../sim/level/runtime.js';
 import { solidTerrain, terrainGrid } from '../../sim/campaign/terrain.js';
 import { DRESSING, HIDE_WHEN_GOT, MECHANISM_MODEL, STAGE_DRESSING } from './dressing.js';
+import { FROST_COLORS, frostspirePlacements } from './frostspireDressing.js';
+import { syncFrostSearchlight } from './frostspireLights.js';
 import { voidPlacements } from './voidDressing.js';
 import { voidMaterial } from './voidMaterial.js';
 import { groveGeometry, grovePlacements } from './groveDressing.js';
@@ -39,7 +41,7 @@ export function levelMaterial(name, cache, tint = null) {
   return mat;
 }
 
-const CAMPAIGN_KITS = { L03: grovePlacements, L04: voidPlacements };
+const CAMPAIGN_KITS = { L03: grovePlacements, L04: voidPlacements, L05: frostspirePlacements };
 const groveLevelMaterial = (name, cache) => groveMaterial(name, cache, levelMaterial);
 
 function primitiveGeometry(g) {
@@ -246,6 +248,8 @@ export function createLevelView() {
   const group = new THREE.Group();
   group.name = 'campaign-level';
   const mats = new Map();
+  const frostMats = new Map();
+  const frostMaterial = (name) => levelMaterial(name, frostMats, FROST_COLORS[name]);
   let key = '';
   let gotViews = [];
   function syncGot(state) {
@@ -256,8 +260,10 @@ export function createLevelView() {
   function rebuild(state) {
     const lv = state.level;
     const doors = (lv && lv.closedDoors) || [];
+    const frost = lv?.id === 'L05';
+    const broken = frost ? lv.brokenSolids : null;
     // kitVersion: a section drawn before its models arrived redraws when they do.
-    const next = lv ? `${lv.id}:${lv.section}:${doors.map((d) => d.id).join(',')}:${kitVersion()}` : '';
+    const next = lv ? `${lv.id}:${lv.section}:${doors.map((d) => d.id).join(',')}:${kitVersion()}:${broken ? Object.keys(broken).join(',') : ''}` : '';
     if (next === key) { syncGot(state); return; }
     key = next;
     gotViews = [];
@@ -274,10 +280,11 @@ export function createLevelView() {
     const field = solidTerrain(sec);
     const grove = lv.id === 'L03';
     const voidLevel = lv.id === 'L04';
-    const polished = ['L01', 'L02', 'L03'].includes(lv.id);
+    const polished = frost || ['L01', 'L02', 'L03'].includes(lv.id);
     const placements = CAMPAIGN_KITS[lv.id];
     const dress = placements ? {} : DRESSING[lv.id] || STAGE_DRESSING[lv.stage] || {};
-    const prims = new Map((sec.geometry || []).map((g) => [g.id, g]));
+    const visible = (sec.geometry || []).filter((g) => !broken?.[g.id]);
+    const prims = new Map(visible.map((g) => [g.id, g]));
     const replaced = new Set();
     if (placements) for (const mesh of decorMeshes(placements(sec, prims, doors), [0, 0, 0], replaced)) group.add(mesh);
     for (const [id, d] of Object.entries(dress.fit || {})) {
@@ -319,9 +326,9 @@ export function createLevelView() {
       group.add(plane);
     }
     const hidden = (g) => !!(dress.hide && g.id && dress.hide.test(g.id));
-    const geometry = (sec.geometry || []).filter((g) => !(field && g.tag === 'terrainStandIn') && !replaced.has(g.id) && !hidden(g));
+    const geometry = visible.filter((g) => !(field && g.tag === 'terrainStandIn') && !replaced.has(g.id) && !hidden(g));
     for (const door of doors) if (!replaced.has(door.id)) geometry.push(aabbBox(door));
-    for (const mesh of buildSectionMeshes(grove ? geometry.map(groveGeometry) : geometry, mats, grove ? groveLevelMaterial : levelMaterial)) group.add(mesh);
+    for (const mesh of buildSectionMeshes(grove ? geometry.map(groveGeometry) : geometry, mats, grove ? groveLevelMaterial : frost ? frostMaterial : levelMaterial)) group.add(mesh);
     if (field) group.add(terrainMesh(field, mats));
     // The L03 Crop Fields use the flat walkable slab. Its Blender crop rows
     // and path stones sit on that surface.
@@ -375,7 +382,11 @@ export function createLevelView() {
     sync(state) {
       rebuild(state);
       const seconds = state.tick * DT;
-      for (const child of group.children) updateKitMotion(child, seconds);
+      const drilling = state.level?.v2?.enc?.['S5-F2']?.hold || 0;
+      for (const child of group.children) {
+        updateKitMotion(child, child.name === 'frost_drill' ? drilling : seconds);
+        if (child.name === 'frost_searchlight') syncFrostSearchlight(child, state.level);
+      }
     },
   };
 }

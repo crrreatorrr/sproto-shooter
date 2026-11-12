@@ -69,6 +69,10 @@ export function mountPresent(env) {
       levelView.sync(state);
       if (scene.fog) {
         const cap = state.level.viewCap;
+        if (state.level.id === 'L05' && env.sky.material.uniforms?.whiteout) {
+          env.sky.material.uniforms.whiteout.value = cap ? 1 : 0;
+          scene.fog.color.setHex(cap ? 0xb4c3d2 : 0x465b7a);
+        }
         const dark = state.level.modifiers && state.level.modifiers.lightsOut;
         if (cap) {
           scene.fog.near = Math.min(14, cap * 0.35);
