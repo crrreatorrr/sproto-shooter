@@ -77,6 +77,16 @@ export function startMode(state, p, mode, tier = 1, opts = {}) {
   if (opts.freshLoadout && real && ((state.mode === 'sandbox' && !state.testMode) || (mode === 'campaign' && state.mode !== 'campaign'))) resetLoadout(state, p);
   // ...and so does leaving a boss fight
   if (state.bossFight && mode !== 'boss' && mode !== 'test') resetLoadout(state, p);
+  // The same rule the other way: Wave Mode starts from a clean player, whatever was earned or picked up
+  // in the campaign, a Boss Fight, the Test Range or the sandbox. Skills and guns from there would
+  // otherwise be written into the Wave Mode save. The saved loadout arrives after this, as loadLoadout.
+  // The sandbox needs the client's flag, for the reason above: without it this could be a state no
+  // mode has started, which keeps what it was set up with.
+  const fromOutside = state.mode !== 'waves' && (state.mode !== 'sandbox' || state.testMode || !!opts.freshLoadout);
+  if (mode === 'waves' && fromOutside) {
+    state.pickups = [];
+    resetProgress(state, p, startingLoadout(p));
+  }
   state.testMode = mode === 'test';
   state.bossFight = null;
   if (mode === 'waves') {
@@ -201,6 +211,11 @@ function resetLoadout(state, p) {
   p.ammo = { ...TUNING.startAmmo };
 }
 
+/** True when the player carries the starting gun and nothing else (a new player, or one already reset). */
+function startingLoadout(p) {
+  return p.guns.every((g, i) => (i === 0 ? !!g && g.source === 'start' : !g));
+}
+
 /** Most guns a saved loadout may bring: the five slots, plus three that are put on the floor. */
 export const LOADOUT_MAX_GUNS = 8;
 
@@ -237,7 +252,8 @@ export function loadLoadout(state, p, a) {
     if (fits && !p.guns[slot]) p.guns[slot] = gun; else spare.push(gun);
   }
   // Anything without a slot (a locked fourth slot, a duplicate) waits on the floor in front of you.
-  spare.forEach((gun, i) => spawnGunPickup(state, gun, aheadOf(p, 2 + i * 0.8), 'stash'));
+  // It stays there until taken (no despawn timer), and stays in the save meanwhile (src/save/loadout.js).
+  spare.forEach((gun, i) => { spawnGunPickup(state, gun, aheadOf(p, 2 + i * 0.8), 'stash').ttl = Infinity; });
   if (!p.guns.some(Boolean)) { resetLoadout(state, p); return; }
   p.activeSlot = Math.max(0, p.guns.findIndex((g, i) => g && i !== LEGENDARY_SLOT));
   if (!p.guns[p.activeSlot]) p.activeSlot = p.guns.findIndex(Boolean);
@@ -271,8 +287,8 @@ function gunFromSpec(state, spec) {
 }
 
 /** Back to a new player's guns, ammo, skills, perks and spells. Used when Wave Mode is left. */
-function resetProgress(state, p) {
-  resetLoadout(state, p);
+function resetProgress(state, p, keepGuns = false) {
+  if (keepGuns) p.ammo = { ...TUNING.startAmmo }; else resetLoadout(state, p);
   for (const id of SKILL_IDS) p.skills[id] = { level: 1, xp: 0, total: 0 };
   for (const perk of PERKS) if (perk.level > 1 && p.perks[perk.id]) p.perks[perk.id] = false;
   p.buffs.killFrenzy.stacks = 0; p.buffs.killFrenzy.t = 0;
