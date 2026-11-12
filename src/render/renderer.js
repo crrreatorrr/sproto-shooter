@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { ARENA_R } from '../data/tuning.js';
 import { BOSSES, ENEMIES as ENEMY_DEFS, enemyStage } from '../data/enemies.js';
 import { stageFor, levelAssets } from '../data/stages.js';
-import { GUN_MODELS, pendingDownloads, PRIORITY, ensureGunModel, ensureStage, stageReady, ensureCharacter, characterReady, stagePaths, characterPath, setAssetDemand, loadReport, retryFailed } from './assets.js';
+import { CAMPAIGN_SURFACE_ART } from './level/campaignSurfaceArt.js';
+import { GUN_MODELS, loadTexture, pendingDownloads, PRIORITY, ensureGunModel, ensureStage, stageReady, ensureCharacter, characterReady, stagePaths, characterPath, setAssetDemand, loadReport, retryFailed } from './assets.js';
 import { createRenderContext } from './core/RenderContext.js';
 import { createMaterials } from './materials/geometries.js';
 import { mountStage } from './stage/StageEnvironment.js';
@@ -63,6 +64,10 @@ export function createRenderer(container, bus, playerModel, graphicsPreset = 'hi
         const path = characterPath(def.model, enemyStage(e));
         if (path) demandNow.push(path);
       }
+    }
+    if (state.mode === 'campaign' && state.level) {
+      demandNow.push(CAMPAIGN_SURFACE_ART);
+      loadTexture(CAMPAIGN_SURFACE_ART, { color: false });
     }
     if (state.mode !== 'waves' || !state.wave) {
       setAssetDemand(demandNow, demandLater);

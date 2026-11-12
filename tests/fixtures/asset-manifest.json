@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 248,
-    "runtimeBytes": 27340368,
-    "decodedBytes": 258207558,
-    "referenced": 248,
+    "runtimeFiles": 249,
+    "runtimeBytes": 27050713,
+    "decodedBytes": 257771334,
+    "referenced": 249,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -1692,6 +1692,13 @@
       "from": [
         "src/data/stages.js",
         "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "textures/campaign/surface-art.webp",
+      "kind": "static",
+      "from": [
+        "src/render/level/campaignSurfaceArt.js"
       ]
     },
     {
@@ -9500,6 +9507,21 @@
       }
     },
     {
+      "path": "textures/campaign/surface-art.webp",
+      "bytes": 102506,
+      "sha256": "311422ca7619381bbf0c8fc6b84a86cebd87aa5adece1a2741c7a6ffb1914884",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/campaignSurfaceArt.js"
+      ],
+      "kind": "image",
+      "width": 672,
+      "height": 1008,
+      "decodedBytes": 2709504,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
       "path": "textures/stages/city/floor.jpg",
       "bytes": 185061,
       "sha256": "995a38ecfe13449d22a668a40387e39c80ac92755651b014cdff1f996480692c",
@@ -9621,17 +9643,17 @@
     },
     {
       "path": "textures/stages/glacier/stone.jpg",
-      "bytes": 462182,
-      "sha256": "ede829efbced681c0d4970ea964c75ecb36995bbed553384ea2da080091e6552",
+      "bytes": 70021,
+      "sha256": "20a83df50998d6c11d676d8e903b44e84b2102d9382ac42e049ad768b465f873",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
         "src/data/stages.js"
       ],
       "kind": "image",
-      "width": 1024,
-      "height": 1024,
-      "decodedBytes": 4194304,
+      "width": 512,
+      "height": 512,
+      "decodedBytes": 1048576,
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     },
     {

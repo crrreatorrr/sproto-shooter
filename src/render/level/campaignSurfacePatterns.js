@@ -129,6 +129,10 @@ export const CAMPAIGN_SURFACE_PATTERNS = {
         surfaceLine(cut.y - cut.x * .27, 2.85, .017));
       return vec3(.92, 1.045, 1.11) * (surfaceGrain(p, vec2(.38, .61)) + fault * .15);
     }
+    if (campaignSurfaceKind == 2.) {
+      return vec3(1.03, 1.01, .98) * surfaceBlocks(p, vec2(.51, 2.8), .5, .28)
+        * surfaceGrain(p, vec2(.92, .26));
+    }
     float panels = surfaceBlocks(p, ground ? vec2(3.25, 2.4) : vec2(2.75, 1.45), 0., .30);
     float rib = surfaceLine(p.y - .18, 1.45, .047);
     return vec3(.97, 1.035, 1.08) * (panels * surfaceGrain(p, vec2(.37, .22)) + rib * .07);
