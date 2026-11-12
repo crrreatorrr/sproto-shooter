@@ -4,6 +4,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getLevelRuntime } from '../../sim/level/runtime.js';
 import { solidTerrain, terrainGrid } from '../../sim/campaign/terrain.js';
 import { DRESSING, HIDE_WHEN_GOT, MECHANISM_MODEL, STAGE_DRESSING } from './dressing.js';
+import { groveGeometry, grovePlacements } from './groveDressing.js';
+import { groveMaterial, grovePaneMaterial } from './groveMaterials.js';
 import { KIT, duelInstance, kitGeometry, kitMaterial, kitVersion } from './kitModels.js';
 
 export const LEVEL_COLOR = {
@@ -32,6 +34,8 @@ export function levelMaterial(name, cache, tint = null) {
   return mat;
 }
 
+const groveLevelMaterial = (name, cache) => groveMaterial(name, cache, levelMaterial);
+
 function primitiveGeometry(g) {
   if (!g || g.kind === 'terrain' || !g.at) return null;
   let geo = null;
@@ -50,20 +54,20 @@ function primitiveGeometry(g) {
 }
 
 /** One mesh per material. Returns the meshes, not yet parented. */
-export function buildSectionMeshes(geometry, materials) {
+export function buildSectionMeshes(geometry, materials, materialFor = levelMaterial) {
   const buckets = new Map();
   for (const g of geometry || []) {
     const geo = primitiveGeometry(g);
     if (!geo) continue;
-    const name = g.mat || 'stone';
-    if (!buckets.has(name)) buckets.set(name, []);
-    buckets.get(name).push(geo);
+    const material = materialFor(g.mat || 'stone', materials);
+    if (!buckets.has(material)) buckets.set(material, []);
+    buckets.get(material).push(geo);
   }
   const meshes = [];
-  for (const [name, geos] of buckets) {
+  for (const [material, geos] of buckets) {
     const merged = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
     if (geos.length > 1) for (const geo of geos) geo.dispose();
-    const mesh = new THREE.Mesh(merged, levelMaterial(name, materials));
+    const mesh = new THREE.Mesh(merged, material);
     mesh.castShadow = mesh.receiveShadow = true;
     mesh.frustumCulled = true;
     meshes.push(mesh);
@@ -233,7 +237,7 @@ function backdropDecor(spec, sec) {
 }
 
 /** Scenery for one section, one InstancedMesh per model. Models still loading are left out. */
-function decorMeshes(list, origin) {
+function decorMeshes(list, origin, replaced = null) {
   const byModel = new Map();
   for (const d of list || []) {
     if (!d.model) continue;
@@ -244,16 +248,22 @@ function decorMeshes(list, origin) {
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
-  const one = new THREE.Vector3(1, 1, 1);
+  const scale = new THREE.Vector3();
   for (const [model, items] of byModel) {
     const kit = kitGeometry(KIT.prop(model));
     if (!kit) continue;
-    const im = new THREE.InstancedMesh(kit.geometry, kitMaterial(), items.length);
+    const material = model === 'grove_greenhouse_glass' ? grovePaneMaterial : kitMaterial();
+    const im = new THREE.InstancedMesh(kit.geometry, material, items.length);
+    im.name = model;
     items.forEach((d, i) => {
       q.setFromAxisAngle(up, (d.yaw || 0) * Math.PI / 180);
-      const k = d.scale || 1;
-      m.compose(new THREE.Vector3(d.at[0] + origin[0], d.at[1] + (origin[1] || 0) - kit.minY * k, d.at[2] + origin[2]), q, k === 1 ? one : new THREE.Vector3(k, k, k));
+      if (Array.isArray(d.scale)) scale.fromArray(d.scale);
+      else scale.setScalar(d.scale || 1);
+      m.compose(new THREE.Vector3(
+        d.at[0] + origin[0], d.at[1] + (origin[1] || 0) - kit.minY * scale.y, d.at[2] + origin[2],
+      ), q, scale);
       im.setMatrixAt(i, m);
+      if (replaced && d.replace) for (const id of d.replace) replaced.add(id);
     });
     im.instanceMatrix.needsUpdate = true;
     im.computeBoundingSphere();
@@ -294,9 +304,13 @@ export function createLevelView() {
     if (!sec) return;
     const field = solidTerrain(sec);
     // A level with no dressing of its own still gets its stage's backdrop.
-    const dress = DRESSING[lv.id] || STAGE_DRESSING[lv.stage] || {};
+    const grove = lv.id === 'L03';
+    const dress = grove ? {} : DRESSING[lv.id] || STAGE_DRESSING[lv.stage] || {};
     const prims = new Map((sec.geometry || []).map((g) => [g.id, g]));
     const replaced = new Set();
+    if (grove) {
+      for (const mesh of decorMeshes(grovePlacements(sec, prims), [0, 0, 0], replaced)) group.add(mesh);
+    }
     for (const [id, d] of Object.entries(dress.fit || {})) {
       const g = prims.get(id);
       if (!g) continue;
@@ -338,10 +352,15 @@ export function createLevelView() {
     const hidden = (g) => !!(dress.hide && g.id && dress.hide.test(g.id));
     const geometry = (sec.geometry || []).filter((g) => !(field && g.tag === 'terrainStandIn') && !replaced.has(g.id) && !hidden(g));
     for (const door of doors) geometry.push(aabbBox(door));
-    for (const mesh of buildSectionMeshes(geometry, mats)) group.add(mesh);
+    for (const mesh of buildSectionMeshes(grove ? geometry.map(groveGeometry) : geometry, mats, grove ? groveLevelMaterial : levelMaterial)) group.add(mesh);
     if (field) group.add(terrainMesh(field, mats));
-    for (const g of sec.geometry || []) if (g.kind === 'terrain') group.add(terrainMesh(g, mats));
-    for (const m of sec.mechanisms || []) addMarker(m);
+    // The L03 Crop Fields use the flat walkable slab. Its Blender crop rows
+    // and path stones sit on that surface.
+    for (const g of sec.geometry || []) if (g.kind === 'terrain' && (!grove || g.id !== 'S1-T')) group.add(terrainMesh(g, mats));
+    for (const m of sec.mechanisms || []) {
+      if (grove && m.kind === 'manaBloom' && replaced.has(m.id.replace(/-use$/, '-flower'))) continue;
+      addMarker(m);
+    }
     for (const w of sec.weapons || []) addMarker({ ...w, kind: 'rack' });
     syncGot(lv);
   }

@@ -54,6 +54,7 @@ describe('asset manifest', () => {
       'art/blender/fx_explosion.blend',
       'art/blender/fx_poof.blend',
       'art/blender/new_enemies.blend',
+      'art/blender/vegetable_grove.blend',
       'art/blender/weapon_animations.blend',
     ]);
     expect(manifest.authoring.shippedInPublic).toBe(false);

@@ -3,6 +3,7 @@
 // actually requests. Missing refs fail. Unused files are reported, not deleted.
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { STAGE_IDS, stageAssets, CHARACTER_MODELS } from '../src/data/stages.js';
@@ -11,7 +12,7 @@ import { DUEL_BOSS_LIST } from '../src/data/duelBosses.js';
 
 export const BASELINE_COMMIT = '8a5676ed24700dafd15a759c1e2fa71b470180b9';
 
-const ASSET_EXT = 'glb|gltf|png|jpe?g|webp|gif|ktx2|basis';
+const ASSET_EXT = String.raw`glb(?:\.gz)?|gltf|png|jpe?g|webp|gif|ktx2|basis`;
 const QUOTED_ASSET = new RegExp(`['"\`]([^'"\`\\n]*?\\.(?:${ASSET_EXT}))['"\`]`, 'gi');
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
@@ -288,8 +289,9 @@ function describeAsset(relPath, buf, ref) {
     record.decodedNote = 'RGBA8 upload estimate, width * height * 4';
     return record;
   }
-  if (ext === '.glb' || ext === '.gltf') {
-    const details = ext === '.glb' ? glbDetails(buf) : null;
+  const packedGlb = relPath.endsWith('.glb.gz');
+  if (packedGlb || ext === '.glb' || ext === '.gltf') {
+    const details = packedGlb ? glbDetails(gunzipSync(buf)) : ext === '.glb' ? glbDetails(buf) : null;
     record.kind = 'glb';
     record.width = null;
     record.height = null;
