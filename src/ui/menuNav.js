@@ -17,6 +17,8 @@ function usable(el) {
 /** Stable identity for an item, so focus survives a panel re-render (the shop redraws a few times a second). */
 function keyOf(el) {
   const d = el.dataset;
+  // Standard options and Controller settings rows change their label (armed confirm, "Press a key…").
+  if (d.std || d.bindKey || d.bindPad || d.ctl) return [el.tagName, d.std, d.bindKey, d.bindPad, d.ctl].join('|');
   return [el.tagName, el.id, d.go, d.p, d.act, d.v, d.slot, d.boss, d.level, d.tier, d.pvpGo, el.textContent.trim().slice(0, 24)].join('|');
 }
 

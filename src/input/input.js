@@ -19,7 +19,12 @@ export const BIND = {
   spellSelect: ['KeyQ'], // next unlocked spell; right-click casts the selected one
   aimToggle: ['KeyF'], // aim -> (sniper) zoom 2 -> off; middle-click does the same
   skip: ['Enter'],
+  slot1: ['Digit1'], slot2: ['Digit2'], slot3: ['Digit3'], slot4: ['Digit4'], slotLegendary: ['KeyL'], // 5 opens the stats panel
+  // Panels (src/ui/ui.js reads these): Tab held shows skills, 5 toggles stats, O the shop, I your guns.
+  skills: ['Tab'], stats: ['Digit5'], shop: ['KeyO'], inventory: ['KeyI'],
 };
+// BIND is the live layout: the Controller settings screen rewrites these lists in place
+// (applyControls in src/input/bindings.js), and every check below reads them on each key.
 export const LATCHED = ['jump', 'slide', 'dash', 'reload', 'interact', 'medkit', 'gooBolt', 'chainZap', 'swarm', 'manaShield', 'meteor', 'skip'];
 
 /** Key label shown in prompts and on the HUD for an action (the first key bound to it). */
@@ -82,7 +87,7 @@ export function createInput(canvas) {
     castSpell() { if (enabled) latch[api.spell] = true; },
     /** 0..1 while a reload press is being held toward a pick up (for the prompt). */
     get holdProgress() {
-      const kb = held.has('KeyR') ? reloadHold.progress(performance.now(), api.canInteract) : 0;
+      const kb = BIND.reload.some((c) => held.has(c)) ? reloadHold.progress(performance.now(), api.canInteract) : 0;
       return Math.max(kb, (pad && pad.holdProgress) || 0);
     },
     /** A held reload reached pick up: grab the gun in reach (through the sim), or open the Weapon Box. */
@@ -90,7 +95,7 @@ export function createInput(canvas) {
     /** Once per rendered frame: finishes a keyboard reload tap / hold. */
     frame(nowMs = performance.now()) {
       if (!enabled) { reloadHold.reset(); return; }
-      const r = reloadHold.update(false, held.has('KeyR'), nowMs, api.canInteract);
+      const r = reloadHold.update(false, BIND.reload.some((c) => held.has(c)), nowMs, api.canInteract);
       if (r === 'tap') latch.reload = true;
       else if (r === 'hold') api.holdInteract();
     },
@@ -178,8 +183,8 @@ export function createInput(canvas) {
       if (r === 'tap') latch.reload = true;
     }
     if (BIND.spellSelect.includes(e.code)) api.nextSpell();
-    if (/^Digit[1-4]$/.test(e.code)) slot = Number(e.code.slice(5)) - 1;
-    if (e.code === 'KeyL') slot = 4; // legendary slot (5 opens the stats panel)
+    for (let i = 0; i < 4; i++) if (BIND[`slot${i + 1}`].includes(e.code)) slot = i;
+    if (BIND.slotLegendary.includes(e.code)) slot = 4; // legendary slot
     // F: off → zoom 1 → (sniper) zoom 2 → off
     if (BIND.aimToggle.includes(e.code) && api.locked) api.toggleAim();
     if (BIND.sprint.includes(e.code)) api.dropAim(); // sprinting drops a toggled aim

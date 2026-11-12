@@ -14,6 +14,7 @@ import {
 } from '../../net/client.js';
 import { freeJoinTarget, labelIsFreePlay } from '../../hub/freePlay.js';
 import { mountFreeArena } from './freeArena.js';
+import { keyLabel } from '../../input/input.js';
 import { realtimeFromSdk } from '@metaverse/hub-sdk';
 
 const PANEL = 'position:relative;min-height:0;height:100%;background:#1a1030;overflow:hidden';
@@ -126,7 +127,7 @@ function mountScreen(screen) {
   screen.onclick = null;
 }
 
-export function startPvpSession({ screen, input, hub, demo = false, onExit, getGraphicsPreset = null }) {
+export function startPvpSession({ screen, input, hub, demo = false, onExit, getGraphicsPreset = null, menuExtrasHtml = null }) {
   mountScreen(screen);
   const root = document.createElement('div');
   root.dataset.pvpRoot = '1';
@@ -165,13 +166,14 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit, getG
   function showMenu() {
     root.innerHTML = `<div data-pvp-lobby class="title" style="margin:24px auto;max-width:720px">
       <h1 style="font-size:64px">FREE <span>1v1</span></h1>
-      <p class="tag">Same arena, same three guns, same ammo, no perks. Slide is C. Grapple is B. The claw reels back on a miss. Protocol ${PVP_PROTOCOL_VERSION}. Fingerprint ${CONTENT_FINGERPRINT}. Nothing here moves Tickets.</p>
+      <p class="tag">Same arena, same three guns, same ammo, no perks. Slide is ${keyLabel('slide')}. Grapple is ${keyLabel('grapple')}. The claw reels back on a miss. Protocol ${PVP_PROTOCOL_VERSION}. Fingerprint ${CONTENT_FINGERPRINT}. Nothing here moves Tickets.</p>
       <div class="menu">
         <button class="btn big" data-pvp-go="practice">Practice offline <small>local opponent, not recorded</small></button>
         <button class="btn big alt" data-pvp-go="mock">Two-client mock <small>authoritative stub until the hub match exists</small></button>
         <button class="btn big alt" data-pvp-go="queue">Find free match <small>hub realtime, no stake</small></button>
         <button class="btn alt" data-pvp-go="back" data-nav-back>← Back</button>
       </div>
+      ${menuExtrasHtml ? menuExtrasHtml() : ''}
       <p data-pvp-note class="tag"></p>
     </div>`;
     root.onclick = (event) => {

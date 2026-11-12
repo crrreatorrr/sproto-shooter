@@ -8,7 +8,7 @@ import { BOSSES } from '../data/enemies.js';
 import { compareGuns, sellValue, dpsOf } from '../sim/guns.js';
 import { PAD_BINDINGS } from '../input/padConfig.js';
 import { padGlyph } from '../input/gamepad.js';
-import { keyLabel } from '../input/input.js';
+import { BIND, keyLabel } from '../input/input.js';
 import { TUNING } from '../data/tuning.js';
 import { bossLabel } from './bossLabel.js';
 import { describePickup, pickupLine } from './pickupText.js';
@@ -38,9 +38,9 @@ const fmt = (n, d = 0) => (Math.round(n * 10 ** d) / 10 ** d).toLocaleString();
 const SPELL_ICON = { gooBolt: '●', chainZap: 'ϟ', swarm: '✲', manaShield: '◈', meteor: '☄' };
 const TYPE_ICON = { mg: '▬', shotgun: '▮', sniper: '━', bazooka: '◉', raygun: '⚡', bigbullets: '●', duckgun: '🦆' };
 const PANEL_NAMES = { shop: 'Shop', inventory: 'Your guns', skills: 'Skills', stats: 'Stats & powers' };
-// The shop key. B is the grapple, and N (twice) is the feedback window, so the shop has its own.
-export const SHOP_KEY = 'KeyO';
-const SHOP_LABEL = 'O';
+// The shop key is O by default. B is the grapple, and N (twice) is the feedback window, so the shop
+// has its own. Panel keys live in BIND (src/input/input.js) so Controller settings can move them.
+const isKey = (action, code) => (BIND[action] || []).includes(code);
 
 export function createUI(root, { input, bus, project, game }) {
   const st = { menu: null, tabHeld: false, statsOpen: false, lastKey: {} };
@@ -183,7 +183,7 @@ export function createUI(root, { input, bus, project, game }) {
   bus.on('waveStart', () => banner('FIGHT!', 'fight', 900));
   bus.on('waveCleared', (ev) => banner(`<small>WAVE ${ev.waveIndex + 1}</small>CLEARED! <em>+${ev.tickets} Run Cash</em>`, 'cleared'));
   bus.on('intermissionStart', () => {
-    const msg = pad() ? `SHOP [${glyph(PAD_BINDINGS.panel)}]<em>READY is in the shop</em>` : `SHOP [${SHOP_LABEL}]<em>ENTER when ready</em>`;
+    const msg = pad() ? `SHOP [${glyph(PAD_BINDINGS.panel)}]<em>READY is in the shop</em>` : `SHOP [${keyLabel('shop')}]<em>${keyLabel('skip').toUpperCase()} when ready</em>`;
     banner(`<small>INTERMISSION</small>${msg}`, 'inter', 3200);
   });
   bus.on('bossIntro', (ev) => banner(`<small>⚠ BOSS INCOMING ⚠</small>${ev.types.map((t) => BOSSES[t].name).join(' + ')}`, 'boss', 3000));
@@ -243,7 +243,7 @@ export function createUI(root, { input, bus, project, game }) {
     if (t) { toast(t, 'tip', 5200); saveTips(tips); }
   };
   for (const type of ['wavePre', 'waveStart', 'damage', 'intermissionStart', 'playerDowned']) bus.on(type, tipFor);
-  bus.on('spellUnlocked', (ev) => { const sp = SPELLS[ev.spellId]; if (sp) setTimeout(() => banner(`<small>SPELL UNLOCKED</small>${SPELL_ICON[ev.spellId]} ${sp.name}<em>${spellKey(ev.spellId) ? `Quick cast: ${spellKey(ev.spellId)} · ` : ''}Q picks the next spell</em>`, 'perk', 2800), 900); });
+  bus.on('spellUnlocked', (ev) => { const sp = SPELLS[ev.spellId]; if (sp) setTimeout(() => banner(`<small>SPELL UNLOCKED</small>${SPELL_ICON[ev.spellId]} ${sp.name}<em>${spellKey(ev.spellId) ? `Quick cast: ${spellKey(ev.spellId)} · ` : ''}${pad() ? glyph(PAD_BINDINGS.spellSelect) : keyLabel('spellSelect')} picks the next spell</em>`, 'perk', 2800), 900); });
   bus.on('shrine', (ev) => { const sp = SPELLS[ev.spell]; feed(`Spell unlocked: ${sp && sp.name ? sp.name : 'new spell'}`, '#7cff4a'); });
   bus.on('kill', (ev) => { if (ev.elite) feed('Elite down!', '#ffd700'); });
   // Damage direction: a red arc on the side the hit came from. It follows the view while it fades.
@@ -300,12 +300,13 @@ export function createUI(root, { input, bus, project, game }) {
     if (id === input.spell) return pad() ? glyph(PAD_BINDINGS.castSpell) : 'RMB';
     return pad() ? (PAD_BINDINGS[id] ? glyph(PAD_BINDINGS[id]) : '') : keyLabel(id);
   }
-  function closeMenu() {
+  /** `relock` false: a screen is about to cover the game (Main menu), so the mouse stays free. */
+  function closeMenu(relock = true) {
     st.menu = null;
     els.panel.hidden = true;
     els.panel.innerHTML = '';
     input.setEnabled(true);
-    if (els.screen.hidden) input.lock();
+    if (relock && els.screen.hidden) input.lock();
   }
   function act(a) {
     if (game.rewardedCampaign?.unsupportedControl()) return;
@@ -314,16 +315,17 @@ export function createUI(root, { input, bus, project, game }) {
 
   input.on('key', (e) => {
     if (e.repeat) return;
-    if (e.code === 'Tab') { st.tabHeld = true; return; }
+    if (game.ctl?.isOpen) return; // Controller settings is on top: its own keys
+    if (isKey('skills', e.code)) { st.tabHeld = true; return; }
     if (!els.screen.hidden) return;
-    if (e.code === 'Digit5' && !st.menu) { st.statsOpen = !st.statsOpen; return; }
+    if (isKey('stats', e.code) && !st.menu) { st.statsOpen = !st.statsOpen; return; }
     // B is the grapple and nothing else: it neither opens the shop nor raises a toast.
-    if (e.code === SHOP_KEY && !st.menu) {
+    if (isKey('shop', e.code) && !st.menu) {
       if (game.shopOpen()) openMenu('shop'); else if (game.state.mode === 'waves') toast('Shop opens between waves', 'bad');
-    } else if (e.code === 'KeyI' && !st.menu) openMenu('inventory');
-    else if ((e.code === 'Escape' || e.code === SHOP_KEY || e.code === 'KeyI') && st.menu) closeMenu();
+    } else if (isKey('inventory', e.code) && !st.menu) openMenu('inventory');
+    else if ((e.code === 'Escape' || isKey('shop', e.code) || isKey('inventory', e.code)) && st.menu) closeMenu();
   });
-  input.on('keyup', (e) => { if (e.code === 'Tab') st.tabHeld = false; });
+  input.on('keyup', (e) => { if (isKey('skills', e.code)) st.tabHeld = false; });
 
   els.panel.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');
@@ -386,7 +388,9 @@ export function createUI(root, { input, bus, project, game }) {
       const on = PANEL_NAMES[st.menu];
       padTabs = `<div class="padtabs"><kbd>${glyph('lb')}</kbd>${names.map((n) => `<span class="${n === on ? 'on' : ''}">${n}</span>`).join('')}<kbd>${glyph('rb')}</kbd></div>`;
     }
-    els.panel.innerHTML = `<div class="pwrap">${padTabs}${body}<button class="x" data-act="close" data-nav-back>✕ Close ${pad() ? `[${glyph('b')}]` : '[Esc]'}</button></div>`;
+    // Every panel ends with the standard options: Main menu, Hub, Controller settings, Full screen.
+    const std = game.stdMenuHtml ? game.stdMenuHtml({ main: true }) : '';
+    els.panel.innerHTML = `<div class="pwrap">${padTabs}${body}${std}<button class="x" data-act="close" data-nav-back>✕ Close ${pad() ? `[${glyph('b')}]` : '[Esc]'}</button></div>`;
   }
 
   function resBar(p) {
@@ -414,11 +418,11 @@ export function createUI(root, { input, bus, project, game }) {
         <div><h3>Upgrades</h3>${ups}</div>
         <div><h3>Sell guns</h3>${sells}</div>
       </div>
-      ${inter ? `<button class="btn big" data-act="ready" data-nav-enter>READY! Start next wave ${pad() ? '' : '[Enter]'}</button>` : ''}`;
+      ${inter ? `<button class="btn big" data-act="ready" data-nav-enter>READY! Start next wave ${pad() ? '' : `[${keyLabel('skip')}]`}</button>` : ''}`;
   }
 
   function inventoryHtml(s, p) {
-    return `<h2>🎒 Your Guns</h2>${resBar(p)}<div class="offers">${p.guns.map((g, i) => slotUsable(p, i) ? `<div class="offer"><div class="slotno">${i === LEGENDARY_SLOT ? '★ Legendary slot [L]' : `Slot ${i + 1}`}${i === p.activeSlot ? ' · equipped' : ''}</div>${gunCardHtml(g, null, { footer: g ? `<button class="btn sm" data-act="drop" data-v="${i}">Drop</button>` : '' })}</div>` : `<div class="offer"><div class="gcard empty">🔒 Slot ${i + 1}<br><small>Buy in the shop</small></div></div>`).join('')}</div>`;
+    return `<h2>🎒 Your Guns</h2>${resBar(p)}<div class="offers">${p.guns.map((g, i) => slotUsable(p, i) ? `<div class="offer"><div class="slotno">${i === LEGENDARY_SLOT ? `★ Legendary slot [${keyLabel('slotLegendary')}]` : `Slot ${i + 1}`}${i === p.activeSlot ? ' · equipped' : ''}</div>${gunCardHtml(g, null, { footer: g ? `<button class="btn sm" data-act="drop" data-v="${i}">Drop</button>` : '' })}</div>` : `<div class="offer"><div class="gcard empty">🔒 Slot ${i + 1}<br><small>Buy in the shop</small></div></div>`).join('')}</div>`;
   }
 
   // ---------- skills overlay (Tab) ----------
@@ -431,7 +435,7 @@ export function createUI(root, { input, bus, project, game }) {
       return `<div class="skc" style="--c:${def.color}"><div class="skh">${def.icon} ${def.name} <span>Lv ${sk.level}</span></div>
         <div class="xpb"><b style="width:${sk.level >= 10 ? 100 : (sk.xp / need) * 100}%"></b><span>${sk.level >= 10 ? 'MAX' : `${Math.floor(sk.xp)} / ${need} XP`}</span></div>
         <div class="src">XP from: ${src}</div>${perks}</div>`;
-    }).join('')}</div><div class="hint">${st.menu === 'skills' ? (pad() ? `${glyph('lb')} / ${glyph('rb')} switch · ${glyph('b')} close` : 'Esc to close') : 'Hold TAB'} · Skills level up just by doing things. No points to spend.</div>`;
+    }).join('')}</div><div class="hint">${st.menu === 'skills' ? (pad() ? `${glyph('lb')} / ${glyph('rb')} switch · ${glyph('b')} close` : 'Esc to close') : `Hold ${keyLabel('skills').toUpperCase()}`} · Skills level up just by doing things. No points to spend.</div>`;
   }
 
   // ---------- stats & powers overlay (5) ----------
@@ -469,7 +473,7 @@ export function createUI(root, { input, bus, project, game }) {
     return `<div class="stats-screen">${stats}
       <div class="skc" style="--c:#9b6bff"><div class="skh">🔮 Spells</div>${spells}<div class="src">Goo Bolt is free outside the campaign. Wave Mode unlocks one more spell per cleared wave. Campaign spells come from shrines.</div></div>
       <div class="skc" style="--c:#4fd1c5"><div class="skh">✨ Perks</div>${perks}</div>
-    </div><div class="hint">${st.menu === 'stats' ? (pad() ? `${glyph('b')} to close` : 'Esc to close') : 'Press 5 to close'} · the game keeps running</div>`;
+    </div><div class="hint">${st.menu === 'stats' ? (pad() ? `${glyph('b')} to close` : 'Esc to close') : `Press ${keyLabel('stats')} to close`} · the game keeps running</div>`;
   }
 
   // ---------- per-frame update ----------
@@ -543,12 +547,12 @@ export function createUI(root, { input, bus, project, game }) {
       const fuel = lv.fuel > 0 || (s.players[s.localPlayerId].jetpack) ? ` · fuel ${Math.ceil(lv.fuel)}` : '';
       wave = `<b>${lv.name}</b> · ${lv.objective || ''}${fuel}`;
     } else if (s.mode === 'boss' && s.bossFight) wave = `<b>BOSS FIGHT</b> · ${BOSSES[s.bossFight.type].name} · Tier ${s.tier}`;
-    else if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> · Tier ${s.tier} <small>${pad() ? `[${glyph(PAD_BINDINGS.panel)}] shop` : `[\`] debug · [${SHOP_LABEL}] shop`}</small>`;
+    else if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> · Tier ${s.tier} <small>${pad() ? `[${glyph(PAD_BINDINGS.panel)}] shop` : `[\`] debug · [${keyLabel('shop')}] shop`}</small>`;
     else if (s.wave) {
       const w = s.wave;
       const left = s.enemies.filter((e) => !e.dead && e.type !== 'dummy').length + w.spawnQueue.length;
       const remainingGroups = tierWave(w.index, s.tier).groups.slice(w.groupIdx).reduce((n, gg) => n + gg.spawns.reduce((m, x) => m + x.count, 0), 0);
-      const phaseTxt = { pre: 'Get ready…', combat: `Enemies left: ${left + remainingGroups}`, bossIntro: 'BOSS INCOMING', boss: 'BOSS FIGHT', cleared: 'Cleared!', intermission: `Intermission ${Math.ceil(w.intermissionT)}s · ${pad() ? `[${glyph(PAD_BINDINGS.panel)}] Shop · Ready in the shop` : `[${SHOP_LABEL}] Shop · [Enter] Ready`}`, victory: 'VICTORY', defeat: 'DEFEAT' }[w.phase];
+      const phaseTxt = { pre: 'Get ready…', combat: `Enemies left: ${left + remainingGroups}`, bossIntro: 'BOSS INCOMING', boss: 'BOSS FIGHT', cleared: 'Cleared!', intermission: `Intermission ${Math.ceil(w.intermissionT)}s · ${pad() ? `[${glyph(PAD_BINDINGS.panel)}] Shop · Ready in the shop` : `[${keyLabel('shop')}] Shop · [${keyLabel('skip')}] Ready`}`, victory: 'VICTORY', defeat: 'DEFEAT' }[w.phase];
       wave = `<b>WAVE ${w.index + 1}/3</b> · Tier ${s.tier} · ${phaseTxt}`;
     }
     if (s.tuning.godMode) wave += ' · <b class="god">GOD MODE</b>';
@@ -599,9 +603,9 @@ export function createUI(root, { input, bus, project, game }) {
     else if (nearGun) {
       const leg = nearGun.gun && nearGun.gun.quality === 'legendary';
       const full = p.guns.slice(0, p.unlockedSlots).every(Boolean);
-      prompt = `<b>${keyTag(keyLabel('reload'), PAD_BINDINGS.interact, true)}</b> Pick up${leg ? (p.guns[LEGENDARY_SLOT] && full ? ' (swaps your legendary)' : ` → legendary slot${pad() ? '' : ' [L]'}`) : full ? ' (swaps with equipped)' : ''}`;
+      prompt = `<b>${keyTag(keyLabel('reload'), PAD_BINDINGS.interact, true)}</b> Pick up${leg ? (p.guns[LEGENDARY_SLOT] && full ? ' (swaps your legendary)' : ` → legendary slot${pad() ? '' : ` [${keyLabel('slotLegendary')}]`}`) : full ? ' (swaps with equipped)' : ''}`;
     }
-    else if (s.wave && s.wave.phase === 'intermission') prompt = pad() ? `<b>${keyTag(SHOP_LABEL, PAD_BINDINGS.panel)}</b> Shop · Ready` : `<b>[${SHOP_LABEL}]</b> Shop · <b>[Enter]</b> Ready`;
+    else if (s.wave && s.wave.phase === 'intermission') prompt = pad() ? `<b>${keyTag(keyLabel('shop'), PAD_BINDINGS.panel)}</b> Shop · Ready` : `<b>[${keyLabel('shop')}]</b> Shop · <b>[${keyLabel('skip')}]</b> Ready`;
     html(els.prompt, 'prompt', prompt);
     const hold = nearGun && !p.dead ? input.holdProgress : 0;
     set(els.prompt, 'hold', Math.round(hold * 100), (e, v) => e.style.setProperty('--hold', v + '%'));

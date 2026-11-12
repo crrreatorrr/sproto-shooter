@@ -80,7 +80,13 @@ no frame-rate guarantee and change no gameplay, rewards or server capacity.
 
 ## Controls
 
-Keyboard, mouse and controller all work at once. The HUD prompts and the controls list on the title and pause screens follow the device you used last. The layout follows the shared Sproto convention, so the hub and every Sproto game feel the same.
+Keyboard, mouse and controller all work at once. The HUD prompts follow the device you used last. The layout follows the shared Sproto convention, so the hub and every Sproto game feel the same. The tables below are the defaults.
+
+### Menus, full screen and Controller settings
+
+The game fills the browser window; a menu taller than the window scrolls inside itself. Every menu (title, character / boss / level select, pause, the shop and other panels, results screens, the Free 1v1 lobby and the wager desk) has the same options next to its own: **Main menu** (not on the main menu itself; during a run it asks first, like Return to Hub), **⌂ Return to Hub**, **🎮 Controller settings** and **⛶ Full screen** (the browser's full screen, hidden where the browser has none; F11 and Esc keep its label right, and the Esc that leaves full screen does nothing else in the game). Resume still captures the mouse in full screen.
+
+**Controller settings** lists every key and button and what it does. Pick an action and press its new key or pad button: Esc (or the pad's Menu button) cancels, a key or button that another action uses swaps over, and keys the game keeps for itself (Esc, N, M, P, `, F3) are refused. It also has Reset to defaults, the controller look speed and aim assist sliders, and the left stick dead zone. The layout is saved on this device (`localStorage` key `sproto-shooter-controls`) and applies at once. Remapping happens in the input layer (`src/input/bindings.js` rewrites the key and button tables `input.js` and `padGameplay.js` read), so the simulation, the input codec and every pinned fingerprint are unchanged. The mouse buttons, the sticks and the menu buttons (A / B / LB / RB / View) are fixed. The game does not use controller vibration, so there is no vibration switch.
 
 ### Keyboard and mouse
 
@@ -127,7 +133,7 @@ Why this layout: both thumbs stay on the sticks for what you do mid-fight. The t
 
 Look speed has a response curve (fine aim near the centre) and ramps up a little when the stick is held at the edge. Aim assist is controller only: the stick slows down near an enemy, and while aiming (R3) the view drifts gently toward the head. Mouse and keyboard never get it. Its numbers are in `src/input/padConfig.js`; the pause screen has *Controller look speed* and *Controller aim assist* (0 turns it off).
 
-A button held while the page loads (the hub's A press) is ignored until it is released. Unplugging the controller pauses the game. Return to Hub is on the title and pause screens (it asks again during a run). Browsers do not let a controller press capture the mouse or (in most browsers) start audio, so sound may wait for the first click or key press. Free 1v1 practice: Menu moves the focus to Ready / Leave, B goes back to playing.
+A button held while the page loads (the hub's A press) is ignored until it is released. Unplugging the controller pauses the game. Return to Hub is on every menu (it asks again during a run). Browsers do not let a controller press capture the mouse or (in most browsers) start audio, so sound may wait for the first click or key press. Free 1v1 practice: Menu moves the focus to Ready / Leave, B goes back to playing.
 
 ## Code layout
 

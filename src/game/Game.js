@@ -32,9 +32,9 @@ import { createCampaignFlow, campaignFlowStep } from './campaignFlow.js';
 import { debugTaints, loadoutAction, loadoutEmpty, loadoutFromState, readLoadout, writeLoadout } from '../save/loadout.js';
 import { crashGuard } from '../core/crashGuard.js';
 import { createPadController } from '../input/padController.js';
-import { NAV_KEYS, keyLabel } from '../input/input.js';
-import { padGlyph } from '../input/gamepad.js';
-import { PAD_BINDINGS } from '../input/padConfig.js';
+import { BIND, NAV_KEYS } from '../input/input.js';
+import { createControlsScreen } from '../ui/controlsScreen.js';
+import { fullscreenSupported, installFullscreen, isFullscreen, stdMenuHtml, toggleFullscreen } from '../ui/fullscreen.js';
 import { createMenuNav } from '../ui/menuNav.js';
 import { installGameFeedback } from '../hub/feedback.js';
 import { PLAYER_CHARACTERS, saveCharacter, selectedCharacter } from '../render/playerCharacters.js';
@@ -76,6 +76,17 @@ export class Game {
     this.character = selectedCharacter();
     this.renderer = createRenderer(app.querySelector('#view'), this.bus, this.character.model, this.settings.graphicsPreset);
     this.input = createInput(this.renderer.canvas);
+    // Controller settings: loads the saved key / button layout into the input layer before play starts.
+    this.ctl = createControlsScreen(this, { host: app });
+    this.titleLeaveArmed = false;
+    this.screenKind = null;
+    // Full screen: labels follow the real state; the Esc that leaves full screen does nothing else.
+    this.fullscreenUi = installFullscreen();
+    // Every menu's standard options (Main menu, Hub, Controller settings, Full screen) carry data-std.
+    document.addEventListener('click', (e) => {
+      const b = e.target && e.target.closest ? e.target.closest('[data-std]') : null;
+      if (b && !b.disabled) this.stdAction(b.dataset.std, b);
+    });
     this.audio = createAudio(this.bus);
     this.ui = createUI(app.querySelector('#ui'), { input: this.input, bus: this.bus, project: (p) => this.renderer.project(p), game: this });
     this.screen = app.querySelector('#screen');
@@ -259,7 +270,7 @@ export class Game {
       if (e.code === 'KeyP' && !e.repeat && !this.ui.menuOpen) {
         if (!this.rewardedCampaign?.unsupportedControl()) this.queue({ type: 'debug', op: 'toggleGod' });
       }
-      if (e.code === 'Enter' && this.state.wave && this.state.wave.phase === 'intermission' && !this.ui.menuOpen) this._skip = true;
+      if (BIND.skip.includes(e.code) && this.state.wave && this.state.wave.phase === 'intermission' && !this.ui.menuOpen) this._skip = true;
     });
   }
 
@@ -267,6 +278,8 @@ export class Game {
     if (this.rewardedCampaign?.controlsRestricted) { this.rewardedCampaign.unsupportedControl(); return; }
     this.playing = true;
     this.hubLeaveArmed = false;
+    this.titleLeaveArmed = false;
+    this.ctl.close();
     this.audio.ensure();
     if (mode === 'boss') this.lastBoss = extra.boss;
     this._campaignShown = false;
@@ -298,7 +311,11 @@ export class Game {
     }
     const s = this.state, p = s.players[s.localPlayerId];
     this.input.unlock();
-    this.ui.closeMenu && this.ui.menuOpen && this.ui.closeMenu();
+    this.ui.closeMenu && this.ui.menuOpen && this.ui.closeMenu(false);
+    this.screenKind = kind;
+    this.titleLeaveArmed = false;
+    // Every screen ends with the standard options; the main menu has no "Main menu".
+    const std = this.stdMenuHtml({ main: kind !== 'title' });
     let body = '';
     if (kind === 'title') {
       body = `<div class="title"><h1>SPROTO<br><span>SHOOTER</span></h1>
@@ -315,14 +332,12 @@ export class Game {
           <button class="btn alt" data-go="characters">Choose Character <small>${this.character.name}</small></button>
           <span data-wager-slot></span>
           ${this.rewardedCampaign ? '<button class="btn alt" data-go="rewarded">Rewarded campaign <small>server-verified boss runs</small></button>' : ''}
-          <button class="btn alt" data-go="hub">${this.hubReturnLabel()}</button>
         </div>
         <div class="menu minor practice"><span class="row-label">Practice</span>
           <button class="btn alt sm" data-go="sandbox">🧪 Sandbox <small>debug spawn everything</small></button>
           <button class="btn alt sm" data-go="test">🎯 Test Range <small>every gun, infinite ammo</small></button>
-          <button class="btn alt sm" data-go="controls" aria-expanded="${this._titleControls ? 'true' : 'false'}">⌨ Controls</button>
         </div>
-        <div class="title-controls" ${this._titleControls ? '' : 'hidden'}>${controlsHtml(this.input.device, this.padStyle)}</div></div>`;
+        ${std}</div>`;
     } else if (kind === 'characters') {
       const asset = `${import.meta.env.BASE_URL}assets/`;
       const cards = PLAYER_CHARACTERS.map(({ id, name, portrait }) => {
@@ -333,7 +348,7 @@ export class Game {
       body = `<div class="title character-select"><h1>CHOOSE <span>CHARACTER</span></h1>
         <p class="tag">Choose who you see in the arena and behind the trigger.</p>
         <div class="character-grid">${cards}</div>
-        <div class="menu"><button class="btn alt" data-go="title" data-nav-back>← Back</button></div></div>`;
+        <div class="menu"><button class="btn alt" data-go="title" data-nav-back>← Back</button></div>${std}</div>`;
     } else if (kind === 'bossSelect') {
       const cards = Object.entries(BOSSES).filter(([, b]) => !b.campaign).map(([id, b]) => `<button class="btn boss-card" data-go="boss" data-boss="${id}" style="--c:#${b.color.toString(16).padStart(6, '0')}">
           <b>${b.name}</b><small>${b.tag === 'magic' ? '🔮 Magic' : '💪 Physical'} · ${b.hp.toLocaleString()} HP</small><span>${BOSS_BLURB[id] || ''}</span></button>`).join('');
@@ -341,7 +356,7 @@ export class Game {
         <p class="tag">Pick a boss. You get one of every gun with full ammo. Real damage: no god mode unless you press P.</p>
         <div class="boss-grid">${cards}</div>
         <div class="menu"><div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
-          <button class="btn alt" data-go="title" data-nav-back>← Back</button></div></div>`;
+          <button class="btn alt" data-go="title" data-nav-back>← Back</button></div>${std}</div>`;
     } else if (kind === 'bossWon' || kind === 'bossLost') {
       const win = kind === 'bossWon', b = BOSSES[this.lastBoss] || {}, r = s.run;
       body = `<div class="end ${win ? 'victory' : 'defeat'}"><h1>${win ? `${b.name} DOWN!` : 'DEFEATED'}</h1>
@@ -350,8 +365,7 @@ export class Game {
         <div class="menu">
           <button class="btn big" data-go="boss" data-boss="${this.lastBoss}">${win ? '↻ Fight again' : '↻ Retry'}</button>
           <button class="btn" data-go="bossSelect">👑 Pick another boss</button>
-          <button class="btn alt" data-go="title">Main menu</button>
-        </div></div>`;
+        </div>${std}</div>`;
     } else if (kind === 'campaignSelect') {
       const prof = loadProfile();
       const cards = CAMPAIGN.map((id, i) => {
@@ -362,7 +376,7 @@ export class Game {
       body = `<div class="title boss-select"><h1>THE GREAT <span>SPROTO AUDIT</span></h1>
         <p class="tag">Ten levels. Your guns stay the same. The world does not.</p>
         <div class="boss-grid">${cards}</div>
-        <div class="menu"><button class="btn alt" data-go="title" data-nav-back>← Back</button></div></div>`;
+        <div class="menu"><button class="btn alt" data-go="title" data-nav-back>← Back</button></div>${std}</div>`;
     } else if (kind === 'levelClear' || kind === 'levelLost') {
       const win = kind === 'levelClear';
       const lv = s.level || {};
@@ -376,7 +390,7 @@ export class Game {
           <button class="btn" data-go="retryLevel" data-level="${lv.id}">↻ Retry</button>
           ${kind === 'levelLost' ? `<button class="btn" data-go="checkpoint">Checkpoint</button>` : ''}
           <button class="btn alt" data-go="campaignSelect">Level select</button>
-        </div></div>`;
+        </div>${std}</div>`;
     } else if (kind === 'victory' || kind === 'defeat') {
       const r = s.run, win = kind === 'victory';
       const next = Math.min(MAX_TIER, s.tier + 1);
@@ -391,7 +405,7 @@ export class Game {
         <div class="menu">
           ${win ? `<button class="btn big" data-go="waves" data-tier="${next}">▶ Next: Tier ${next}</button><button class="btn" data-go="continue">Keep looting (shop open)</button>` : `<button class="btn big" data-go="waves" data-tier="${s.tier}">↻ Retry Tier ${s.tier}</button>`}
           <button class="btn alt" data-go="sandbox">🧪 Sandbox</button>
-        </div></div>`;
+        </div>${std}</div>`;
     }
     this.screen.innerHTML = body;
     this.screen.hidden = false;
@@ -406,14 +420,6 @@ export class Game {
       if (!b) return;
       const go = b.dataset.go;
       if (go === 'rewarded') { this.rewardedCampaign?.open(); return; }
-      if (go === 'controls') {
-        // The controls list is long; it stays folded until asked for so the modes fit a 720p screen.
-        this._titleControls = !this._titleControls;
-        const box = this.screen.querySelector('.title-controls');
-        if (box) box.hidden = !this._titleControls;
-        b.setAttribute('aria-expanded', this._titleControls ? 'true' : 'false');
-        return;
-      }
       if (go === 'hub') { this.requestHubReturn(b); return; }
       if (go === 'continue') { this.hideScreen(); this.paused = false; this.input.lock(); return; }
       if (go === 'pvp') { this.openPvp(); return; }
@@ -436,6 +442,67 @@ export class Game {
   hideScreen() { this.screen.hidden = true; this.screen.innerHTML = ''; }
   hubReturnLabel() {
     return this.playing && this.hubLeaveArmed ? 'Leave this run?' : '⌂ Return to Hub';
+  }
+
+  // ---------- standard menu options (every menu: Main menu, Hub, Controller settings, Full screen) ----------
+  /** True while a run is under the menu (pause screen or an in-game panel): leaving it asks first. */
+  inRun() {
+    if (!this.playing || this.pvpActive) return false;
+    return this.screen.hidden || !!this.screen.querySelector('.pause');
+  }
+  mainMenuLabel() {
+    return this.titleLeaveArmed && this.inRun() ? 'Leave this run? Main menu' : 'Main menu';
+  }
+  /** On the title screen itself (no Main menu option there). */
+  onTitle() {
+    return !this.screen.hidden && this.screenKind === 'title' && !this.pvpActive && !this._wagerScreen;
+  }
+  stdMenuHtml({ main = true, controls = true } = {}) {
+    return stdMenuHtml({
+      main, controls,
+      mainLabel: this.mainMenuLabel(),
+      hubLabel: this.hubReturnLabel(),
+      fullscreen: fullscreenSupported() ? { on: isFullscreen() } : null,
+    });
+  }
+  stdAction(what, button) {
+    if (what === 'fullscreen') {
+      // Called from the click itself (a user gesture). A gamepad press is not one in most browsers.
+      // The HUD toasts sit under the menus, so the refusal is said on the button itself.
+      toggleFullscreen().then((ok) => { if (!ok && button && button.isConnected) button.textContent = '⛶ Full screen: click it or press Enter'; });
+    } else if (what === 'controls') this.openControls();
+    else if (what === 'hub') this.requestHubReturn(button);
+    else if (what === 'title') this.goMainMenu(button);
+  }
+  openControls() {
+    if (this.ctl.isOpen) return;
+    this.ctl.open({ main: !this.onTitle() });
+  }
+  /** Main menu from any menu. Mid-run (pause or a panel) the first press asks, like Return to Hub. */
+  goMainMenu(button) {
+    if (this.pvpActive) {
+      // Free 1v1 lobby: its own Back leaves the session and returns to the title screen.
+      this.ctl.close();
+      this.screen.querySelector('[data-pvp-go="back"]')?.click();
+      return;
+    }
+    if (this._wagerScreen) {
+      this.ctl.close();
+      const back = this.screen.querySelector('[data-wager-action="back"]');
+      if (back) { back.click(); return; }
+      if (this.wagerFlow) void this.wagerFlow.cancelQueue();
+      this._wagerScreen = false;
+      this.showScreen('title');
+      return;
+    }
+    if (this.inRun() && !this.titleLeaveArmed) {
+      this.titleLeaveArmed = true;
+      if (button) button.textContent = this.mainMenuLabel();
+      return;
+    }
+    this.titleLeaveArmed = false;
+    this.ctl.close();
+    this.showScreen('title');
   }
   requestHubReturn(button) {
     if (this.rewardedCampaign?.active && !this.hubLeaveArmed) {
@@ -482,14 +549,15 @@ export class Game {
     if (!this.screen.hidden) return;
     this.paused = true;
     this._pausedAt = performance.now();
+    this.screenKind = 'pause';
+    this.titleLeaveArmed = false;
+    // Controller look speed, aim assist and the full key / button list live in Controller settings.
     this.screen.innerHTML = `<div class="pause"><h1>PAUSED</h1><button class="btn big" data-p="resume" data-nav-default>Resume</button>
-      <button class="btn" data-p="title">Main menu</button>
-      <button class="btn" data-p="feedback">Send feedback</button>
-      ${this.rewardedCampaign ? '<button class="btn" data-p="rewarded">Reward status</button>' : ''}
-      <button class="btn alt" data-p="hub">${this.hubReturnLabel()}</button>
+      ${this.stdMenuHtml({ main: true })}
+      <div class="menu minor"><button class="btn" data-p="feedback">Send feedback</button>
+      ${this.rewardedCampaign ? '<button class="btn" data-p="rewarded">Reward status</button>' : ''}</div>
+      <div class="pause-settings">
       <label>Mouse sensitivity <input id="sens" type="range" min="0.3" max="3" step="0.05" value="${this.settings.sensitivity}"></label>
-      <label>Controller look speed <input id="padsens" type="range" min="0.3" max="3" step="0.05" value="${this.settings.padSensitivity ?? 1}"></label>
-      <label>Controller aim assist <input id="aimassist" type="range" min="0" max="1.5" step="0.05" value="${this.settings.aimAssist ?? 1}"></label>
       <label><input id="hs" type="checkbox" ${this.settings.hitstop ? 'checked' : ''}> Hitstop on big hits</label>
       <label>Screen shake <input id="shk" type="range" min="0" max="1.5" step="0.1" value="${this.settings.shake}"></label>
       <label>Graphics resolution <select id="graphics-preset">${Object.entries(GRAPHICS_PRESETS).map(([id, preset]) => `<option value="${id}" ${this.settings.graphicsPreset === id ? 'selected' : ''}>${preset.label}</option>`).join('')}</select></label>
@@ -498,7 +566,7 @@ export class Game {
       <label>Master <input id="vol-master" type="range" min="0" max="1" step="0.05" value="${this.settings.volumes.master}"></label>
       <label>Music <input id="vol-music" type="range" min="0" max="1" step="0.05" value="${this.settings.volumes.music}"></label>
       <label>SFX <input id="vol-sfx" type="range" min="0" max="1" step="0.05" value="${this.settings.volumes.sfx}"></label>
-      ${controlsHtml(this.input.device, this.padStyle)}</div>`;
+      </div></div>`;
     this.screen.hidden = false;
     this.screen.onclick = (e) => {
       const b = e.target.closest('[data-p]');
@@ -506,13 +574,9 @@ export class Game {
       if (b.dataset.p === 'rewarded') { this.rewardedCampaign?.open(); return; }
       if (b.dataset.p === 'feedback') { this.feedback.open(); return; }
       if (b.dataset.p === 'resume') { this.hideScreen(); this.input.lock(); }
-      else if (b.dataset.p === 'hub') this.requestHubReturn(b);
-      else this.showScreen('title');
     };
     this.screen.oninput = (e) => {
       if (e.target.id === 'sens') { this.settings.sensitivity = +e.target.value; this.input.sensitivity = 0.0022 * this.settings.sensitivity; }
-      if (e.target.id === 'padsens') this.settings.padSensitivity = +e.target.value;
-      if (e.target.id === 'aimassist') this.settings.aimAssist = +e.target.value;
       if (e.target.id === 'hs') this.settings.hitstop = e.target.checked;
       if (e.target.id === 'shk') this.settings.shake = +e.target.value;
       if (e.target.id === 'graphics-preset') { this.settings.graphicsPreset = e.target.value; this.renderer.setGraphicsPreset(this.settings.graphicsPreset); }
@@ -530,6 +594,7 @@ export class Game {
   // ---------- keyboard / gamepad menus ----------
   /** The menu container that owns keyboard and gamepad focus right now, or null during play. */
   navRoot() {
+    if (this.ctl?.isOpen) return this.ctl.element;
     if (this.pvpActive) return this.pvp && this.pvp.wantsLock && !this.pvpNav ? null : this.screen;
     if (!this.screen.hidden) return this.screen;
     if (this.ui.menuOpen) return this.ui.els.panel;
@@ -549,6 +614,7 @@ export class Game {
       return true;
     }
     if (e.code === 'Escape') {
+      if (this.ctl?.isOpen) { this.ctl.back(); return true; }
       if (this.ui.menuOpen && this.screen.hidden) return false; // the UI closes its own panels
       if (this.screen.querySelector('.pause')) {
         // The Esc that released the mouse can arrive here too; only a later press resumes. Browsers do not
@@ -563,6 +629,7 @@ export class Game {
   }
   /** Gamepad B (and Esc on screens): close, go back or resume. */
   navBack() {
+    if (this.ctl?.isOpen) { this.ctl.back(); return; }
     if (this.screen.querySelector('[data-reward-panel]')) { this.rewardedCampaign?.back(); return; }
     if (this.pvpActive) {
       if (this.pvpNav) this.pvpNav = false;
@@ -575,6 +642,7 @@ export class Game {
   }
   /** Gamepad Menu / Start: pause or resume; in Free 1v1 practice it moves focus to Ready / Leave. */
   navStart() {
+    if (this.ctl?.isOpen) { this.ctl.close(); return; }
     if (this.pvpActive) {
       if (this.pvp && this.pvp.wantsLock) { this.pvpNav = !this.pvpNav; if (this.pvpNav) this.input.unlock(); }
       return;
@@ -598,10 +666,9 @@ export class Game {
     this.ui.toast(connected ? '🎮 Controller connected' : '🎮 Controller disconnected', connected ? 'good' : 'bad');
     if (!connected && this.input.device === 'pad' && this.playing && !this.pvpActive) this.pauseGame();
   }
-  /** Redraw the controls list on an open title or pause screen when the player switches devices. */
+  /** Redraw Controller settings when the player switches devices (the device in use is listed first). */
   refreshControlsHelp() {
-    const box = this.screen.hidden ? null : this.screen.querySelector('.controls-wrap');
-    if (box) box.outerHTML = controlsHtml(this.input.device, this.padStyle);
+    if (this.ctl?.isOpen && !this.ctl.capturing) this.ctl.refresh();
   }
 
   // ---------- debug panel ----------
@@ -790,6 +857,7 @@ export class Game {
         hub: this.hub,
         demo: !!opts.demo,
         getGraphicsPreset: () => this.settings.graphicsPreset,
+        menuExtrasHtml: () => this.stdMenuHtml({ main: true }),
         onExit: () => {
           this.pvpActive = false;
           this.pvpNav = false;
@@ -994,7 +1062,7 @@ export class Game {
     this.stopWagerPlay();
     this.screen.hidden = false;
     this.screen.style.display = '';
-    this.screen.innerHTML = renderWagerScreen(this.wagerFlow.view);
+    this.screen.innerHTML = this.wagerScreenHtml();
     bindWagerScreen(this.screen, this.wagerFlow, {
       onFree: () => {
         this._wagerScreen = false;
@@ -1008,9 +1076,13 @@ export class Game {
       onLeave: () => { void this.leaveWagerFromScreen(); },
       repaint: () => {
         if (this._wagerPlaying) return;
-        this.screen.innerHTML = renderWagerScreen(this.wagerFlow.view);
+        this.screen.innerHTML = this.wagerScreenHtml();
       },
     });
+  }
+
+  wagerScreenHtml() {
+    return `${renderWagerScreen(this.wagerFlow.view)}<div class="wager-std">${this.stdMenuHtml({ main: true })}</div>`;
   }
 
   async leaveWagerFromScreen() {
@@ -1222,25 +1294,3 @@ const BOSS_BLURB = {
   hexAuditor: 'Floating caster: bullet hell, homing bolts, teleports.',
 };
 
-/** Controls list for the title and pause screens: the device in use first. */
-function controlsHtml(device = 'kbm', style = 'xbox') {
-  const k = (a, b) => `<div><kbd>${a}</kbd><span>${b}</span></div>`;
-  const kb = `<div class="controls" data-device="kbm">
-    ${k('WASD / Arrows', 'Move')}${k('Mouse', 'Look · LMB fire')}${k('F / middle-click', 'Aim toggle: aim · sniper: zoom closer · off')}${k('Wheel while zoomed', 'Sniper zoom 1 / 2')}${k('Shift', 'Sprint')}${k('Space', 'Jump / double jump')}
-    ${k('C', 'Slide')}${k('Ctrl + Shift', 'Crouch-slide from a sprint')}${k('B / mouse back', 'Grapple')}${k('V / Alt', 'Dash')}${k('R', 'Reload · hold: pick up gun (E works too)')}${k('1-4 · L / Wheel', 'Switch gun (L = legendary slot)')}
-    ${k('RMB', 'Cast the selected spell')}${k(keyLabel('spellSelect'), 'Next spell')}${k(['chainZap', 'swarm', 'manaShield', 'meteor'].map(keyLabel).join(' '), 'Quick cast: Chain Zap · Swarm · Mana Shield · Meteor')}${k('H', 'Use medkit')}
-    ${k('Tab (hold)', 'Skills')}${k('O', 'Shop (between waves)')}${k('I', 'Your guns')}${k('5', 'Stats & powers')}${k('Enter', 'Ready / skip break')}${k('Esc', 'Pause · back in menus')}
-    ${k('Arrows / WS · Enter', 'Menus: move · confirm')}${k('`', 'Debug panel')}${k('F3', 'Frame stats')}${k('M', 'Mute')}${k('N N', 'Send feedback')}${k('P', 'God mode (health stays at 99)')}
-  </div>`;
-  const g = (a) => padGlyph(PAD_BINDINGS[a] || a, style);
-  const pad = `<div class="controls" data-device="pad">
-    ${k('Left stick', 'Move')}${k('Right stick', 'Look (aim assist near enemies)')}${k(g('fire'), 'Fire')}${k(g('aim'), 'Aim toggle: aim · sniper: zoom closer · off')}
-    ${k(g('castSpell'), 'Cast the selected spell')}${k(g('spellSelect'), 'Next spell')}
-    ${k(g('jump'), 'Jump / double jump')}${k(g('slide'), 'Slide')}${k(g('dash'), 'Dash')}${k(g('sprint'), 'Sprint (toggle)')}
-    ${k(g('reload'), `Reload · hold: pick up gun`)}${k(g('swap'), 'Next gun')}
-    ${k(`${g('chainZap')} ${g('swarm')} ${g('manaShield')}`, 'Quick cast: Chain Zap · Sproto Swarm · Mana Shield')}${k(g('medkit'), 'Use medkit')}
-    ${k(g('panel'), 'Shop (between waves) or your guns')}${k(g('pause'), 'Pause')}
-    ${k(`D-pad / stick · ${padGlyph('a', style)}`, 'Menus: move · confirm')}${k(`${padGlyph('b', style)} · ${padGlyph('lb', style)} ${padGlyph('rb', style)}`, 'Back · switch tabs')}
-  </div>`;
-  return device === 'pad' ? `<div class="controls-wrap">${pad}${kb}</div>` : `<div class="controls-wrap">${kb}${pad}</div>`;
-}

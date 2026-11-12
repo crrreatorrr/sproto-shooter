@@ -67,7 +67,11 @@ describe('local Wave Mode in Chromium', () => {
         await page.locator('[data-p="resume"]').click();
         await page.waitForFunction((oldTick) => window.__game.state.tick > oldTick, tick);
         await page.evaluate(() => window.__game.pauseGame());
-        await page.locator('[data-p="title"]').click();
+        // Main menu mid-run asks first (like Return to Hub): the second press leaves.
+        await page.locator('.pause [data-std="title"]').click();
+        await page.waitForSelector('.pause [data-std="title"]:has-text("Leave this run")');
+        await page.locator('.pause [data-std="title"]').click();
+        await page.waitForSelector('[data-go="waves"]');
       }
       await page.reload({ waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => window.__game?.settings.graphicsPreset === 'low');
