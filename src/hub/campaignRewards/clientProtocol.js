@@ -148,11 +148,11 @@ export function mergeProgress(old, next) {
 }
 
 
-// Exact retained executable identity reviewed with server lifecycle0056. This
-// is compatibility, never attestation or client-chosen execution authority.
+// Exact retained campaign verifier for this client’s simulation. The hub must
+// register this bundle before issuing rewarded runs to this client.
 export const SUPPORTED_MANIFEST = Object.freeze({ artifact: 'shooter-sim',
-  sourceCommit: '05f7a0a245af921fc65a99588564175c19658e38',
-  sha256: '797029721efe6124b718d84349cd255cd52529d3105b2da1d33e97da8d734aa9',
+  sourceCommit: 'e063f8a5be736031aa4c4b803ab46bf66c814e65',
+  sha256: '12332a4d2f34b8a282d0426d474698db978c1676bf86ba2c23ab6d826fb8ceed',
   protocol: 1, contentFingerprint: '73c6eb0f', uploadProtocol: 2, replayApiVersion: 2,
   checkpointSchema: 2, economyPolicy: 1 });
 export const ISSUED_LIMITS = Object.freeze({ batchFramesTextBytes: 2097152, runFramesTextBytes: 67108864,
