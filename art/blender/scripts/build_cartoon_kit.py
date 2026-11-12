@@ -971,8 +971,10 @@ def select_only(objs):
 
 # Losslessly pack the largest legacy props so the expanded environment kit fits the static budget.
 COMPRESSED_PROPS = {
-    'bazaar_wall', 'building_a', 'building_b', 'building_c', 'drying_rack', 'far_bazaar',
-    'hill_sign', 'palm_tree', 'sandstone_house', 'skyline_a', 'skyline_c', 'slide_truck',
+    'barricade', 'bazaar_tent', 'bazaar_wall', 'bench', 'building_a', 'building_b', 'building_c',
+    'cart', 'chest', 'drying_rack', 'far_bazaar', 'hill_sign', 'kiosk', 'palm_tree',
+    'sandstone_house', 'skyline_a', 'skyline_b', 'skyline_c', 'slide_truck', 'toll_booth',
+    'water_tank', 'weapon_rack', 'well',
 }
 
 
