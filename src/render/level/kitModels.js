@@ -2,6 +2,7 @@
 // A static kit model is one merged geometry. An effect keeps its scene and clip.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { loadPackedGltf } from '../loadPackedGltf.js';
 import { PRIORITY, assetStatus, ensureStatic, enqueue, instantiateStatic, peekAsset, retainAsset } from '../assets.js';
 
 // Literal paths: scripts/asset-report.mjs finds references by reading them.
@@ -149,31 +150,23 @@ export const kitVersion = () => version;
 
 async function parse(path) {
   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-  const url = `${import.meta.env.BASE_URL}assets/${path}`;
-  const loader = new GLTFLoader();
-  if (!path.endsWith('.gz')) return loader.loadAsync(url);
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Could not load ${path}: HTTP ${response.status}`);
-  // Static hosts may serve the wrapper as a file or apply HTTP Content-Encoding.
-  const bytes = await response.arrayBuffer();
-  const magic = new Uint8Array(bytes);
-  const glb = magic[0] === 0x1f && magic[1] === 0x8b
-    ? await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()
-    : bytes;
-  return loader.parseAsync(glb, '');
+  return loadPackedGltf(new GLTFLoader(), path);
 }
 
 async function loadGeometry(path) {
   const g = await parse(path);
   g.scene.updateMatrixWorld(true);
   const parts = [];
+  let hasAuthoredGlow = false;
   g.scene.traverse((o) => {
     if (!o.isMesh) return;
     const geo = o.geometry.clone();
     for (const name of Object.keys(geo.attributes)) if (name !== 'position' && name !== 'normal' && name !== 'color') geo.deleteAttribute(name);
     const source = o.material.emissive;
     const power = source ? Math.max(source.r, source.g, source.b) * o.material.emissiveIntensity : 0;
-    const mask = new Uint8Array(geo.attributes.position.count).fill(Math.round(Math.min(2, power) * 127.5));
+    const glow = Math.round(Math.min(2, power) * 127.5);
+    if (glow) hasAuthoredGlow = true;
+    const mask = new Uint8Array(geo.attributes.position.count).fill(glow);
     geo.setAttribute('kitGlow', new THREE.Uint8BufferAttribute(mask, 1, true));
     geo.applyMatrix4(o.matrixWorld);
     parts.push(geo);
@@ -186,7 +179,7 @@ async function loadGeometry(path) {
   version++;
   const name = path.split('/').at(-1).split('.')[0];
   const motion = g.animations.length ? { scene: g.scene, clip: combinedClip(g, name) } : null;
-  return { geometry, size, center, minY: geometry.boundingBox.min.y, name, motion };
+  return { geometry, size, center, minY: geometry.boundingBox.min.y, name, motion, hasAuthoredGlow };
 }
 
 function combinedClip(g, name) {

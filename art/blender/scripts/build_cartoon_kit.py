@@ -982,6 +982,9 @@ COMPRESSED_PROPS = {
 }
 
 
+COMPRESSED_PROJECTILES = {'bomb', 'duck', 'rocket'}
+
+
 def export(objs, folder, name, animated=False, compressed=False):
     os.makedirs(os.path.join(OUT, folder), exist_ok=True)
     path = os.path.join(OUT, folder, name + '.glb')
@@ -1135,7 +1138,11 @@ def main():
     for folder, makers in (('props', PROPS), ('projectiles', PROJECTILES), ('pickups', PICKUPS)):
         for make in makers:
             obj = make().build()
-            packed = folder == 'pickups' or obj.name == 'bomb' or (folder == 'props' and obj.name in COMPRESSED_PROPS)
+            packed = (
+                folder == 'pickups'
+                or (folder == 'projectiles' and obj.name in COMPRESSED_PROJECTILES)
+                or (folder == 'props' and obj.name in COMPRESSED_PROPS)
+            )
             size = export([obj], folder, obj.name, compressed=packed)
             report.append((folder, obj.name, len(obj.data.polygons), size))
             preview.append(obj)

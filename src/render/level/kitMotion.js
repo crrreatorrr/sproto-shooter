@@ -5,6 +5,9 @@ const HALOS = {
   grove_bloom: ['grove_bloom_crystal', 0.48, 0x68edff, 1.44],
   grove_totem: ['grove_totem_crystal', 0.66, 0x64e8ff, 1.84],
   campaign_shrine: ['shrine_focus', 0, 0x5affa3, 1.33],
+  void_relay: ['void_relay_core', 0, 0x66efff, 1.3],
+  void_pylon: ['void_pylon_core', 0, 0xffc66a, 2.6],
+  void_halo: ['void_exchange_rotor', -1.45, 0xffba4a, 5.4],
 };
 
 const active = new WeakMap();
