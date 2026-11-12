@@ -435,8 +435,8 @@ export function movePlayer(p, wish, dt) {
       p.slideCd = TUNING.slideHopCd;
     }
   }
-  tickArenaGrapple(p, wish, dt);
   if (p.dashT <= 0) p.vy -= TUNING.gravity * dt;
+  tickArenaGrapple(p, wish, dt);
   const prevY = p.y;
   p.x += p.vx * dt;
   p.y += p.vy * dt;

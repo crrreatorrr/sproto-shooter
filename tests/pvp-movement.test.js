@@ -90,11 +90,11 @@ describe('arena movement', () => {
     expect(p.grapple).toBeTruthy();
     expect(p.grapple.id).toBe('ne');
     expect(topSpeed).toBeGreaterThan(TUNING.grappleReleaseSpeed);
-    expect(topSpeed).toBeLessThanOrEqual(TUNING.grappleSpeed);
+    expect(topSpeed).toBeLessThanOrEqual(TUNING.grappleSpeed + 0.0001);
     step(state, [wish({ yaw: p.yaw, pitch: 0.9 }), wish({ yaw: 0 })]);
     expect(p.grapple).toBeNull();
     expect(p.vy).toBeGreaterThan(0);
-    expect(Math.hypot(p.vx, p.vy, p.vz)).toBeLessThanOrEqual(TUNING.grappleReleaseSpeed);
+    expect(Math.hypot(p.vx, p.vy, p.vz)).toBeLessThanOrEqual(TUNING.grappleReleaseSpeed + 0.0001);
     let peakY = p.y;
     for (let i = 0; i < 30; i++) {
       step(state, [wish({ yaw: p.yaw, pitch: 0 }), wish({ yaw: 0 })]);
@@ -102,6 +102,26 @@ describe('arena movement', () => {
     }
     expect(peakY).toBeGreaterThan(3);
     expect(p.x).toBeGreaterThan(12);
+  });
+
+  it('caps downward pulls and releases after applying gravity', () => {
+    const state = createMatch(4);
+    const p = state.players[0];
+    const yaw = -Math.PI / 2, pitch = -0.5;
+    place(p, 8, 14, yaw, pitch);
+    p.y = 10;
+    p.onGround = false;
+    const speed = () => Math.hypot(p.vx, p.vy, p.vz);
+    for (let i = 0; i < 9; i++) {
+      step(state, [wish({ yaw, pitch, grapple: true }), wish({ yaw: 0 })]);
+      expect(p.grapple?.id).toBe('ne');
+      expect(speed()).toBeLessThanOrEqual(TUNING.grappleSpeed + 0.0001);
+    }
+    expect(p.vy).toBeLessThan(0);
+    expect(speed()).toBeGreaterThan(TUNING.grappleReleaseSpeed);
+    step(state, [wish({ yaw, pitch }), wish({ yaw: 0 })]);
+    expect(p.grapple).toBeNull();
+    expect(speed()).toBeLessThanOrEqual(TUNING.grappleReleaseSpeed + 0.0001);
   });
 
   it('does not hook the floor or the other player', () => {

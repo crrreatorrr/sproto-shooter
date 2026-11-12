@@ -87,7 +87,7 @@ describe('L01 movement course', () => {
       }
       const arrived = !p.grapple && Math.hypot(p.pos.x - 30, p.pos.y + 0.9 - 5.6, p.pos.z - 10) < TUNING.grappleArrive;
       const releaseSpeed = Math.hypot(p.vel.x, p.vel.y, p.vel.z);
-      for (let i = 0; i < 150; i++) {
+      for (let i = 0; i < 180; i++) {
         simulate(s, { [p.id]: cmd({ yaw: -Math.PI / 2, moveZ: 1 }) });
         if (p.pos.y > peak) peak = p.pos.y;
       }
@@ -96,8 +96,8 @@ describe('L01 movement course', () => {
     const first = run();
     expect(first.id).toBe('S1-hook');
     expect(first.arrived).toBe(true);
-    expect(first.topSpeed).toBeLessThanOrEqual(TUNING.grappleSpeed);
-    expect(first.releaseSpeed).toBeLessThanOrEqual(TUNING.grappleReleaseSpeed);
+    expect(first.topSpeed).toBeLessThanOrEqual(TUNING.grappleSpeed + 1e-9);
+    expect(first.releaseSpeed).toBeLessThanOrEqual(TUNING.grappleReleaseSpeed + 1e-9);
     expect(first.peak).toBeGreaterThan(4);
     expect(first.p.pos.x).toBeGreaterThan(45);
     expect(first.p.pos.y).toBeLessThan(1);

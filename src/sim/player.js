@@ -170,8 +170,7 @@ export function playerMovement(state, dt) {
     }
 
     const seal = sealOf(state, p);
-    tickGrapple(state, p, dt);
-    // gravity + integrate
+    // Apply gravity and jetpack thrust before the grapple limits the speed.
     if (m.mode !== 'dash') p.vel.y -= TUNING.gravity * dt;
     if (state.mode === 'campaign' && state.level && state.level.gravityMult !== 1 && m.mode !== 'dash') {
       p.vel.y -= TUNING.gravity * (state.level.gravityMult - 1) * dt;
@@ -190,6 +189,7 @@ export function playerMovement(state, dt) {
       }
       if (p.onGround && !infinite && lv.fuel < 100) lv.fuel = Math.min(100, lv.fuel + 25 * dt);
     }
+    tickGrapple(state, p, dt);
     p.pos.x += p.vel.x * dt; p.pos.y += p.vel.y * dt; p.pos.z += p.vel.z * dt;
     const wasAir = !p.onGround;
     const solids = activeSolids(state);

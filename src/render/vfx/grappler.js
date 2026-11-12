@@ -177,8 +177,12 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
       root.visible = false;
       return 0;
     }
+    const startMiss = !hook && missedShot && attempted && !casting;
+    if (startMiss) beginMiss(yaw, pitch);
     usedFallback = !reset && !launcher && root.visible;
     if (!launcher && !loadModel()) {
+      // Keep a pending miss until its claw model can play the shot.
+      if (casting && missed && cooldown <= 0) casting = false;
       root.visible = !!hook;
       impact.visible = false;
       if (hook) anchor.copy(hook);
@@ -186,8 +190,7 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
       return weaponWeight;
     }
     if (hook && (!casting || returning || missed)) begin(hook);
-    else if (missedShot && attempted && !casting) beginMiss(yaw, pitch);
-    else elapsed += dt;
+    else if (!startMiss) elapsed += dt;
     // Prediction can refine the contact point mid-flight. Keep the launch clock running.
     if (hook) anchor.copy(hook);
     if (!hook && !missed && !fired) casting = false;

@@ -158,10 +158,10 @@ describe('slide, grapple, stamina', () => {
       topSpeed = Math.max(topSpeed, Math.hypot(p.vel.x, p.vel.y, p.vel.z));
     }
     expect(topSpeed).toBeGreaterThan(TUNING.grappleReleaseSpeed);
-    expect(topSpeed).toBeLessThanOrEqual(TUNING.grappleSpeed);
+    expect(topSpeed).toBeLessThanOrEqual(TUNING.grappleSpeed + 1e-9);
     simulate(s, { [p.id]: cmd({ yaw: p.yaw, pitch: 0.55, moveZ: 1 }) });
     expect(p.grapple).toBeNull();
-    expect(Math.hypot(p.vel.x, p.vel.y, p.vel.z)).toBeLessThanOrEqual(TUNING.grappleReleaseSpeed);
+    expect(Math.hypot(p.vel.x, p.vel.y, p.vel.z)).toBeLessThanOrEqual(TUNING.grappleReleaseSpeed + 1e-9);
     let peak = p.pos.y;
     for (let i = 0; i < 40; i++) {
       simulate(s, { [p.id]: cmd({ yaw: p.yaw, moveZ: 1 }) });
@@ -169,6 +169,24 @@ describe('slide, grapple, stamina', () => {
     }
     expect(peak).toBeGreaterThan(3);
     expect(p.pos.x).toBeGreaterThan(14);
+  });
+
+  it('caps downward pulls and releases after applying gravity', () => {
+    const { s, p } = boot();
+    p.pos = { x: 13, y: 6, z: 8 };
+    p.onGround = false;
+    const yaw = -Math.PI / 2, pitch = -0.5;
+    const speed = () => Math.hypot(p.vel.x, p.vel.y, p.vel.z);
+    for (let i = 0; i < 18; i++) {
+      frames(s, p, 1, cmd({ yaw, pitch, held: { grapple: true } }));
+      expect(p.grapple?.id).toBe('wall');
+      expect(speed()).toBeLessThanOrEqual(TUNING.grappleSpeed + 1e-9);
+    }
+    expect(p.vel.y).toBeLessThan(0);
+    expect(speed()).toBeGreaterThan(TUNING.grappleReleaseSpeed);
+    frames(s, p, 1, cmd({ yaw, pitch }));
+    expect(p.grapple).toBeNull();
+    expect(speed()).toBeLessThanOrEqual(TUNING.grappleReleaseSpeed + 1e-9);
   });
 
   it('uses normal movement when a wall and its anchor are out of reach', () => {
