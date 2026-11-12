@@ -21,7 +21,7 @@ export function decorMeshes(list, origin, replaced = null) {
   for (const [model, items] of byModel) {
     const kit = kitGeometry(KIT.prop(model));
     if (!kit) continue;
-    const material = model.startsWith('void_') ? voidMaterial()
+    const material = model.startsWith('void_') && !kit.hasAuthoredGlow ? voidMaterial()
       : model === 'grove_greenhouse_glass' ? grovePaneMaterial : kitMaterial();
     const batch = kit.motion ? null : new THREE.InstancedMesh(kit.geometry, material, items.length);
     items.forEach((d, i) => {
