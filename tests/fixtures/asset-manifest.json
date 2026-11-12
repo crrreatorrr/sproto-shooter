@@ -78,7 +78,7 @@
   ],
   "counts": {
     "runtimeFiles": 217,
-    "runtimeBytes": 27680361,
+    "runtimeBytes": 27575795,
     "decodedBytes": 258207558,
     "referenced": 217,
     "dynamic": 54,
@@ -8364,8 +8364,8 @@
     },
     {
       "path": "textures/stages/city/stone.jpg",
-      "bytes": 601054,
-      "sha256": "213e5358656e7cb80bad822f8603f817936e1684cc53b14dc4f04c32fcb7ad9a",
+      "bytes": 550822,
+      "sha256": "c3b301bdae65c3d0ac25efb903c49e976c343f59706675037b0ed4ad0325eab7",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
@@ -8424,8 +8424,8 @@
     },
     {
       "path": "textures/stages/glacier/floor.jpg",
-      "bytes": 530635,
-      "sha256": "ee320e6d5a4f8a4537e1d8bf41a865c81be64b27b8afe85fb7320242ffafbc66",
+      "bytes": 476301,
+      "sha256": "9ad5f515b1616b0a0333efed41d1fb0d77aadfd9c6a40cb312d87c905b31d944",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
