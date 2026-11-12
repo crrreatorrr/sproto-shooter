@@ -127,6 +127,7 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
   function beginMiss(yaw, pitch) {
     begin(null);
     missed = true;
+    impact.visible = false;
     missDirection.copy(dirFromYawPitch(yaw, pitch));
     mount.getWorldPosition(anchor).addScaledVector(missDirection, TUNING.grappleRange);
   }
@@ -248,6 +249,11 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
     if (returning) {
       const t = THREE.MathUtils.smoothstep(elapsed, 0, RETURN_TIME);
       head.position.copy(returnFrom).lerp(from, t);
+      if (missed) {
+        // The wrist may move during retraction, but the missed claw stays within reach.
+        travel.subVectors(head.position, from).clampLength(0, TUNING.grappleRange);
+        head.position.copy(from).add(travel);
+      }
       head.quaternion.copy(returnQ).slerp(dockQ, t);
       head.scale.setScalar(THREE.MathUtils.lerp(returnScale, worldDockScale, t));
       poseJaws(jawAtReturn * (1 - t));
