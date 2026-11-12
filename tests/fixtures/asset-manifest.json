@@ -78,7 +78,7 @@
   ],
   "counts": {
     "runtimeFiles": 148,
-    "runtimeBytes": 27598355,
+    "runtimeBytes": 27565867,
     "decodedBytes": 258207558,
     "referenced": 148,
     "dynamic": 54,
@@ -2641,8 +2641,8 @@
     },
     {
       "path": "models/gear/grappler.glb",
-      "bytes": 90752,
-      "sha256": "8d4b44f2eebb428575090856b972e442f69906329c073d7df09116f3c651e035",
+      "bytes": 58264,
+      "sha256": "8add18d81ace1c118f9955162ed044e6f39b7329d9b34298955ea9774c0391f4",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -2652,7 +2652,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 1196,
+      "triangles": 716,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -2666,7 +2666,7 @@
         "joints": 0,
         "nodes": 23,
         "materials": [
-          "Charcoal webbing",
+          "Charcoal",
           "Graphite",
           "Ion cyan",
           "Ochre",
@@ -6299,7 +6299,7 @@
       },
       {
         "path": "art/blender/grappler.blend",
-        "bytes": 137752
+        "bytes": 2603185
       },
       {
         "path": "art/blender/new_enemies.blend",

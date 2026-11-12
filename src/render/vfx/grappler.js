@@ -12,6 +12,7 @@ const UP = new THREE.Vector3(0, 1, 0);
 const ARM_WINDUP = 0.085;
 const ARM_HOLD = 0.10;
 const ARM_RECOVERY = 0.19;
+const MOUNT_BACK = 0.076;
 const BITE_TIME = 0.105;
 const RETURN_TIME = 0.19;
 const VM_HALF_FOV_TAN = Math.tan(TUNING.fovBase * Math.PI / 360);
@@ -39,15 +40,16 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
   const side = new THREE.Vector3(), up = new THREE.Vector3(), forward = new THREE.Vector3();
   const from = new THREE.Vector3(), anchor = new THREE.Vector3(), hit = new THREE.Vector3();
   const launchFrom = new THREE.Vector3(), travel = new THREE.Vector3(), cable = new THREE.Vector3();
-  const returnFrom = new THREE.Vector3();
+  const returnFrom = new THREE.Vector3(), radial = new THREE.Vector3();
   const mountQ = new THREE.Quaternion(), flightQ = new THREE.Quaternion(), dockQ = new THREE.Quaternion();
-  const returnQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
+  const returnQ = new THREE.Quaternion(), sleeveQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
   const outward = camera ? new THREE.Vector3(-1, 0.68, 0) : new THREE.Vector3(1, 0.68, 0);
   const fallback = camera ? new THREE.Vector3(-0.36, -0.34, -0.62) : new THREE.Vector3(0.32, 1.03, 0.3);
 
   let launcher, socket, stowed, head, mixer, jaws;
   let casting = false, elapsed = 0, flightTime = 0, fired = false, returning = false;
   let armWeight = 0;
+  let activeFrame = false, usedFallback = false;
   let dockScale = 1, returnScale = 1, jawAtReturn = 0, jawPhase = 0;
 
   void enqueue(GRAPPLER_MODEL, () => new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}assets/${GRAPPLER_MODEL}`)).catch(() => {});
@@ -95,6 +97,14 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
     up.crossVectors(forward, side);
     dockQ.setFromRotationMatrix(basis.makeBasis(side, up, forward));
     launcher.position.copy(elbow).lerp(wrist, 0.48);
+    if (arm.surface?.length) {
+      arm.lower.getWorldQuaternion(sleeveQ);
+      radial.copy(up).applyQuaternion(sleeveQ.invert());
+      let radius = 0;
+      for (const point of arm.surface) radius = Math.max(radius, point.dot(radial));
+      radius *= arm.lower.getWorldScale(radial).x;
+      launcher.position.addScaledVector(up, radius - MOUNT_BACK * dockScale - 0.003);
+    }
     mount.worldToLocal(launcher.position);
     launcher.quaternion.copy(mountQ.invert()).multiply(dockQ);
     launcher.scale.setScalar(dockScale);
@@ -151,7 +161,10 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
     tether.material.opacity = opacity;
   }
 
-  function update(hook, dt, arm, { active = true, reset = false } = {}) {
+  // Both arms use the same pose weight before the launcher samples the extended wrist.
+  function advance(hook, dt, { active = true, reset = false } = {}) {
+    armPose.restore();
+    activeFrame = active;
     if (reset || !active) {
       casting = false;
       armWeight = 0;
@@ -159,18 +172,14 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
     if (!active) {
       if (launcher) launcher.visible = false;
       root.visible = false;
-      return;
+      return 0;
     }
-    const usedFallback = !launcher && root.visible;
+    usedFallback = !reset && !launcher && root.visible;
     if (!launcher && !loadModel()) {
       root.visible = !!hook;
       impact.visible = false;
-      if (hook) {
-        mount.localToWorld(from.copy(fallback));
-        alignDockToWorldPass();
-        poseTether(anchor.copy(hook));
-      }
-      return;
+      if (hook) anchor.copy(hook);
+      return 0;
     }
     if (hook && (!casting || returning)) begin(hook);
     else elapsed += dt;
@@ -194,6 +203,19 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
         ? 1 - THREE.MathUtils.smoothstep(elapsed, ARM_HOLD, ARM_HOLD + ARM_RECOVERY)
         : THREE.MathUtils.smoothstep(elapsed, 0, ARM_WINDUP);
     } else armWeight = THREE.MathUtils.damp(armWeight, 0, 22, dt);
+    return armWeight;
+  }
+
+  function update(arm) {
+    if (!activeFrame) return;
+    if (!launcher) {
+      if (root.visible) {
+        mount.localToWorld(from.copy(fallback));
+        alignDockToWorldPass();
+        poseTether(anchor);
+      }
+      return;
+    }
     if (arm && armWeight > 0.002) armPose.apply(arm, anchor, armWeight);
     poseMount(arm);
     const worldDockScale = dockScale * alignDockToWorldPass();
@@ -256,5 +278,5 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
     }
   }
 
-  return { update, restoreArm: armPose.restore, dispose };
+  return { advance, update, dispose };
 }

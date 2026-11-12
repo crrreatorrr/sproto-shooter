@@ -173,8 +173,8 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
   const ready = Promise.all([loadPlayerModel(stock.model), loadPlayerModel(selection.model).catch(() => null)]).then(([source, selected]) => {
     if (disposed) return;
     if (source?.scene) for (const body of bodies) attachModel(body, source, stock.model);
+    if (source?.scene || selected?.scene) for (const type of GUN_IDS) void ensureGunModel(type).catch(() => {});
     if (selected?.scene && selection.id !== stock.id) {
-      for (const type of GUN_IDS) void ensureGunModel(type).catch(() => {});
       setLocalSkin = (seat) => {
         if (seat === localSeat) return;
         if (localSeat >= 0) {
@@ -218,17 +218,13 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
     for (let i = 0; i < 2; i++) {
       const p = players && players[i];
       const entry = bodies[i], body = entry.group;
-      entry.grappler.restoreArm();
-      if (!p) {
-        body.visible = false;
-        entry.grappler.update(null, dt, null, { active: false });
-        continue;
-      }
-      body.visible = !!p.alive || p.hp > 0;
+      body.visible = !!p && (!!p.alive || p.hp > 0);
+      const grapplePose = entry.grappler.advance(p?.grapple, dt, { active: body.visible });
+      if (!p) continue;
       body.position.set(p.x, p.y, p.z);
       const facing = i === seat && look ? look.yaw : p.yaw;
-      poseModel(entry, p, i === seat ? now - lastShot : Infinity, dt, facing);
-      entry.grappler.update(p.grapple, dt, entry.grappleArm, { active: body.visible });
+      poseModel(entry, p, i === seat ? now - lastShot : Infinity, dt, facing, grapplePose);
+      entry.grappler.update(entry.grappleArm);
     }
     const me = players && players[seat] ? players[seat] : { x: 0, y: 0, z: 16, yaw: 0, pitch: 0 };
     const kick = fx ? recoilAt(fx.shots, fx.now) : 0;

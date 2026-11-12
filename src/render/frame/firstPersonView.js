@@ -12,7 +12,7 @@ export function createFirstPersonView(env) {
   let vmGun = null, vmGunKey = null;
   let slide = 0, pepeBreathe = 0, pepeStride = 0, pepePace = 0;
 
-  return function updateFirstPersonView(p, alpha, look, opts, now, fdt, resetMotion) {
+  return function updateFirstPersonView(p, alpha, look, opts, now, fdt, resetMotion, grapplePose) {
     if (resetMotion) slide = pepeBreathe = pepeStride = pepePace = 0;
     // camera
     const px = lerp(p.prevPos.x, p.pos.x, alpha), py = lerp(p.prevPos.y, p.pos.y, alpha), pz = lerp(p.prevPos.z, p.pos.z, alpha);
@@ -83,17 +83,20 @@ export function createFirstPersonView(env) {
       const ad = pose.ads;
       const glide = slide * ia;
       const offset = fp.weaponOffset || NO_WEAPON_OFFSET;
+      // The grip remains on the weapon as it dips and clears the grappling arm.
       vmGun.position.set(
-        lerp(pose.rest[0], ad[0], vm.ads) + vm.swayX * steady + r.x + offset[0],
-        lerp(pose.rest[1], ad[1], vm.ads) - vm.swayY * steady + r.y - vm.swap * 0.25 + weaponBob * steady - glide * 0.035 + offset[1],
+        lerp(pose.rest[0], ad[0], vm.ads) + vm.swayX * steady + r.x + offset[0] + grapplePose * 0.065,
+        lerp(pose.rest[1], ad[1], vm.ads) - vm.swayY * steady + r.y - vm.swap * 0.25 + weaponBob * steady - glide * 0.035 + offset[1] - grapplePose * 0.14,
         lerp(pose.rest[2], ad[2], vm.ads) + vm.kick * 0.05 + r.z + offset[2]);
-      vmGun.rotation.set(vm.kick * 0.25 + r.rx + glide * 0.045, pose.yaw * ia + vm.swayX * steady + r.ry, pose.roll * ia + r.rz - glide * 0.13);
+      vmGun.rotation.set(vm.kick * 0.25 + r.rx + glide * 0.045 - grapplePose * 0.43, pose.yaw * ia + vm.swayX * steady + r.ry, pose.roll * ia + r.rz - glide * 0.13);
       vmGun.updateMatrix();
       muzzleFlash.position.copy(vmGun.userData.muzzle).applyMatrix4(vmGun.matrix);
     }
     if (vmGun && gun) fp.setGun(vmGun, gun.type);
     warmColliders(p.guns);
     const hands = vmGun && gun ? reloadHands(vmGun, vmGun.userData.type, reloadT, vm.reloadTime) : null;
+    if (hands?.left) hands.left.w *= 1 - grapplePose;
+    if (hands?.right) hands.right.w *= 1 - grapplePose;
     fp.update(vmRoot.visible, { dt: fdt, ads: vm.ads, ...hands });
     if (fp.ready && !fp.root.userData.vmLayer) { setVmLayer(fp.root); fp.root.userData.vmLayer = true; }
     env.flashT -= fdt;

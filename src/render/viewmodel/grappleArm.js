@@ -1,6 +1,35 @@
 import * as THREE from 'three';
 import { aim } from './handFrame.js';
 
+/** Sample the sleeve near the rail in the forearm bone's local space. */
+export function forearmSurface(model, { lower, hand }) {
+  const inverse = lower.matrixWorld.clone().invert();
+  const axis = hand.getWorldPosition(new THREE.Vector3()).applyMatrix4(inverse);
+  const length = axis.length();
+  axis.normalize();
+  const samples = [];
+  const point = new THREE.Vector3();
+  model.traverse((mesh) => {
+    if (!mesh.isSkinnedMesh) return;
+    const joint = mesh.skeleton.bones.indexOf(lower);
+    if (joint < 0) return;
+    const { skinIndex, skinWeight, position } = mesh.geometry.attributes;
+    for (let i = 0; i < position.count; i++) {
+      let weight = 0;
+      for (let j = 0; j < 4; j++) {
+        if (skinIndex.getComponent(i, j) === joint) weight += skinWeight.getComponent(i, j);
+      }
+      if (weight < 0.55) continue;
+      mesh.getVertexPosition(i, point).applyMatrix4(mesh.matrixWorld).applyMatrix4(inverse);
+      const along = point.dot(axis);
+      if (along > length * 0.25 && along < length * 0.73) {
+        samples.push(point.clone().addScaledVector(axis, -along));
+      }
+    }
+  });
+  return samples;
+}
+
 export function leftGrapplerArm(model) {
   const arm = {};
   model.traverse((joint) => {
@@ -11,7 +40,10 @@ export function leftGrapplerArm(model) {
     if (name === 'LeftHand') arm.hand = joint;
     if (name === 'LeftHandMiddle1') arm.middle1 = joint;
   });
-  return arm.upper && arm.lower && arm.hand ? arm : null;
+  if (!arm.upper || !arm.lower || !arm.hand) return null;
+  model.updateWorldMatrix(true, true);
+  arm.surface = forearmSurface(model, arm);
+  return arm;
 }
 
 /** Blend from the posed support hand into a nearly straight, outward reach. */

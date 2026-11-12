@@ -188,6 +188,7 @@ export async function grapplerRun(game) {
     const viewmodelCamera = camera.clone(false);
     viewmodelCamera.fov = TUNING.fovBase;
     viewmodelCamera.updateProjectionMatrix();
+    const weapon = () => camera.children.flatMap((child) => child.children).find((object) => object.userData.gunId !== undefined);
     for (const { id, model } of PLAYER_CHARACTERS) {
       firstPerson.selectModel(model);
       await loadPlayerModel(model);
@@ -201,10 +202,15 @@ export async function grapplerRun(game) {
       const stowed = dock.getObjectByName('Claw');
       const docked = firstPerson.debug().mountedPath === model && launcher.visible && stowed.visible && !effects.visible;
       const { upper, lower, hand } = firstPerson.grappleArm;
+      const rightHand = firstPerson.debug().arms.Right.hand;
+      const rightAtRest = camera.worldToLocal(rightHand.getWorldPosition(new THREE.Vector3()));
+      const gunAtRest = weapon().position.y, pitchAtRest = weapon().rotation.x;
       const wristAtRest = hand.getWorldPosition(new THREE.Vector3()).sub(player.pos);
       step(true, 3);
       const windsUp = effects.visible && tether.visible && !head.visible && stowed.visible;
       step(true, 1);
+      const gunLowered = weapon().position.y < gunAtRest - 0.10 && weapon().rotation.x < pitchAtRest - 0.32
+        && camera.worldToLocal(rightHand.getWorldPosition(new THREE.Vector3())).y < rightAtRest.y - 0.025;
       const launchZ = head.position.z;
       const shoulder = upper.getWorldPosition(new THREE.Vector3());
       const elbow = lower.getWorldPosition(new THREE.Vector3());
@@ -218,6 +224,7 @@ export async function grapplerRun(game) {
         && jaws.every((jaw) => Math.abs(jaw.rotation.x) < 0.16);
       step(false, 12);
       const returned = !effects.visible && stowed.visible;
+      const gunRaised = Math.abs(weapon().position.y - gunAtRest) < 0.04 && Math.abs(weapon().rotation.x - pitchAtRest) < 0.07;
       player.grappleCd = 0;
       step(true, 4, true);
       const fovScale = Math.tan(camera.fov * Math.PI / 360) / Math.tan(TUNING.fovBase * Math.PI / 360);
@@ -237,7 +244,7 @@ export async function grapplerRun(game) {
       step(false, 1);
       const quickTap = cue && !effects.visible && stowed.visible;
       step(false, 7);
-      report[id] = { docked, flight, latch, returned, aimed, handoff, canceled, extended, quickTap };
+      report[id] = { docked, flight, latch, returned, aimed, handoff, canceled, extended, quickTap, gunLowered, gunRaised };
     }
     return report;
   } finally {

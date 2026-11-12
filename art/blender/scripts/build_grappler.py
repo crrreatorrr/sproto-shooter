@@ -82,21 +82,6 @@ def tube(name, start, end, radius, mat, parent=None, sides=12, radius_tip=None):
     return finish(obj, parent, mat)
 
 
-def cuff(parent, at, mat):
-    # Hollow faceted straps fit around the posed forearm.
-    radii = (0.093, 0.089)
-    points = [
-        (cos(i * pi / 6) * r, sin(i * pi / 6) * r * 0.92, z)
-        for r in radii for z in (at - 0.009, at + 0.009) for i in range(12)
-    ]
-    faces = []
-    for i in range(12):
-        j = (i + 1) % 12
-        faces += [(i, j, j+12, i+12), (i+24, i+36, j+36, j+24),
-                  (i, i+24, j+24, j), (i+12, j+12, j+36, i+36)]
-    return mesh("Split cuff", points, faces, parent, mat, 0.001)
-
-
 def mesh(name, points, faces, parent, mat, bevel=0):
     data = bpy.data.meshes.new(name)
     data.from_pydata([xyz(p) for p in points], [], faces)
@@ -140,16 +125,14 @@ scene.name = "Grappler jaws"
 scene.render.fps = FPS
 scene.frame_start, scene.frame_end = 0, 18
 
-rubber = material("Charcoal webbing", "262B31")
+rubber = material("Charcoal", "262B31")
 housing = material("Graphite", "3F4751", 0.18)
 trim = material("Ochre", "C3964F", 0.12)
 steel = material("Satin steel", "BEC4C3", 0.20)
 cyan = material("Ion cyan", "64CDDA", emission=0.85)
 
 launcher = empty("Launcher")
-for z in (-0.070, 0.053):
-    cuff(launcher, z, rubber)
-box("Sleeve pad", (0, 0.088, -0.009), (0.064, 0.008, 0.185), rubber, launcher, 0.003)
+box("Direct sleeve mount", (0, 0.084, -0.009), (0.054, 0.016, 0.166), rubber, launcher, 0.003)
 box("Low-profile rail", (0, 0.098, -0.012), (0.054, 0.015, 0.172), housing, launcher, 0.004)
 box("Status filament", (0, 0.106, -0.030), (0.005, 0.0015, 0.046), cyan, launcher, 0.0006)
 box("Edge index", (0.016, 0.106, -0.077), (0.015, 0.0015, 0.013), trim, launcher, 0.0006)
@@ -205,7 +188,7 @@ scene.render.engine = "BLENDER_WORKBENCH"
 shading = scene.display.shading
 shading.light = "STUDIO"
 shading.studio_light = "paint.sl"
-shading.color_type = "MATERIAL"
+shading.color_type = "TEXTURE"
 shading.show_cavity = True
 shading.cavity_type = "BOTH"
 shading.show_shadows = True
@@ -240,12 +223,39 @@ box("Closed glove", (0, 0, 0.436), (0.126, 0.103, 0.132), glove, elbow, 0.027)
 box("Knuckle guard", (0, 0.042, 0.467), (0.101, 0.028, 0.061), knuckles, elbow, 0.011)
 box("Folded thumb", (0.052, -0.019, 0.429), (0.046, 0.060, 0.075), glove, elbow, 0.015)
 launcher.parent = elbow
-launcher.location = xyz((0, 0, 0.25))
+launcher.location = xyz((0, -0.003, 0.25))
 
 arm_keys = [(1, 0.58, -1.18), (12, 0.58, -1.18), (19, 0, 0), (22, 0.045, -0.07),
             (27, 0, 0), (43, 0, 0), (67, 0.58, -1.18), (108, 0.58, -1.18)]
 key(shoulder, "rotation_euler", [(f, (a, 0, 0)) for f, a, _ in arm_keys])
 key(elbow, "rotation_euler", [(f, (a, 0, 0)) for f, _, a in arm_keys])
+
+# Preview the right hand and the same toy machine gun used in the game.
+gun_arm = empty("Demo gun arm", at=(-0.30, 0.012, -0.50))
+tube("Gun-side sleeve", (0, 0, -0.05), (0, 0, 0.285), 0.084, sleeve, gun_arm, 10, 0.063)
+box("Gun-side glove", (0, 0.002, 0.309), (0.111, 0.115, 0.117), glove, gun_arm, 0.023)
+box("Gun-side knuckles", (0.034, 0.023, 0.322), (0.059, 0.067, 0.073), knuckles, gun_arm, 0.012)
+gun_path = GAME.parent / "guns" / "toy_mg.glb"
+bpy.ops.import_scene.gltf(filepath=str(gun_path))
+gun = next(obj for obj in bpy.context.selected_objects if obj.type == "MESH")
+gun.name = "Sproto machine gun"
+gun_length = gun.dimensions.x
+gun.parent = gun_arm
+gun.rotation_mode = "XYZ"
+gun.rotation_euler.z = -pi / 2
+gun.scale *= 0.68 / gun_length
+bpy.context.view_layer.update()
+corners = [gun.matrix_local @ Vector(point) for point in gun.bound_box]
+bounds = [(min(v[i] for v in corners), max(v[i] for v in corners)) for i in range(3)]
+center = Vector([(lo + hi) / 2 for lo, hi in bounds])
+size = Vector([hi - lo for lo, hi in bounds])
+grip = center + Vector((0, 0.23 * size.y, -0.26 * size.z))
+gun.location += xyz((0, 0.011, 0.311)) - grip
+
+gun_keys = [(1, 0), (12, 0), (19, 1), (22, 1), (38, 1), (67, 0), (108, 0)]
+key(gun_arm, "location", [(f, xyz((-0.30 - 0.055 * w, 0.012 - 0.11 * w, -0.50))) for f, w in gun_keys])
+key(gun_arm, "rotation_euler", [(f, (0.40 * w, 0, -0.06 * w)) for f, w in gun_keys])
+
 
 stop = 2.965
 claw.rotation_mode = "QUATERNION"
@@ -294,18 +304,18 @@ bpy.context.collection.objects.link(cam)
 scene.camera = cam
 cam.rotation_mode = "QUATERNION"
 cam_data.type = "ORTHO"
-shots = [(1, (1.25, 0.87, 0.59), (0, 0.035, -0.13), 0.98),
-         (14, (1.25, 0.87, 0.59), (0, 0.035, -0.13), 0.98),
-         (28, (3.4, 1.95, 1.90), (0, 0.09, 1.39), 4.55),
+shots = [(1, (0.80, 1.04, -0.57), (-0.14, 0.015, -0.13), 1.46),
+         (20, (0.80, 1.04, -0.57), (-0.14, 0.015, -0.13), 1.46),
+         (32, (3.4, 1.95, 1.90), (0, 0.09, 1.39), 4.55),
          (44, (3.4, 1.95, 1.90), (0, 0.09, 1.39), 4.55),
          (59, (1.74, 1.13, 3.00), (0, 0.09, 3.03), 0.89),
          (71, (1.74, 1.13, 3.00), (0, 0.09, 3.03), 0.89),
          (89, (3.4, 1.95, 1.90), (0, 0.09, 1.39), 4.55),
-         (108, (1.25, 0.87, 0.59), (0, 0.035, -0.13), 0.98)]
+         (108, (0.80, 1.04, -0.57), (-0.14, 0.015, -0.13), 1.46)]
 key(cam, "location", [(f, xyz(p)) for f, p, _, _ in shots])
 key(cam, "rotation_quaternion", [(f, (xyz(t) - xyz(p)).to_track_quat("-Z", "Y")) for f, p, t, _ in shots])
 key(cam_data, "ortho_scale", [(f, scale) for f, _, _, scale in shots])
-for label, frame in [("Docked", 1), ("Extend arm", 13), ("Launch", 19), ("Flight", 32), ("Latch", 43), ("Retract", 77)]:
+for label, frame in [("Docked", 1), ("Lower gun and extend arm", 13), ("Launch", 19), ("Flight", 32), ("Latch", 43), ("Retract", 77)]:
     scene.timeline_markers.new(label, frame=frame)
 for screen in bpy.data.screens:
     for area in screen.areas:

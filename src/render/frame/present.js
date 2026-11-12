@@ -48,9 +48,9 @@ export function mountPresent(env) {
     motionState = state;
     for (const [id, cue] of cues) if (state.tick - cue.tick > 60) cues.delete(id);
 
-    grappler.restoreArm();
-    updateFirstPersonView(p, alpha, look, opts, now, fdt, resetMotion);
-    grappler.update(p.grapple, fdt, env.fp.grappleArm, { active: !p.dead && !p.downed, reset: resetMotion });
+    const grapplePose = grappler.advance(p.grapple, fdt, { active: !p.dead && !p.downed, reset: resetMotion });
+    updateFirstPersonView(p, alpha, look, opts, now, fdt, resetMotion, grapplePose);
+    grappler.update(env.fp.grappleArm);
     // The sky is a dome, not a place. Campaign routes run for hundreds of metres, so it travels with the eye.
     env.sky.position.copy(camera.position);
 
