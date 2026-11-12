@@ -1,8 +1,8 @@
 # Vendored @metaverse/hub-sdk
 
 - repo: https://github.com/crrreatorrr/metaverse-hub
-- branch: claude/nifty-einstein-ptgr08
-- sha: 5099cb5
+- branch: main
+- sha: bb0017c
 - package: packages/hub-sdk @ 0.7.2
 - built with: `node scripts/vendor-sdk.mjs`
 - iife: dist/hub-sdk.iife.js (global HubSDK; classic script, not a CDN import)
@@ -30,4 +30,4 @@
 - source src/ticket.ts: b01e1635c7031dd0e6855ecb22b99af1654395c41f0296863b627a31ded41033
 - source src/types.ts: b3ac546d5c67e094d2755de3940d2c4a061a665b9974f1f574786f925a1c39df
 
-This copy is hub-sdk 0.7.2, built from metaverse-hub 5099cb5 on the `claude/nifty-einstein-ptgr08` branch. That commit is not on hub `main` yet; re-vendor from `main` once it merges, and update this file, `SOURCE.pin.json`, `package-lock.json` and the pin in `tests/hub-lifecycle.test.js` together. 0.7.2 makes the feedback screenshot show the whole page: the canvases named by the adapter's `canvases` are copied directly and the page's HTML (title, HUD, pause and other menus) is drawn over them by `dist/pageShot.js` with the vendored modern-screenshot (`dist/third_party/modern-screenshot.js`, MIT, loaded as a separate chunk a few seconds after start). The Google Fonts `<link>` in `index.html` carries `crossorigin="anonymous"` so Bungee and Baloo 2 are drawn too. 0.7.1 adds the optional `tickets` field on event results (Tickets a server event credited); this game does not read it. 0.7.0 added the in-game feedback window (`installFeedback`, `feedbackTransportFromSdk`, `src/feedback.ts`) and the `feedbackAccess` / `submitFeedback` SDK calls; the game's adapter is `src/hub/feedback.js`. Everything from 0.6.4 is unchanged: the `marina_anchor` and `dragon_scale` Relics and the `shooter.wave_clear` event (clearing wave 1 of Wave Mode reports `{ wave: 1, godMode }` and grants the Dragon Scale once). The classic IIFE is `dist/hub-sdk.iife.js` (global `HubSDK`). Shooter loads the ESM build from the same commit. This folder does not carry a patch to apply.
+This copy is hub-sdk 0.7.2, built from metaverse-hub `main` at bb0017c (the squash of crrreatorrr/metaverse-hub#183). The IIFE and source pins match the earlier branch build at 5099cb5. 0.7.2 makes the feedback screenshot show the whole page: the canvases named by the adapter's `canvases` are copied directly and the page's HTML (title, HUD, pause and other menus) is drawn over them by `dist/pageShot.js` with the vendored modern-screenshot (`dist/third_party/modern-screenshot.js`, MIT, loaded as a separate chunk a few seconds after start). The Google Fonts `<link>` in `index.html` carries `crossorigin="anonymous"` so Bungee and Baloo 2 are drawn too. 0.7.1 adds the optional `tickets` field on event results (Tickets a server event credited); this game does not read it. 0.7.0 added the in-game feedback window (`installFeedback`, `feedbackTransportFromSdk`, `src/feedback.ts`) and the `feedbackAccess` / `submitFeedback` SDK calls; the game's adapter is `src/hub/feedback.js`. Everything from 0.6.4 is unchanged: the `marina_anchor` and `dragon_scale` Relics and the `shooter.wave_clear` event (clearing wave 1 of Wave Mode reports `{ wave: 1, godMode }` and grants the Dragon Scale once). The classic IIFE is `dist/hub-sdk.iife.js` (global `HubSDK`). Shooter loads the ESM build from the same commit. This folder does not carry a patch to apply.
