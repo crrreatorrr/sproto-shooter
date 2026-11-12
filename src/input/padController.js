@@ -4,7 +4,7 @@
 import { createPadTracker, createRepeater, menuDirection, padStyleFromId, wasPressed } from './gamepad.js';
 import { createPadGameplay } from './padGameplay.js';
 import { aimAssist, assistTargets } from './aimAssist.js';
-import { PAD_MENU } from './padConfig.js';
+import { PAD_BUTTONS, PAD_MENU } from './padConfig.js';
 import { eyePos } from '../sim/collision.js';
 import { gunRange } from '../data/guns.js';
 
@@ -33,7 +33,7 @@ export function createPadController(game) {
     if (wasPressed(f, PAD_MENU.confirm) && shown) nav.activate();
     if (wasPressed(f, PAD_MENU.back)) game.navBack();
     if (wasPressed(f, PAD_MENU.pause)) game.navStart();
-    const panelOpen = ui.menuOpen && game.screen.hidden && !game.pvpActive;
+    const panelOpen = ui.menuOpen && game.screen.hidden && !game.pvpActive && !game.ctl?.isOpen;
     if (panelOpen && wasPressed(f, PAD_MENU.prevTab)) ui.cycleMenu(-1);
     if (panelOpen && wasPressed(f, PAD_MENU.nextTab)) ui.cycleMenu(1);
     if (panelOpen && wasPressed(f, PAD_MENU.close)) ui.closeMenu();
@@ -89,6 +89,16 @@ export function createPadController(game) {
       if (f.connected && f.activity) {
         game.padStyle = padStyleFromId(f.id);
         game.input.setDevice('pad');
+      }
+      // Controller settings is waiting for a button: the next press is the binding, nothing else.
+      if (game.ctl && game.ctl.capturing) {
+        game.input.setPad(null);
+        play.reset();
+        if (f.connected) {
+          const b = PAD_BUTTONS.find((name) => wasPressed(f, name));
+          if (b) game.ctl.padPressed(b);
+        }
+        return;
       }
       if (game.navRoot()) {
         game.input.setPad(null);

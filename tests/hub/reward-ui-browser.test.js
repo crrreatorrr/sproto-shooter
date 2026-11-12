@@ -307,7 +307,8 @@ it('ordinary pause keyboard navigation and Escape resume preserve the rewarded g
     await f.page.keyboard.press('ArrowDown');
     expect(await f.page.locator('.pause [data-p="resume"]').getAttribute('class')).toContain('nav-focus');
     await f.page.keyboard.press('ArrowDown');
-    expect(await f.page.locator('.pause [data-p="title"]').getAttribute('class')).toContain('nav-focus');
+    // Below Resume: the standard options row (Main menu, Hub, Controller settings, Full screen).
+    expect(await f.page.locator('.pause [data-std].nav-focus').count()).toBe(1);
     expect(await f.page.evaluate(() => window.__game.state.tick)).toBe(1);
     // Existing Game Escape handling deliberately waits out the native release
     // edge. Wait real wall time; do not age clocks or replace input.lock().
