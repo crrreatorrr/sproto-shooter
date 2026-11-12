@@ -244,6 +244,15 @@ export async function grapplerRun(game) {
       const anchored = cablePoint(0.5).distanceTo(hook) < 0.002;
       step(true, 1, false, true);
       const firesLow = state.events.some((event) => event.type === 'shot') && weaponIsLow();
+      const beams = () => scene.children.filter((object) =>
+        object.visible && object.children[0]?.material?.blending === THREE.AdditiveBlending);
+      const previousBeams = beams();
+      const beamFrom = camera.position.clone(), beamTo = beamFrom.clone().add(new THREE.Vector3(0, 0, -10));
+      game.bus.emit({ type: 'tracer', from: beamFrom, to: beamTo, element: 'none', gunType: 'raygun' });
+      draw();
+      const beam = beams().find((object) => !previousBeams.includes(object));
+      const beamOffset = beam?.position.clone().multiplyScalar(2).sub(beamTo).sub(beamFrom);
+      const beamClearsCamera = beamOffset?.z < -0.7 && beamOffset.x > 0.19;
       let staysLow = weaponIsLow();
       let staysAnchored = anchored;
       for (let i = 0; player.grapple && i < 75; i++) {
@@ -278,7 +287,7 @@ export async function grapplerRun(game) {
       step(false, 7);
       report[id] = {
         docked, flight, latch, returned, aimed, handoff, canceled, extended, quickTap, gunLowered, gunRaised,
-        arenaFit, straightFlight, staysAnchored, staysLow, firesLow, reached,
+        arenaFit, straightFlight, staysAnchored, staysLow, firesLow, reached, beamClearsCamera,
       };
     }
     return report;

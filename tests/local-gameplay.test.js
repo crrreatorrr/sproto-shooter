@@ -121,7 +121,7 @@ describe('local Wave Mode in Chromium', () => {
       const complete = {
         docked: true, flight: true, latch: true, returned: true, aimed: true, handoff: true, canceled: true,
         extended: true, quickTap: true, gunLowered: true, gunRaised: true, arenaFit: true, straightFlight: true,
-        staysAnchored: true, staysLow: true, firesLow: true, reached: true,
+        staysAnchored: true, staysLow: true, firesLow: true, reached: true, beamClearsCamera: true,
       };
       expect(report).toEqual({ sproto: complete, pepe: complete, 'pepe-general': complete, 'pepe-tux': complete });
     });

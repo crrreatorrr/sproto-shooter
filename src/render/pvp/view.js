@@ -132,6 +132,7 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
     tracers.push(line);
   }
 
+  const shotOrigins = new WeakMap();
   function drawShots(shots, now, seat) {
     flash.visible = false;
     for (const line of tracers) line.visible = false;
@@ -143,13 +144,18 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
       if (age < 0 || age > TRACER_MS) continue;
       const dir = dirFromYawPitch(shot.yaw, shot.pitch);
       const eye = { x: shot.x, y: shot.y + TUNING.eyeHeight, z: shot.z };
-      const actor = bodies[seat];
-      const weapon = actor?.motion;
-      const lowered = actor?.grapplePose > 0.15;
-      const from = !lowered && weapon?.held && weapon.muzzle
-        ? weapon.held.localToWorld(weapon.muzzle.clone())
-        : null;
-      const muzzle = from || { x: eye.x + dir.x * MUZZLE_AHEAD, y: eye.y + dir.y * MUZZLE_AHEAD, z: eye.z + dir.z * MUZZLE_AHEAD };
+      let origin = shotOrigins.get(shot);
+      if (!origin) {
+        const actor = bodies[seat];
+        const weapon = actor?.motion;
+        const lowered = actor?.grapplePose > 0.15;
+        const muzzle = !lowered && weapon?.held && weapon.muzzle
+          ? weapon.held.localToWorld(weapon.muzzle.clone())
+          : { x: eye.x + dir.x * MUZZLE_AHEAD, y: eye.y + dir.y * MUZZLE_AHEAD, z: eye.z + dir.z * MUZZLE_AHEAD };
+        origin = { muzzle, lowered };
+        shotOrigins.set(shot, origin);
+      }
+      const { muzzle, lowered } = origin;
       let len = TRACER_M;
       if (dir.y < -1e-6) len = Math.min(len, -eye.y / dir.y);
       const line = tracers[used++];

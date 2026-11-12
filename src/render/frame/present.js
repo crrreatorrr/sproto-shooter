@@ -51,6 +51,7 @@ export function mountPresent(env) {
     const grapplePose = grappler.advance(p.grapple, fdt, { active: !p.dead && !p.downed, reset: resetMotion });
     updateFirstPersonView(p, alpha, look, opts, now, fdt, resetMotion, grapplePose);
     grappler.update(env.fp.grappleArm);
+    env.flushWeaponTracers();
     // The sky is a dome, not a place. Campaign routes run for hundreds of metres, so it travels with the eye.
     env.sky.position.copy(camera.position);
 
