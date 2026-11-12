@@ -25,7 +25,7 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
   scene.add(root);
   const tether = new THREE.Mesh(
     new THREE.CylinderGeometry(0.009, 0.009, 1, 6),
-    new THREE.MeshBasicMaterial({ color: CYAN }),
+    new THREE.MeshBasicMaterial({ color: CYAN, transparent: true, depthWrite: false }),
   );
   tether.name = 'Grapple tether';
   const impact = new THREE.Mesh(
@@ -130,16 +130,17 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
   }
 
   function alignDockToWorldPass() {
-    if (!camera) return;
+    if (!camera) return 1;
     // The sleeve uses the viewmodel FOV. Match its dock on screen in the world pass, including while aiming.
     const ratio = Math.tan(camera.fov * Math.PI / 360) / VM_HALF_FOV_TAN;
     camera.worldToLocal(from);
     from.x *= ratio;
     from.y *= ratio;
     camera.localToWorld(from);
+    return ratio;
   }
 
-  function poseTether(end) {
+  function poseTether(end, opacity = 1) {
     cable.subVectors(end, from);
     const length = cable.length();
     tether.visible = length > 0.012;
@@ -147,6 +148,7 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
     tether.position.copy(from).addScaledVector(cable, 0.5);
     tether.quaternion.setFromUnitVectors(UP, cable.multiplyScalar(1 / length));
     tether.scale.y = length;
+    tether.material.opacity = opacity;
   }
 
   function update(hook, dt, arm, { active = true, reset = false } = {}) {
@@ -194,12 +196,19 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
     } else armWeight = THREE.MathUtils.damp(armWeight, 0, 22, dt);
     if (arm && armWeight > 0.002) armPose.apply(arm, anchor, armWeight);
     poseMount(arm);
-    alignDockToWorldPass();
+    const worldDockScale = dockScale * alignDockToWorldPass();
 
     const waiting = !fired && elapsed < ARM_WINDUP && !usedFallback;
-    root.visible = casting && !waiting;
-    stowed.visible = !root.visible;
-    if (!root.visible) return;
+    root.visible = casting;
+    stowed.visible = !casting || waiting;
+    head.visible = casting && !waiting;
+    if (!casting) return;
+    if (waiting) {
+      impact.visible = false;
+      // A brief targeting cue acknowledges a valid grapple even if the player taps before the arm extends.
+      poseTether(anchor, 0.26);
+      return;
+    }
     if (!fired) {
       launch();
       if (usedFallback) elapsed = flightTime + BITE_TIME + 0.17;
@@ -209,7 +218,7 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
       const t = THREE.MathUtils.smoothstep(elapsed, 0, RETURN_TIME);
       head.position.copy(returnFrom).lerp(from, t);
       head.quaternion.copy(returnQ).slerp(dockQ, t);
-      head.scale.setScalar(THREE.MathUtils.lerp(returnScale, dockScale, t));
+      head.scale.setScalar(THREE.MathUtils.lerp(returnScale, worldDockScale, t));
       poseJaws(jawAtReturn * (1 - t));
     } else {
       const flight = Math.min(1, elapsed / flightTime);
@@ -217,7 +226,7 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
       head.position.copy(launchFrom).lerp(hit, flight);
       head.position.y += Math.sin(flight * Math.PI) * 0.16;
       head.quaternion.copy(dockQ).slerp(flightQ, Math.min(1, flight * 5));
-      head.scale.setScalar(THREE.MathUtils.lerp(dockScale, 1.38, Math.min(1, flight * 4)));
+      head.scale.setScalar(THREE.MathUtils.lerp(worldDockScale, 1.38, Math.min(1, flight * 4)));
       // Blender's first 12 frames open the jaws, then its last six snap them shut.
       poseJaws((flight * 2 + bite) / 3);
     }

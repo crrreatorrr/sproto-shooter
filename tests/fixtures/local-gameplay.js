@@ -203,7 +203,7 @@ export async function grapplerRun(game) {
       const { upper, lower, hand } = firstPerson.grappleArm;
       const wristAtRest = hand.getWorldPosition(new THREE.Vector3()).sub(player.pos);
       step(true, 3);
-      const windsUp = !effects.visible && stowed.visible;
+      const windsUp = effects.visible && tether.visible && !head.visible && stowed.visible;
       step(true, 1);
       const launchZ = head.position.z;
       const shoulder = upper.getWorldPosition(new THREE.Vector3());
@@ -219,7 +219,10 @@ export async function grapplerRun(game) {
       step(false, 12);
       const returned = !effects.visible && stowed.visible;
       player.grappleCd = 0;
-      step(true, 6, true);
+      step(true, 4, true);
+      const fovScale = Math.tan(camera.fov * Math.PI / 360) / Math.tan(TUNING.fovBase * Math.PI / 360);
+      const handoff = Math.abs(head.scale.x - dock.getWorldScale(new THREE.Vector3()).x * fovScale) < 0.002;
+      step(true, 2, true);
       viewmodelCamera.matrixWorldInverse.copy(camera.matrixWorldInverse);
       const socketOnScreen = dock.getWorldPosition(new THREE.Vector3()).project(viewmodelCamera);
       const tetherOnScreen = tether.localToWorld(new THREE.Vector3(0, -0.5, 0)).project(camera);
@@ -228,7 +231,13 @@ export async function grapplerRun(game) {
       step(false, 3);
       const canceled = !impact.visible && head.position.z > canceledAt;
       step(false, 12);
-      report[id] = { docked, flight, latch, returned, aimed, canceled, extended };
+      player.grappleCd = 0;
+      step(true, 2);
+      const cue = effects.visible && tether.visible && tether.material.opacity < 0.4 && !head.visible;
+      step(false, 1);
+      const quickTap = cue && !effects.visible && stowed.visible;
+      step(false, 7);
+      report[id] = { docked, flight, latch, returned, aimed, handoff, canceled, extended, quickTap };
     }
     return report;
   } finally {
