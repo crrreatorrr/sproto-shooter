@@ -58,6 +58,7 @@ describe('asset manifest', () => {
       'art/blender/fx_poof.blend',
       'art/blender/grappler.blend',
       'art/blender/new_enemies.blend',
+      'art/blender/vape_cabal_skyline.blend',
       'art/blender/vegetable_grove.blend',
       'art/blender/weapon_animations.blend',
     ]);
