@@ -1,8 +1,8 @@
 {
-  "comment": "Director golden after arena slide, grapple and stamina. Outcome, tick, hits and damage match the previous pin b661a684; the state hash moved because both players now carry that movement. Before that: S2b review b661a684, earlier 078282e5, sim 1 e421cba8.",
+  "comment": "Director golden after the shared locomotion step. Outcome, tick, hits and damage match the previous pin 55419e4e; the state hash moved because both seats now use campaign jump, dash, slide and the downed timer. Before that: 55419e4e, b661a684, 078282e5, sim 1 e421cba8.",
   "phase": "done",
   "tick": 892,
-  "stateHash": "55419e4e",
+  "stateHash": "cb03b044",
   "outcome": "forfeit",
   "winner": 0,
   "reason": "stall",
@@ -14,7 +14,7 @@
   "replay": {
     "verified": true,
     "tick": 892,
-    "stateHash": "55419e4e"
+    "stateHash": "cb03b044"
   },
   "hits": 7,
   "hitDamage": 62876,

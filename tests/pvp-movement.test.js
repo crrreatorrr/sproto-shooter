@@ -28,8 +28,8 @@ function place(p, x, z, yaw, pitch) {
 function wish(extra) {
   return {
     yaw: extra.yaw, pitch: extra.pitch || 0, moveX: 0, moveZ: extra.moveZ || 0,
-    fire: false, zoom: false, sprint: !!extra.sprint, jump: !!extra.jump,
-    dash: false, reload: false, slide: !!extra.slide, grapple: !!extra.grapple, slot: -1,
+    fire: !!extra.fire, zoom: !!extra.zoom, sprint: !!extra.sprint, jump: !!extra.jump,
+    dash: false, reload: false, slide: !!extra.slide, crouch: !!extra.crouch, grapple: !!extra.grapple, slot: -1,
   };
 }
 
@@ -169,12 +169,78 @@ describe('arena movement', () => {
     expect(wishOfUsed(back[0][1]).slide).toBe(true);
   });
 
+  it('double jumps, cuts dash speed, slides from crouch, and refuses sprint while zoomed', () => {
+    const state = createMatch(4);
+    const p = state.players[0];
+    place(p, 0, 0, 0, 0);
+    const other = () => wish({ yaw: 0 });
+    step(state, [wish({ yaw: 0, jump: true }), other()]);
+    expect(p.vy).toBeGreaterThan(TUNING.jumpVel - 1);
+    expect(p.onGround).toBe(false);
+    expect(p.jumpsLeft).toBe(1);
+    step(state, [wish({ yaw: 0, jump: true }), other()]);
+    expect(p.vy).toBeGreaterThan(TUNING.doubleJumpVel - 1);
+    expect(p.jumpsLeft).toBe(0);
+
+    place(p, 0, 0, 0, 0);
+    p.vy = 0;
+    p.onGround = true;
+    p.dashCd = 0;
+    for (let i = 0; i < 8; i++) step(state, [wish({ yaw: 0, moveZ: 1, dash: i === 0 }), other()]);
+    expect(p.dashT).toBe(0);
+    expect(Math.hypot(p.vx, p.vz)).toBeLessThan(TUNING.dashSpeed * 0.5);
+
+    place(p, 0, 0, 0, 0);
+    p.vx = 0;
+    p.vz = 0;
+    p.onGround = true;
+    p.slideCd = 0;
+    p.moveMode = 'walk';
+    step(state, [wish({ yaw: 0, moveZ: 1, sprint: true, crouch: true }), other()]);
+    expect(p.slideT).toBeGreaterThan(0);
+    expect(Math.hypot(p.vx, p.vz)).toBeGreaterThan(12);
+
+    place(p, 0, 0, 0, 0);
+    p.stamina = 1;
+    p.staminaLock = false;
+    for (let i = 0; i < 20; i++) step(state, [wish({ yaw: 0, moveZ: 1, sprint: true, zoom: true }), other()]);
+    expect(Math.hypot(p.vx, p.vz)).toBeLessThanOrEqual(TUNING.walkSpeed + 0.05);
+    expect(p.stamina).toBe(1);
+  });
+
+  it('goes down at 0 HP for the shared second wind, then dies', () => {
+    const state = createMatch(4);
+    const p = state.players[0];
+    const foe = state.players[1];
+    place(p, 0, 4, 0, 0);
+    place(foe, 0, 0, Math.PI, 0);
+    step(state, [wish({ yaw: 0 }), wish({ yaw: Math.PI })]);
+    foe.hp = 500;
+    foe.shield = 0;
+    foe.shieldDelay = 5;
+    step(state, [wish({ yaw: 0, fire: true }), wish({ yaw: Math.PI })]);
+    expect(foe.downed).toBe(true);
+    expect(foe.alive).toBe(true);
+    expect(foe.hp).toBe(0);
+    expect(foe.downedT).toBeLessThan(TUNING.secondWindTime);
+    expect(foe.downedT).toBeGreaterThan(TUNING.secondWindTime - 0.05);
+    let diedAt = null;
+    for (let i = 0; i < 400 && foe.alive; i++) {
+      step(state, [wish({ yaw: 0 }), wish({ yaw: Math.PI })]);
+      if (!foe.alive) diedAt = state.tick;
+    }
+    expect(foe.alive).toBe(false);
+    expect(diedAt).toBeGreaterThan(290);
+    expect(diedAt).toBeLessThan(310);
+  });
+
   it('moves the PvP fingerprint and the mirrored golden together', () => {
     const state = replay(scriptedMatch(7, 180));
-    expect(state.outcome).toBe('draw');
-    expect(state.reason).toBe('double_ko');
-    expect(state.tick).toBe(65);
-    expect(CONTENT_FINGERPRINT).toBe('dc00f234');
-    expect(hashState(state)).toBe('532a562e');
+    expect(state.phase).toBe('live');
+    expect(state.players[0].downed).toBe(true);
+    expect(state.players[1].downed).toBe(true);
+    expect(state.tick).toBe(180);
+    expect(CONTENT_FINGERPRINT).toBe('c8a753da');
+    expect(hashState(state)).toBe('6c1f740c');
   });
 });

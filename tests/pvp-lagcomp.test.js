@@ -213,7 +213,7 @@ describe('alive and invuln rules', () => {
     expect(dead.state.players[0].mag[2]).toBe(mag);
   });
 
-  it('trades on the same tick go through double_ko, rewind or not', () => {
+  it('trades on the same tick down both seats instead of ending the match', () => {
     const state = sniperMatch();
     state.players[0].hp = 1000;
     state.players[0].shield = 0;
@@ -222,7 +222,9 @@ describe('alive and invuln rules', () => {
     const w0 = sniperAt(state, 0, historyAt(state, 1, state.tick - 1), { rewind: 1 });
     const w1 = sniperAt(state, 1, state.players[0], { rewind: 0 });
     step(state, [w0, w1]);
-    expect(state).toMatchObject({ phase: 'done', outcome: 'draw', reason: 'double_ko', winner: null });
+    expect(state.phase).toBe('live');
+    expect(state.players[0]).toMatchObject({ hp: 0, alive: true, downed: true });
+    expect(state.players[1]).toMatchObject({ hp: 0, alive: true, downed: true });
   });
 });
 

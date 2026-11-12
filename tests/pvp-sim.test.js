@@ -18,10 +18,11 @@ import './fixtures/director-golden.js';
 
 // SHOOTER-S2b: sim 2 (lag compensation, split seed, no crits) is a deliberate golden bump from
 // ce272de1 (sim 1, tick 61). The fingerprint went f5949631 (protocol 1) -> 0e584d36 (S2a) ->
-// ec36c8fa (S2b) -> 17d87c54 (S2b review fixes) -> dc00f234 (slide, grapple, stamina).
-const GOLDEN_HASH = '532a562e';
-const GOLDEN_TICK = 65;
-const FINGERPRINT = 'dc00f234';
+// ec36c8fa (S2b) -> 17d87c54 (S2b review fixes) -> dc00f234 (grapple caps) -> c8a753da
+// (shared locomotion). scriptedMatch(7, 180) is mid second-wind, not the knockout.
+const GOLDEN_HASH = '6c1f740c';
+const GOLDEN_TICK = 180;
+const FINGERPRINT = 'c8a753da';
 const DRIVER = path.resolve('tests', 'fixtures', 'director-golden.js');
 const { comment: _comment, ...DIRECTOR_GOLDEN } = directorGoldenFixture;
 
@@ -116,15 +117,24 @@ describe('fixed loadout and spawns', () => {
 
   it('ends a mirrored duel as a draw and an idle match on time', () => {
     const state = replay(scriptedMatch(7, 180));
-    expect(state.outcome).toBe('draw');
-    expect(state.reason).toBe('double_ko');
+    expect(state.outcome).toBeNull();
+    expect(state.reason).toBeNull();
     expect(state.winner).toBeNull();
     expect(state.tick).toBe(GOLDEN_TICK);
+    expect(state.phase).toBe('live');
+    expect(state.players[0].downed).toBe(true);
+    expect(state.players[1].downed).toBe(true);
     expect(state.players[0].hp).toBe(state.players[1].hp);
     expect(state.players[0].shield).toBe(state.players[1].shield);
-    expect(state.players[0].alive).toBe(false);
-    expect(state.players[1].alive).toBe(false);
+    expect(state.players[0].alive).toBe(true);
+    expect(state.players[1].alive).toBe(true);
     expect(hashState(state)).toBe(GOLDEN_HASH);
+    const finished = replay(scriptedMatch(7, 400));
+    expect(finished.outcome).toBe('draw');
+    expect(finished.reason).toBe('double_ko');
+    expect(finished.tick).toBe(365);
+    expect(finished.players[0].alive).toBe(false);
+    expect(finished.players[1].alive).toBe(false);
     expect(state.players[0].x).toBeCloseTo(-state.players[1].x, 4);
     expect(state.players[0].z).toBeCloseTo(-state.players[1].z, 4);
 
@@ -288,8 +298,8 @@ func main() {
     for (const receipt of [source, nodeReceipt, gojaReceipt, browserReceipt]) {
       expect(receipt.ok).toBe(true);
       expect(receipt.ticketsMinted).toBe(0);
-      expect(receipt.outcome).toBe('draw');
-      expect(receipt.reason).toBe('double_ko');
+      expect(receipt.outcome).toBeNull();
+      expect(receipt.reason).toBeNull();
       expect(receipt.winner).toBeNull();
       expect(receipt.stateHash).toBe(GOLDEN_HASH);
       expect(receipt.tick).toBe(GOLDEN_TICK);

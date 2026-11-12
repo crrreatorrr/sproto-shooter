@@ -1,10 +1,10 @@
 // Grapple hook. Campaign, Wave Mode and Sandbox only. PvP never calls this.
-import { TUNING } from '../data/tuning.js';
+import { GAMEPLAY as G } from '../data/gameplay.js';
 import { dirFromYawPitch } from '../core/math.js';
 import { emit } from './events.js';
 import { eyePos, rayWorld } from './collision.js';
 import { activeSolids, firstSolid } from './campaign/solids.js';
-import { grappleSpeedScale } from './grappleMotion.js';
+import { releaseGrappleSpeed, steerGrapple } from './grappleMotion.js';
 
 function inBox(box, x, y, z) {
   if (!box || !box.min || !box.max) return false;
@@ -74,7 +74,7 @@ function anchorOnRay(state, origin, dir, maxDist) {
 export function findHook(state, p) {
   const origin = eyePos(p);
   const dir = dirFromYawPitch(p.yaw, p.pitch);
-  const maxDist = TUNING.grappleRange;
+  const maxDist = G.grappleRange;
   const solids = activeSolids(state);
   let hit = null;
   if (solids) {
@@ -131,16 +131,9 @@ export function clampToRoom(p, room) {
   if (p.pos.y > room.max[1] - 0.3) { p.pos.y = room.max[1] - 0.3; if (p.vel.y > 0) p.vel.y = 0; }
 }
 
-function limitSpeed(p, limit) {
-  const k = grappleSpeedScale(p.vel.x, p.vel.y, p.vel.z, limit);
-  p.vel.x *= k;
-  p.vel.y *= k;
-  p.vel.z *= k;
-}
-
 function releaseGrapple(state, p) {
   if (!p.grapple) return;
-  limitSpeed(p, TUNING.grappleReleaseSpeed);
+  releaseGrappleSpeed(p.vel);
   p.grapple = null;
   emit(state, 'grappleRelease', { playerId: p.id });
 }
@@ -156,7 +149,7 @@ export function tickGrapple(state, p, dt) {
   if (!p.grapple) {
     if (p.grappleCd > 0) return;
     const hook = findHook(state, p);
-    p.grappleCd = TUNING.grappleCd;
+    p.grappleCd = G.grappleCd;
     if (!hook) {
       p.grappleMiss = true;
       return;
@@ -170,18 +163,9 @@ export function tickGrapple(state, p, dt) {
     releaseGrapple(state, p);
     return;
   }
-  const originY = p.pos.y + 0.9;
+  const originY = p.pos.y + G.grappleOrigin;
   const dx = hook.x - p.pos.x, dy = hook.y - originY, dz = hook.z - p.pos.z;
-  const dist = Math.hypot(dx, dy, dz) || 1;
-  if (dist < TUNING.grappleArrive) {
-    releaseGrapple(state, p);
-    return;
-  }
-  const pull = TUNING.grapplePull * dt;
-  p.vel.x += (dx / dist) * pull;
-  p.vel.y += (dy / dist) * pull;
-  p.vel.z += (dz / dist) * pull;
-  limitSpeed(p, TUNING.grappleSpeed);
+  if (steerGrapple(p.vel, dx, dy, dz, dt) === 'arrive') releaseGrapple(state, p);
   const room = sealOf(state, p);
   if (room) {
     const pad = 0.45;

@@ -206,7 +206,7 @@ describe('slide, grapple, stamina', () => {
     const back = dequantizeCommand(quantizeCommand(cmd({ held: { grapple: true }, pressed: { grapple: true } })));
     expect(back.held.grapple).toBe(true);
     expect(back.pressed.grapple).toBe(true);
-    expect(CONTENT_FINGERPRINT).toBe('dc00f234');
+    expect(CONTENT_FINGERPRINT).toBe('c8a753da');
     expect(contentFingerprint(1)).toBe('73c6eb0f');
   });
 });

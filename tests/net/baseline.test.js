@@ -112,15 +112,15 @@ function fireRuns(name) {
 }
 
 describe('pins the harness must never move', () => {
-  it('keeps the PvP golden 532a562e and both fingerprints', () => {
+  it('keeps the PvP golden 6c1f740c and both fingerprints', () => {
     const state = replay(scriptedMatch(7, 180));
     // Sim 2 (SHOOTER-S2b) is a deliberate golden bump from ce272de1 (sim 1).
-    expect(hashState(state)).toBe('532a562e');
+    expect(hashState(state)).toBe('6c1f740c');
     // Fingerprints: f5949631 (protocol 1) -> 0e584d36 (S2a) -> ec36c8fa (S2b, sim 2) -> 17d87c54
     // (S2b review fixes: 128-bit combat RNG, echo cap 1000 ms, view step 2). S3 (client only)
-    // leaves it alone. Slide, grapple and stamina moved it to dc00f234; the mirrored golden
-    // moved with it from 6545ca0a.
-    expect(CONTENT_FINGERPRINT).toBe('dc00f234');
+    // leaves it alone. Grapple caps moved it to dc00f234. Shared locomotion moved it to
+    // c8a753da; the 180-tick mirror moved from 532a562e to 6c1f740c.
+    expect(CONTENT_FINGERPRINT).toBe('c8a753da');
     expect(contentFingerprint(1)).toBe('73c6eb0f');
   });
 });

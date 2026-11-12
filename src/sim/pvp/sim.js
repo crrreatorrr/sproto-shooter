@@ -10,6 +10,7 @@
 //   combat seed is not kept in the state. Snapshots carry publicStateHash (the state without the
 //   RNG); replays check the full hashState and stateSha256.
 // - No crits. The only randomness left is pellet spread.
+import { GAMEPLAY as G } from '../../data/gameplay.js';
 import { TUNING } from '../../data/tuning.js';
 import { rangeFalloff } from '../../data/guns.js';
 import { createRng, float, next } from '../../core/rng.js';
@@ -18,8 +19,9 @@ import { dirFromYawPitch, deg, yawTo } from '../../core/math.js';
 import { quantizeForHash, stableStringify, verifyStateHash } from '../hash.js';
 import { rayCapsule } from './hit.js';
 import { ARENA_SOLIDS, arenaHook, arenaOccludes } from './arena.js';
-import { grappleSpeedScale } from '../grappleMotion.js';
-import { snapToGround, firstSolid } from '../campaign/solids.js';
+import { releaseGrappleSpeed, steerGrapple } from '../grappleMotion.js';
+import { applyGravity, beginDowned, stepLocomotion, tickDowned } from '../gameplay.js';
+import { groundHeight, snapToGround, firstSolid } from '../campaign/solids.js';
 import {
   DT, LOADOUT, MATCH_TICKS, RESERVE, REWIND, SPAWN_RADIUS, STAGE_ID,
 } from './rules.js';
@@ -79,6 +81,8 @@ function makePlayer(seat, pos, yaw, rng) {
     dashT: 0, dashCd: 0, dashX: 0, dashZ: 0,
     stamina: 1, staminaDelay: 0, staminaLock: false,
     slideT: 0, slideCd: 0,
+    coyoteT: 0, jumpBufferT: 0, jumpsLeft: 2,
+    downed: false, downedT: 0, moveMode: 'walk',
     grappleCd: 0, grapple: null,
     slot: 0,
     mag: LOADOUT.map((gun) => gun.stats.magSize),
@@ -155,7 +159,7 @@ export function normalizeWish(player, raw, tick = 0) {
   const view = viewOf(wish, tick);
   return {
     yaw: num(wish.yaw, player.yaw),
-    pitch: Math.max(-1.5, Math.min(1.5, num(wish.pitch, player.pitch))),
+    pitch: Math.max(-G.pitchLimit, Math.min(G.pitchLimit, num(wish.pitch, player.pitch))),
     moveX: Math.max(-1, Math.min(1, num(wish.moveX, 0))),
     moveZ: Math.max(-1, Math.min(1, num(wish.moveZ, 0))),
     fire: !!wish.fire,
@@ -165,6 +169,7 @@ export function normalizeWish(player, raw, tick = 0) {
     dash: !!wish.dash,
     reload: !!wish.reload,
     slide: !!wish.slide,
+    crouch: !!wish.crouch,
     grapple: !!wish.grapple,
     slot,
     rewind: view.back,
@@ -210,14 +215,21 @@ export function historyAt(state, seat, at) {
 }
 
 function ensureMove(p) {
-  if (p.stamina != null) return;
-  p.stamina = 1;
-  p.staminaDelay = 0;
-  p.staminaLock = false;
-  p.slideT = 0;
-  p.slideCd = 0;
-  p.grappleCd = 0;
-  p.grapple = null;
+  if (p.stamina == null) {
+    p.stamina = 1;
+    p.staminaDelay = 0;
+    p.staminaLock = false;
+    p.slideT = 0;
+    p.slideCd = 0;
+    p.grappleCd = 0;
+    p.grapple = null;
+  }
+  if (p.coyoteT == null) p.coyoteT = 0;
+  if (p.jumpBufferT == null) p.jumpBufferT = 0;
+  if (p.jumpsLeft == null) p.jumpsLeft = 2;
+  if (p.downed == null) p.downed = false;
+  if (p.downedT == null) p.downedT = 0;
+  if (p.moveMode == null) p.moveMode = 'walk';
 }
 
 function eyeOf(p) {
@@ -268,16 +280,13 @@ export function pushArena(p) {
   }
 }
 
-function limitGrappleSpeed(p, limit) {
-  const k = grappleSpeedScale(p.vx, p.vy, p.vz, limit);
-  p.vx *= k;
-  p.vy *= k;
-  p.vz *= k;
-}
-
 function releaseArenaGrapple(p) {
   if (!p.grapple) return;
-  limitGrappleSpeed(p, TUNING.grappleReleaseSpeed);
+  const vel = { x: p.vx, y: p.vy, z: p.vz };
+  releaseGrappleSpeed(vel);
+  p.vx = vel.x;
+  p.vy = vel.y;
+  p.vz = vel.z;
   p.grapple = null;
 }
 
@@ -290,7 +299,7 @@ function tickArenaGrapple(p, wish, dt) {
   if (!p.grapple) {
     if (p.grappleCd > 0) return;
     const hook = arenaHook(eyeOf(p), dirFromYawPitch(p.yaw, p.pitch));
-    p.grappleCd = TUNING.grappleCd;
+    p.grappleCd = G.grappleCd;
     if (!hook) {
       p.grappleMiss = true;
       return;
@@ -308,20 +317,13 @@ function tickArenaGrapple(p, wish, dt) {
     releaseArenaGrapple(p);
     return;
   }
-  const oy = p.y + 0.9;
-  const px = hook.x - p.x;
-  const py = hook.y - oy;
-  const pz = hook.z - p.z;
-  const pd = Math.hypot(px, py, pz) || 1;
-  if (pd < TUNING.grappleArrive) {
-    releaseArenaGrapple(p);
-    return;
-  }
-  const pull = TUNING.grapplePull * dt;
-  p.vx += (px / pd) * pull;
-  p.vy += (py / pd) * pull;
-  p.vz += (pz / pd) * pull;
-  limitGrappleSpeed(p, TUNING.grappleSpeed);
+  const oy = p.y + G.grappleOrigin;
+  const vel = { x: p.vx, y: p.vy, z: p.vz };
+  const phase = steerGrapple(vel, hook.x - p.x, hook.y - oy, hook.z - p.z, dt);
+  p.vx = vel.x;
+  p.vy = vel.y;
+  p.vz = vel.z;
+  if (phase === 'arrive') releaseArenaGrapple(p);
 }
 
 /**
@@ -333,125 +335,76 @@ function tickArenaGrapple(p, wish, dt) {
 export function movePlayer(p, wish, dt) {
   ensureMove(p);
   p.yaw = q4(wish.yaw);
-  p.pitch = q4(Math.max(-1.5, Math.min(1.5, wish.pitch)));
+  p.pitch = q4(Math.max(-G.pitchLimit, Math.min(G.pitchLimit, wish.pitch)));
   if (wish.slot >= 0 && wish.slot !== p.slot) {
     p.slot = wish.slot;
     p.reloadT = 0;
     p.swapT = LOADOUT[p.slot].stats.swapTime;
   }
-  const sy = Math.sin(p.yaw);
-  const cy = Math.cos(p.yaw);
-  let wx = -sy * wish.moveZ + cy * wish.moveX;
-  let wz = -cy * wish.moveZ - sy * wish.moveX;
-  const wl = Math.hypot(wx, wz);
-  if (wl > 1) { wx /= wl; wz /= wl; }
-  const wantSprint = wish.sprint && wish.moveZ > 0 && !p.staminaLock && p.stamina > 0;
-  let sprinting = wantSprint;
-  if (sprinting) {
-    p.stamina = Math.max(0, p.stamina - dt / TUNING.staminaSprint);
-    p.staminaDelay = TUNING.staminaRegenDelay;
-    if (p.stamina <= 0) { p.staminaLock = true; sprinting = false; }
-  } else {
-    if (p.staminaDelay > 0) p.staminaDelay = Math.max(0, p.staminaDelay - dt);
-    else if (p.stamina < 1) p.stamina = Math.min(1, p.stamina + dt / TUNING.staminaRegen);
-    if (p.staminaLock && p.stamina >= TUNING.staminaRefill) p.staminaLock = false;
-  }
-  const maxSpeed = sprinting ? TUNING.sprintSpeed : TUNING.walkSpeed;
-  p.dashCd = Math.max(0, p.dashCd - dt);
-  p.slideCd = Math.max(0, p.slideCd - dt);
   p.invuln = Math.max(0, p.invuln - dt);
-  if (wish.dash && p.dashCd <= 0) {
-    const dl = Math.hypot(wx, wz);
-    p.dashX = dl > 0.1 ? wx / dl : -sy;
-    p.dashZ = dl > 0.1 ? wz / dl : -cy;
-    p.dashT = TUNING.dashTime;
-    p.dashCd = TUNING.dashCd;
-    p.invuln = Math.max(p.invuln, TUNING.dashInvuln);
-    p.slideT = 0;
-  }
-  const hs = Math.hypot(p.vx, p.vz);
-  if (p.onGround && p.slideT <= 0 && p.slideCd <= 0 && wish.slide && (hs > TUNING.slideMinSpeed || sprinting)) {
-    const dirx = hs > 0.4 ? p.vx / hs : -sy;
-    const dirz = hs > 0.4 ? p.vz / hs : -cy;
-    const boost = Math.max(hs, TUNING.slideBoost);
-    p.vx = dirx * boost;
-    p.vz = dirz * boost;
-    p.slideT = TUNING.slideTime;
-    p.dashT = 0;
-    p.stamina = Math.max(0, p.stamina - TUNING.slideStamina);
-    p.staminaDelay = TUNING.staminaRegenDelay;
-    if (p.stamina <= 0) p.staminaLock = true;
-  }
-  // The attached grapple drives movement instead of ground and air controls.
-  const hooked = !!p.grapple;
-  if (p.dashT > 0) {
-    p.dashT -= dt;
-    p.vx = p.dashX * TUNING.dashSpeed;
-    p.vz = p.dashZ * TUNING.dashSpeed;
-    p.vy = Math.max(p.vy, 0);
-    if (p.dashT < 0) p.dashT = 0;
-  } else if (p.slideT > 0 && !hooked) {
-    p.slideT -= dt;
-    if (wl > 0.2) { p.vx += wx * 10 * dt; p.vz += wz * 10 * dt; }
-    let sp = Math.hypot(p.vx, p.vz) || 0.0001;
-    const next = sp + (TUNING.slideCruise - sp) * Math.min(1, TUNING.slideDrag * dt);
-    const k = Math.max(0, next) / sp;
-    p.vx *= k;
-    p.vz *= k;
-    if (p.slideT <= 0 || next < TUNING.walkSpeed * 0.9 || !p.onGround) {
-      p.slideT = 0;
-      p.slideCd = TUNING.slideCd;
-    }
-  } else if (p.onGround && !hooked) {
-    const tx = wx * maxSpeed;
-    const tz = wz * maxSpeed;
-    const dx = tx - p.vx;
-    const dz = tz - p.vz;
-    const dl = Math.hypot(dx, dz);
-    const acc = (wl > 0.01 ? TUNING.groundAccel : TUNING.friction * Math.max(hs, 2)) * dt;
-    if (dl > 0) {
-      const k = Math.min(1, acc / dl);
-      p.vx += dx * k;
-      p.vz += dz * k;
-    }
-  } else if (!hooked) {
-    const cap = Math.max(hs, TUNING.walkSpeed);
-    p.vx += wx * TUNING.airAccel * dt;
-    p.vz += wz * TUNING.airAccel * dt;
-    const nh = Math.hypot(p.vx, p.vz);
-    if (nh > cap) { p.vx *= cap / nh; p.vz *= cap / nh; }
-  }
-  if (wish.jump && p.onGround) {
-    p.vy = TUNING.jumpVel;
-    p.onGround = false;
-    if (p.slideT > 0) {
-      const sp = Math.hypot(p.vx, p.vz);
-      if (sp > 0.1) {
-        const boosted = sp * TUNING.slideHopBoost;
-        p.vx = (p.vx / sp) * boosted;
-        p.vz = (p.vz / sp) * boosted;
-      }
-      p.slideT = 0;
-      p.slideCd = TUNING.slideHopCd;
-    }
-  }
-  if (p.dashT <= 0) p.vy -= TUNING.gravity * dt;
+  const body = {
+    pos: { x: p.x, y: p.y, z: p.z },
+    vel: { x: p.vx, y: p.vy, z: p.vz },
+    yaw: p.yaw,
+    pitch: p.pitch,
+    onGround: p.onGround,
+    downed: !!p.downed,
+    zooming: !!wish.zoom,
+    stamina: p.stamina,
+    staminaDelay: p.staminaDelay,
+    staminaLock: !!p.staminaLock,
+    coyoteT: p.coyoteT,
+    jumpBufferT: p.jumpBufferT,
+    jumpsLeft: p.jumpsLeft,
+    invulnT: p.invuln,
+    grapple: p.grapple,
+    move: {
+      mode: p.moveMode,
+      slideCd: p.slideCd,
+      dashCd: p.dashCd,
+      dashT: p.dashT,
+      dashDir: { x: p.dashX, z: p.dashZ },
+      slideT: p.moveMode === 'slide' ? p.slideT : 0,
+    },
+  };
+  stepLocomotion(body, wish, dt, {
+    groundAt: (x, z, radius, feet, reach) => groundHeight(ARENA_SOLIDS, x, z, radius, feet, reach),
+  });
+  applyGravity(body, dt);
+  p.vx = body.vel.x;
+  p.vy = body.vel.y;
+  p.vz = body.vel.z;
+  p.onGround = body.onGround;
+  p.stamina = body.stamina;
+  p.staminaDelay = body.staminaDelay;
+  p.staminaLock = body.staminaLock;
+  p.coyoteT = body.coyoteT;
+  p.jumpBufferT = body.jumpBufferT;
+  p.jumpsLeft = body.jumpsLeft;
+  p.invuln = body.invulnT;
+  p.dashT = body.move.dashT;
+  p.dashCd = body.move.dashCd;
+  p.dashX = body.move.dashDir.x;
+  p.dashZ = body.move.dashDir.z;
+  p.slideCd = body.move.slideCd;
+  p.moveMode = body.move.mode;
+  p.slideT = body.move.mode === 'slide' ? Math.max(0, body.move.slideT) : 0;
   tickArenaGrapple(p, wish, dt);
   const prevY = p.y;
   p.x += p.vx * dt;
   p.y += p.vy * dt;
   p.z += p.vz * dt;
   pushArena(p);
-  const body = {
+  const groundBody = {
     pos: { x: p.x, y: p.y, z: p.z },
     prevPos: { y: prevY },
     vel: { y: p.vy },
     onGround: false,
   };
-  snapToGround(body, ARENA_SOLIDS, TUNING.playerRadius, 0.4);
-  if (body.onGround) {
-    p.y = body.pos.y;
-    p.vy = body.vel.y;
+  snapToGround(groundBody, ARENA_SOLIDS, TUNING.playerRadius, 0.4);
+  if (groundBody.onGround) {
+    p.y = groundBody.pos.y;
+    p.vy = groundBody.vel.y;
     p.onGround = true;
   } else if (p.y <= 0) {
     p.y = 0;
@@ -503,6 +456,10 @@ function snap(p) {
   if (typeof p.staminaDelay === 'number') p.staminaDelay = q4(Math.max(0, p.staminaDelay));
   if (typeof p.slideT === 'number') p.slideT = q4(Math.max(0, p.slideT));
   if (typeof p.slideCd === 'number') p.slideCd = q4(Math.max(0, p.slideCd));
+  if (typeof p.coyoteT === 'number') p.coyoteT = q4(Math.max(0, p.coyoteT));
+  if (typeof p.jumpBufferT === 'number') p.jumpBufferT = q4(Math.max(0, p.jumpBufferT));
+  if (typeof p.jumpsLeft === 'number') p.jumpsLeft = Math.max(0, Math.round(p.jumpsLeft));
+  if (typeof p.downedT === 'number') p.downedT = q4(Math.max(0, p.downedT));
   if (typeof p.grappleCd === 'number') p.grappleCd = q4(Math.max(0, p.grappleCd));
   if (p.grapple) {
     p.grapple.x = q4(p.grapple.x);
@@ -607,14 +564,15 @@ function applyHits(target, hits, invuln) {
     const absorb = Math.min(target.shield, left);
     target.shield -= absorb;
     left -= absorb;
-    target.hp -= left;
+    if (!target.downed) target.hp -= left;
     target.shieldDelay = TUNING.shieldDelay;
+    if (!target.downed && target.hp <= 0) beginDowned(target);
   }
   return total;
 }
 
 function regen(p, dt) {
-  if (!p.alive) return;
+  if (!p.alive || p.downed) return;
   p.shieldDelay = Math.max(0, p.shieldDelay - dt);
   if (p.shieldDelay <= 0 && p.shield < MAX_SHIELD) {
     p.shield = Math.min(MAX_SHIELD, p.shield + Math.round(TUNING.shieldRegen * dt * 1000));
@@ -624,8 +582,8 @@ function regen(p, dt) {
 function resolve(state) {
   const a = state.players[0];
   const b = state.players[1];
-  if (a.hp <= 0) { a.hp = 0; a.alive = false; a.vx = a.vy = a.vz = 0; }
-  if (b.hp <= 0) { b.hp = 0; b.alive = false; b.vx = b.vy = b.vz = 0; }
+  if (a.hp <= 0 && !a.downed) { a.hp = 0; a.alive = false; a.vx = a.vy = a.vz = 0; }
+  if (b.hp <= 0 && !b.downed) { b.hp = 0; b.alive = false; b.vx = b.vy = b.vz = 0; }
   if (!a.alive && !b.alive) return finish(state, 'draw', null, 'double_ko');
   if (!a.alive) return finish(state, 'ko', 1, 'ko');
   if (!b.alive) return finish(state, 'ko', 0, 'ko');
@@ -696,7 +654,12 @@ export function step(state, wishes, events = null) {
   }
   for (const p of state.players) {
     snap(p);
-    regen(p, DT);
+    if (p.downed) {
+      if (tickDowned(p, DT)) {
+        p.alive = false;
+        p.vx = p.vy = p.vz = 0;
+      }
+    } else regen(p, DT);
     snap(p);
   }
   state.tick += 1;
@@ -742,6 +705,8 @@ export function snapshotOf(state) {
       vx: p.vx, vz: p.vz,
       hp: p.hp, shield: p.shield,
       alive: p.alive,
+      downed: !!p.downed,
+      downedT: p.downedT || 0,
       slot: p.slot,
       grappleCd: p.grappleCd, grappleMiss: p.grappleMiss,
       grapple: p.grapple ? { x: p.grapple.x, y: p.grapple.y, z: p.grapple.z, id: p.grapple.id } : null,

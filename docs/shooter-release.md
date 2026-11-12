@@ -77,7 +77,7 @@ Screenshots are in `tests/fixtures/screenshots/s7/` and were also saved as run a
 | Campaign sim on the hub | commit `e6d1bb5`, protocol 1, fingerprint `3c657fb5`, sha256 `a8b964db897a57827b4d3b4cecf8bc25c4f91684ea4851aa93c7a9279b427161`, global `SprotoShooterSim` |
 | Free / wager sim on the hub | commit `e6d1bb5`, protocol 2, sim 2, fingerprint `17d87c54`, loadout `4cdfab55`, sha256 `658d4c983f4e37aafbd6f65073bb6bf860aa6c6ac130477cefd7a1bbae1e4665`, global `SprotoShooterPvp` |
 | hub-sdk in this repo | 0.6.4, vendored from hub `a1281c9`, IIFE sha256 `e7626595184dc132e72ffd707c87149b266c7b3933d40670e55eb2fb0a64eda6` |
-| PvP content fingerprint in this tree | `dc00f234` (golden `532a562e`). The hub row above is still the last vendored pin `17d87c54`. Re-vendor the Shooter sim before any staging deploy. |
+| PvP content fingerprint in this tree | `c8a753da` (golden `6c1f740c`). The hub row above is still the last vendored pin `17d87c54`. Re-vendor the Shooter sim before any staging deploy. |
 | Campaign fingerprint | `3c657fb5` |
 | Replay env on the local stack | `SHOOTER_PVP_REPLAY=1` (compose). Production config leaves it unset. |
 | Feature flags | `shooter_pvp=off`, `shooter_pvp_wager=off`, `shooter_pvp_ranked=off` |

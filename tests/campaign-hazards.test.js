@@ -87,6 +87,6 @@ describe('campaign hazard zones and geysers', () => {
 
   it('does not move the campaign or PvP pins', () => {
     expect(contentFingerprint(1)).toBe('73c6eb0f');
-    expect(CONTENT_FINGERPRINT).toBe('dc00f234');
+    expect(CONTENT_FINGERPRINT).toBe('c8a753da');
   });
 });

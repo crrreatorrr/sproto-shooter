@@ -54,20 +54,24 @@ function fuzzMatch(seed, ticks, noise = 0.06) {
 // Sim 2 outcomes. Arena movement (slide, grapple, stamina) moved the hashes; the tick and
 // reason stayed. Sim 1 was 236/49f3057b, 619/1e2dbb05, 116/27e09c5f, 2700/95e040d0, 2700/623eab41.
 // The previous sim 2 hashes were 84f60d70, adb476e7, d3f0d621, c8eab507, e341634f.
+// Shared locomotion (campaign jump, dash end, crouch slide, downed timer) moved these.
+// Previous: 262/07a28146, 386/dc83064d, 116/8cd527fb, 2700/191c7bcf, 2700/fb1ace62.
 const FUZZ = Object.freeze([
-  { seed: 1, ticks: 900, noise: 0.06, tick: 262, reason: 'ko', hash: '07a28146' },
-  { seed: 7, ticks: 900, noise: 0.06, tick: 386, reason: 'ko', hash: 'dc83064d' },
-  { seed: 2024, ticks: 2700, noise: 0.06, tick: 116, reason: 'ko', hash: '8cd527fb' },
-  { seed: 5, ticks: 2700, noise: 0.5, tick: 2700, reason: 'time', hash: '191c7bcf' },
-  { seed: 6, ticks: 2700, noise: 0.35, tick: 2700, reason: 'time', hash: 'fb1ace62' },
+  { seed: 1, ticks: 900, noise: 0.06, tick: 435, reason: 'ko', hash: 'd2de7646' },
+  { seed: 7, ticks: 900, noise: 0.06, tick: 422, reason: 'ko', hash: '28b612cc' },
+  { seed: 2024, ticks: 2700, noise: 0.06, tick: 546, reason: 'ko', hash: 'caa3bdde' },
+  { seed: 5, ticks: 2700, noise: 0.5, tick: 2700, reason: 'time', hash: '6b92cca7' },
+  { seed: 6, ticks: 2700, noise: 0.35, tick: 1032, reason: 'ko', hash: 'a45de725' },
 ]);
 
 describe('PvP sim split keeps the golden (SHOOTER-S1, sim 2 values)', () => {
-  it('keeps golden 532a562e in node', () => {
+  it('keeps golden 6c1f740c in node', () => {
     const state = replay(scriptedMatch(7, 180));
-    expect(hashState(state)).toBe('532a562e');
-    expect(state.tick).toBe(65);
-    expect(state.reason).toBe('double_ko');
+    expect(hashState(state)).toBe('6c1f740c');
+    expect(state.tick).toBe(180);
+    expect(state.phase).toBe('live');
+    expect(state.players[0].downed).toBe(true);
+    expect(state.players[1].downed).toBe(true);
   });
 
   for (const row of FUZZ) {

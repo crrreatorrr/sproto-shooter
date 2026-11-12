@@ -31,7 +31,7 @@ function living(s, enc) {
 describe('part clocks, flock units, fallback waves', () => {
   it('keeps the campaign and PvP pins', () => {
     expect(contentFingerprint(1)).toBe('73c6eb0f');
-    expect(CONTENT_FINGERPRINT).toBe('dc00f234');
+    expect(CONTENT_FINGERPRINT).toBe('c8a753da');
   });
 
   it('spawns a part squad on the script clock and sends the flock home when the part ends', () => {
