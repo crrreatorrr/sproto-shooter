@@ -5,6 +5,7 @@ import { GUN_MODEL_LEN, HAND_FRAC } from '../viewmodel/gunMesh.js';
 import { GUN_IDS, LOADOUT } from '../../sim/pvp/rules.js';
 import { createSlidePose } from './slidePose.js';
 import { wrapAngle } from '../anim.js';
+import { leftGrapplerArm } from '../vfx/grappler.js';
 
 // World-space machine gun length for the 1.8 m Arena character rigs.
 const ARENA_MG_LENGTH = 0.96;
@@ -22,6 +23,7 @@ export function attachModel(body, source, path) {
   body.group.add(model);
   body.capsule.visible = false;
   body.model = model;
+  body.grappleArm = leftGrapplerArm(model);
   body.path = path;
   retainAsset(path);
   body.slide = createSlidePose(model);
@@ -54,7 +56,7 @@ export function disposeModel(body) {
   body.model.traverse((obj) => { if (obj.isSkinnedMesh) obj.skeleton.dispose(); });
   body.model.removeFromParent();
   releaseAsset(body.path);
-  body.slide = body.motion = body.model = null;
+  body.slide = body.motion = body.model = body.grappleArm = null;
 }
 
 const gripAt = new THREE.Vector3(), aimAt = new THREE.Vector3();

@@ -8,6 +8,8 @@ import { GUN_TYPES } from '../../src/data/guns.js';
 import { freezeAt } from '../../src/render/core/clock.js';
 import { ensureCharacter, ensureGunModel, ensureStage } from '../../src/render/assets.js';
 import { levelAssets } from '../../src/data/stages.js';
+import { PLAYER_CHARACTERS } from '../../src/render/playerCharacters.js';
+import { loadPlayerModel } from '../../src/render/firstPerson.js';
 
 const cmd = (o = {}) => ({ yaw: 0, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [], ...o });
 
@@ -152,6 +154,57 @@ export async function weaponsAndSpells(game) {
       for (let i = 0; i < 120; i++) { step(cmd()); if (i % 40 === 0) draw(); }
     }
     return { events, guns: gunCounts, spells: [...spells] };
+  } finally {
+    freezeAt(null);
+  }
+}
+
+export async function grapplerRun(game) {
+  game.frame = () => {};
+  game.hideScreen();
+  const { camera, firstPerson, scene } = game.renderer;
+  const state = game.state, player = state.players[state.localPlayerId];
+  const look = { yaw: 0, pitch: -0.115 };
+  const report = {};
+  let time = performance.now();
+  function draw() {
+    freezeAt(time += 30);
+    game.renderer.render(state, 1, look);
+  }
+  function step(grapple, ticks) {
+    for (let i = 0; i < ticks; i++) {
+      simulate(state, { [player.id]: cmd({ ...look, held: { grapple } }) });
+      draw();
+    }
+  }
+  try {
+    state.enemies.length = 0;
+    const effects = scene.getObjectByName('Grapple effects');
+    const head = effects.getObjectByName('Claw');
+    const jaws = [1, 2, 3].map((i) => head.getObjectByName(`Jaw_hinge_${i}`));
+    const impact = effects.getObjectByName('Grapple latch flash');
+    for (const { id, model } of PLAYER_CHARACTERS) {
+      firstPerson.selectModel(model);
+      await loadPlayerModel(model);
+      Object.assign(player.pos, { x: 0, y: 0, z: 0 });
+      Object.assign(player.prevPos, player.pos);
+      Object.assign(player.vel, { x: 0, y: 0, z: 0 });
+      player.grappleCd = 0;
+      draw();
+      const launcher = camera.getObjectByName('Launcher');
+      const stowed = launcher.getObjectByName('Dock').getObjectByName('Claw');
+      const docked = firstPerson.modelPath === model && launcher.visible && stowed.visible && !effects.visible;
+      step(true, 1);
+      const launchZ = head.position.z;
+      step(true, 2);
+      const flight = effects.visible && !stowed.visible && head.position.z < launchZ - 3 && jaws.every((jaw) => jaw.rotation.x < -0.4);
+      step(true, 7);
+      const latch = !!player.grapple && impact.visible && Math.abs(head.position.z - player.grapple.z) < 0.25
+        && jaws.every((jaw) => Math.abs(jaw.rotation.x) < 0.16);
+      step(false, 12);
+      report[id] = { docked, flight, latch, returned: !effects.visible && stowed.visible };
+    }
+    return report;
   } finally {
     freezeAt(null);
   }

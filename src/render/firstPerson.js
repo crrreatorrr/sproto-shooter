@@ -298,6 +298,7 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
   return {
     root,
     get ready() { return ready; },
+    get grappleArm() { return root.visible ? arms.Left : null; },
     get modelPath() { return desiredPath; },
     get weaponOffset() { return FP.weaponOffset; },
     get usesPepeRig() { return protectBody; },

@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 147,
-    "runtimeBytes": 27507603,
+    "runtimeFiles": 148,
+    "runtimeBytes": 27603111,
     "decodedBytes": 258207558,
-    "referenced": 147,
+    "referenced": 148,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -334,6 +334,13 @@
       "kind": "static",
       "from": [
         "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/gear/grappler.glb",
+      "kind": "static",
+      "from": [
+        "src/render/vfx/grappler.js"
       ]
     },
     {
@@ -2629,6 +2636,41 @@
         "nodes": 6,
         "materials": [
           "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/gear/grappler.glb",
+      "bytes": 95508,
+      "sha256": "3276cedc842141e99e5fc4156527454fbfc84819433c8e08b4c0f1e6d663cada",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/vfx/grappler.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1268,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "Grappler jaws"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 23,
+        "materials": [
+          "Charcoal webbing",
+          "Graphite",
+          "Ion cyan",
+          "Ochre",
+          "Satin steel"
         ]
       }
     },
@@ -6254,6 +6296,10 @@
       {
         "path": "art/blender/fx_poof.blend",
         "bytes": 94744
+      },
+      {
+        "path": "art/blender/grappler.blend",
+        "bytes": 128776
       },
       {
         "path": "art/blender/new_enemies.blend",

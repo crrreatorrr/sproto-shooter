@@ -13,6 +13,7 @@ import { PLAYER_CHARACTERS, selectedCharacter } from '../playerCharacters.js';
 import { GUN_IDS } from '../../sim/pvp/rules.js';
 import { attachModel, disposeModel, poseModel } from './actor.js';
 import { chaseCamera } from './aim.js';
+import { createGrappler } from '../vfx/grappler.js';
 
 export { chaseCamera };
 
@@ -94,16 +95,6 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
     floor.material.needsUpdate = true;
   });
 
-  const ropes = [0, 1].map(() => {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
-    const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xffd166 }));
-    line.visible = false;
-    line.frustumCulled = false;
-    scene.add(line);
-    return line;
-  });
-
   const bodies = [0, 1].map((seat) => {
     const group = new THREE.Group();
     const capsule = new THREE.Mesh(
@@ -120,7 +111,7 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
     pad.position.y = 0.04;
     group.add(pad);
     scene.add(group);
-    return { group, capsule, slideYaw: null };
+    return { group, capsule, slideYaw: null, grappler: createGrappler(scene, group) };
   });
 
   // Predicted shots: a muzzle flash and a pool of tracer lines.
@@ -227,20 +218,16 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
     for (let i = 0; i < 2; i++) {
       const p = players && players[i];
       const entry = bodies[i], body = entry.group;
-      if (!p) { body.visible = false; ropes[i].visible = false; continue; }
+      if (!p) {
+        body.visible = false;
+        entry.grappler.update(null, dt, null, { active: false });
+        continue;
+      }
       body.visible = !!p.alive || p.hp > 0;
       body.position.set(p.x, p.y, p.z);
       const facing = i === seat && look ? look.yaw : p.yaw;
       poseModel(entry, p, i === seat ? now - lastShot : Infinity, dt, facing);
-      const rope = ropes[i];
-      const hook = p.grapple;
-      if (hook) {
-        const pos = rope.geometry.attributes.position;
-        pos.setXYZ(0, p.x, p.y + 0.9, p.z);
-        pos.setXYZ(1, hook.x, hook.y, hook.z);
-        pos.needsUpdate = true;
-        rope.visible = true;
-      } else rope.visible = false;
+      entry.grappler.update(p.grapple, dt, entry.grappleArm, { active: body.visible });
     }
     const me = players && players[seat] ? players[seat] : { x: 0, y: 0, z: 16, yaw: 0, pitch: 0 };
     const kick = fx ? recoilAt(fx.shots, fx.now) : 0;
@@ -253,7 +240,10 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
 
   function dispose() {
     disposed = true;
-    for (const body of bodies) disposeModel(body);
+    for (const body of bodies) {
+      body.grappler.dispose();
+      disposeModel(body);
+    }
     renderer.dispose();
     floor.geometry.dispose();
     ring.geometry.dispose();
