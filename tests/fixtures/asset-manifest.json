@@ -2642,7 +2642,7 @@
     {
       "path": "models/gear/grappler.glb",
       "bytes": 90752,
-      "sha256": "f22437c2b06d34f6f4834ff853d416965956bb0af9d4a74c396b4b69b5743512",
+      "sha256": "8d4b44f2eebb428575090856b972e442f69906329c073d7df09116f3c651e035",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -6299,7 +6299,7 @@
       },
       {
         "path": "art/blender/grappler.blend",
-        "bytes": 126807
+        "bytes": 126802
       },
       {
         "path": "art/blender/new_enemies.blend",

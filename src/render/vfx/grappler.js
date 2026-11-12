@@ -59,17 +59,20 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
 
   function loadModel() {
     const asset = peekAsset(MODEL);
-    if (!asset) return false;
-    launcher = asset.scene.getObjectByName('Launcher').clone();
+    const launcherModel = asset?.scene.getObjectByName('Launcher');
+    const clawModel = asset?.scene.getObjectByName('Claw');
+    const clip = asset && THREE.AnimationClip.findByName(asset.animations, JAWS);
+    if (!launcherModel?.getObjectByName('Dock') || !clawModel || !clip) return false;
+    launcher = launcherModel.clone();
     socket = launcher.getObjectByName('Dock');
-    head = asset.scene.getObjectByName('Claw').clone();
+    head = clawModel.clone();
     stowed = head.clone();
     socket.add(stowed);
     launcher.traverse((obj) => obj.layers.set(layer));
     mount.add(launcher);
     root.add(head);
     mixer = new THREE.AnimationMixer(head);
-    jaws = mixer.clipAction(THREE.AnimationClip.findByName(asset.animations, JAWS)).play();
+    jaws = mixer.clipAction(clip).play();
     jaws.paused = true;
     retainAsset(MODEL);
     return true;
@@ -122,31 +125,57 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
     returning = false;
   }
 
+  function alignDockToWorldPass() {
+    if (!camera) return;
+    // The sleeve uses the viewmodel FOV. Match its dock on screen in the world pass, including while aiming.
+    const ratio = Math.tan(camera.fov * Math.PI / 360) / VM_HALF_FOV_TAN;
+    camera.worldToLocal(from);
+    from.x *= ratio;
+    from.y *= ratio;
+    camera.localToWorld(from);
+  }
+
+  function poseTether(end) {
+    cable.subVectors(end, from);
+    const length = cable.length();
+    tether.visible = length > 0.012;
+    if (!tether.visible) return;
+    tether.position.copy(from).addScaledVector(cable, 0.5);
+    tether.quaternion.setFromUnitVectors(UP, cable.multiplyScalar(1 / length));
+    tether.scale.y = length;
+  }
+
   function update(hook, dt, arm, { active = true, reset = false } = {}) {
-    if (!launcher && !loadModel()) return;
     if (reset || !active) target = null;
     if (!active) {
-      launcher.visible = root.visible = false;
+      if (launcher) launcher.visible = false;
+      root.visible = false;
+      return;
+    }
+    const usedFallback = !launcher && root.visible;
+    if (!launcher && !loadModel()) {
+      root.visible = !!hook;
+      impact.visible = false;
+      if (hook) {
+        mount.localToWorld(from.copy(fallback));
+        alignDockToWorldPass();
+        poseTether(anchor.copy(hook));
+      }
       return;
     }
     poseMount(arm);
-    if (camera) {
-      // The sleeve uses the viewmodel FOV. Match its dock on screen in the world pass, including while aiming.
-      const ratio = Math.tan(camera.fov * Math.PI / 360) / VM_HALF_FOV_TAN;
-      camera.worldToLocal(from);
-      from.x *= ratio;
-      from.y *= ratio;
-      camera.localToWorld(from);
-    }
+    alignDockToWorldPass();
     const isNew = hook && (!target || hook.id !== target.id ||
       hook.x !== anchor.x || hook.y !== anchor.y || hook.z !== anchor.z || returning);
-    if (isNew) begin(hook);
-    else elapsed += dt;
-    if (target && !hook && !returning && elapsed >= flightTime + BITE_TIME) {
+    if (isNew) {
+      begin(hook);
+      if (usedFallback) elapsed = flightTime + BITE_TIME + 0.17;
+    } else elapsed += dt;
+    if (target && !hook && !returning) {
       returning = true;
       elapsed = 0;
-      returnFrom.copy(hit);
-      returnQ.copy(flightQ);
+      returnFrom.copy(head.position);
+      returnQ.copy(head.quaternion);
       returnScale = head.scale.x;
       jawAtReturn = jawPhase;
     }
@@ -172,14 +201,7 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
       poseJaws((flight * 2 + bite) / 3);
     }
 
-    cable.subVectors(head.position, from);
-    const length = cable.length();
-    tether.visible = length > 0.012;
-    if (tether.visible) {
-      tether.position.copy(from).addScaledVector(cable, 0.5);
-      tether.quaternion.setFromUnitVectors(UP, cable.multiplyScalar(1 / length));
-      tether.scale.y = length;
-    }
+    poseTether(head.position);
     const flashAge = (elapsed - flightTime) / 0.17;
     impact.visible = !returning && flashAge >= 0 && flashAge < 1;
     if (impact.visible) {

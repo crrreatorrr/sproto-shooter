@@ -84,7 +84,7 @@ def tube(name, start, end, radius, mat, parent=None, sides=12, radius_tip=None):
 
 def cuff(parent, at, mat):
     # Hollow faceted straps fit around the posed forearm.
-    radii = (0.106, 0.102)
+    radii = (0.093, 0.089)
     points = [
         (cos(i * pi / 6) * r, sin(i * pi / 6) * r * 0.92, z)
         for r in radii for z in (at - 0.009, at + 0.009) for i in range(12)
@@ -149,13 +149,13 @@ cyan = material("Ion cyan", "64CDDA", emission=0.85)
 launcher = empty("Launcher")
 for z in (-0.070, 0.053):
     cuff(launcher, z, rubber)
-box("Sleeve pad", (0, 0.101, -0.009), (0.064, 0.008, 0.185), rubber, launcher, 0.003)
-box("Low-profile rail", (0, 0.111, -0.012), (0.054, 0.015, 0.172), housing, launcher, 0.004)
-box("Status filament", (0, 0.119, -0.030), (0.005, 0.0015, 0.046), cyan, launcher, 0.0006)
-box("Edge index", (0.016, 0.119, -0.077), (0.015, 0.0015, 0.013), trim, launcher, 0.0006)
+box("Sleeve pad", (0, 0.088, -0.009), (0.064, 0.008, 0.185), rubber, launcher, 0.003)
+box("Low-profile rail", (0, 0.098, -0.012), (0.054, 0.015, 0.172), housing, launcher, 0.004)
+box("Status filament", (0, 0.106, -0.030), (0.005, 0.0015, 0.046), cyan, launcher, 0.0006)
+box("Edge index", (0.016, 0.106, -0.077), (0.015, 0.0015, 0.013), trim, launcher, 0.0006)
 for x in (-0.019, 0.019):
-    box("Guide rail", (x, 0.111, 0.081), (0.011, 0.012, 0.036), housing, launcher, 0.003)
-socket = empty("Dock", launcher, (0, 0.119, 0.100))
+    box("Guide rail", (x, 0.098, 0.081), (0.011, 0.012, 0.036), housing, launcher, 0.003)
+socket = empty("Dock", launcher, (0, 0.106, 0.100))
 merge_by_material(launcher)
 
 claw = empty("Claw")
@@ -221,13 +221,13 @@ edge = material("Anchor edge", "71839B")
 box("Stage", (0, -0.535, 1.60), (13.0, 0.10, 13.0), deck, bevel=0.05)
 box("Anchor pedestal", (0, -0.205, 3.42), (0.68, 0.57, 0.62), slate, bevel=0.055)
 box("Anchor plate", (0, 0.089, 3.13), (0.41, 0.14, 0.10), edge, bevel=0.028)
-tube("Grip rail", (-0.235, 0.119, 3.07), (0.235, 0.119, 3.07), 0.026, housing, sides=12)
+tube("Grip rail", (-0.235, 0.106, 3.07), (0.235, 0.106, 3.07), 0.026, housing, sides=12)
 for x in (-0.24, 0.24):
-    tube("Rail end", (x - 0.012, 0.119, 3.07), (x + 0.012, 0.119, 3.07), 0.035, trim, sides=10)
+    tube("Rail end", (x - 0.012, 0.106, 3.07), (x + 0.012, 0.106, 3.07), 0.035, trim, sides=10)
 
 dock = 0.100
 stop = 2.965
-key(claw, "location", [(f, xyz((0, 0.119, z))) for f, z in [
+key(claw, "location", [(f, xyz((0, 0.106, z))) for f, z in [
     (1, dock), (19, dock), (23, 0.43), (32, 1.59), (43, stop), (77, stop), (95, dock), (108, dock),
 ]])
 for hinge in hinges:
@@ -238,7 +238,7 @@ for hinge in hinges:
     ]])
 
 # Mesh cable scaled along the flight axis. Its rear tip stays fixed at Dock.
-cable = empty("Tether", at=(0, 0.119, dock))
+cable = empty("Tether", at=(0, 0.106, dock))
 tube("Tether filament", (0, 0, 0), (0, 0, 1), 0.006, cyan, cable, 10)
 driver = cable.driver_add("scale", 1).driver
 travel = driver.variables.new()
@@ -249,7 +249,7 @@ travel.targets[0].transform_type = "LOC_Y"
 travel.targets[0].transform_space = "LOCAL_SPACE"
 driver.expression = f"max(0.0001, -claw_y - {dock})"
 
-flare = empty("Latch flash", at=(0, 0.119, 3.07))
+flare = empty("Latch flash", at=(0, 0.106, 3.07))
 for i in range(7):
     a = i * 2 * pi / 7
     tube("Impact streak", (cos(a)*0.07, sin(a)*0.07, 0), (cos(a)*0.17, sin(a)*0.17, -0.07),

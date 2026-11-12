@@ -5,6 +5,7 @@ import { generateGun } from '../../src/sim/guns.js';
 import { createPickup } from '../../src/sim/state.js';
 import { damagePlayer } from '../../src/sim/combat.js';
 import { GUN_TYPES } from '../../src/data/guns.js';
+import { TUNING } from '../../src/data/tuning.js';
 import { freezeAt } from '../../src/render/core/clock.js';
 import { ensureCharacter, ensureGunModel, ensureStage } from '../../src/render/assets.js';
 import { levelAssets } from '../../src/data/stages.js';
@@ -162,7 +163,7 @@ export async function weaponsAndSpells(game) {
 export async function grapplerRun(game) {
   game.frame = () => {};
   game.hideScreen();
-  const { camera, firstPerson, scene } = game.renderer;
+  const { THREE, camera, firstPerson, scene } = game.renderer;
   const state = game.state, player = state.players[state.localPlayerId];
   const look = { yaw: 0, pitch: -0.115 };
   const report = {};
@@ -171,9 +172,9 @@ export async function grapplerRun(game) {
     freezeAt(time += 30);
     game.renderer.render(state, 1, look);
   }
-  function step(grapple, ticks) {
+  function step(grapple, ticks, zoom = false) {
     for (let i = 0; i < ticks; i++) {
-      simulate(state, { [player.id]: cmd({ ...look, held: { grapple } }) });
+      simulate(state, { [player.id]: cmd({ ...look, held: { grapple, zoom } }) });
       draw();
     }
   }
@@ -183,6 +184,10 @@ export async function grapplerRun(game) {
     const head = effects.getObjectByName('Claw');
     const jaws = [1, 2, 3].map((i) => head.getObjectByName(`Jaw_hinge_${i}`));
     const impact = effects.getObjectByName('Grapple latch flash');
+    const tether = effects.getObjectByName('Grapple tether');
+    const viewmodelCamera = camera.clone(false);
+    viewmodelCamera.fov = TUNING.fovBase;
+    viewmodelCamera.updateProjectionMatrix();
     for (const { id, model } of PLAYER_CHARACTERS) {
       firstPerson.selectModel(model);
       await loadPlayerModel(model);
@@ -192,8 +197,9 @@ export async function grapplerRun(game) {
       player.grappleCd = 0;
       draw();
       const launcher = camera.getObjectByName('Launcher');
-      const stowed = launcher.getObjectByName('Dock').getObjectByName('Claw');
-      const docked = firstPerson.modelPath === model && launcher.visible && stowed.visible && !effects.visible;
+      const dock = launcher.getObjectByName('Dock');
+      const stowed = dock.getObjectByName('Claw');
+      const docked = firstPerson.debug().mountedPath === model && launcher.visible && stowed.visible && !effects.visible;
       step(true, 1);
       const launchZ = head.position.z;
       step(true, 2);
@@ -202,7 +208,18 @@ export async function grapplerRun(game) {
       const latch = !!player.grapple && impact.visible && Math.abs(head.position.z - player.grapple.z) < 0.25
         && jaws.every((jaw) => Math.abs(jaw.rotation.x) < 0.16);
       step(false, 12);
-      report[id] = { docked, flight, latch, returned: !effects.visible && stowed.visible };
+      const returned = !effects.visible && stowed.visible;
+      player.grappleCd = 0;
+      step(true, 2, true);
+      viewmodelCamera.matrixWorldInverse.copy(camera.matrixWorldInverse);
+      const socketOnScreen = dock.getWorldPosition(new THREE.Vector3()).project(viewmodelCamera);
+      const tetherOnScreen = tether.localToWorld(new THREE.Vector3(0, -0.5, 0)).project(camera);
+      const aimed = camera.fov < TUNING.fovBase - 1 && socketOnScreen.distanceTo(tetherOnScreen) < 0.002;
+      const canceledAt = head.position.z;
+      step(false, 3);
+      const canceled = !impact.visible && head.position.z > canceledAt;
+      step(false, 12);
+      report[id] = { docked, flight, latch, returned, aimed, canceled };
     }
     return report;
   } finally {

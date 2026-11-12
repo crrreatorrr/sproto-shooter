@@ -394,6 +394,6 @@ export function createFirstPerson(camera, initialModel = STOCK_MODEL) {
       poseGrasp(arms.Left, wristL, FP.poleLeft, qL, dt, false);
     },
     /** Dev: rig internals for tuning tools. */
-    debug: () => ({ bones, arms, lean: lean.clone(), collider: col, FP }),
+    debug: () => ({ bones, arms, mountedPath, lean: lean.clone(), collider: col, FP }),
   };
 }
