@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createGameState } from '../src/sim/state.js';
-import { BUILD_ID, createFeedbackPause, feedbackContext } from '../src/hub/feedback.js';
+import { BUILD_ID, createFeedbackPause, feedbackCanvases, feedbackContext } from '../src/hub/feedback.js';
 
 function fakeGame(over = {}) {
   let enabled = true;
@@ -114,6 +114,20 @@ describe('feedback adapter', () => {
     expect(createFeedbackPause(match, null).pause()).toBe(false);
     expect(match.feedbackHold).toBe(false);
     expect(match.input.enabled).toBe(true);
+  });
+
+  it('names the game view, and the arena canvases above it in a match', () => {
+    const main = { id: 'view' };
+    const arena = [{ id: 'arena-0' }, { id: 'arena-1' }];
+    const screen = { hidden: true, querySelectorAll: () => arena };
+    expect(feedbackCanvases({ renderer: { canvas: main }, screen, pvpActive: false })).toEqual([main]);
+    expect(feedbackCanvases({ renderer: { canvas: main }, screen, pvpActive: true })).toEqual([main]);
+    screen.hidden = false;
+    // The SDK draws every canvas it is not given as HTML over these, so the view must stay listed
+    // (bottom first) or its frame would cover the arena in the screenshot.
+    expect(feedbackCanvases({ renderer: { canvas: main }, screen, pvpActive: true })).toEqual([main, ...arena]);
+    expect(feedbackCanvases({ renderer: null, screen, pvpActive: true })).toEqual(arena);
+    expect(feedbackCanvases({ renderer: null, screen, pvpActive: false })).toEqual([]);
   });
 
   it('has a build id', () => {

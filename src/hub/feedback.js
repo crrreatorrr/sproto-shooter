@@ -187,14 +187,19 @@ export function createFeedbackPause(game, doc = typeof document !== 'undefined' 
   };
 }
 
-/** The canvas the player is looking at: the arena canvases in Free 1v1 / wager, else the game view. */
+/**
+ * The canvases the SDK copies directly, bottom first: the game view, then in Free 1v1 / wager the
+ * arena canvases on the screen above it. Since hub-sdk 0.7.2 every canvas not named here is drawn
+ * as part of the page's HTML, which goes over these; the game view stays in the list during a match
+ * so its frame is not laid over the arena.
+ */
 export function feedbackCanvases(game) {
   const main = game.renderer && game.renderer.canvas;
+  const list = main ? [main] : [];
   if (game.pvpActive && game.screen && !game.screen.hidden) {
-    const arena = Array.from(game.screen.querySelectorAll('canvas'));
-    if (arena.length) return arena;
+    for (const canvas of game.screen.querySelectorAll('canvas')) if (canvas !== main) list.push(canvas);
   }
-  return main ? [main] : [];
+  return list;
 }
 
 /** Install the feedback window for this Game. Returns the SDK handle (a no-op outside a browser). */
