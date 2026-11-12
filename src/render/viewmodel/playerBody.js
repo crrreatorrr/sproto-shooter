@@ -3,6 +3,7 @@ import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.j
 import { FP as STOCK_POSE, cleanArmWeights } from './fpPose.js';
 import { frame, handFrame } from './handFrame.js';
 import { PLAYER_CHARACTERS } from '../playerCharacters.js';
+import { forearmSurface } from './grappleArm.js';
 
 const STOCK_MODEL = PLAYER_CHARACTERS[0].model;
 const FINGERS = ['Index', 'Middle', 'Ring', 'Pinky'];
@@ -146,5 +147,6 @@ export function preparePlayerBody(source, camera, root, FP, protectBody) {
       });
     }
   }
+  arms.Left.surface = forearmSurface(holder, arms.Left);
   return { holder, bones, bind, arms, torso };
 }

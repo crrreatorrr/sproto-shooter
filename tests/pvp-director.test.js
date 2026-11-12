@@ -65,13 +65,13 @@ describe('protocol 2 identity (SHOOTER-S2a, sim 2 since SHOOTER-S2b)', () => {
     expect(PROTOCOL).toBe(2);
     expect(SIM_VERSION).toBe(2);
     // S2b (sim 2) is a deliberate fingerprint bump from 0e584d36 (S2a, sim 1).
-    expect(CONTENT_FINGERPRINT).toBe('b33eada6');
+    expect(CONTENT_FINGERPRINT).toBe('dc00f234');
     expect(OP.PING).toBe(10);
     expect(OP.PONG).toBe(11);
     const props = matchmakerProps();
     expect(props.query).toBe(MATCHMAKER_QUERY);
-    expect(props.query).toBe('+properties.game:sproto-shooter +properties.mode:free +properties.protocol:2 +properties.content:b33eada6');
-    expect(props.stringProperties).toMatchObject({ protocol: '2', content: 'b33eada6', sim: '2' });
+    expect(props.query).toBe('+properties.game:sproto-shooter +properties.mode:free +properties.protocol:2 +properties.content:dc00f234');
+    expect(props.stringProperties).toMatchObject({ protocol: '2', content: 'dc00f234', sim: '2' });
     expect(matchmakerProps('deadbeef').query).toContain('+properties.content:deadbeef');
   });
 });
@@ -560,6 +560,6 @@ describe('mock match handler', () => {
     expect(live.frozen).toBeNull();
     expect(frozen.sent).toEqual(live.sent);
     expect(live.sent.length).toBeGreaterThan(90);
-    expect(live.label).toEqual({ kind: 'sproto_shooter_free', game: 'sproto-shooter', mode: 'free', protocol: 2, content: 'b33eada6', stake: 0 });
+    expect(live.label).toEqual({ kind: 'sproto_shooter_free', game: 'sproto-shooter', mode: 'free', protocol: 2, content: 'dc00f234', stake: 0 });
   });
 });

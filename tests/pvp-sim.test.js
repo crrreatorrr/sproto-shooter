@@ -18,10 +18,10 @@ import './fixtures/director-golden.js';
 
 // SHOOTER-S2b: sim 2 (lag compensation, split seed, no crits) is a deliberate golden bump from
 // ce272de1 (sim 1, tick 61). The fingerprint went f5949631 (protocol 1) -> 0e584d36 (S2a) ->
-// ec36c8fa (S2b) -> 17d87c54 (S2b review fixes) -> b33eada6 (slide, grapple, stamina).
+// ec36c8fa (S2b) -> 17d87c54 (S2b review fixes) -> dc00f234 (slide, grapple, stamina).
 const GOLDEN_HASH = '532a562e';
 const GOLDEN_TICK = 65;
-const FINGERPRINT = 'b33eada6';
+const FINGERPRINT = 'dc00f234';
 const DRIVER = path.resolve('tests', 'fixtures', 'director-golden.js');
 const { comment: _comment, ...DIRECTOR_GOLDEN } = directorGoldenFixture;
 
@@ -67,7 +67,7 @@ function expectedGun(typeId) {
 
 describe('fixed loadout and spawns', () => {
   it('gives both seats the same common guns, ammo, and no perks', () => {
-    expect(contentFingerprint(1)).toBe('cea1f88b');
+    expect(contentFingerprint(1)).toBe('73c6eb0f');
     expect(CONTENT_FINGERPRINT).toBe(FINGERPRINT);
     expect(LOADOUT.map((gun) => gun.type)).toEqual(['mg', 'shotgun', 'sniper']);
     for (const gun of LOADOUT) {
@@ -161,7 +161,7 @@ describe('browser, node, and goja', () => {
     expect(pin.crits).toBe(false);
     expect(pin.combatSeed).toBe('sha256-commit-reveal-128');
     expect(pin.campaignProtocol).toBe(1);
-    expect(pin.campaignContentFingerprint).toBe('cea1f88b');
+    expect(pin.campaignContentFingerprint).toBe('73c6eb0f');
     expect(pin.mintsTickets).toBe(false);
     expect(pin.stakes).toBe(false);
     expect(pin.bundleSha256).toMatch(/^[0-9a-f]{64}$/);

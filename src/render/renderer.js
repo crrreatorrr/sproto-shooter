@@ -12,6 +12,7 @@ import { mountCreatures } from './views/creatures.js';
 import { mountProjectiles } from './instancing/ProjectileBatches.js';
 import { mountGuns } from './viewmodel/gunMesh.js';
 import { mountVfx } from './vfx/VfxEngine.js';
+import { GRAPPLER_MODEL } from './vfx/grappler.js';
 import { mountViewmodel } from './viewmodel/Viewmodel.js';
 import { mountPresent } from './frame/present.js';
 
@@ -36,7 +37,7 @@ export function createRenderer(container, bus, playerModel, graphicsPreset = 'hi
     demandLater.length = 0;
     const stageId = stageFor(state, env.stageOverride);
     ensureStage(stageId, NOW);
-    demandNow.push(...stagePaths(stageId), env.fp.modelPath);
+    demandNow.push(...stagePaths(stageId), env.fp.modelPath, GRAPPLER_MODEL);
     for (const g of state.players[state.localPlayerId].guns) if (g && GUN_MODELS[g.type]) {
       ensureGunModel(g.type, NOW);
       demandNow.push(GUN_MODELS[g.type].path);

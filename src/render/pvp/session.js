@@ -165,7 +165,7 @@ export function startPvpSession({ screen, input, hub, demo = false, onExit, getG
   function showMenu() {
     root.innerHTML = `<div data-pvp-lobby class="title" style="margin:24px auto;max-width:720px">
       <h1 style="font-size:64px">FREE <span>1v1</span></h1>
-      <p class="tag">Same arena, same three guns, same ammo, no perks. Slide is C. Grapple is B: it pulls, and letting go keeps your speed. Protocol ${PVP_PROTOCOL_VERSION}. Fingerprint ${CONTENT_FINGERPRINT}. Nothing here moves Tickets.</p>
+      <p class="tag">Same arena, same three guns, same ammo, no perks. Slide is C. Grapple is B. The claw reels back on a miss. Protocol ${PVP_PROTOCOL_VERSION}. Fingerprint ${CONTENT_FINGERPRINT}. Nothing here moves Tickets.</p>
       <div class="menu">
         <button class="btn big" data-pvp-go="practice">Practice offline <small>local opponent, not recorded</small></button>
         <button class="btn big alt" data-pvp-go="mock">Two-client mock <small>authoritative stub until the hub match exists</small></button>

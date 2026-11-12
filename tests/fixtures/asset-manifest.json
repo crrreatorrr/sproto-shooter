@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 216,
-    "runtimeBytes": 27621820,
+    "runtimeFiles": 217,
+    "runtimeBytes": 27575518,
     "decodedBytes": 258207558,
-    "referenced": 216,
+    "referenced": 217,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -334,6 +334,13 @@
       "kind": "static",
       "from": [
         "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/gear/grappler.glb",
+      "kind": "static",
+      "from": [
+        "src/render/vfx/grappler.js"
       ]
     },
     {
@@ -3112,6 +3119,41 @@
         "nodes": 6,
         "materials": [
           "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/gear/grappler.glb",
+      "bytes": 58264,
+      "sha256": "8add18d81ace1c118f9955162ed044e6f39b7329d9b34298955ea9774c0391f4",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/vfx/grappler.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 716,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "Grappler jaws"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 23,
+        "materials": [
+          "Charcoal",
+          "Graphite",
+          "Ion cyan",
+          "Ochre",
+          "Satin steel"
         ]
       }
     },
@@ -8344,8 +8386,8 @@
     },
     {
       "path": "textures/stages/city/stone.jpg",
-      "bytes": 601054,
-      "sha256": "213e5358656e7cb80bad822f8603f817936e1684cc53b14dc4f04c32fcb7ad9a",
+      "bytes": 550822,
+      "sha256": "c3b301bdae65c3d0ac25efb903c49e976c343f59706675037b0ed4ad0325eab7",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
@@ -8404,8 +8446,8 @@
     },
     {
       "path": "textures/stages/glacier/floor.jpg",
-      "bytes": 530635,
-      "sha256": "ee320e6d5a4f8a4537e1d8bf41a865c81be64b27b8afe85fb7320242ffafbc66",
+      "bytes": 476301,
+      "sha256": "9ad5f515b1616b0a0333efed41d1fb0d77aadfd9c6a40cb312d87c905b31d944",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
@@ -8809,6 +8851,10 @@
       {
         "path": "art/blender/fx_poof.blend",
         "bytes": 94744
+      },
+      {
+        "path": "art/blender/grappler.blend",
+        "bytes": 2609596
       },
       {
         "path": "art/blender/new_enemies.blend",

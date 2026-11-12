@@ -18,6 +18,7 @@ import { dirFromYawPitch, deg, yawTo } from '../../core/math.js';
 import { quantizeForHash, stableStringify, verifyStateHash } from '../hash.js';
 import { rayCapsule } from './hit.js';
 import { ARENA_SOLIDS, arenaHook, arenaOccludes } from './arena.js';
+import { grappleSpeedScale } from '../grappleMotion.js';
 import { snapToGround, firstSolid } from '../campaign/solids.js';
 import {
   DT, LOADOUT, MATCH_TICKS, RESERVE, REWIND, SPAWN_RADIUS, STAGE_ID,
@@ -267,21 +268,34 @@ export function pushArena(p) {
   }
 }
 
-/**
- * While the hook is held, accelerate toward the anchor and do not touch that
- * velocity on release or on arrival. A miss still spends the cooldown.
- */
+function limitGrappleSpeed(p, limit) {
+  const k = grappleSpeedScale(p.vx, p.vy, p.vz, limit);
+  p.vx *= k;
+  p.vy *= k;
+  p.vz *= k;
+}
+
+function releaseArenaGrapple(p) {
+  if (!p.grapple) return;
+  limitGrappleSpeed(p, TUNING.grappleReleaseSpeed);
+  p.grapple = null;
+}
+
 function tickArenaGrapple(p, wish, dt) {
   if (p.grappleCd > 0) p.grappleCd = Math.max(0, p.grappleCd - dt);
   if (!wish.grapple) {
-    p.grapple = null;
+    releaseArenaGrapple(p);
     return;
   }
   if (!p.grapple) {
     if (p.grappleCd > 0) return;
     const hook = arenaHook(eyeOf(p), dirFromYawPitch(p.yaw, p.pitch));
     p.grappleCd = TUNING.grappleCd;
-    if (!hook) return;
+    if (!hook) {
+      p.grappleMiss = true;
+      return;
+    }
+    delete p.grappleMiss;
     p.grapple = hook;
   }
   const hook = p.grapple;
@@ -291,7 +305,7 @@ function tickArenaGrapple(p, wish, dt) {
   const ez = hook.z - eye.z;
   const ed = Math.hypot(ex, ey, ez) || 1;
   if (arenaOccludes(eye, { x: ex / ed, y: ey / ed, z: ez / ed }, ed - 0.35, hook.id)) {
-    p.grapple = null;
+    releaseArenaGrapple(p);
     return;
   }
   const oy = p.y + 0.9;
@@ -300,13 +314,14 @@ function tickArenaGrapple(p, wish, dt) {
   const pz = hook.z - p.z;
   const pd = Math.hypot(px, py, pz) || 1;
   if (pd < TUNING.grappleArrive) {
-    p.grapple = null;
+    releaseArenaGrapple(p);
     return;
   }
   const pull = TUNING.grapplePull * dt;
   p.vx += (px / pd) * pull;
   p.vy += (py / pd) * pull;
   p.vz += (pz / pd) * pull;
+  limitGrappleSpeed(p, TUNING.grappleSpeed);
 }
 
 /**
@@ -367,8 +382,8 @@ export function movePlayer(p, wish, dt) {
     p.staminaDelay = TUNING.staminaRegenDelay;
     if (p.stamina <= 0) p.staminaLock = true;
   }
-  // Friction and the air speed cap stay off while the rope is held, so the pull can build speed.
-  const hooked = !!(p.grapple) || !!wish.grapple;
+  // The attached grapple drives movement instead of ground and air controls.
+  const hooked = !!p.grapple;
   if (p.dashT > 0) {
     p.dashT -= dt;
     p.vx = p.dashX * TUNING.dashSpeed;
@@ -420,8 +435,8 @@ export function movePlayer(p, wish, dt) {
       p.slideCd = TUNING.slideHopCd;
     }
   }
-  tickArenaGrapple(p, wish, dt);
   if (p.dashT <= 0) p.vy -= TUNING.gravity * dt;
+  tickArenaGrapple(p, wish, dt);
   const prevY = p.y;
   p.x += p.vx * dt;
   p.y += p.vy * dt;
@@ -728,6 +743,7 @@ export function snapshotOf(state) {
       hp: p.hp, shield: p.shield,
       alive: p.alive,
       slot: p.slot,
+      grappleCd: p.grappleCd, grappleMiss: p.grappleMiss,
       grapple: p.grapple ? { x: p.grapple.x, y: p.grapple.y, z: p.grapple.z, id: p.grapple.id } : null,
     })),
   };

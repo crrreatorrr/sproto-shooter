@@ -99,9 +99,8 @@ export function playerMovement(state, dt) {
       emit(state, 'slide', { playerId: p.id });
     }
 
-    // While the hook is held, ground friction and the air speed cap stay off so the
-    // rope can build speed. Letting go does not touch that velocity.
-    const hooked = !!(p.grapple) || !!(c.held && c.held.grapple);
+    // An attached hook drives movement instead of the usual ground and air controls.
+    const hooked = !!p.grapple;
     if (m.mode === 'dash') {
       m.dashT -= dt;
       p.vel.x = m.dashDir.x * TUNING.dashSpeed; p.vel.z = m.dashDir.z * TUNING.dashSpeed;
@@ -171,8 +170,7 @@ export function playerMovement(state, dt) {
     }
 
     const seal = sealOf(state, p);
-    tickGrapple(state, p, dt);
-    // gravity + integrate
+    // Apply gravity and jetpack thrust before the grapple limits the speed.
     if (m.mode !== 'dash') p.vel.y -= TUNING.gravity * dt;
     if (state.mode === 'campaign' && state.level && state.level.gravityMult !== 1 && m.mode !== 'dash') {
       p.vel.y -= TUNING.gravity * (state.level.gravityMult - 1) * dt;
@@ -191,6 +189,7 @@ export function playerMovement(state, dt) {
       }
       if (p.onGround && !infinite && lv.fuel < 100) lv.fuel = Math.min(100, lv.fuel + 25 * dt);
     }
+    tickGrapple(state, p, dt);
     p.pos.x += p.vel.x * dt; p.pos.y += p.vel.y * dt; p.pos.z += p.vel.z * dt;
     const wasAir = !p.onGround;
     const solids = activeSolids(state);
