@@ -192,7 +192,7 @@ selection is reported as unsupported for this v2 controller. Unknown protocol or
 retained manifest support blocks start; it does not trigger a completed-log path.
 The currently supported exact retained executable is source05f7a0a245af921fc65a99588564175c19658e38,
 SHA256797029721efe6124b718d84349cd255cd52529d3105b2da1d33e97da8d734aa9,
-shooter-sim/simulator1/upload2/API2/CP2/economy1/fingerprintcea1f88b. It is a
+shooter-sim/simulator1/upload2/API2/CP2/economy1/fingerprint73c6eb0f. It is a
 compatibility identity, not proof the official browser ran.
 
 An issued response must have the exact0056 shape and limits, canonical engine

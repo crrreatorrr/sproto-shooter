@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateLevel } from '../src/data/levels/kit.js';
+import { TUNING } from '../src/data/tuning.js';
 import { L01 } from '../src/data/levels/L01/index.js';
 import { contentFingerprint } from '../src/data/serverManifest.js';
 import { CONTENT_FINGERPRINT } from '../src/sim/pvp/rules.js';
@@ -40,8 +41,8 @@ function place(p, sec, x, z, y = 0) {
 describe('L01 movement course', () => {
   it('keeps the pins and teaches slide, hook and stamina without a required sprint', () => {
     expect(validateLevel(L01).errors).toEqual([]);
-    expect(contentFingerprint(1)).toBe('cea1f88b');
-    expect(CONTENT_FINGERPRINT).toBe('b33eada6');
+    expect(contentFingerprint(1)).toBe('73c6eb0f');
+    expect(CONTENT_FINGERPRINT).toBe('dc00f234');
     expect(golden.pvpGolden).toBe('532a562e');
     const ids = L01.sections.flatMap((s) => (s.grappleAnchors || []).map((a) => a.id));
     expect(ids).toEqual(['S1-hook', 'S2-hook', 'S3-hook']);
@@ -69,28 +70,34 @@ describe('L01 movement course', () => {
     expect(slid.p.pos.z).toBeCloseTo(10, 0);
   });
 
-  it('flings the first hook over the boulevard wall', () => {
+  it('pulls the player over the boulevard wall and slows down at the anchor', () => {
     const run = () => {
       const { s, p, sec } = boot();
       place(p, sec, 25.2, 10);
       const pitch = Math.atan2(5.6 - 1.6, 30 - 25.2);
       let id = null;
-      let up = 0;
-      for (let i = 0; i < 18; i++) {
+      let topSpeed = 0;
+      let peak = 0;
+      for (let i = 0; i < 80; i++) {
         simulate(s, { [p.id]: cmd({ yaw: -Math.PI / 2, pitch, held: { grapple: true } }) });
-        if (p.grapple) id = p.grapple.id;
-        if (p.vel.y > up) up = p.vel.y;
+        peak = Math.max(peak, p.pos.y);
+        if (!p.grapple) break;
+        id = p.grapple.id;
+        topSpeed = Math.max(topSpeed, Math.hypot(p.vel.x, p.vel.y, p.vel.z));
       }
-      let peak = p.pos.y;
+      const arrived = !p.grapple && Math.hypot(p.pos.x - 30, p.pos.y + 0.9 - 5.6, p.pos.z - 10) < TUNING.grappleArrive;
+      const releaseSpeed = Math.hypot(p.vel.x, p.vel.y, p.vel.z);
       for (let i = 0; i < 150; i++) {
         simulate(s, { [p.id]: cmd({ yaw: -Math.PI / 2, moveZ: 1 }) });
         if (p.pos.y > peak) peak = p.pos.y;
       }
-      return { s, p, id, up, peak };
+      return { s, p, id, arrived, topSpeed, releaseSpeed, peak };
     };
     const first = run();
     expect(first.id).toBe('S1-hook');
-    expect(first.up).toBeGreaterThan(10);
+    expect(first.arrived).toBe(true);
+    expect(first.topSpeed).toBeLessThanOrEqual(TUNING.grappleSpeed);
+    expect(first.releaseSpeed).toBeLessThanOrEqual(TUNING.grappleReleaseSpeed);
     expect(first.peak).toBeGreaterThan(4);
     expect(first.p.pos.x).toBeGreaterThan(45);
     expect(first.p.pos.y).toBeLessThan(1);

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { TUNING } from '../../data/tuning.js';
+import { dirFromYawPitch } from '../../core/math.js';
 import { enqueue, peekAsset, releaseAsset, retainAsset } from '../assets.js';
 import { createGrappleArmPose } from '../viewmodel/grappleArm.js';
 
@@ -37,7 +38,7 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
   const elbow = new THREE.Vector3(), wrist = new THREE.Vector3();
   const side = new THREE.Vector3(), up = new THREE.Vector3(), forward = new THREE.Vector3();
   const from = new THREE.Vector3(), anchor = new THREE.Vector3();
-  const travel = new THREE.Vector3(), cable = new THREE.Vector3();
+  const travel = new THREE.Vector3(), cable = new THREE.Vector3(), missDirection = new THREE.Vector3();
   const returnFrom = new THREE.Vector3(), radial = new THREE.Vector3();
   const mountQ = new THREE.Quaternion(), flightQ = new THREE.Quaternion(), dockQ = new THREE.Quaternion();
   const returnQ = new THREE.Quaternion(), sleeveQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
@@ -45,7 +46,8 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
   const fallback = camera ? new THREE.Vector3(-0.36, -0.34, -0.62) : new THREE.Vector3(0.32, 1.03, 0.3);
 
   let launcher, socket, stowed, head, mixer, jaws;
-  let casting = false, elapsed = 0, flightTime = 0, fired = false, returning = false;
+  let casting = false, elapsed = 0, flightTime = 0, fired = false, returning = false, missed = false;
+  let missAtFullReach = false, lastCooldown = null;
   let armWeight = 0, weaponWeight = 0;
   let activeFrame = false, usedFallback = false;
   let dockScale = 1, returnScale = 1, jawAtReturn = 0, jawPhase = 0;
@@ -117,9 +119,16 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
 
   function begin(hook) {
     casting = true;
-    anchor.copy(hook);
+    if (hook) anchor.copy(hook);
     elapsed = 0;
-    returning = fired = false;
+    returning = fired = missed = missAtFullReach = false;
+  }
+
+  function beginMiss(yaw, pitch) {
+    begin(null);
+    missed = true;
+    missDirection.copy(dirFromYawPitch(yaw, pitch));
+    mount.getWorldPosition(anchor).addScaledVector(missDirection, TUNING.grappleRange);
   }
 
   function launch() {
@@ -151,8 +160,12 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
   }
 
   // Both arms use the same pose weight before the launcher samples the extended wrist.
-  function advance(hook, dt, { active = true, reset = false } = {}) {
+  function advance(hook, dt, { active = true, reset = false, cooldown = 0, yaw = 0, pitch = 0 } = {}) {
     armPose.restore();
+    // A miss still starts the simulation cooldown. Use its rising edge for either Arena seat.
+    if (reset || !active) lastCooldown = null;
+    const attempted = cooldown > (lastCooldown ?? TUNING.grappleCd - 0.25) + 0.1;
+    lastCooldown = cooldown;
     activeFrame = active;
     if (reset || !active) {
       casting = false;
@@ -171,12 +184,15 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
       armWeight = weaponWeight = THREE.MathUtils.damp(armWeight, Number(!!hook), 22, dt);
       return weaponWeight;
     }
-    if (hook && (!casting || returning)) begin(hook);
+    if (hook && (!casting || returning || missed)) begin(hook);
+    else if (!hook && attempted && !casting) beginMiss(yaw, pitch);
     else elapsed += dt;
     // Prediction can refine the contact point mid-flight. Keep the launch clock running.
     if (hook) anchor.copy(hook);
-    if (!hook && !fired) casting = false;
-    if (casting && !hook && !returning) {
+    if (!hook && !missed && !fired) casting = false;
+    // Draw one frame at full reach before reeling in a miss.
+    const recall = missed ? missAtFullReach : !hook;
+    if (casting && !returning && recall) {
       returning = true;
       elapsed = 0;
       returnFrom.copy(head.position);
@@ -185,7 +201,7 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
       jawAtReturn = jawPhase;
     }
     if (returning && elapsed >= RETURN_TIME) casting = false;
-    if (hook) {
+    if (hook || (missed && casting && !returning)) {
       armWeight = fired || usedFallback ? 1 : THREE.MathUtils.smoothstep(elapsed, 0, ARM_WINDUP);
       weaponWeight = armWeight;
     } else {
@@ -210,12 +226,13 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
     }
     poseMount(arm);
     const worldDockScale = dockScale * alignDockToWorldPass();
+    if (missed && !returning) anchor.copy(from).addScaledVector(missDirection, TUNING.grappleRange);
 
     const waiting = !fired && elapsed < ARM_WINDUP && !usedFallback;
-    root.visible = casting;
+    root.visible = casting && !(missed && waiting);
     stowed.visible = !casting || waiting;
     head.visible = casting && !waiting;
-    if (!casting) return;
+    if (!root.visible) return;
     if (waiting) {
       impact.visible = false;
       // A brief targeting cue acknowledges a valid grapple even if the player taps before the arm extends.
@@ -236,7 +253,7 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
       poseJaws(jawAtReturn * (1 - t));
     } else {
       const flight = Math.min(1, elapsed / flightTime);
-      const bite = THREE.MathUtils.clamp((elapsed - flightTime) / BITE_TIME, 0, 1);
+      const bite = missed ? 0 : THREE.MathUtils.clamp((elapsed - flightTime) / BITE_TIME, 0, 1);
       // Recompute the line from the current rail position as the player moves toward the anchor.
       travel.subVectors(anchor, from);
       const distance = travel.length();
@@ -244,9 +261,13 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
       if (distance > 0) flightQ.setFromUnitVectors(FORWARD, travel);
       else flightQ.copy(dockQ);
       // The claw hub stops short so the jaws can close over the actual contact point.
-      head.position.copy(from).addScaledVector(travel, Math.max(0, distance - 0.146) * flight);
+      const hubDistance = missed ? distance : Math.max(0, distance - 0.146);
+      head.position.copy(from).addScaledVector(travel, hubDistance * flight);
       head.quaternion.copy(dockQ).slerp(flightQ, Math.min(1, flight * 5));
-      if (flight === 1) tetherEnd = anchor;
+      if (flight === 1) {
+        if (missed) missAtFullReach = true;
+        else tetherEnd = anchor;
+      }
       head.scale.setScalar(THREE.MathUtils.lerp(worldDockScale, 1.38, Math.min(1, flight * 4)));
       // Blender's first 12 frames open the jaws, then its last six snap them shut.
       poseJaws((flight * 2 + bite) / 3);
@@ -254,7 +275,7 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
 
     poseTether(tetherEnd);
     const flashAge = (elapsed - flightTime) / 0.17;
-    impact.visible = !returning && flashAge >= 0 && flashAge < 1;
+    impact.visible = !missed && !returning && flashAge >= 0 && flashAge < 1;
     if (impact.visible) {
       impact.position.copy(anchor).addScaledVector(travel, -0.04);
       impact.quaternion.copy(flightQ);

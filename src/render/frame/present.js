@@ -48,7 +48,9 @@ export function mountPresent(env) {
     motionState = state;
     for (const [id, cue] of cues) if (state.tick - cue.tick > 60) cues.delete(id);
 
-    const grapplePose = grappler.advance(p.grapple, fdt, { active: !p.dead && !p.downed, reset: resetMotion });
+    const grapplePose = grappler.advance(p.grapple, fdt, {
+      active: !p.dead && !p.downed, reset: resetMotion, cooldown: p.grappleCd, yaw: p.yaw, pitch: p.pitch,
+    });
     updateFirstPersonView(p, alpha, look, opts, now, fdt, resetMotion, grapplePose);
     grappler.update(env.fp.grappleArm);
     env.flushWeaponTracers();

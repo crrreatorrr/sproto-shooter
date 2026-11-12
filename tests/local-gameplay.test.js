@@ -114,7 +114,7 @@ describe('local Wave Mode in Chromium', () => {
     });
   }, 180000);
 
-  it('launches, grips the anchor and redocks the grappler on every playable skin', async () => {
+  it('launches and redocks the grappler after hits and misses on every playable skin', async () => {
     await visit(async (page) => {
       await page.waitForFunction(() => window.__game.renderer.scene.getObjectByName('Grapple effects')?.getObjectByName('Claw'));
       const report = await page.evaluate("import('/tests/fixtures/local-gameplay.js').then(({ grapplerRun }) => grapplerRun(window.__game))");
@@ -122,6 +122,7 @@ describe('local Wave Mode in Chromium', () => {
         docked: true, flight: true, latch: true, returned: true, aimed: true, handoff: true, canceled: true,
         extended: true, quickTap: true, gunLowered: true, gunRaised: true, arenaFit: true, straightFlight: true,
         staysAnchored: true, staysLow: true, firesLow: true, reached: true, beamClearsCamera: true,
+        missReturns: true, missIsShort: true, missNeverLatches: true, missDoesNotPull: true, missIsStraight: true,
       };
       expect(report).toEqual({ sproto: complete, pepe: complete, 'pepe-general': complete, 'pepe-tux': complete });
     });

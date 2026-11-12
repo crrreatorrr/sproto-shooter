@@ -102,7 +102,7 @@ describe('slide, grapple, stamina', () => {
     expect(Math.hypot(p.vel.x, p.vel.z)).toBeGreaterThan(start * 0.95);
   });
 
-  it('hooks a wall, flings on release, and ignores a no-grapple box', () => {
+  it('hooks a wall, coasts on a slow release, and ignores a no-grapple box', () => {
     const { s, p } = boot();
     p.pos = { x: 16, y: 0, z: 8 };
     p.yaw = -Math.PI / 2;
@@ -130,7 +130,7 @@ describe('slide, grapple, stamina', () => {
     expect(p.grapple).toBeNull();
   });
 
-  it('an upward hook flings the player over a gap and keeps that speed', () => {
+  it('an upward hook crosses a gap and slows the player on release', () => {
     const id = 'T-FLING';
     const lv = makeV2Level({
       id, name: 'Fling',
@@ -151,19 +151,17 @@ describe('slide, grapple, stamina', () => {
     p.pos = { x: 4, y: 0, z: 8 };
     p.yaw = -Math.PI / 2;
     p.pitch = 0.55;
-    let up = 0;
-    let along = 0;
-    for (let i = 0; i < 24; i++) {
+    let topSpeed = 0;
+    for (let i = 0; i < 57; i++) {
       simulate(s, { [p.id]: cmd({ yaw: p.yaw, pitch: 0.55, held: { grapple: true } }) });
-      if (p.vel.y > up) up = p.vel.y;
-      if (p.vel.x > along) along = p.vel.x;
+      expect(p.grapple).toBeTruthy();
+      topSpeed = Math.max(topSpeed, Math.hypot(p.vel.x, p.vel.y, p.vel.z));
     }
-    expect(up).toBeGreaterThan(10);
-    expect(along).toBeGreaterThan(8);
-    const heldX = p.vel.x;
+    expect(topSpeed).toBeGreaterThan(TUNING.grappleReleaseSpeed);
+    expect(topSpeed).toBeLessThanOrEqual(TUNING.grappleSpeed);
     simulate(s, { [p.id]: cmd({ yaw: p.yaw, pitch: 0.55, moveZ: 1 }) });
     expect(p.grapple).toBeNull();
-    expect(p.vel.x).toBeGreaterThan(heldX * 0.9);
+    expect(Math.hypot(p.vel.x, p.vel.y, p.vel.z)).toBeLessThanOrEqual(TUNING.grappleReleaseSpeed);
     let peak = p.pos.y;
     for (let i = 0; i < 40; i++) {
       simulate(s, { [p.id]: cmd({ yaw: p.yaw, moveZ: 1 }) });
@@ -173,11 +171,23 @@ describe('slide, grapple, stamina', () => {
     expect(p.pos.x).toBeGreaterThan(14);
   });
 
+  it('uses normal movement when a wall and its anchor are out of reach', () => {
+    const { s, p } = boot({ anchors: [{ id: 'wall-anchor', at: [22, 1.6, 8], r: 3 }] });
+    p.pos = { x: 4, y: 2, z: 8 };
+    p.vel = { x: 0, y: 0, z: 0 };
+    const start = { ...p.pos };
+    const yaw = -Math.PI / 2;
+    frames(s, p, 35, cmd({ yaw, held: { grapple: true } }));
+    expect(p.grapple).toBeNull();
+    expect(p.grappleCd).toBeGreaterThan(5);
+    expect(p.pos).toEqual(start);
+  });
+
   it('puts grapple on the run log and keeps the PvP fingerprint', () => {
     const back = dequantizeCommand(quantizeCommand(cmd({ held: { grapple: true }, pressed: { grapple: true } })));
     expect(back.held.grapple).toBe(true);
     expect(back.pressed.grapple).toBe(true);
-    expect(CONTENT_FINGERPRINT).toBe('b33eada6');
-    expect(contentFingerprint(1)).toBe('cea1f88b');
+    expect(CONTENT_FINGERPRINT).toBe('dc00f234');
+    expect(contentFingerprint(1)).toBe('73c6eb0f');
   });
 });

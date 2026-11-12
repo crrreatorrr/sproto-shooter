@@ -99,9 +99,8 @@ export function playerMovement(state, dt) {
       emit(state, 'slide', { playerId: p.id });
     }
 
-    // While the hook is held, ground friction and the air speed cap stay off so the
-    // rope can build speed. Letting go does not touch that velocity.
-    const hooked = !!(p.grapple) || !!(c.held && c.held.grapple);
+    // An attached hook drives movement instead of the usual ground and air controls.
+    const hooked = !!p.grapple;
     if (m.mode === 'dash') {
       m.dashT -= dt;
       p.vel.x = m.dashDir.x * TUNING.dashSpeed; p.vel.z = m.dashDir.z * TUNING.dashSpeed;

@@ -153,7 +153,7 @@ export function mergeProgress(old, next) {
 export const SUPPORTED_MANIFEST = Object.freeze({ artifact: 'shooter-sim',
   sourceCommit: '05f7a0a245af921fc65a99588564175c19658e38',
   sha256: '797029721efe6124b718d84349cd255cd52529d3105b2da1d33e97da8d734aa9',
-  protocol: 1, contentFingerprint: 'cea1f88b', uploadProtocol: 2, replayApiVersion: 2,
+  protocol: 1, contentFingerprint: '73c6eb0f', uploadProtocol: 2, replayApiVersion: 2,
   checkpointSchema: 2, economyPolicy: 1 });
 export const ISSUED_LIMITS = Object.freeze({ batchFramesTextBytes: 2097152, runFramesTextBytes: 67108864,
   bodyBytes: 2162688, batchFrames: 28800, runFrames: 162000, batches: 4096, batchActions: 32,

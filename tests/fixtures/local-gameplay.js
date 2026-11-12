@@ -285,9 +285,30 @@ export async function grapplerRun(game) {
       step(false, 1);
       const quickTap = cue && !effects.visible && stowed.visible;
       step(false, 7);
+      resetCast();
+      look.pitch = 0.12;
+      const missOrigin = { ...player.pos };
+      let missReach = 0;
+      let missRetracts = false;
+      let missNeverLatches = true;
+      let missIsStraight = true;
+      for (let i = 0; i < 30; i++) {
+        step(true, 1);
+        missNeverLatches &&= !player.grapple && !impact.visible;
+        if (!effects.visible || !head.visible || !tether.visible) continue;
+        const length = cablePoint(-0.5).distanceTo(cablePoint(0.5));
+        if (missReach > TUNING.grappleRange - 0.02 && length < missReach - 1) missRetracts = true;
+        missReach = Math.max(missReach, length);
+        missIsStraight &&= cablePoint(0.5).distanceTo(head.position) < 0.002;
+      }
+      const missReturns = missRetracts && !effects.visible && stowed.visible && !weaponIsLow();
+      const missIsShort = Math.abs(missReach - TUNING.grappleRange) < 0.02;
+      const missDoesNotPull = new THREE.Vector3().copy(player.pos).distanceTo(missOrigin) < 0.002;
+      look.pitch = -0.115;
       report[id] = {
         docked, flight, latch, returned, aimed, handoff, canceled, extended, quickTap, gunLowered, gunRaised,
         arenaFit, straightFlight, staysAnchored, staysLow, firesLow, reached, beamClearsCamera,
+        missReturns, missIsShort, missNeverLatches, missDoesNotPull, missIsStraight,
       };
     }
     return report;

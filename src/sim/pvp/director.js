@@ -390,6 +390,7 @@ export function createDirector({
         alive: p.alive,
         slot: p.slot,
         slideT: p.slideT,
+        grappleCd: p.grappleCd,
         grapple: p.grapple ? { x: p.grapple.x, y: p.grapple.y, z: p.grapple.z, id: p.grapple.id } : null,
       })),
       you: {

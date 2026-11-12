@@ -199,6 +199,8 @@ export function contentBody() {
         range: TUNING.grappleRange,
         cd: TUNING.grappleCd,
         pull: TUNING.grapplePull,
+        speed: TUNING.grappleSpeed,
+        releaseSpeed: TUNING.grappleReleaseSpeed,
         arrive: TUNING.grappleArrive,
       },
     },
