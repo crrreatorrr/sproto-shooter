@@ -7,7 +7,7 @@ import { CREATURE_MOTION } from '../creatureMotionData.js';
 import { createDragonRig } from '../dragonRig.js';
 import { createHumanoidRig } from '../humanoidRig.js';
 import { createViewRegistry } from './ViewRegistry.js';
-import { buildLookGroup } from '../level/levelView.js';
+import { buildLookGroup } from '../level/levelGeometry.js';
 import { KIT, kitGeometry, kitMaterial } from '../level/kitModels.js';
 import { createPrimitiveCreatureRig } from '../primitiveCreatureRig.js';
 
