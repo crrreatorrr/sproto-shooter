@@ -131,7 +131,7 @@ export const CHARACTER_MODELS = {
   carMonster: [1, 2, 3].map(() => 'models/characters/car_monster.glb'),
   moleMonster: [1, 2, 3].map(() => 'models/characters/mole_monster.glb'),
   robotLaser: [1, 2, 3].map(() => 'models/characters/robot_laser.glb'),
-  robotShooter: [1, 2, 3].map(() => 'models/characters/robot_shooter.glb'),
+  robotShooter: [1, 2, 3].map(() => 'models/characters/robot_shooter.glb.gz'),
 };
 /** Models that don't use CHARACTER_ROTATION_Y (they already face +Z). */
 export const MODEL_ROTATION_Y = { monster: 0, sprotoBeast: 0, carMonster: 0, moleMonster: 0, robotLaser: 0, robotShooter: 0 };

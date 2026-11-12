@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 
-export function createBlockchainSky() {
+export function createAuroraSky(polar = false) {
   return new THREE.ShaderMaterial({
+    uniforms: { polar: { value: polar ? 1 : 0 }, whiteout: { value: 0 } },
     side: THREE.BackSide, depthWrite: false, toneMapped: false,
     vertexShader: `
       varying vec3 skyDirection;
@@ -11,6 +12,8 @@ export function createBlockchainSky() {
       }
     `,
     fragmentShader: `
+      uniform float polar;
+      uniform float whiteout;
       varying vec3 skyDirection;
 
       float hash(vec2 p) {
@@ -44,12 +47,16 @@ export function createBlockchainSky() {
         float el = asin(d.y);
         vec2 p = vec2(az * 44., el * 56.);
         float dust = stars(p, .88) * .74 + stars(p * .44 + 3.1, .93) * .61;
-        vec3 col = vec3(.027, .015, .065);
-        col += vec3(.105, .039, .145) * exp(-abs(el + .22) * 4.1);
+        vec3 col = mix(vec3(.027, .015, .065), vec3(.025, .057, .115), polar);
+        col += mix(vec3(.105, .039, .145), vec3(.076, .135, .224), polar)
+          * exp(-abs(el + .22) * 4.1);
         col += vec3(.64, .74, 1.) * dust;
-        col += vec3(.26, .83, .26) * curtain(az, el, .36, 1.6) * .78;
-        col += vec3(.74, .095, .55) * curtain(az, el, .21, .2) * .83;
-        gl_FragColor = vec4(col, 1.);
+        col += mix(vec3(.26, .83, .26), vec3(.08, .49, .34), polar) * curtain(az, el, .36, 1.6) * .78;
+        col += mix(vec3(.74, .095, .55), vec3(.10, .27, .41), polar) * curtain(az, el, .21, .2) * .83;
+        float moon = 1. - smoothstep(.00030, .00047, 1. - dot(d, normalize(vec3(-.38, .44, -.80))));
+        col += vec3(.70, .82, .96) * polar * moon;
+        vec3 storm = mix(vec3(.58, .65, .72), vec3(.76, .81, .86), smoothstep(-.6, .8, d.y));
+        gl_FragColor = vec4(mix(col, storm, whiteout), 1.);
       }
     `,
   });
