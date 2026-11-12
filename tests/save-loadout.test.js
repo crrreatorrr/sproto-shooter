@@ -10,6 +10,8 @@ import { cloudBody } from '../src/save/profile.js';
 import { PERKS, SKILL_IDS } from '../src/data/skills.js';
 import { onEnemyKilled } from '../src/sim/combat.js';
 import { createBoss } from '../src/sim/state.js';
+import { addXp } from '../src/sim/progression.js';
+import { spawnGunPickup } from '../src/sim/drops.js';
 import { nonEconomicSave } from '../src/hub/link.js';
 import {
   LOADOUT_KEY, MAX_SAVED_GUNS, debugTaints, gunSpec, loadoutAction, loadoutEmpty, loadoutFromState, normalizeLoadout, readLoadout, writeLoadout,
@@ -293,3 +295,191 @@ describe('saved progress never leaves Wave Mode', () => {
     expect(loadoutFromState(s).guns.map((g) => g.type)).toEqual(['mg']);
   });
 });
+
+// What Game.start does around a mode change (src/game/Game.js): write the save on the way out of Wave
+// Mode, and queue the saved loadout behind startMode on the way in from any other mode.
+describe('Wave Mode save across mode switches', () => {
+  const OTHERS = [['campaign', { level: 'L01' }], ['campaign', { level: 'L06' }], ['boss', { boss: 'dragon' }], ['sandbox', {}], ['test', {}]];
+  const SAVE = normalizeLoadout({
+    skills: { health: { level: 3, xp: 5, total: 400 }, gunslinger: { level: 2, xp: 0, total: 150 } },
+    guns: [
+      gunSpec(generateGun({ seed: 601, level: 2, forced: { type: 'mg', quality: 'rare' } }), 0),
+      gunSpec(generateGun({ seed: 602, level: 2, forced: { type: 'shotgun', quality: 'epic' } }), 1),
+      gunSpec(generateGun({ seed: 603, level: 3, forced: { type: 'sniper', quality: 'rare' } }), 2),
+      gunSpec(generateGun({ seed: 604, level: 3, forced: { type: 'bazooka', quality: 'epic' } }), 3), // the fourth slot starts locked
+      gunSpec(generateGun({ seed: 605, level: 3, forced: { type: 'raygun', quality: 'legendary' } }), LEGENDARY_SLOT),
+      gunSpec(generateGun({ seed: 606, level: 3, forced: { type: 'bigbullets', quality: 'legendary' } }), LEGENDARY_SLOT), // a second legendary
+    ],
+    bestTier: 2,
+  });
+  const seeds = (l) => l.guns.map((g) => g.seed).sort();
+  const skillsOf = (l) => SKILL_IDS.map((id) => `${l.skills[id].level}:${l.skills[id].xp}`).join(' ');
+  const player = (s) => s.players[s.localPlayerId];
+  // The client's own sequence. `disk` stands in for localStorage.
+  function start(s, disk, mode, extra = {}, flag = true) {
+    const from = s.mode;
+    if (from === 'waves') disk.save = JSON.parse(JSON.stringify(loadoutFromState(s, disk.save.bestTier)));
+    // `flag` false leaves out the campaign's flag, which the sim must not need. Leaving the sandbox always
+    // carries it: only the client knows a sandbox from a state that no mode has started.
+    const fresh = (from === 'sandbox' && !s.testMode && mode !== 'sandbox' && mode !== 'test') || (flag && mode === 'campaign' && from !== 'campaign');
+    const actions = [{ type: 'startMode', mode, tier: 1, ...extra, ...(fresh ? { freshLoadout: true } : {}) }];
+    if (mode === 'waves' && from !== 'waves' && !loadoutEmpty(disk.save)) actions.push(loadoutAction(disk.save));
+    run(s, 1, () => cmd({ actions }));
+    if (mode === 'waves') disk.save = JSON.parse(JSON.stringify(loadoutFromState(s, disk.save.bestTier))); // any later save point
+  }
+  // Progress made where it must not count: levels, perks, carried loot, loot on the floor, a wave spell.
+  function earnOutside(s) {
+    const p = player(s);
+    addXp(s, p, 'health', 3000); addXp(s, p, 'gunslinger', 3000);
+    expect(p.skills.health.level).toBeGreaterThan(5);
+    expect(p.skills.gunslinger.level).toBeGreaterThan(5);
+    const a = generateGun({ seed: 9100 + s.tick, level: 9, forced: { type: 'raygun', quality: 'epic' } }); a.id = 50000 + s.tick; a.source = 'drop';
+    p.guns[1] = a;
+    spawnGunPickup(s, generateGun({ seed: 9200 + s.tick, level: 9, forced: { type: 'sniper', quality: 'legendary' } }), { x: p.pos.x, z: p.pos.z - 2 }, 'boss');
+    p.spellUnlocks.meteor = true;
+  }
+  function expectFreshWaves(s, why) {
+    const p = player(s);
+    for (const id of SKILL_IDS) expect(p.skills[id], why).toEqual({ level: 1, xp: 0, total: 0 });
+    for (const perk of PERKS) expect(!!p.perks[perk.id], `${why} ${perk.id}`).toBe(perk.level === 1);
+    expect(p.maxHp, why).toBe(100);
+    // only the starting gun (it reads 'stash' once it has been through a save)
+    expect(p.guns.filter(Boolean).map((g) => [g.seed, g.type, g.quality, g.level]), why).toEqual([[0xC0FFEE, 'mg', 'common', 1]]);
+    expect(s.pickups.filter((k) => k.gun), why).toEqual([]);
+    expect(!!p.spellUnlocks.meteor, why).toBe(false);
+    // all a save written now would hold is the starting gun
+    const saved = loadoutFromState(s);
+    expect(saved.guns.map((g) => g.seed), why).toEqual([0xC0FFEE]);
+    expect(loadoutEmpty({ ...saved, guns: [] }), why).toBe(true);
+  }
+  function expectSaved(s, disk, why) {
+    const p = player(s);
+    expect(skillsOf(disk.save), why).toBe(skillsOf(SAVE));
+    expect(seeds(disk.save), why).toEqual(seeds(SAVE));
+    expect(p.skills.health, why).toMatchObject({ level: 3, xp: 5 });
+    expect(p.skills.gunslinger.level, why).toBe(2);
+    expect(!!p.spellUnlocks.meteor, why).toBe(false);
+    const all = [...p.guns.filter(Boolean), ...s.pickups.map((k) => k.gun).filter(Boolean)];
+    expect(all.map((g) => g.source), why).toEqual(all.map(() => 'stash'));
+    expect(all.map((g) => g.seed).sort(), why).toEqual(seeds(SAVE));
+  }
+
+  it('skills, guns and spells earned in another mode never enter Wave Mode or its save, in any order of modes', () => {
+    for (const flag of [true, false]) for (const withSave of [false, true]) for (const a of OTHERS) for (const b of [null, ...OTHERS]) {
+      const why = `${a[0]}${a[1].level || ''} -> ${b ? b[0] + (b[1].level || '') : ''} -> waves, save ${withSave}, flag ${flag}`;
+      const s = createGameState({ seed: 6 });
+      const disk = { save: JSON.parse(JSON.stringify(withSave ? SAVE : normalizeLoadout(null))) };
+      const check = (w) => (withSave ? expectSaved(s, disk, w) : expectFreshWaves(s, w));
+      start(s, disk, 'sandbox', {}, flag); // the title screen's backdrop
+      start(s, disk, a[0], a[1], flag); earnOutside(s);
+      if (b) { start(s, disk, b[0], b[1], flag); earnOutside(s); }
+      start(s, disk, 'waves', {}, flag);
+      check(why);
+      run(s, 30, () => cmd());
+      check(`${why}, later`);
+      // out again, earn again, and back: still only what Wave Mode saved
+      const c = b || a;
+      start(s, disk, c[0], c[1], flag); earnOutside(s);
+      start(s, disk, a[0], a[1], flag); earnOutside(s);
+      start(s, disk, 'waves', {}, flag);
+      check(`${why}, second visit`);
+      start(s, disk, 'waves', { tier: 2 }, flag); // the next tier keeps it
+      check(`${why}, next tier`);
+    }
+  });
+
+  it('a mode entered first on a new page brings nothing into Wave Mode either', () => {
+    for (const [mode, extra] of OTHERS) {
+      const s = createGameState({ seed: 6 });
+      const disk = { save: normalizeLoadout(null) };
+      start(s, disk, mode, extra); earnOutside(s);
+      start(s, disk, 'waves');
+      expectFreshWaves(s, `${mode} -> waves`);
+    }
+  });
+
+  it('Wave Mode progress is still kept from tier to tier and through a retry', () => {
+    const s = createGameState({ seed: 6 });
+    const disk = { save: normalizeLoadout(null) };
+    start(s, disk, 'waves');
+    const p = player(s);
+    addXp(s, p, 'health', 3000);
+    const level = p.skills.health.level;
+    const g = generateGun({ seed: 31, level: 2, forced: { type: 'shotgun', quality: 'epic' } }); g.id = 4242; g.source = 'drop'; p.guns[1] = g;
+    start(s, disk, 'waves', { tier: 2 });
+    expect(p.skills.health.level).toBe(level);
+    expect(p.guns[1]).toBe(g);
+    expect(disk.save.skills.health.level).toBe(level);
+    expect(disk.save.guns.map((x) => x.seed)).toContain(31);
+  });
+
+  it('a saved gun on the floor stays in the save through every order of modes', () => {
+    const floorSeeds = (s) => s.pickups.filter((k) => !k.dead && k.gun).map((k) => k.gun.seed).sort();
+    // With slot four locked the bazooka (604) waits on the floor; the second legendary (606) always does.
+    for (const slots of [3, 4]) for (const a of OTHERS) for (const b of [null, ...OTHERS]) {
+      const why = `${slots} slots: waves -> ${a[0]}${a[1].level || ''} -> ${b ? b[0] + (b[1].level || '') : ''} -> waves`;
+      const onFloor = slots === 3 ? [604, 606] : [606];
+      const s = createGameState({ seed: 7 });
+      const disk = { save: JSON.parse(JSON.stringify(SAVE)) };
+      const p = player(s);
+      p.unlockedSlots = slots;
+      start(s, disk, 'waves');
+      expect(p.unlockedSlots, why).toBe(slots);
+      expect(floorSeeds(s), why).toEqual(onFloor);
+      expect(s.pickups.filter((k) => k.gun).every((k) => k.ttl === Infinity), why).toBe(true);
+      expectSaved(s, disk, why);
+      run(s, 120, () => cmd());
+      start(s, disk, a[0], a[1]);
+      expect(seeds(disk.save), `${why}: left`).toEqual(seeds(SAVE));
+      expect(s.pickups.filter((k) => k.gun && k.gun.source === 'stash'), `${why}: nothing saved lies about outside`).toEqual([]);
+      if (b) start(s, disk, b[0], b[1]);
+      start(s, disk, 'waves');
+      expectSaved(s, disk, `${why}: back`);
+      p.unlockedSlots = slots; // the sandbox, the campaign and Boss Fight open slot four
+      if (slots === 4) expect(floorSeeds(s), why).toEqual(onFloor);
+      // and a second round trip, the other way round
+      if (b) start(s, disk, b[0], b[1]);
+      start(s, disk, a[0], a[1]);
+      start(s, disk, 'waves');
+      start(s, disk, 'waves', { tier: 2 });
+      expectSaved(s, disk, `${why}: twice`);
+      expect(floorSeeds(s).length, why).toBeGreaterThan(0);
+    }
+  });
+
+  it('keeps a saved gun the player swapped out or dropped while it lies there, once, and no floor loot', () => {
+    const s = createGameState({ seed: 7 });
+    const disk = { save: JSON.parse(JSON.stringify(SAVE)) };
+    const p = player(s);
+    p.unlockedSlots = 3;
+    start(s, disk, 'waves');
+    // take the floor bazooka: it swaps with the active gun, which goes to the floor in its place
+    const k = s.pickups.find((x) => x.gun && x.gun.seed === 604);
+    p.pos.x = k.pos.x; p.pos.z = k.pos.z;
+    run(s, 1, () => cmd({ actions: [{ type: 'pickupGun', pickupId: k.id }] }));
+    expect(p.guns.some((g) => g && g.seed === 604)).toBe(true);
+    run(s, 1, () => cmd({ actions: [{ type: 'dropGun', slot: 2 }] }));
+    // session loot and a debug gun on the floor are not progress
+    spawnGunPickup(s, generateGun({ seed: 9300, level: 5, forced: { type: 'raygun', quality: 'epic' } }), { x: 3, z: 3 }, 'boss');
+    spawnGunPickup(s, generateGun({ seed: 9301, level: 5, forced: { type: 'raygun', quality: 'epic' } }), { x: 4, z: 3 }, 'debug');
+    const saved = loadoutFromState(s, 2);
+    expect(seeds(saved)).toEqual(seeds(SAVE));
+    expect(saved.guns.length).toBe(SAVE.guns.length);
+    start(s, disk, 'boss', { boss: 'monster' });
+    start(s, disk, 'waves');
+    expectSaved(s, disk, 'after a swap and a drop');
+    expect(player(s).guns.some((g) => g && g.seed === 604)).toBe(true);
+  });
+
+  it('never saves more than eight guns, carried ones first', () => {
+    const { s, p } = waves();
+    const specs = Array.from({ length: 12 }, (_, i) => gunSpec(generateGun({ seed: 700 + i, level: 1, forced: { type: 'mg', quality: 'common' } }), i % 5));
+    apply(s, { guns: specs });
+    for (let i = 0; i < 4; i++) spawnGunPickup(s, generateGun({ seed: 800 + i, level: 1, forced: { type: 'mg', quality: 'common' } }), { x: i, z: 0 }, 'stash');
+    const saved = loadoutFromState(s);
+    expect(saved.guns.length).toBe(MAX_SAVED_GUNS);
+    const carried = p.guns.filter(Boolean).map((g) => g.seed);
+    expect(saved.guns.slice(0, carried.length).map((g) => g.seed)).toEqual(carried);
+  });
+});
+

@@ -10,10 +10,11 @@
 // (startMode in src/sim/actions.js), and Free 1v1 and wagers run a separate sim with fixed guns.
 // A session that used the debug panel or god mode does not save at all (debugTaints).
 import { SKILL_IDS } from '../data/skills.js';
+import { LEGENDARY_SLOT } from '../data/guns.js';
 
 export const LOADOUT_KEY = 'sproto-shooter-loadout';
 export const LOADOUT_VERSION = 1;
-/** Guns kept: the five you can carry, plus up to three that did not fit a slot when loaded. */
+/** Guns kept: the five you can carry, plus up to three saved guns that lie on the floor. */
 export const MAX_SAVED_GUNS = 8;
 const MAX_TIER = 10;
 
@@ -60,11 +61,25 @@ export function debugTaints(action) {
   return !!action && action.type === 'debug' && action.op !== 'spawnDummies';
 }
 
-/** Read the player's Wave Mode loadout out of a game state. `bestTier` carries over from the last save. */
+/** The last ordinary slot. A saved gun found on the floor is written with it, so it is carried again once that slot is free. */
+const FLOOR_SLOT = 3;
+
+/**
+ * Read the player's Wave Mode loadout out of a game state. `bestTier` carries over from the last save.
+ * Carried guns come first. Then the saved guns that are lying on the floor: the ones a load put there
+ * because their slot was locked or taken, and any saved gun dropped or swapped out that has not despawned.
+ * Without them, a gun the player never got to pick up would vanish from the save the next time it is
+ * written. Session loot left on the floor is not progress and is not saved.
+ */
 export function loadoutFromState(state, bestTier = 0) {
   const p = state.players[state.localPlayerId];
   const guns = [];
   p.guns.forEach((g, slot) => { const spec = g && !UNSAVED_SOURCES.includes(g.source) ? gunSpec(g, slot) : null; if (spec) guns.push(spec); });
+  for (const k of state.pickups || []) {
+    if (k.dead || k.kind !== 'gun' || !k.gun || k.gun.source !== 'stash') continue;
+    const spec = gunSpec(k.gun, k.gun.quality === 'legendary' ? LEGENDARY_SLOT : FLOOR_SLOT);
+    if (spec) guns.push(spec);
+  }
   const skills = {};
   for (const id of SKILL_IDS) skills[id] = { level: p.skills[id].level, xp: p.skills[id].xp, total: p.skills[id].total };
   return normalizeLoadout({ skills, guns, bestTier });
