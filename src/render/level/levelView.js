@@ -7,7 +7,10 @@ import { DRESSING, HIDE_WHEN_GOT, MECHANISM_MODEL, STAGE_DRESSING } from './dres
 import { voidPlacements } from './voidDressing.js';
 import { voidMaterial } from './voidMaterial.js';
 import { groveGeometry, grovePlacements } from './groveDressing.js';
-import { groveMaterial, grovePaneMaterial } from './groveMaterials.js';
+import { groveMaterial } from './groveMaterials.js';
+import { decorMeshes } from './levelDecorMeshes.js';
+import { createKitObject, updateKitMotion } from './kitMotion.js';
+import { DT } from '../../sim/simulate.js';
 import { KIT, duelInstance, kitGeometry, kitMaterial, kitVersion } from './kitModels.js';
 
 export const LEVEL_COLOR = {
@@ -141,7 +144,7 @@ function fitKit(model, yaw, min, max, keepHeight = false) {
     max.y = min.y + kit.size.y * scale.y;
   }
   const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (yaw || 0) * Math.PI / 180);
-  const mesh = new THREE.Mesh(kit.geometry, kitMaterial());
+  const mesh = createKitObject(kit, kitMaterial(), Math.abs(min.x * .19 + min.z * .17));
   mesh.matrixAutoUpdate = false;
   mesh.matrix.compose(min.clone().add(max).multiplyScalar(0.5), q, scale)
     .multiply(new THREE.Matrix4().makeTranslation(-kit.center.x, -kit.center.y, -kit.center.z));
@@ -239,44 +242,6 @@ function backdropDecor(spec, sec) {
   return out;
 }
 
-/** Scenery for one section, one InstancedMesh per model. Models still loading are left out. */
-function decorMeshes(list, origin, replaced = null) {
-  const byModel = new Map();
-  for (const d of list || []) {
-    if (!d.model) continue;
-    if (!byModel.has(d.model)) byModel.set(d.model, []);
-    byModel.get(d.model).push(d);
-  }
-  const out = [];
-  const m = new THREE.Matrix4();
-  const q = new THREE.Quaternion();
-  const up = new THREE.Vector3(0, 1, 0);
-  const scale = new THREE.Vector3();
-  for (const [model, items] of byModel) {
-    const kit = kitGeometry(KIT.prop(model));
-    if (!kit) continue;
-    const material = model.startsWith('void_') ? voidMaterial() : model === 'grove_greenhouse_glass' ? grovePaneMaterial : kitMaterial();
-    const im = new THREE.InstancedMesh(kit.geometry, material, items.length);
-    im.name = model;
-    items.forEach((d, i) => {
-      q.setFromAxisAngle(up, (d.yaw || 0) * Math.PI / 180);
-      if (Array.isArray(d.scale)) scale.fromArray(d.scale);
-      else scale.setScalar(d.scale || 1);
-      m.compose(new THREE.Vector3(
-        d.at[0] + origin[0], d.at[1] + (origin[1] || 0) - kit.minY * scale.y, d.at[2] + origin[2],
-      ), q, scale);
-      im.setMatrixAt(i, m);
-      if (replaced && d.replace) for (const id of d.replace) replaced.add(id);
-    });
-    im.instanceMatrix.needsUpdate = true;
-    im.computeBoundingSphere();
-    im.receiveShadow = true;
-    im.userData.kit = true;
-    out.push(im);
-  }
-  return out;
-}
-
 export function createLevelView() {
   const group = new THREE.Group();
   group.name = 'campaign-level';
@@ -308,6 +273,8 @@ export function createLevelView() {
     if (!sec) return;
     const field = solidTerrain(sec);
     const grove = lv.id === 'L03';
+    const voidLevel = lv.id === 'L04';
+    const polished = ['L01', 'L02', 'L03'].includes(lv.id);
     const placements = CAMPAIGN_KITS[lv.id];
     const dress = placements ? {} : DRESSING[lv.id] || STAGE_DRESSING[lv.stage] || {};
     const prims = new Map((sec.geometry || []).map((g) => [g.id, g]));
@@ -356,21 +323,27 @@ export function createLevelView() {
     for (const door of doors) if (!replaced.has(door.id)) geometry.push(aabbBox(door));
     for (const mesh of buildSectionMeshes(grove ? geometry.map(groveGeometry) : geometry, mats, grove ? groveLevelMaterial : levelMaterial)) group.add(mesh);
     if (field) group.add(terrainMesh(field, mats));
-    // Crop Fields decor sits on the collision slab.
+    // The L03 Crop Fields use the flat walkable slab. Its Blender crop rows
+    // and path stones sit on that surface.
     for (const g of sec.geometry || []) if (g.kind === 'terrain' && (!grove || g.id !== 'S1-T')) group.add(terrainMesh(g, mats));
     for (const m of sec.mechanisms || []) {
       if (grove && m.kind === 'manaBloom' && replaced.has(m.id.replace(/-use$/, '-flower'))) continue;
-      if (!replaced.has(`marker:${m.id}`)) addMarker(m, lv.id === 'L04' && m.kind === 'jetpack');
+      if (replaced.has(`marker:${m.id}`)) continue;
+      const special = voidLevel && m.kind === 'jetpack' ? 'void_jetpack'
+        : polished && m.kind === 'shrine' ? 'campaign_shrine' : null;
+      addMarker(m, special);
     }
     for (const w of sec.weapons || []) addMarker({ ...w, kind: 'rack' });
     syncGot(state);
   }
   /** The mechanism's model, centred on its point. Null while loading or when it has none. */
-  function kitMarker(m, at, jetpack) {
-    const pick = jetpack ? () => 'void_jetpack' : MECHANISM_MODEL[m.kind];
-    const kit = m.kind === 'ammo' ? kitGeometry(KIT.pickup('ammo_box')) : pick ? kitGeometry(KIT.prop(pick(m))) : null;
+  function kitMarker(m, at, special) {
+    const jetpack = special === 'void_jetpack';
+    const pick = special ?? MECHANISM_MODEL[m.kind]?.(m);
+    const kit = m.kind === 'ammo' ? kitGeometry(KIT.pickup('ammo_box')) : pick ? kitGeometry(KIT.prop(pick)) : null;
     if (!kit) return null;
-    const mesh = new THREE.Mesh(kit.geometry, jetpack ? voidMaterial() : kitMaterial());
+    const material = jetpack ? voidMaterial() : kitMaterial();
+    const mesh = createKitObject(kit, material, Math.abs(at[0] * .19 + at[2] * .17));
     if (jetpack) mesh.name = `void_jetpack:${m.id}`;
     const k = m.kind === 'ammo' ? 0.42 : 1;
     mesh.scale.setScalar(k);
@@ -379,13 +352,16 @@ export function createLevelView() {
     mesh.userData.kit = true;
     return mesh;
   }
-  function addMarker(m, jetpack = false) {
+  function addMarker(m, special = null) {
+    const jetpack = special === 'void_jetpack';
     const at = m.at || m.from;
     if (!at) return;
-    const model = kitMarker(m, at, jetpack);
+    const model = kitMarker(m, at, special);
     if (model) {
       group.add(model);
-      if (jetpack || (HIDE_WHEN_GOT.has(m.kind) && m.id)) gotViews.push({ id: m.id, mesh: model, skipIfOwned: jetpack && m.skipIfOwned });
+      if (jetpack || (HIDE_WHEN_GOT.has(m.kind) && m.id)) {
+        gotViews.push({ id: m.id, mesh: model, skipIfOwned: jetpack && m.skipIfOwned });
+      }
       return;
     }
     const color = m.kind === 'secret' ? 0xffd166 : m.kind === 'rack' ? 0x7fd34e : m.kind === 'hazard' ? 0xff5a1a : LEVEL_COLOR.trim;
@@ -394,5 +370,12 @@ export function createLevelView() {
     if (jetpack) gotViews.push({ id: m.id, mesh, skipIfOwned: m.skipIfOwned });
     group.add(mesh);
   }
-  return { group, sync: rebuild };
+  return {
+    group,
+    sync(state) {
+      rebuild(state);
+      const seconds = state.tick * DT;
+      for (const child of group.children) updateKitMotion(child, seconds);
+    },
+  };
 }
