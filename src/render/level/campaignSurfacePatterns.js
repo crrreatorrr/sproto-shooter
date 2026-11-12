@@ -1,0 +1,196 @@
+// The shader projects in metres so patterns keep their scale across differently sized meshes.
+export const SURFACE_GLSL = /* glsl */ `
+  varying vec3 vCampaignSurface;
+  uniform float campaignSurfaceTime;
+  uniform float campaignSurfaceKind;
+  float surfacePixel;
+
+  float surfaceHash(vec2 p) {
+    vec3 h = fract(vec3(p.xyx) * vec3(.1031, .11369, .13787));
+    h += dot(h, h.yzx + 19.19);
+    return fract((h.x + h.y) * h.z);
+  }
+
+  float surfaceNoise(vec2 p) {
+    vec2 i = floor(p), f = fract(p);
+    f = f * f * (3. - 2. * f);
+    return mix(mix(surfaceHash(i), surfaceHash(i + vec2(1., 0.)), f.x),
+      mix(surfaceHash(i + vec2(0., 1.)), surfaceHash(i + vec2(1.)), f.x), f.y);
+  }
+
+  // Continuous piecewise-linear noise keeps the fractures angular.
+  float surfaceFacets(vec2 p) {
+    vec2 i = floor(p), f = fract(p);
+    float a = surfaceHash(i), b = surfaceHash(i + vec2(1., 0.));
+    float c = surfaceHash(i + vec2(0., 1.)), d = surfaceHash(i + vec2(1.));
+    return f.x + f.y < 1. ? a + (b - a) * f.x + (c - a) * f.y
+      : d + (c - d) * (1. - f.x) + (b - d) * (1. - f.y);
+  }
+
+  float surfaceLine(float x, float period, float width) {
+    float d = abs(fract(x / period + .5) - .5) * period;
+    float edge = max(.003, surfacePixel * .72);
+    return (1. - smoothstep(width, width + edge, d))
+      * (1. - smoothstep(period * .07, period * .32, surfacePixel));
+  }
+
+  float surfaceStamp(float distance, float width) {
+    float edge = max(.005, surfacePixel * .72);
+    return (1. - smoothstep(width, width + edge, abs(distance)))
+      * (1. - smoothstep(.17, .67, surfacePixel));
+  }
+
+  // Seams, a narrow bevel highlight, and low-contrast colour variation between tiles.
+  float surfaceBlocks(vec2 p, vec2 size, float stagger, float depth) {
+    p.x += mod(floor(p.y / size.y), 2.) * size.x * stagger;
+    float seam = max(surfaceLine(p.x, size.x, .023), surfaceLine(p.y, size.y, .019));
+    float lip = max(surfaceLine(p.x - .063, size.x, .014), surfaceLine(p.y - .054, size.y, .014));
+    float slab = surfaceHash(floor(p / size));
+    return .94 + slab * .18 - seam * depth + lip * .07;
+  }
+
+  float surfaceGrain(vec2 p, vec2 stretch) {
+    float wide = surfaceNoise(p * stretch);
+    float detail = 1. - smoothstep(.08, .32, surfacePixel);
+    return .84 + wide * .25 + (surfaceNoise(p * 6.6) - .48) * .13 * detail;
+  }
+`;
+
+// Each body returns a diffuse multiplier. The separate gleam is an optional emissive accent.
+export const CAMPAIGN_SURFACE_PATTERNS = {
+  L01: /* glsl */ `
+    float grain = surfaceGrain(p, vec2(.28, .38));
+    if (ground) {
+      float asphalt = surfaceBlocks(p, vec2(9., 5.), .5, .30);
+      float tar = surfaceLine(p.x + .34 * surfaceNoise(p * .44), 9., .040);
+      return vec3(.92, .94, .99) * grain * (asphalt - .10 * tar);
+    }
+    float panels = surfaceBlocks(p, vec2(2.65, 1.18), .5, .33);
+    float band = surfaceLine(p.y - .10, 2.36, .071);
+    return vec3(1.025, .99, .96) * grain * (panels + .07 * band);
+  `,
+  L02: /* glsl */ `
+    float grain = surfaceGrain(p, vec2(.23, .19));
+    if (campaignSurfaceKind == 1.) {
+      float wind = p.y + .72 * sin(p.x * .37) + .40 * surfaceNoise(p * .24);
+      float drift = ground ? .10 * sin(wind * 8.) : .052 * sin(wind * 3.6);
+      return vec3(1.045, 1.01, .94) * (grain + drift * (1. - smoothstep(.07, .35, surfacePixel)));
+    }
+    float blocks = surfaceBlocks(p, ground ? vec2(1.48, 1.48) : vec2(2.3, .79), .5, .36);
+    vec2 tile = abs(fract(p / (ground ? 1.48 : .79)) - .5);
+    float inlay = surfaceStamp(tile.x + tile.y - .23, .018);
+    float band = ground ? step(.75, surfaceHash(floor(p / 1.48)))
+      : surfaceLine(p.y - .39, 3.16, .22);
+    return mix(vec3(1.05, 1.01, .94) * blocks * grain, vec3(.64, .85, .90), inlay * band * .47);
+  `,
+  L03: /* glsl */ `
+    if (campaignSurfaceKind == 2.) {
+      float grain = surfaceGrain(p, vec2(1.15, .15));
+      float boards = surfaceBlocks(p, vec2(.42, 3.1), .2, .28);
+      float fibre = sin(p.x * 26. + 2.1 * surfaceNoise(p * vec2(.7, .36)))
+        * (1. - smoothstep(.045, .17, surfacePixel));
+      return vec3(1.045, 1.015, .94) * (grain * boards + .066 * fibre);
+    }
+    if (campaignSurfaceKind == 1. || campaignSurfaceKind == 4.) {
+      float speckle = surfaceGrain(p, vec2(.53, .26));
+      float contour = sin(p.y * 7.8 + 1.8 * surfaceNoise(p * .38))
+        * (1. - smoothstep(.08, .39, surfacePixel));
+      float moss = surfaceNoise(p * .21);
+      float furrow = campaignSurfaceKind == 1. ? .13 : .043;
+      return mix(vec3(1.07, .99, .87), vec3(.84, 1.10, .92), moss) * (speckle + furrow * contour);
+    }
+    float blocks = surfaceBlocks(p, vec2(1.75, .98), .5, .27);
+    return mix(vec3(.95, 1.05, .90), vec3(1.08, .96, .83), surfaceNoise(p * .38)) * blocks;
+  `,
+  L04: /* glsl */ `
+    vec2 size = ground ? vec2(3.65) : vec2(3.55, 1.72);
+    float metal = surfaceBlocks(p, size, 0., .33);
+    vec2 cell = p / size;
+    vec2 inset = abs(fract(cell) - .5);
+    float chip = surfaceHash(floor(cell));
+    float along = chip < .50 ? inset.x : inset.y;
+    float across = chip < .50 ? inset.y : inset.x;
+    float trace = surfaceStamp(across - .29, .006) * step(along, .24) * step(.30, chip);
+    float node = surfaceStamp(length(fract(cell) - vec2(.27, .22)) - .021, .008) * step(.62, chip);
+    float pulse = .65 + .35 * sin(campaignSurfaceTime * 1.55 - p.x * .24 + p.y * .18);
+    gleam = vec3(.03, .31, .46) * (trace * .28 + node * .37) * pulse;
+    return vec3(.97, 1.025, 1.09) * (metal + trace * .075);
+  `,
+  L05: /* glsl */ `
+    if (campaignSurfaceKind == 1.) {
+      float drifts = surfaceNoise(p * vec2(.10, .33));
+      float wind = sin(p.y * 5.3 + 4.0 * surfaceNoise(p * .31))
+        * (1. - smoothstep(.07, .47, surfacePixel));
+      return vec3(.97, 1.00, 1.07) * (.91 + .16 * drifts + .07 * wind);
+    }
+    if (campaignSurfaceKind == 3.) {
+      vec2 cut = p + .38 * vec2(surfaceNoise(p * .7), surfaceNoise(p * .8 + 5.));
+      float fault = max(surfaceLine(cut.x + cut.y * .34, 2.2, .013),
+        surfaceLine(cut.y - cut.x * .27, 2.85, .017));
+      return vec3(.92, 1.045, 1.11) * (surfaceGrain(p, vec2(.38, .61)) + fault * .15);
+    }
+    if (campaignSurfaceKind == 2.) {
+      return vec3(1.03, 1.01, .98) * surfaceBlocks(p, vec2(.51, 2.8), .5, .28)
+        * surfaceGrain(p, vec2(.92, .26));
+    }
+    float panels = surfaceBlocks(p, ground ? vec2(3.25, 2.4) : vec2(2.75, 1.45), 0., .30);
+    float rib = surfaceLine(p.y - .18, 1.45, .047);
+    return vec3(.97, 1.035, 1.08) * (panels * surfaceGrain(p, vec2(.37, .22)) + rib * .07);
+  `,
+  L06: /* glsl */ `
+    float panels = surfaceBlocks(p, ground ? vec2(4.3, 2.85) : vec2(2.55, 2.8), .5, .36);
+    float water = surfaceNoise(p * (ground ? vec2(.46, .83) : vec2(4., .21)));
+    float sheen = smoothstep(.44, .81, water);
+    float ripple = .73 + .27 * sin(p.y * 5. - campaignSurfaceTime * 1.8 + p.x * .22);
+    float streak = (1. - smoothstep(.08, .45, surfacePixel)) * sheen * ripple;
+    vec3 neon = mix(vec3(.11, .29, .45), vec3(.34, .09, .26), surfaceNoise(p * .11));
+    gleam = neon * streak * .25;
+    return mix(vec3(.88, .97, 1.12) * (panels - sheen * .20), vec3(.82, 1.10, 1.28), streak * .37);
+  `,
+  L07: /* glsl */ `
+    vec2 size = ground ? vec2(2.7, 1.75) : vec2(1.9, .72);
+    float blocks = surfaceBlocks(p, size, .5, .40);
+    float soot = surfaceGrain(p, vec2(.34, .62));
+    float seam = surfaceLine(p.y, size.y, .025);
+    float furnace = .55 + .45 * sin(campaignSurfaceTime * 1.24 + p.x * .69);
+    gleam = vec3(.30, .079, .022) * seam * furnace * (ground ? .23 : .54);
+    return vec3(1.09, .98, .89) * blocks * soot;
+  `,
+  L08: /* glsl */ `
+    vec2 tile = ground ? vec2(1.6) : vec2(2.4, 1.14);
+    float panels = surfaceBlocks(p, tile, 0., .38);
+    vec2 room = floor(p / tile);
+    float checker = mod(room.x + room.y, 2.);
+    float flake = step(.84, surfaceHash(floor(p * 7.6)))
+      * (1. - smoothstep(.04, .20, surfacePixel));
+    float trim = surfaceLine(p.y - .26, 2.28, .062);
+    vec3 color = mix(vec3(.84, .96, 1.11), vec3(1.12, 1.105, 1.04), checker);
+    return color * (panels + flake * .11 + (ground ? 0. : trim * .14));
+  `,
+  L09: /* glsl */ `
+    vec2 worn = p + .095 * vec2(surfaceNoise(p * .62), surfaceNoise(p * .69 + 9.));
+    float stone = surfaceBlocks(worn, ground ? vec2(4.1, 3.2) : vec2(2.9, 1.43), .5, .43);
+    vec2 cell = p / (ground ? 5. : 4.3);
+    vec2 uv = (fract(cell) - .5) * (ground ? 5. : 4.3);
+    float mark = surfaceStamp(length(uv) - .70, .023);
+    mark = max(mark, surfaceStamp(abs(uv.x) + abs(uv.y) - .54, .031));
+    mark *= step(.76, surfaceHash(floor(cell)));
+    float pulse = .70 + .30 * sin(campaignSurfaceTime * .77 + floor(cell.x) * 2.8);
+    gleam = vec3(.23, .19, .41) * mark * pulse * .68;
+    return mix(vec3(.91, .985, 1.14) * stone * surfaceGrain(p, vec2(.35, .48)),
+      vec3(.58, .69, .89), mark * .39);
+  `,
+  L10: /* glsl */ `
+    vec2 shift = vec2(surfaceFacets(p * .59), surfaceFacets(p * .53 + 9.)) - .5;
+    vec2 fractured = p + shift * (ground ? 1.88 : .91);
+    vec2 joints = vec2(fractured.x + fractured.y * .39, fractured.y - fractured.x * .27);
+    vec2 size = vec2(3.85, ground ? 2.54 : 1.22);
+    float split = max(surfaceLine(joints.x, size.x, .024), surfaceLine(joints.y, size.y, .020));
+    float heat = surfaceNoise(p * .27);
+    float pulse = .70 + .30 * sin(campaignSurfaceTime * 1.13 + p.x * .7 - p.y * .46);
+    gleam = vec3(.42, .095, .014) * split * smoothstep(.39, .84, heat) * pulse;
+    float plate = surfaceHash(floor(joints / size));
+    float charcoal = surfaceGrain(p, vec2(.31, .51)) - split * .31 + (plate - .5) * .15;
+    return mix(vec3(.96, 1.04, 1.06), vec3(1.18, .90, .77), heat) * charcoal;
+  `,
+};

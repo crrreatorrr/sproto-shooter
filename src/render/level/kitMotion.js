@@ -8,6 +8,8 @@ const HALOS = {
   void_relay: ['void_relay_core', 0, 0x66efff, 1.3],
   void_pylon: ['void_pylon_core', 0, 0xffc66a, 2.6],
   void_halo: ['void_exchange_rotor', -1.45, 0xffba4a, 5.4],
+  frost_beacon: ['frost_beacon_lens', 0, 0xffbd63, 1.15],
+  frost_tank: ['frost_tank_core', 0, 0x6edfff, 3.6],
 };
 
 const active = new WeakMap();

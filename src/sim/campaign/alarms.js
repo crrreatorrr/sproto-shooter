@@ -121,9 +121,13 @@ export function damageAlarm(state, hit, amount) {
   return true;
 }
 
-function onBeam(m, px, pz, time) {
+export function searchlightYaw(m, time) {
   const span = m.sweep > 0 ? Math.sin(time * Math.PI * 2 / m.sweep) * 0.9 : 0;
-  const yaw = (m.yaw || 0) + span;
+  return (m.yaw || 0) + span;
+}
+
+function onBeam(m, px, pz, time) {
+  const yaw = searchlightYaw(m, time);
   const fx = -Math.sin(yaw);
   const fz = -Math.cos(yaw);
   const dx = px - m.at[0];
