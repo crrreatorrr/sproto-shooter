@@ -899,7 +899,7 @@ export function createPvpClient({
       vx: p.vx, vz: p.vz,
       yaw: p.yaw, pitch: p.pitch,
       slot: p.slot,
-      grappleCd: p.grappleCd,
+      grappleCd: p.grappleCd, grappleMiss: p.grappleMiss,
       grapple: p.grapple ? { x: p.grapple.x, y: p.grapple.y, z: p.grapple.z, id: p.grapple.id } : null,
       mag: p.mag, shells: p.shells, sniper: p.sniper, reloadT: p.reloadT, swapT: p.swapT, slideT: p.slideT,
       predicted: true,

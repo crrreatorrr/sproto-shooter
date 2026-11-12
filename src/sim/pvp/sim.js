@@ -291,7 +291,11 @@ function tickArenaGrapple(p, wish, dt) {
     if (p.grappleCd > 0) return;
     const hook = arenaHook(eyeOf(p), dirFromYawPitch(p.yaw, p.pitch));
     p.grappleCd = TUNING.grappleCd;
-    if (!hook) return;
+    if (!hook) {
+      p.grappleMiss = true;
+      return;
+    }
+    delete p.grappleMiss;
     p.grapple = hook;
   }
   const hook = p.grapple;
@@ -739,7 +743,7 @@ export function snapshotOf(state) {
       hp: p.hp, shield: p.shield,
       alive: p.alive,
       slot: p.slot,
-      grappleCd: p.grappleCd,
+      grappleCd: p.grappleCd, grappleMiss: p.grappleMiss,
       grapple: p.grapple ? { x: p.grapple.x, y: p.grapple.y, z: p.grapple.z, id: p.grapple.id } : null,
     })),
   };

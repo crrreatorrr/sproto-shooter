@@ -375,7 +375,7 @@ One per tick (30 Hz) per connected seat, plus the spawn snapshot at go-live, one
 - `hits` (sim 2): the server-confirmed hits stepped since the previous snapshot, `[{ tick, shooter, dmg, hits, rewind }]` (`dmg` in milli-HP after invuln; `hits` pellets that connected; `rewind` the applied ticks). Same list to both seats; `[]` on HELLO/RESYNC snapshots. Clients draw hitmarkers and damage numbers from these only.
 - `buffer`: frames queued at or after the cursor. `late`: late frames so far. `held` / `neutral`: substitute ticks so far.
 - `players[].slideT`: seconds remaining in the slide, or 0; used to show the slide pose for the other seat. Clients also accept older snapshots that omit it.
-- `players[].grappleCd`: seconds remaining in the grapple cooldown. The client uses a new cooldown with no attached `grapple` to animate a miss.
+- `players[].grappleCd`: seconds remaining in the grapple cooldown. The optional `players[].grappleMiss` field is true when the last cast missed. A new cooldown with this flag starts the miss animation.
 - `private`: the rest of this seat's exact sim state; with `players[seat]` it is the whole player (S3 reconciles from it). The combat RNG is never sent.
 - `hash` (`publicStateHash`: FNV-1a over the sim state **without the players' RNG**, floats quantized to micro-units, the same `verifyStateHash` the campaign bundle uses) is present once per second (`tick % 30 === 0`) and on the final snapshot. It is not a receipt the client can submit for Tickets.
 

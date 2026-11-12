@@ -125,8 +125,13 @@ describe('arena movement', () => {
     const yaw = -Math.PI / 2;
     place(p, -6, 14, yaw, 0);
     step(state, [wish({ yaw, grapple: true }), wish({ yaw: 0 })]);
-    expect(snapshotOf(state).players[0]).toMatchObject({ grapple: null, grappleCd: TUNING.grappleCd });
+    expect(snapshotOf(state).players[0]).toMatchObject({ grapple: null, grappleCd: TUNING.grappleCd, grappleMiss: true });
     expect(Math.hypot(p.vx, p.vy, p.vz)).toBe(0);
+    // A point-blank hit arrives in the same tick. It still counts as a hit.
+    place(p, 12, 14, yaw, 0);
+    step(state, [wish({ yaw, grapple: true }), wish({ yaw: 0 })]);
+    expect(snapshotOf(state).players[0]).toMatchObject({ grapple: null, grappleCd: TUNING.grappleCd });
+    expect(snapshotOf(state).players[0].grappleMiss).toBeUndefined();
   });
 
   it('keeps a grapple press in the used log and treats it as held', () => {

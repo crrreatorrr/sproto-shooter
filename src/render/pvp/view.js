@@ -228,7 +228,7 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
       const entry = bodies[i], body = entry.group;
       body.visible = !!p && (!!p.alive || p.hp > 0);
       const grapplePose = entry.grappler.advance(p?.grapple, dt, {
-        active: body.visible, cooldown: p?.grappleCd, yaw: p?.yaw, pitch: p?.pitch,
+        active: body.visible, cooldown: p?.grappleCd, missedShot: p?.grappleMiss, yaw: p?.yaw, pitch: p?.pitch,
       });
       entry.grapplePose = grapplePose;
       if (!p) continue;

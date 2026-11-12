@@ -157,7 +157,11 @@ export function tickGrapple(state, p, dt) {
     if (p.grappleCd > 0) return;
     const hook = findHook(state, p);
     p.grappleCd = TUNING.grappleCd;
-    if (!hook) return;
+    if (!hook) {
+      p.grappleMiss = true;
+      return;
+    }
+    delete p.grappleMiss;
     p.grapple = hook;
     emit(state, 'grapple', { playerId: p.id, pos: { x: hook.x, y: hook.y, z: hook.z }, id: hook.id });
   }

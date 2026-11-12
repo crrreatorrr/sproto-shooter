@@ -161,9 +161,9 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
   }
 
   // Both arms use the same pose weight before the launcher samples the extended wrist.
-  function advance(hook, dt, { active = true, reset = false, cooldown = 0, yaw = 0, pitch = 0 } = {}) {
+  function advance(hook, dt, { active = true, reset = false, cooldown = 0, missedShot = false, yaw = 0, pitch = 0 } = {}) {
     armPose.restore();
-    // A miss still starts the simulation cooldown. Use its rising edge for either Arena seat.
+    // Use the cooldown edge to play each reported miss once.
     if (reset || !active) lastCooldown = null;
     const attempted = cooldown > (lastCooldown ?? TUNING.grappleCd - 0.25) + 0.1;
     lastCooldown = cooldown;
@@ -186,7 +186,7 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
       return weaponWeight;
     }
     if (hook && (!casting || returning || missed)) begin(hook);
-    else if (!hook && attempted && !casting) beginMiss(yaw, pitch);
+    else if (missedShot && attempted && !casting) beginMiss(yaw, pitch);
     else elapsed += dt;
     // Prediction can refine the contact point mid-flight. Keep the launch clock running.
     if (hook) anchor.copy(hook);

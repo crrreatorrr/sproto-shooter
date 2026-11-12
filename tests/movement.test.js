@@ -181,6 +181,7 @@ describe('slide, grapple, stamina', () => {
     expect(p.grapple).toBeNull();
     expect(p.grappleCd).toBeGreaterThan(5);
     expect(p.pos).toEqual(start);
+    expect(p.grappleMiss).toBe(true);
   });
 
   it('puts grapple on the run log and keeps the PvP fingerprint', () => {
