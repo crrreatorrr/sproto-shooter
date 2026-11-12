@@ -3,7 +3,7 @@
 // None of them may change the campaign: its pins are checked elsewhere, and spot-checked here.
 import { describe, it, expect } from 'vitest';
 import { createGameState, run, cmd } from './helpers.js';
-import { WAVES, MAX_TIER, tierWave, tierEnemyMult, tierArenaHpMult, secondWindTime, nextWaveSpell, WAVE_SPELLS } from '../src/data/waves.js';
+import { WAVES, MAX_TIER, tierWave, tierExtraElites, tierExtraAlive, tierEnemyMult, tierArenaHpMult, ARENA_HP, secondWindTime, nextWaveSpell, WAVE_SPELLS } from '../src/data/waves.js';
 import { ENEMIES, BOSSES } from '../src/data/enemies.js';
 import { levelAssets } from '../src/data/stages.js';
 import { xpToNext } from '../src/data/skills.js';
@@ -35,10 +35,43 @@ describe('tier ladder: what a wave looks like at a tier', () => {
         expect(elites).toBeGreaterThanOrEqual(lastElites);
         lastElites = elites;
         for (const g of w.groups) for (const x of g.spawns) { expect(x.elites).toBeLessThanOrEqual(x.count); expect(ENEMIES[x.type], x.type).toBeTruthy(); }
-        expect(w.maxAlive).toBe(WAVES[i].maxAlive + 2 * Math.floor((tier - 1) / 3));
+        expect(w.maxAlive).toBe(WAVES[i].maxAlive + tierExtraAlive(tier));
       }
       expect(count(tierWave(i, 10), (x) => x.elites)).toBeGreaterThan(count(WAVES[i], (x) => x.elites) + 8);
     }
+  });
+
+  it('leaves tiers 2 to 6 as they were and takes no whole step at once from tier 7', () => {
+    const extra = (tier) => [0, 1, 2, 3].map((gi) => tierExtraElites(tier, gi));
+    for (let tier = 1; tier <= 6; tier++) {
+      expect(extra(tier), `tier ${tier}`).toEqual([0, 0, 0, 0].map(() => Math.floor((tier - 1) / 2)));
+      expect(tierExtraAlive(tier), `tier ${tier}`).toBe(2 * Math.floor((tier - 1) / 3));
+    }
+    expect([7, 8, 9, 10].map(extra)).toEqual([[2, 3, 2, 3], [3, 3, 3, 3], [3, 4, 3, 4], [4, 4, 4, 4]]);
+    expect([7, 8, 9, 10].map(tierExtraAlive)).toEqual([2, 4, 4, 4]);
+    // what each tier adds to the one below, over the three waves: elites, room, late bosses
+    const elites = (tier) => [0, 1, 2].reduce((n, i) => n + count(tierWave(i, tier), (x) => x.elites), 0);
+    const steps = [];
+    for (let tier = 7; tier <= MAX_TIER; tier++) {
+      steps.push([elites(tier) - elites(tier - 1), tierWave(2, tier).maxAlive - tierWave(2, tier - 1).maxAlive, tierWave(2, tier).boss.late.length - tierWave(2, tier - 1).boss.late.length]);
+    }
+    // the old ladder put [12, 2, 1] on tier 7, [12, 0, 0] on tier 9 and another crowd step on tier 10
+    expect(steps).toEqual([[6, 0, 1], [6, 2, 0], [6, 0, 0], [6, 0, 0]]);
+  });
+
+  it('eases the arena health curve after tier 7, and only there', () => {
+    for (let tier = 1; tier <= 7; tier++) expect(tierArenaHpMult(tier), `tier ${tier}`).toBeCloseTo(Math.pow(1.18, tier - 1), 10);
+    for (let tier = 8; tier <= MAX_TIER; tier++) {
+      const step = tierArenaHpMult(tier) / tierArenaHpMult(tier - 1);
+      expect(step, `tier ${tier}`).toBeCloseTo(ARENA_HP.lateStep, 10);
+      expect(step).toBeGreaterThan(1); // still harder every tier
+      expect(step).toBeLessThan(1.18);
+    }
+    expect(tierEnemyMult(10)).toBeCloseTo(Math.pow(1.15, 9), 10); // damage, and the campaign's curve, untouched
+    const hi = start('boss', 10, { boss: 'dragon' });
+    expect(hi.s.enemies.find((x) => x.boss).maxHp).toBe(Math.round(BOSSES.dragon.hp * tierArenaHpMult(10)));
+    const sb = start('sandbox', 10);
+    expect(createEnemy(sb.s, 'obama', { pos: { x: 5, z: 5 } }).maxHp).toBe(Math.round(ENEMIES.obama.hp * tierEnemyMult(10)));
   });
 
   it('brings in the robots at tier 4, rotates the wave-2 boss and adds the Sproto Beast at tier 7', () => {
