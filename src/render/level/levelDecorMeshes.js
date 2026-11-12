@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { voidMaterial } from './voidMaterial.js';
 import { grovePaneMaterial } from './groveMaterials.js';
 import { createKitObject } from './kitMotion.js';
 import { KIT, kitGeometry, kitMaterial } from './kitModels.js';
@@ -20,7 +21,8 @@ export function decorMeshes(list, origin, replaced = null) {
   for (const [model, items] of byModel) {
     const kit = kitGeometry(KIT.prop(model));
     if (!kit) continue;
-    const material = model === 'grove_greenhouse_glass' ? grovePaneMaterial : kitMaterial();
+    const material = model.startsWith('void_') ? voidMaterial()
+      : model === 'grove_greenhouse_glass' ? grovePaneMaterial : kitMaterial();
     const batch = kit.motion ? null : new THREE.InstancedMesh(kit.geometry, material, items.length);
     items.forEach((d, i) => {
       q.setFromAxisAngle(up, (d.yaw || 0) * Math.PI / 180);

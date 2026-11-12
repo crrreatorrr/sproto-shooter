@@ -4,6 +4,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getLevelRuntime } from '../../sim/level/runtime.js';
 import { solidTerrain, terrainGrid } from '../../sim/campaign/terrain.js';
 import { DRESSING, HIDE_WHEN_GOT, MECHANISM_MODEL, STAGE_DRESSING } from './dressing.js';
+import { voidPlacements } from './voidDressing.js';
+import { voidMaterial } from './voidMaterial.js';
 import { groveGeometry, grovePlacements } from './groveDressing.js';
 import { groveMaterial } from './groveMaterials.js';
 import { decorMeshes } from './levelDecorMeshes.js';
@@ -37,6 +39,7 @@ export function levelMaterial(name, cache, tint = null) {
   return mat;
 }
 
+const CAMPAIGN_KITS = { L03: grovePlacements, L04: voidPlacements };
 const groveLevelMaterial = (name, cache) => groveMaterial(name, cache, levelMaterial);
 
 function primitiveGeometry(g) {
@@ -245,16 +248,17 @@ export function createLevelView() {
   const mats = new Map();
   let key = '';
   let gotViews = [];
-  function syncGot(lv) {
-    const got = (lv && lv.got) || {};
-    for (const v of gotViews) v.mesh.visible = !got[v.id];
+  function syncGot(state) {
+    const got = state.level?.got || {};
+    const hasJetpack = state.players?.[state.localPlayerId]?.jetpack;
+    for (const v of gotViews) v.mesh.visible = !got[v.id] && !(v.skipIfOwned && hasJetpack);
   }
   function rebuild(state) {
     const lv = state.level;
     const doors = (lv && lv.closedDoors) || [];
     // kitVersion: a section drawn before its models arrived redraws when they do.
     const next = lv ? `${lv.id}:${lv.section}:${doors.map((d) => d.id).join(',')}:${kitVersion()}` : '';
-    if (next === key) { syncGot(lv); return; }
+    if (next === key) { syncGot(state); return; }
     key = next;
     gotViews = [];
     for (let i = group.children.length - 1; i >= 0; i--) {
@@ -268,14 +272,14 @@ export function createLevelView() {
     const sec = rt.sectionById[lv.section];
     if (!sec) return;
     const field = solidTerrain(sec);
-    // A level with no dressing of its own still gets its stage's backdrop.
     const grove = lv.id === 'L03';
-    const dress = grove ? {} : DRESSING[lv.id] || STAGE_DRESSING[lv.stage] || {};
+    const voidLevel = lv.id === 'L04';
+    const polished = ['L01', 'L02', 'L03'].includes(lv.id);
+    const placements = CAMPAIGN_KITS[lv.id];
+    const dress = placements ? {} : DRESSING[lv.id] || STAGE_DRESSING[lv.stage] || {};
     const prims = new Map((sec.geometry || []).map((g) => [g.id, g]));
     const replaced = new Set();
-    if (grove) {
-      for (const mesh of decorMeshes(grovePlacements(sec, prims), [0, 0, 0], replaced)) group.add(mesh);
-    }
+    if (placements) for (const mesh of decorMeshes(placements(sec, prims, doors), [0, 0, 0], replaced)) group.add(mesh);
     for (const [id, d] of Object.entries(dress.fit || {})) {
       const g = prims.get(id);
       if (!g) continue;
@@ -316,7 +320,7 @@ export function createLevelView() {
     }
     const hidden = (g) => !!(dress.hide && g.id && dress.hide.test(g.id));
     const geometry = (sec.geometry || []).filter((g) => !(field && g.tag === 'terrainStandIn') && !replaced.has(g.id) && !hidden(g));
-    for (const door of doors) geometry.push(aabbBox(door));
+    for (const door of doors) if (!replaced.has(door.id)) geometry.push(aabbBox(door));
     for (const mesh of buildSectionMeshes(grove ? geometry.map(groveGeometry) : geometry, mats, grove ? groveLevelMaterial : levelMaterial)) group.add(mesh);
     if (field) group.add(terrainMesh(field, mats));
     // The L03 Crop Fields use the flat walkable slab. Its Blender crop rows
@@ -324,36 +328,46 @@ export function createLevelView() {
     for (const g of sec.geometry || []) if (g.kind === 'terrain' && (!grove || g.id !== 'S1-T')) group.add(terrainMesh(g, mats));
     for (const m of sec.mechanisms || []) {
       if (grove && m.kind === 'manaBloom' && replaced.has(m.id.replace(/-use$/, '-flower'))) continue;
-      addMarker(m, m.kind === 'shrine' && ['L01', 'L02', 'L03'].includes(lv.id));
+      if (replaced.has(`marker:${m.id}`)) continue;
+      const special = voidLevel && m.kind === 'jetpack' ? 'void_jetpack'
+        : polished && m.kind === 'shrine' ? 'campaign_shrine' : null;
+      addMarker(m, special);
     }
     for (const w of sec.weapons || []) addMarker({ ...w, kind: 'rack' });
-    syncGot(lv);
+    syncGot(state);
   }
   /** The mechanism's model, centred on its point. Null while loading or when it has none. */
-  function kitMarker(m, at, polishedShrine) {
-    const pick = polishedShrine ? 'campaign_shrine' : MECHANISM_MODEL[m.kind]?.(m);
+  function kitMarker(m, at, special) {
+    const jetpack = special === 'void_jetpack';
+    const pick = special ?? MECHANISM_MODEL[m.kind]?.(m);
     const kit = m.kind === 'ammo' ? kitGeometry(KIT.pickup('ammo_box')) : pick ? kitGeometry(KIT.prop(pick)) : null;
     if (!kit) return null;
-    const mesh = createKitObject(kit, kitMaterial(), Math.abs(at[0] * .19 + at[2] * .17));
+    const material = jetpack ? voidMaterial() : kitMaterial();
+    const mesh = createKitObject(kit, material, Math.abs(at[0] * .19 + at[2] * .17));
+    if (jetpack) mesh.name = `void_jetpack:${m.id}`;
     const k = m.kind === 'ammo' ? 0.42 : 1;
     mesh.scale.setScalar(k);
-    mesh.position.set(at[0] - kit.center.x * k, (at[1] || 0.6) - kit.center.y * k, at[2] - kit.center.z * k);
+    mesh.position.set(at[0] - kit.center.x * k, (at[1] || 0.6) - (jetpack ? kit.minY : kit.center.y) * k, at[2] - kit.center.z * k);
     mesh.castShadow = true;
     mesh.userData.kit = true;
     return mesh;
   }
-  function addMarker(m, polishedShrine = false) {
+  function addMarker(m, special = null) {
+    const jetpack = special === 'void_jetpack';
     const at = m.at || m.from;
     if (!at) return;
-    const model = kitMarker(m, at, polishedShrine);
+    const model = kitMarker(m, at, special);
     if (model) {
       group.add(model);
-      if (HIDE_WHEN_GOT.has(m.kind) && m.id) gotViews.push({ id: m.id, mesh: model });
+      if (jetpack || (HIDE_WHEN_GOT.has(m.kind) && m.id)) {
+        gotViews.push({ id: m.id, mesh: model, skipIfOwned: jetpack && m.skipIfOwned });
+      }
       return;
     }
     const color = m.kind === 'secret' ? 0xffd166 : m.kind === 'rack' ? 0x7fd34e : m.kind === 'hazard' ? 0xff5a1a : LEVEL_COLOR.trim;
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35, roughness: 0.4 }));
     mesh.position.set(at[0], at[1] || 0.6, at[2]);
+    if (jetpack) gotViews.push({ id: m.id, mesh, skipIfOwned: m.skipIfOwned });
     group.add(mesh);
   }
   return {

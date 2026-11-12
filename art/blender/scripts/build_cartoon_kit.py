@@ -971,12 +971,14 @@ def select_only(objs):
 
 # Losslessly pack the largest legacy props so the expanded environment kit fits the static budget.
 COMPRESSED_PROPS = {
-    'barrel_fire', 'barrel_shock', 'barricade', 'bazaar_tent', 'bazaar_wall', 'billboard',
-    'building_a', 'building_b', 'building_c', 'cart', 'clay_pots', 'drying_rack', 'far_bazaar',
-    'dye_vat_gold', 'dye_vat_red', 'dye_vat_teal', 'fountain', 'guard_rail', 'hill_sign',
-    'kiosk', 'lantern_post', 'low_wall', 'machine', 'onion_dome', 'palm_tree', 'planter',
-    'sandstone_house', 'secret', 'skyline_a', 'skyline_c', 'slide_truck', 'street_lamp',
-    'switch', 'toll_booth', 'water_tank', 'well',
+    'barrel_fire', 'barrel_shock', 'barricade', 'bazaar_tent', 'bazaar_wall', 'bench',
+    'billboard', 'building_a', 'building_b', 'building_c', 'cart', 'chest',
+    'clay_pots', 'crosswalk', 'drying_rack', 'dune', 'dye_vat_gold', 'dye_vat_red',
+    'dye_vat_teal', 'far_bazaar', 'fountain', 'guard_rail', 'hill_sign', 'hydrant',
+    'kiosk', 'lantern_post', 'low_wall', 'machine', 'mesa_a', 'mesa_b',
+    'onion_dome', 'palm_tree', 'planter', 'road_dash', 'sandstone_house', 'secret', 'shrine',
+    'sidewalk', 'skyline_a', 'skyline_b', 'skyline_c', 'slide_truck', 'street_lamp',
+    'switch', 'toll_booth', 'traffic_cone', 'water_tank', 'weapon_rack', 'well',
 }
 
 
@@ -1133,7 +1135,8 @@ def main():
     for folder, makers in (('props', PROPS), ('projectiles', PROJECTILES), ('pickups', PICKUPS)):
         for make in makers:
             obj = make().build()
-            size = export([obj], folder, obj.name, compressed=folder == 'props' and obj.name in COMPRESSED_PROPS)
+            packed = folder == 'pickups' or obj.name == 'bomb' or (folder == 'props' and obj.name in COMPRESSED_PROPS)
+            size = export([obj], folder, obj.name, compressed=packed)
             report.append((folder, obj.name, len(obj.data.polygons), size))
             preview.append(obj)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ROOT, 'art', 'blender', 'cartoon_kit.blend'))
@@ -1145,7 +1148,7 @@ def main():
         scene.render.fps = 24
         scene.frame_start, scene.frame_end = 0, end
         objs = build()
-        size = export(objs, 'fx', name, animated=True)
+        size = export(objs, 'fx', name, animated=True, compressed=True)
         report.append(('fx', name, sum(len(o.data.polygons) for o in objs), size))
         bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ROOT, 'art', 'blender', f'fx_{name}.blend'))
         for f in (2, 5, 9, 13):
