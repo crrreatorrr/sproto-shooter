@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import { STAGES, stageAssets } from '../../data/stages.js';
 import { peekTexture, instantiateStatic, assetsVersion } from '../assets.js';
+import { createBlockchainSky } from './voidSky.js';
 import { createLevelView } from '../level/levelView.js';
 
 export function mountStage(env) {
   const { ARENA_R, E, M, bounce, hemi, scene, sun } = env;
   const sky = new THREE.Mesh(new THREE.SphereGeometry(260, 48, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide, fog: false, depthWrite: false, toneMapped: false }));
+  const standardSky = sky.material;
+  let blockchainSky;
   sky.renderOrder = -1;
   scene.add(sky);
   const groundMat = M(0xffffff, { roughness: 0.92 });
@@ -47,9 +50,10 @@ export function mountStage(env) {
     mat.needsUpdate = true;
   }
 
-  function applyStage(id) {
+  function applyStage(id, levelId) {
+    const blockchain = id === 'void' && levelId === 'L04';
     const st = STAGES[id], a = stageAssets(id);
-    const key = id + ':' + assetsVersion();
+    const key = id + ':' + blockchain + ':' + assetsVersion();
     if (key === stageKey) return;
     stageKey = key;
     scene.background = new THREE.Color(st.background);
@@ -70,7 +74,21 @@ export function mountStage(env) {
     }
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
     const skyTex = peekTexture(a.sky);
-    sky.material.map = skyTex; sky.material.color.setHex(skyTex ? 0xffffff : st.background); sky.material.needsUpdate = true;
+    sky.material = blockchain ? (blockchainSky ||= createBlockchainSky()) : standardSky;
+    standardSky.map = skyTex;
+    standardSky.color.setHex(skyTex ? 0xffffff : st.background);
+    standardSky.needsUpdate = true;
+    if (blockchain) {
+      scene.fog.color.setHex(0x312445);
+      hemi.color.setHex(0xe5dcff);
+      hemi.groundColor.setHex(0x9d688d);
+      hemi.intensity = 1.37;
+      sun.color.setHex(0xd7e3ff);
+      sun.position.set(-28, 32, -22);
+      sun.intensity = 1.72;
+      bounce.color.setHex(0x8f81e4);
+      bounce.intensity = .42;
+    }
     const floor = peekTexture(a.floor);
     setStageMap(groundMat, floor, st.floorRepeat, st.floorRepeat);
     groundMat.color.setHex(floor ? 0xffffff : 0x4a3a66);
