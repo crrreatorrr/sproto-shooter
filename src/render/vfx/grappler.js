@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { TUNING } from '../../data/tuning.js';
 import { enqueue, peekAsset, releaseAsset, retainAsset } from '../assets.js';
 
 const MODEL = 'models/gear/grappler.glb';
@@ -9,6 +10,7 @@ const FORWARD = new THREE.Vector3(0, 0, 1);
 const UP = new THREE.Vector3(0, 1, 0);
 const BITE_TIME = 0.105;
 const RETURN_TIME = 0.19;
+const VM_HALF_FOV_TAN = Math.tan(TUNING.fovBase * Math.PI / 360);
 
 export function leftGrapplerArm(model) {
   const arm = {};
@@ -22,7 +24,7 @@ export function leftGrapplerArm(model) {
 }
 
 /** The simulation supplies the anchor. Only the model, tether and impact follow this timeline. */
-export function createGrappler(scene, mount, { firstPerson = false, layer = 0 } = {}) {
+export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) {
   const root = new THREE.Group();
   root.name = 'Grapple effects';
   root.visible = false;
@@ -46,8 +48,8 @@ export function createGrappler(scene, mount, { firstPerson = false, layer = 0 } 
   const returnFrom = new THREE.Vector3();
   const mountQ = new THREE.Quaternion(), flightQ = new THREE.Quaternion(), dockQ = new THREE.Quaternion();
   const returnQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
-  const outward = firstPerson ? new THREE.Vector3(-1, 0.68, 0) : new THREE.Vector3(1, 0.68, 0);
-  const fallback = firstPerson ? new THREE.Vector3(-0.36, -0.34, -0.62) : new THREE.Vector3(0.32, 1.03, 0.3);
+  const outward = camera ? new THREE.Vector3(-1, 0.68, 0) : new THREE.Vector3(1, 0.68, 0);
+  const fallback = camera ? new THREE.Vector3(-0.36, -0.34, -0.62) : new THREE.Vector3(0.32, 1.03, 0.3);
 
   let launcher, socket, stowed, head, mixer, jaws;
   let target = null, elapsed = 0, flightTime = 0, returning = false;
@@ -128,6 +130,14 @@ export function createGrappler(scene, mount, { firstPerson = false, layer = 0 } 
       return;
     }
     poseMount(arm);
+    if (camera) {
+      // The sleeve uses the viewmodel FOV. Match its dock on screen in the world pass, including while aiming.
+      const ratio = Math.tan(camera.fov * Math.PI / 360) / VM_HALF_FOV_TAN;
+      camera.worldToLocal(from);
+      from.x *= ratio;
+      from.y *= ratio;
+      camera.localToWorld(from);
+    }
     const isNew = hook && (!target || hook.id !== target.id ||
       hook.x !== anchor.x || hook.y !== anchor.y || hook.z !== anchor.z || returning);
     if (isNew) begin(hook);

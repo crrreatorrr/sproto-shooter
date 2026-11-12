@@ -14,7 +14,7 @@ import { createFirstPersonView } from './firstPersonView.js';
 export function mountPresent(env) {
   const { AMMO_COL, CONF_N, G, GUN_MODEL_LEN, PK, ensurePickupModel, PK_COL, RES_COL, TRACER_N, VM_LAYER, addTracer, applyStage, arenaBits, beginGpu, booms, boxView, boxViews, buildAlly, buildBoss, buildEnemy, buildGunModel, buildGunPickup, buildHazard, camera, cl, confetti, cp, cr, cv, disposeTree, dummy, endGpu, ensureProjectileModel, inst, lerp, levelView, pollGpu, releaseUnseen, renderer, requestNeeds, scene, syncView, tracerGeo, tracerPos, tracers, updateBeams, viewKey } = env;
   const updateFirstPersonView = createFirstPersonView(env);
-  const grappler = createGrappler(scene, env.fp.root, { firstPerson: true, layer: VM_LAYER });
+  const grappler = createGrappler(scene, env.fp.root, { camera, layer: VM_LAYER });
   let needsT = 0;
   const clock = createClock();
   const cues = new Map();
