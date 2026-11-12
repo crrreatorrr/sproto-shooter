@@ -4,6 +4,7 @@ import { dirFromYawPitch } from '../core/math.js';
 import { emit } from './events.js';
 import { eyePos, rayWorld } from './collision.js';
 import { activeSolids, firstSolid } from './campaign/solids.js';
+import { grappleSpeedScale } from './grappleMotion.js';
 
 function inBox(box, x, y, z) {
   if (!box || !box.min || !box.max) return false;
@@ -29,7 +30,7 @@ function blocked(state, x, y, z) {
   return false;
 }
 
-function snapAnchor(state, point, maxDist) {
+function snapAnchor(state, point, origin, maxDist) {
   const anchors = (state.level && state.level.grappleAnchors) || [];
   let best = null;
   let bd = 2.4;
@@ -39,7 +40,7 @@ function snapAnchor(state, point, maxDist) {
     if (!at) continue;
     const d = Math.hypot(at[0] - point.x, (at[1] || 0) - point.y, at[2] - point.z);
     const reach = a.r == null ? 2.4 : a.r;
-    if (d <= reach && d < bd && Math.hypot(at[0] - point.x, at[2] - point.z) < maxDist) {
+    if (d <= reach && d < bd && Math.hypot(at[0] - origin.x, (at[1] || 0) - origin.y, at[2] - origin.z) <= maxDist) {
       bd = d;
       best = { x: at[0], y: at[1] || 0, z: at[2], id: a.id || null };
     }
@@ -56,6 +57,7 @@ function anchorOnRay(state, origin, dir, maxDist) {
     const at = a.at;
     if (!at) continue;
     const ox = at[0] - origin.x, oy = (at[1] || 0) - origin.y, oz = at[2] - origin.z;
+    if (Math.hypot(ox, oy, oz) > maxDist) continue;
     const t = ox * dir.x + oy * dir.y + oz * dir.z;
     if (t < 0.4 || t > maxDist) continue;
     const px = origin.x + dir.x * t, py = origin.y + dir.y * t, pz = origin.z + dir.z * t;
@@ -100,7 +102,7 @@ export function findHook(state, p) {
   const along = anchorOnRay(state, origin, dir, maxDist);
   if (along && (!hit || along.t <= hit.t + 0.4)) hit = along;
   if (hit) {
-    const snapped = snapAnchor(state, hit, maxDist);
+    const snapped = snapAnchor(state, hit, origin, maxDist);
     if (snapped) hit = snapped;
   }
   if (!hit || blocked(state, hit.x, hit.y, hit.z)) return null;
@@ -129,45 +131,57 @@ export function clampToRoom(p, room) {
   if (p.pos.y > room.max[1] - 0.3) { p.pos.y = room.max[1] - 0.3; if (p.vel.y > 0) p.vel.y = 0; }
 }
 
+function limitSpeed(p, limit) {
+  const k = grappleSpeedScale(p.vel.x, p.vel.y, p.vel.z, limit);
+  p.vel.x *= k;
+  p.vel.y *= k;
+  p.vel.z *= k;
+}
+
+function releaseGrapple(state, p) {
+  if (!p.grapple) return;
+  limitSpeed(p, TUNING.grappleReleaseSpeed);
+  p.grapple = null;
+  emit(state, 'grappleRelease', { playerId: p.id });
+}
+
 export function tickGrapple(state, p, dt) {
   if (p.grappleCd > 0) p.grappleCd = Math.max(0, p.grappleCd - dt);
   const c = p.cmd || {};
   const held = !!(c.held && c.held.grapple);
   if (!held || p.downed) {
-    // Release keeps the velocity the pull already built. Gravity and air control take over next.
-    if (p.grapple) {
-      emit(state, 'grappleRelease', { playerId: p.id });
-      p.grapple = null;
-    }
+    releaseGrapple(state, p);
     return;
   }
   if (!p.grapple) {
     if (p.grappleCd > 0) return;
     const hook = findHook(state, p);
     p.grappleCd = TUNING.grappleCd;
-    if (!hook) return;
+    if (!hook) {
+      p.grappleMiss = true;
+      return;
+    }
+    delete p.grappleMiss;
     p.grapple = hook;
     emit(state, 'grapple', { playerId: p.id, pos: { x: hook.x, y: hook.y, z: hook.z }, id: hook.id });
   }
   const hook = p.grapple;
   if (!stillClear(state, p, hook)) {
-    emit(state, 'grappleRelease', { playerId: p.id });
-    p.grapple = null;
+    releaseGrapple(state, p);
     return;
   }
   const originY = p.pos.y + 0.9;
   const dx = hook.x - p.pos.x, dy = hook.y - originY, dz = hook.z - p.pos.z;
   const dist = Math.hypot(dx, dy, dz) || 1;
   if (dist < TUNING.grappleArrive) {
-    // Arrival keeps the speed you came in with, so you fly past the anchor.
-    emit(state, 'grappleRelease', { playerId: p.id });
-    p.grapple = null;
+    releaseGrapple(state, p);
     return;
   }
   const pull = TUNING.grapplePull * dt;
   p.vel.x += (dx / dist) * pull;
   p.vel.y += (dy / dist) * pull;
   p.vel.z += (dz / dist) * pull;
+  limitSpeed(p, TUNING.grappleSpeed);
   const room = sealOf(state, p);
   if (room) {
     const pad = 0.45;

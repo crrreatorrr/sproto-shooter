@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TUNING } from '../src/data/tuning.js';
 import { decodeInput, encodeInput } from '../src/net/inputCodec.js';
 import { ARENA_SOLIDS } from '../src/sim/pvp/arena.js';
-import { createMatch, hashState, replay, scriptedMatch, step } from '../src/sim/pvp/sim.js';
+import { createMatch, hashState, replay, scriptedMatch, snapshotOf, step } from '../src/sim/pvp/sim.js';
 import { CONTENT_FINGERPRINT } from '../src/sim/pvp/rules.js';
 import { HELD_MASK, decodeUsedLog, encodeUsedTick, usedOf, wishOfUsed } from '../src/sim/pvp/used.js';
 
@@ -76,27 +76,25 @@ describe('arena movement', () => {
     expect(Math.hypot(p.vx, p.vz)).toBeGreaterThan(TUNING.walkSpeed + 0.5);
   });
 
-  it('flings off a pillar and keeps that velocity when the hook is released', () => {
+  it('pulls toward a pillar and slows down when the hook is released', () => {
     const state = createMatch(4);
     const p = state.players[0];
     // East face of the north-east pillar is x = 12.9. Aim up the face.
     place(p, 8, 14, -Math.PI / 2, 0.9);
     const hold = () => step(state, [wish({ yaw: p.yaw, pitch: 0.9, grapple: true }), wish({ yaw: 0 })]);
-    let peakUp = 0;
-    for (let i = 0; i < 12; i++) {
+    let topSpeed = 0;
+    for (let i = 0; i < 18; i++) {
       hold();
-      if (p.vy > peakUp) peakUp = p.vy;
+      topSpeed = Math.max(topSpeed, Math.hypot(p.vx, p.vy, p.vz));
     }
     expect(p.grapple).toBeTruthy();
     expect(p.grapple.id).toBe('ne');
-    expect(peakUp).toBeGreaterThan(8);
-    const heldX = p.vx;
-    const heldY = p.vy;
+    expect(topSpeed).toBeGreaterThan(TUNING.grappleReleaseSpeed);
+    expect(topSpeed).toBeLessThanOrEqual(TUNING.grappleSpeed + 0.0001);
     step(state, [wish({ yaw: p.yaw, pitch: 0.9 }), wish({ yaw: 0 })]);
     expect(p.grapple).toBeNull();
-    expect(p.vx).toBeCloseTo(heldX, 4);
-    expect(p.vy).toBeLessThan(heldY);
-    expect(p.vy).toBeGreaterThan(heldY - TUNING.gravity / 30 - 0.02);
+    expect(p.vy).toBeGreaterThan(0);
+    expect(Math.hypot(p.vx, p.vy, p.vz)).toBeLessThanOrEqual(TUNING.grappleReleaseSpeed + 0.0001);
     let peakY = p.y;
     for (let i = 0; i < 30; i++) {
       step(state, [wish({ yaw: p.yaw, pitch: 0 }), wish({ yaw: 0 })]);
@@ -104,6 +102,26 @@ describe('arena movement', () => {
     }
     expect(peakY).toBeGreaterThan(3);
     expect(p.x).toBeGreaterThan(12);
+  });
+
+  it('caps downward pulls and releases after applying gravity', () => {
+    const state = createMatch(4);
+    const p = state.players[0];
+    const yaw = -Math.PI / 2, pitch = -0.5;
+    place(p, 8, 14, yaw, pitch);
+    p.y = 10;
+    p.onGround = false;
+    const speed = () => Math.hypot(p.vx, p.vy, p.vz);
+    for (let i = 0; i < 9; i++) {
+      step(state, [wish({ yaw, pitch, grapple: true }), wish({ yaw: 0 })]);
+      expect(p.grapple?.id).toBe('ne');
+      expect(speed()).toBeLessThanOrEqual(TUNING.grappleSpeed + 0.0001);
+    }
+    expect(p.vy).toBeLessThan(0);
+    expect(speed()).toBeGreaterThan(TUNING.grappleReleaseSpeed);
+    step(state, [wish({ yaw, pitch }), wish({ yaw: 0 })]);
+    expect(p.grapple).toBeNull();
+    expect(speed()).toBeLessThanOrEqual(TUNING.grappleReleaseSpeed + 0.0001);
   });
 
   it('does not hook the floor or the other player', () => {
@@ -119,6 +137,21 @@ describe('arena movement', () => {
     step(state, [wish({ yaw: 0, pitch: 0, grapple: true }), wish({ yaw: other.yaw })]);
     expect(p.grapple).toBeNull();
     expect(ARENA_SOLIDS.map((s) => s.id).sort()).toEqual(['ne', 'nw', 'se', 'sw']);
+  });
+
+  it('reports a missed attempt for a pillar beyond the shorter range', () => {
+    const state = createMatch(4);
+    const p = state.players[0];
+    const yaw = -Math.PI / 2;
+    place(p, -6, 14, yaw, 0);
+    step(state, [wish({ yaw, grapple: true }), wish({ yaw: 0 })]);
+    expect(snapshotOf(state).players[0]).toMatchObject({ grapple: null, grappleCd: TUNING.grappleCd, grappleMiss: true });
+    expect(Math.hypot(p.vx, p.vy, p.vz)).toBe(0);
+    // A point-blank hit arrives in the same tick. It still counts as a hit.
+    place(p, 12, 14, yaw, 0);
+    step(state, [wish({ yaw, grapple: true }), wish({ yaw: 0 })]);
+    expect(snapshotOf(state).players[0]).toMatchObject({ grapple: null, grappleCd: TUNING.grappleCd });
+    expect(snapshotOf(state).players[0].grappleMiss).toBeUndefined();
   });
 
   it('keeps a grapple press in the used log and treats it as held', () => {
@@ -141,7 +174,7 @@ describe('arena movement', () => {
     expect(state.outcome).toBe('draw');
     expect(state.reason).toBe('double_ko');
     expect(state.tick).toBe(65);
-    expect(CONTENT_FINGERPRINT).toBe('b33eada6');
+    expect(CONTENT_FINGERPRINT).toBe('dc00f234');
     expect(hashState(state)).toBe('532a562e');
   });
 });

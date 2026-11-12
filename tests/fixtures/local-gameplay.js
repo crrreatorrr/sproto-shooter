@@ -5,9 +5,13 @@ import { generateGun } from '../../src/sim/guns.js';
 import { createPickup } from '../../src/sim/state.js';
 import { damagePlayer } from '../../src/sim/combat.js';
 import { GUN_TYPES } from '../../src/data/guns.js';
+import { TUNING } from '../../src/data/tuning.js';
 import { freezeAt } from '../../src/render/core/clock.js';
 import { ensureCharacter, ensureGunModel, ensureStage } from '../../src/render/assets.js';
 import { levelAssets } from '../../src/data/stages.js';
+import { PLAYER_CHARACTERS } from '../../src/render/playerCharacters.js';
+import { loadPlayerModel } from '../../src/render/firstPerson.js';
+import { attachModel, disposeModel } from '../../src/render/pvp/actor.js';
 
 const cmd = (o = {}) => ({ yaw: 0, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [], ...o });
 
@@ -152,6 +156,162 @@ export async function weaponsAndSpells(game) {
       for (let i = 0; i < 120; i++) { step(cmd()); if (i % 40 === 0) draw(); }
     }
     return { events, guns: gunCounts, spells: [...spells] };
+  } finally {
+    freezeAt(null);
+  }
+}
+
+export async function grapplerRun(game) {
+  game.frame = () => {};
+  game.hideScreen();
+  const { THREE, camera, firstPerson, scene } = game.renderer;
+  const state = game.state, player = state.players[state.localPlayerId];
+  const look = { yaw: 0, pitch: -0.115 };
+  const report = {};
+  let time = performance.now();
+  function draw() {
+    freezeAt(time += 30);
+    game.renderer.render(state, 1, look);
+  }
+  function step(grapple, ticks, zoom = false, fire = false) {
+    for (let i = 0; i < ticks; i++) {
+      simulate(state, { [player.id]: cmd({ ...look, held: { grapple, zoom, fire } }) });
+      if (fire) for (const event of state.events) if (event.type === 'shot') game.bus.emit(event);
+      draw();
+    }
+  }
+  try {
+    state.enemies.length = 0;
+    const effects = scene.getObjectByName('Grapple effects');
+    const head = effects.getObjectByName('Claw');
+    const jaws = [1, 2, 3].map((i) => head.getObjectByName(`Jaw_hinge_${i}`));
+    const impact = effects.getObjectByName('Grapple latch flash');
+    const tether = effects.getObjectByName('Grapple tether');
+    const viewmodelCamera = camera.clone(false);
+    viewmodelCamera.fov = TUNING.fovBase;
+    viewmodelCamera.updateProjectionMatrix();
+    const weapon = () => camera.children.flatMap((child) => child.children).find((object) => object.userData.gunId !== undefined);
+    const cablePoint = (y) => tether.localToWorld(new THREE.Vector3(0, y, 0));
+    function straightTo(hook) {
+      const start = cablePoint(-0.5);
+      const ray = new THREE.Vector3().copy(hook).sub(start);
+      return cablePoint(0.5).sub(start).cross(ray).length() / ray.length() < 0.002;
+    }
+    function resetCast() {
+      Object.assign(player.pos, { x: 0, y: 0, z: 0 });
+      Object.assign(player.prevPos, player.pos);
+      Object.assign(player.vel, { x: 0, y: 0, z: 0 });
+      player.grappleCd = 0;
+    }
+    for (const { id, model } of PLAYER_CHARACTERS) {
+      firstPerson.selectModel(model);
+      const source = await loadPlayerModel(model);
+      const arenaBody = { group: new THREE.Group(), capsule: new THREE.Group() };
+      arenaBody.group.position.set(8, 0.5, -14);
+      arenaBody.group.rotation.y = Math.PI;
+      attachModel(arenaBody, source, model);
+      const arenaFit = arenaBody.grappleArm.surface.length > 0;
+      disposeModel(arenaBody);
+      resetCast();
+      draw();
+      const launcher = camera.getObjectByName('Launcher');
+      const dock = launcher.getObjectByName('Dock');
+      const stowed = dock.getObjectByName('Claw');
+      const docked = firstPerson.debug().mountedPath === model && launcher.visible && stowed.visible && !effects.visible;
+      const { upper, lower, hand } = firstPerson.grappleArm;
+      const rightHand = firstPerson.debug().arms.Right.hand;
+      const rightAtRest = camera.worldToLocal(rightHand.getWorldPosition(new THREE.Vector3()));
+      const gunAtRest = weapon().position.y, pitchAtRest = weapon().rotation.x;
+      const wristAtRest = hand.getWorldPosition(new THREE.Vector3()).sub(player.pos);
+      step(true, 3);
+      const windsUp = effects.visible && tether.visible && !head.visible && stowed.visible;
+      step(true, 1);
+      const weaponIsLow = () => weapon().position.y < gunAtRest - 0.24 && weapon().rotation.x < pitchAtRest - 0.64;
+      const gunLowered = weaponIsLow() && camera.worldToLocal(rightHand.getWorldPosition(new THREE.Vector3())).y < rightAtRest.y - 0.025;
+      const launchZ = head.position.z;
+      const shoulder = upper.getWorldPosition(new THREE.Vector3());
+      const elbow = lower.getWorldPosition(new THREE.Vector3());
+      const wrist = hand.getWorldPosition(new THREE.Vector3());
+      const reach = shoulder.distanceTo(wrist) / (shoulder.distanceTo(elbow) + elbow.distanceTo(wrist));
+      const extended = windsUp && effects.visible && reach > 0.95 && wrist.sub(player.pos).distanceTo(wristAtRest) > 0.045;
+      step(true, 2);
+      const flight = effects.visible && !stowed.visible && head.position.z < launchZ - 3 && jaws.every((jaw) => jaw.rotation.x < -0.4);
+      const straightFlight = straightTo(player.grapple) && cablePoint(0.5).distanceTo(head.position) < 0.002;
+      step(true, 7);
+      const hook = new THREE.Vector3().copy(player.grapple);
+      const latch = !!player.grapple && impact.visible && Math.abs(head.position.z - player.grapple.z) < 0.25
+        && jaws.every((jaw) => Math.abs(jaw.rotation.x) < 0.16);
+      const anchored = cablePoint(0.5).distanceTo(hook) < 0.002;
+      step(true, 1, false, true);
+      const firesLow = state.events.some((event) => event.type === 'shot') && weaponIsLow();
+      const beams = () => scene.children.filter((object) =>
+        object.visible && object.children[0]?.material?.blending === THREE.AdditiveBlending);
+      const previousBeams = beams();
+      const beamFrom = camera.position.clone(), beamTo = beamFrom.clone().add(new THREE.Vector3(0, 0, -10));
+      game.bus.emit({ type: 'tracer', from: beamFrom, to: beamTo, element: 'none', gunType: 'raygun' });
+      draw();
+      const beam = beams().find((object) => !previousBeams.includes(object));
+      const beamOffset = beam?.position.clone().multiplyScalar(2).sub(beamTo).sub(beamFrom);
+      const beamClearsCamera = beamOffset?.z < -0.7 && beamOffset.x > 0.19;
+      let staysLow = weaponIsLow();
+      let staysAnchored = anchored;
+      for (let i = 0; player.grapple && i < 75; i++) {
+        step(true, 1);
+        if (player.grapple) {
+          staysLow &&= weaponIsLow();
+          staysAnchored &&= cablePoint(0.5).distanceTo(hook) < 0.002;
+        }
+      }
+      const reached = !player.grapple && Math.hypot(hook.x - player.pos.x, hook.y - player.pos.y - 0.9, hook.z - player.pos.z) < TUNING.grappleArrive + 0.4;
+      step(false, 15);
+      const returned = !effects.visible && stowed.visible;
+      const gunRaised = Math.abs(weapon().position.y - gunAtRest) < 0.04 && Math.abs(weapon().rotation.x - pitchAtRest) < 0.07;
+      resetCast();
+      step(true, 4, true);
+      const fovScale = Math.tan(camera.fov * Math.PI / 360) / Math.tan(TUNING.fovBase * Math.PI / 360);
+      const handoff = Math.abs(head.scale.x - dock.getWorldScale(new THREE.Vector3()).x * fovScale) < 0.002;
+      step(true, 2, true);
+      viewmodelCamera.matrixWorldInverse.copy(camera.matrixWorldInverse);
+      const socketOnScreen = dock.getWorldPosition(new THREE.Vector3()).project(viewmodelCamera);
+      const tetherOnScreen = tether.localToWorld(new THREE.Vector3(0, -0.5, 0)).project(camera);
+      const aimed = camera.fov < TUNING.fovBase - 1 && socketOnScreen.distanceTo(tetherOnScreen) < 0.002;
+      const canceledAt = head.position.z;
+      step(false, 3);
+      const canceled = !impact.visible && head.position.z > canceledAt;
+      step(false, 12);
+      resetCast();
+      step(true, 2);
+      const cue = effects.visible && tether.visible && tether.material.opacity < 0.4 && !head.visible;
+      step(false, 1);
+      const quickTap = cue && !effects.visible && stowed.visible;
+      step(false, 7);
+      resetCast();
+      look.pitch = 0.12;
+      const missOrigin = { ...player.pos };
+      let missReach = 0;
+      let missRetracts = false;
+      let missNeverLatches = true;
+      let missIsStraight = true;
+      for (let i = 0; i < 30; i++) {
+        step(true, 1);
+        missNeverLatches &&= !player.grapple && !impact.visible;
+        if (!effects.visible || !head.visible || !tether.visible) continue;
+        const length = cablePoint(-0.5).distanceTo(cablePoint(0.5));
+        if (missReach > TUNING.grappleRange - 0.02 && length < missReach - 1) missRetracts = true;
+        missReach = Math.max(missReach, length);
+        missIsStraight &&= cablePoint(0.5).distanceTo(head.position) < 0.002;
+      }
+      const missReturns = missRetracts && !effects.visible && stowed.visible && !weaponIsLow();
+      const missIsShort = Math.abs(missReach - TUNING.grappleRange) < 0.02;
+      const missDoesNotPull = new THREE.Vector3().copy(player.pos).distanceTo(missOrigin) < 0.002;
+      look.pitch = -0.115;
+      report[id] = {
+        docked, flight, latch, returned, aimed, handoff, canceled, extended, quickTap, gunLowered, gunRaised,
+        arenaFit, straightFlight, staysAnchored, staysLow, firesLow, reached, beamClearsCamera,
+        missReturns, missIsShort, missNeverLatches, missDoesNotPull, missIsStraight,
+      };
+    }
+    return report;
   } finally {
     freezeAt(null);
   }

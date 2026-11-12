@@ -106,7 +106,7 @@ describe('what a grove clear needs', () => {
     simulate(s, { [p.id]: cmd() });
     const brute = s.enemies.find((e) => e.type === 'barkBrute');
     expect(brute.elite).toBe(true);
-    expect(contentFingerprint(1)).toBe('cea1f88b');
-    expect(CONTENT_FINGERPRINT).toBe('b33eada6');
+    expect(contentFingerprint(1)).toBe('73c6eb0f');
+    expect(CONTENT_FINGERPRINT).toBe('dc00f234');
   });
 });
