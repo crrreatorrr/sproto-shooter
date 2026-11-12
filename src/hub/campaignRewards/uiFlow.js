@@ -120,6 +120,9 @@ export class RewardedCampaignUI {
     g.screen.hidden = false; // prevent pointer-unlock from replacing this panel
     if (g.ui.menuOpen) g.ui.closeMenu();
     g.input.setEnabled(false); g.input.unlock(); g.paused = true;
+    // Status ticks call open() again while this dialog is up. Rebuilding it resets
+    // scroll and puts the actions back under #screen, so a click never lands.
+    if (g.screen.querySelector('[data-reward-panel]')) { this.paint(); return; }
     g.screen.innerHTML = `<div class="reward-dialog" data-reward-panel role="dialog" aria-modal="true" aria-labelledby="reward-title">
       <h1 id="reward-title" data-reward-title>Rewarded campaign</h1>
       <p data-reward-detail role="status" aria-live="polite"></p>
