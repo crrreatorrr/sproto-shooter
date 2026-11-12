@@ -393,6 +393,7 @@ it('real-rAF full frozen1001-tick failure stops the actual Game at its first loc
     await f.page.addScriptTag({ type: 'module', content: `
       import { decodeFrames } from '/src/server/protocol.js'; window.__decodeRewardTrace = decodeFrames;
     ` });
+    await f.page.waitForFunction(() => typeof window.__decodeRewardTrace === 'function', null, { timeout: 15000 });
     await f.page.evaluate((log) => {
       const commands = log.segments.flatMap((segment) => window.__decodeRewardTrace(segment.frames, segment.n, segment.actions).commands);
       const g = window.__game, original = g.input.buildCommand.bind(g.input);
