@@ -218,6 +218,7 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
     for (let i = 0; i < 2; i++) {
       const p = players && players[i];
       const entry = bodies[i], body = entry.group;
+      entry.grappler.restoreArm();
       if (!p) {
         body.visible = false;
         entry.grappler.update(null, dt, null, { active: false });

@@ -225,11 +225,39 @@ tube("Grip rail", (-0.235, 0.106, 3.07), (0.235, 0.106, 3.07), 0.026, housing, s
 for x in (-0.24, 0.24):
     tube("Rail end", (x - 0.012, 0.106, 3.07), (x + 0.012, 0.106, 3.07), 0.035, trim, sides=10)
 
-dock = 0.100
+# Pose an articulated demo sleeve. The game uses each playable avatar's own arm bones.
+sleeve = material("Field jacket", "596150")
+seam = material("Cuff seam", "404740")
+glove = material("Glove", "30363D")
+knuckles = material("Glove padding", "454F5B")
+shoulder = empty("Demo shoulder", at=(0, 0, -0.61))
+elbow = empty("Demo elbow", shoulder, (0, 0, 0.36))
+tube("Upper sleeve", (0, 0, -0.035), (0, 0, 0.367), 0.111, sleeve, shoulder, 10, 0.089)
+tube("Elbow seam", (0, 0, -0.023), (0, 0, 0.045), 0.091, seam, elbow, 10, 0.087)
+tube("Forearm sleeve", (0, 0, 0.038), (0, 0, 0.386), 0.089, sleeve, elbow, 10, 0.067)
+tube("Wrist cuff", (0, 0, 0.355), (0, 0, 0.401), 0.071, seam, elbow, 10, 0.069)
+box("Closed glove", (0, 0, 0.436), (0.126, 0.103, 0.132), glove, elbow, 0.027)
+box("Knuckle guard", (0, 0.042, 0.467), (0.101, 0.028, 0.061), knuckles, elbow, 0.011)
+box("Folded thumb", (0.052, -0.019, 0.429), (0.046, 0.060, 0.075), glove, elbow, 0.015)
+launcher.parent = elbow
+launcher.location = xyz((0, 0, 0.25))
+
+arm_keys = [(1, 0.58, -1.18), (12, 0.58, -1.18), (19, 0, 0), (22, 0.045, -0.07),
+            (27, 0, 0), (43, 0, 0), (67, 0.58, -1.18), (108, 0.58, -1.18)]
+key(shoulder, "rotation_euler", [(f, (a, 0, 0)) for f, a, _ in arm_keys])
+key(elbow, "rotation_euler", [(f, (a, 0, 0)) for f, _, a in arm_keys])
+
 stop = 2.965
-key(claw, "location", [(f, xyz((0, 0.106, z))) for f, z in [
-    (1, dock), (19, dock), (23, 0.43), (32, 1.59), (43, stop), (77, stop), (95, dock), (108, dock),
-]])
+claw.rotation_mode = "QUATERNION"
+docked = []
+for f in [*range(1, 20), 95, 108]:
+    scene.frame_set(f)
+    docked.append((f, socket.matrix_world.translation.copy(), socket.matrix_world.to_quaternion()))
+flight = [(f, xyz((0, 0.106, z)), Quaternion()) for f, z in
+          [(23, 0.43), (32, 1.59), (43, stop), (77, stop)]]
+claw_keys = sorted(docked + flight)
+key(claw, "location", [(f, position) for f, position, _ in claw_keys])
+key(claw, "rotation_quaternion", [(f, rotation) for f, _, rotation in claw_keys])
 for hinge in hinges:
     hinge.animation_data_clear()
     key(hinge, "rotation_euler", [(f, (-a, 0, 0)) for f, a in [
@@ -237,17 +265,21 @@ for hinge in hinges:
         (47, -0.04), (50, 0.13), (77, 0.13), (83, 0.46), (95, 0), (108, 0),
     ]])
 
-# Mesh cable scaled along the flight axis. Its rear tip stays fixed at Dock.
-cable = empty("Tether", at=(0, 0.106, dock))
+# The tether follows the moving dock as the arm drops after the shot.
+cable = empty("Tether")
 tube("Tether filament", (0, 0, 0), (0, 0, 1), 0.006, cyan, cable, 10)
+origin = cable.constraints.new("COPY_LOCATION")
+origin.target = socket
+track = cable.constraints.new("DAMPED_TRACK")
+track.target = claw
+track.track_axis = "TRACK_NEGATIVE_Y"
 driver = cable.driver_add("scale", 1).driver
 travel = driver.variables.new()
-travel.name = "claw_y"
-travel.type = "TRANSFORMS"
-travel.targets[0].id = claw
-travel.targets[0].transform_type = "LOC_Y"
-travel.targets[0].transform_space = "LOCAL_SPACE"
-driver.expression = f"max(0.0001, -claw_y - {dock})"
+travel.name = "tether_length"
+travel.type = "LOC_DIFF"
+travel.targets[0].id = socket
+travel.targets[1].id = claw
+driver.expression = "max(0.0001, tether_length)"
 
 flare = empty("Latch flash", at=(0, 0.106, 3.07))
 for i in range(7):
@@ -262,18 +294,18 @@ bpy.context.collection.objects.link(cam)
 scene.camera = cam
 cam.rotation_mode = "QUATERNION"
 cam_data.type = "ORTHO"
-shots = [(1, (1.25, 0.87, 0.59), (0, 0.07, 0.055), 0.76),
-         (14, (1.25, 0.87, 0.59), (0, 0.07, 0.055), 0.76),
-         (28, (3.4, 1.95, 1.90), (0, 0.09, 1.58), 4.24),
-         (44, (3.4, 1.95, 1.90), (0, 0.09, 1.58), 4.24),
+shots = [(1, (1.25, 0.87, 0.59), (0, 0.035, -0.13), 0.98),
+         (14, (1.25, 0.87, 0.59), (0, 0.035, -0.13), 0.98),
+         (28, (3.4, 1.95, 1.90), (0, 0.09, 1.39), 4.55),
+         (44, (3.4, 1.95, 1.90), (0, 0.09, 1.39), 4.55),
          (59, (1.74, 1.13, 3.00), (0, 0.09, 3.03), 0.89),
          (71, (1.74, 1.13, 3.00), (0, 0.09, 3.03), 0.89),
-         (89, (3.4, 1.95, 1.90), (0, 0.09, 1.58), 4.24),
-         (108, (1.25, 0.87, 0.59), (0, 0.07, 0.055), 0.76)]
+         (89, (3.4, 1.95, 1.90), (0, 0.09, 1.39), 4.55),
+         (108, (1.25, 0.87, 0.59), (0, 0.035, -0.13), 0.98)]
 key(cam, "location", [(f, xyz(p)) for f, p, _, _ in shots])
 key(cam, "rotation_quaternion", [(f, (xyz(t) - xyz(p)).to_track_quat("-Z", "Y")) for f, p, t, _ in shots])
 key(cam_data, "ortho_scale", [(f, scale) for f, _, _, scale in shots])
-for label, frame in [("Docked", 1), ("Launch", 19), ("Flight", 32), ("Latch", 43), ("Retract", 77)]:
+for label, frame in [("Docked", 1), ("Extend arm", 13), ("Launch", 19), ("Flight", 32), ("Latch", 43), ("Retract", 77)]:
     scene.timeline_markers.new(label, frame=frame)
 for screen in bpy.data.screens:
     for area in screen.areas:

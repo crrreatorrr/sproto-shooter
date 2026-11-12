@@ -200,8 +200,17 @@ export async function grapplerRun(game) {
       const dock = launcher.getObjectByName('Dock');
       const stowed = dock.getObjectByName('Claw');
       const docked = firstPerson.debug().mountedPath === model && launcher.visible && stowed.visible && !effects.visible;
+      const { upper, lower, hand } = firstPerson.grappleArm;
+      const wristAtRest = hand.getWorldPosition(new THREE.Vector3()).sub(player.pos);
+      step(true, 3);
+      const windsUp = !effects.visible && stowed.visible;
       step(true, 1);
       const launchZ = head.position.z;
+      const shoulder = upper.getWorldPosition(new THREE.Vector3());
+      const elbow = lower.getWorldPosition(new THREE.Vector3());
+      const wrist = hand.getWorldPosition(new THREE.Vector3());
+      const reach = shoulder.distanceTo(wrist) / (shoulder.distanceTo(elbow) + elbow.distanceTo(wrist));
+      const extended = windsUp && effects.visible && reach > 0.95 && wrist.sub(player.pos).distanceTo(wristAtRest) > 0.045;
       step(true, 2);
       const flight = effects.visible && !stowed.visible && head.position.z < launchZ - 3 && jaws.every((jaw) => jaw.rotation.x < -0.4);
       step(true, 7);
@@ -210,7 +219,7 @@ export async function grapplerRun(game) {
       step(false, 12);
       const returned = !effects.visible && stowed.visible;
       player.grappleCd = 0;
-      step(true, 2, true);
+      step(true, 6, true);
       viewmodelCamera.matrixWorldInverse.copy(camera.matrixWorldInverse);
       const socketOnScreen = dock.getWorldPosition(new THREE.Vector3()).project(viewmodelCamera);
       const tetherOnScreen = tether.localToWorld(new THREE.Vector3(0, -0.5, 0)).project(camera);
@@ -219,7 +228,7 @@ export async function grapplerRun(game) {
       step(false, 3);
       const canceled = !impact.visible && head.position.z > canceledAt;
       step(false, 12);
-      report[id] = { docked, flight, latch, returned, aimed, canceled };
+      report[id] = { docked, flight, latch, returned, aimed, canceled, extended };
     }
     return report;
   } finally {

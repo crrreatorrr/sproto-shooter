@@ -5,7 +5,7 @@ import { GUN_MODEL_LEN, HAND_FRAC } from '../viewmodel/gunMesh.js';
 import { GUN_IDS, LOADOUT } from '../../sim/pvp/rules.js';
 import { createSlidePose } from './slidePose.js';
 import { wrapAngle } from '../anim.js';
-import { leftGrapplerArm } from '../vfx/grappler.js';
+import { leftGrapplerArm } from '../viewmodel/grappleArm.js';
 
 // World-space machine gun length for the 1.8 m Arena character rigs.
 const ARENA_MG_LENGTH = 0.96;

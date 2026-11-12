@@ -2,29 +2,23 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { TUNING } from '../../data/tuning.js';
 import { enqueue, peekAsset, releaseAsset, retainAsset } from '../assets.js';
+import { createGrappleArmPose } from '../viewmodel/grappleArm.js';
 
-const MODEL = 'models/gear/grappler.glb';
+export const GRAPPLER_MODEL = 'models/gear/grappler.glb';
 const JAWS = 'Grappler jaws';
 const CYAN = 0x69d5e2;
 const FORWARD = new THREE.Vector3(0, 0, 1);
 const UP = new THREE.Vector3(0, 1, 0);
+const ARM_WINDUP = 0.085;
+const ARM_HOLD = 0.10;
+const ARM_RECOVERY = 0.19;
 const BITE_TIME = 0.105;
 const RETURN_TIME = 0.19;
 const VM_HALF_FOV_TAN = Math.tan(TUNING.fovBase * Math.PI / 360);
 
-export function leftGrapplerArm(model) {
-  const arm = {};
-  model.traverse((joint) => {
-    if (!joint.isBone) return;
-    const name = joint.name.replace(/^mixamorig:?/, '');
-    if (name === 'LeftForeArm') arm.lower = joint;
-    if (name === 'LeftHand') arm.hand = joint;
-  });
-  return arm.lower && arm.hand ? arm : null;
-}
-
 /** The simulation supplies the anchor. Only the model, tether and impact follow this timeline. */
 export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) {
+  const armPose = createGrappleArmPose(mount, !!camera);
   const root = new THREE.Group();
   root.name = 'Grapple effects';
   root.visible = false;
@@ -52,13 +46,14 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
   const fallback = camera ? new THREE.Vector3(-0.36, -0.34, -0.62) : new THREE.Vector3(0.32, 1.03, 0.3);
 
   let launcher, socket, stowed, head, mixer, jaws;
-  let target = null, elapsed = 0, flightTime = 0, returning = false;
+  let casting = false, elapsed = 0, flightTime = 0, fired = false, returning = false;
+  let armWeight = 0;
   let dockScale = 1, returnScale = 1, jawAtReturn = 0, jawPhase = 0;
 
-  void enqueue(MODEL, () => new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}assets/${MODEL}`)).catch(() => {});
+  void enqueue(GRAPPLER_MODEL, () => new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}assets/${GRAPPLER_MODEL}`)).catch(() => {});
 
   function loadModel() {
-    const asset = peekAsset(MODEL);
+    const asset = peekAsset(GRAPPLER_MODEL);
     const launcherModel = asset?.scene.getObjectByName('Launcher');
     const clawModel = asset?.scene.getObjectByName('Claw');
     const clip = asset && THREE.AnimationClip.findByName(asset.animations, JAWS);
@@ -74,7 +69,7 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
     mixer = new THREE.AnimationMixer(head);
     jaws = mixer.clipAction(clip).play();
     jaws.paused = true;
-    retainAsset(MODEL);
+    retainAsset(GRAPPLER_MODEL);
     return true;
   }
 
@@ -113,16 +108,25 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
   }
 
   function begin(hook) {
-    target = hook;
+    casting = true;
     anchor.copy(hook);
-    launchFrom.copy(from);
-    travel.subVectors(anchor, launchFrom);
-    flightTime = THREE.MathUtils.clamp(travel.length() / 92, 0.078, 0.31);
-    flightQ.setFromUnitVectors(FORWARD, travel.normalize());
+    elapsed = 0;
+    returning = fired = false;
+  }
+
+  function aimFlight() {
+    travel.subVectors(anchor, launchFrom).normalize();
+    flightQ.setFromUnitVectors(FORWARD, travel);
     // Keep the hub clear of the surface so the jaws can close over the contact point.
     hit.copy(anchor).addScaledVector(travel, -0.146);
+  }
+
+  function launch() {
+    launchFrom.copy(from);
+    flightTime = THREE.MathUtils.clamp(anchor.distanceTo(launchFrom) / 92, 0.078, 0.31);
+    aimFlight();
     elapsed = 0;
-    returning = false;
+    fired = true;
   }
 
   function alignDockToWorldPass() {
@@ -146,7 +150,10 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
   }
 
   function update(hook, dt, arm, { active = true, reset = false } = {}) {
-    if (reset || !active) target = null;
+    if (reset || !active) {
+      casting = false;
+      armWeight = 0;
+    }
     if (!active) {
       if (launcher) launcher.visible = false;
       root.visible = false;
@@ -163,15 +170,15 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
       }
       return;
     }
-    poseMount(arm);
-    alignDockToWorldPass();
-    const isNew = hook && (!target || hook.id !== target.id ||
-      hook.x !== anchor.x || hook.y !== anchor.y || hook.z !== anchor.z || returning);
-    if (isNew) {
-      begin(hook);
-      if (usedFallback) elapsed = flightTime + BITE_TIME + 0.17;
-    } else elapsed += dt;
-    if (target && !hook && !returning) {
+    if (hook && (!casting || returning)) begin(hook);
+    else elapsed += dt;
+    // Prediction can refine the contact point mid-flight. Keep the launch clock running.
+    if (hook && (hook.x !== anchor.x || hook.y !== anchor.y || hook.z !== anchor.z)) {
+      anchor.copy(hook);
+      if (fired) aimFlight();
+    }
+    if (!hook && !fired) casting = false;
+    if (casting && !hook && !returning) {
       returning = true;
       elapsed = 0;
       returnFrom.copy(head.position);
@@ -179,10 +186,24 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
       returnScale = head.scale.x;
       jawAtReturn = jawPhase;
     }
-    if (returning && elapsed >= RETURN_TIME) target = null;
-    stowed.visible = !target;
-    root.visible = !!target;
-    if (!target) return;
+    if (returning && elapsed >= RETURN_TIME) casting = false;
+    if (hook && !usedFallback) {
+      armWeight = fired
+        ? 1 - THREE.MathUtils.smoothstep(elapsed, ARM_HOLD, ARM_HOLD + ARM_RECOVERY)
+        : THREE.MathUtils.smoothstep(elapsed, 0, ARM_WINDUP);
+    } else armWeight = THREE.MathUtils.damp(armWeight, 0, 22, dt);
+    if (arm && armWeight > 0.002) armPose.apply(arm, anchor, armWeight);
+    poseMount(arm);
+    alignDockToWorldPass();
+
+    const waiting = !fired && elapsed < ARM_WINDUP && !usedFallback;
+    root.visible = casting && !waiting;
+    stowed.visible = !root.visible;
+    if (!root.visible) return;
+    if (!fired) {
+      launch();
+      if (usedFallback) elapsed = flightTime + BITE_TIME + 0.17;
+    }
 
     if (returning) {
       const t = THREE.MathUtils.smoothstep(elapsed, 0, RETURN_TIME);
@@ -213,10 +234,11 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
   }
 
   function dispose() {
+    armPose.restore();
     if (launcher) {
       launcher.removeFromParent();
       mixer.uncacheRoot(head);
-      releaseAsset(MODEL);
+      releaseAsset(GRAPPLER_MODEL);
     }
     root.removeFromParent();
     for (const mesh of [tether, impact]) {
@@ -225,5 +247,5 @@ export function createGrappler(scene, mount, { camera = null, layer = 0 } = {}) 
     }
   }
 
-  return { update, dispose };
+  return { update, restoreArm: armPose.restore, dispose };
 }
