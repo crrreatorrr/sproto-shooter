@@ -203,9 +203,13 @@ describe('arena movement', () => {
     place(p, 0, 0, 0, 0);
     p.stamina = 1;
     p.staminaLock = false;
+    p.zoomCancelled = false;
+    step(state, [wish({ yaw: 0, moveZ: 1, sprint: true, zoom: true }), other()]);
+    expect(p.zoomCancelled).toBe(true);
+    expect(p.zooming).toBe(false);
     for (let i = 0; i < 20; i++) step(state, [wish({ yaw: 0, moveZ: 1, sprint: true, zoom: true }), other()]);
-    expect(Math.hypot(p.vx, p.vz)).toBeLessThanOrEqual(TUNING.walkSpeed + 0.05);
-    expect(p.stamina).toBe(1);
+    expect(p.stamina).toBeLessThan(1);
+    expect(Math.hypot(p.vx, p.vz)).toBeGreaterThan(TUNING.walkSpeed + 0.5);
   });
 
   it('goes down at 0 HP for the shared second wind, then dies', () => {
@@ -240,7 +244,7 @@ describe('arena movement', () => {
     expect(state.players[0].downed).toBe(true);
     expect(state.players[1].downed).toBe(true);
     expect(state.tick).toBe(180);
-    expect(CONTENT_FINGERPRINT).toBe('c8a753da');
-    expect(hashState(state)).toBe('6c1f740c');
+    expect(CONTENT_FINGERPRINT).toBe('e749d2fd');
+    expect(hashState(state)).toBe('da423456');
   });
 });

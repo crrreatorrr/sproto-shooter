@@ -4,6 +4,7 @@ import { emit } from './events.js';
 import { ENEMIES, ELITE, ALLY } from '../data/enemies.js';
 import { ELEMENTS_BY_ID, GUN_TYPES_BY_ID } from '../data/guns.js';
 import { TUNING } from '../data/tuning.js';
+import { resolvePellet } from './gameplay.js';
 import { secondWindTime } from '../data/waves.js';
 import { distToCapsule, entityDef, sphereHitsPlayer } from './collision.js';
 import { rollDrops, spawnDrops } from './drops.js';
@@ -32,8 +33,12 @@ export function damageEnemy(state, e, hit) {
     dmg *= Math.max(hit.critMult ?? 2, override || 0);
     if (e.boss && e.boss.action.id === 'stunned') dmg *= 1.5;
   }
-  const isCrit = !!hit.canCrit && float(state.rng) < (hit.critChance ?? 0.05);
-  if (isCrit) dmg *= 1.5;
+  const struck = resolvePellet(state.rng, {
+    base: dmg, canCrit: !!hit.canCrit, critChance: hit.critChance,
+    element: 'none', noProc: true, splashRadius: 0, splashDistance: 0,
+  });
+  const isCrit = struck.crit;
+  dmg = struck.damage;
   if (hit.zone === 'shield') dmg *= 0.1;
   if (e.type === 'bigObama') { if (hit.isSplash) dmg *= 1.5; if (hit.pellet) dmg *= 1.3; }
   dmg *= archetypeDamageMul(e, p ? p.pos : null);
@@ -96,7 +101,10 @@ export function damageEnemy(state, e, hit) {
     pos: hit.point || { x: e.pos.x, y: e.pos.y + entityDef(e).height * e.scale * 0.8, z: e.pos.z },
     sourceKind: hit.sourceKind, killed, pellet: !!hit.pellet,
   });
-  if (!hit.noProc && el !== 'none' && float(state.rng) < (hit.elementChance ?? 0)) applyElementProc(state, e, hit, dmg);
+  if (resolvePellet(state.rng, {
+    base: 0, canCrit: false, element: el, elementChance: hit.elementChance, noProc: !!hit.noProc,
+    splashRadius: 0, splashDistance: 0,
+  }).elementProc) applyElementProc(state, e, hit, dmg);
   if (p && p.perks.lifesteal && !p.downed && p.lifestealBudget > 0) {
     const h = Math.min(dmg * 0.02, p.lifestealBudget);
     p.lifestealBudget -= h;

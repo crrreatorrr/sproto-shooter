@@ -62,6 +62,7 @@ export function playerMovement(state, dt) {
       grapple: p.grapple,
       move: p.move,
       speedScales: scales,
+      zoomCancelled: !!p.zoomCancelled,
     };
     stepLocomotion(body, {
       moveX: c.moveX || 0,
@@ -71,7 +72,7 @@ export function playerMovement(state, dt) {
       dash: !!(c.pressed && c.pressed.dash),
       slide: !!(c.pressed && c.pressed.slide),
       crouch: !!(c.held && c.held.crouch),
-      zoom: !!p.zooming,
+      zoom: !!(c.held && c.held.zoom),
     }, dt, {
       groundAt: solidsNow
         ? (x, z, radius, feet, reach) => groundHeight(solidsNow, x, z, radius, feet, reach)
@@ -86,6 +87,8 @@ export function playerMovement(state, dt) {
     p.jumpBufferT = body.jumpBufferT;
     p.jumpsLeft = body.jumpsLeft;
     p.invulnT = body.invulnT;
+    p.zooming = !!body.zooming;
+    p.zoomCancelled = !!body.zoomCancelled;
 
     const seal = sealOf(state, p);
     const m = p.move;

@@ -13,17 +13,16 @@ are the hub contracts.
   - Campaign content fingerprint `73c6eb0f` (`contentFingerprint(1)` in
     `src/data/serverManifest.js`; `tests/pvp-sim.test.js`, `tests/fixtures/boss-goldens.json`). It
     covers boss, encounter, gun, part, element, spell and tuning data.
-  - PvP content fingerprint `c8a753da` (`CONTENT_FINGERPRINT` in `src/sim/pvp/rules.js`).
-    Was `dc00f234` until Campaign, Wave Mode, Sandbox and Free 1v1 shared one locomotion step.
-    Before that, `b33eada6` until the grapple range and speed caps.
-  - PvP golden state hash `6c1f740c` (`scriptedMatch(7, 180)`, `GOLDEN_HASH` in
-    `tests/pvp-sim.test.js`). Was `532a562e`. At 180 ticks both seats are down, not knocked out;
-    the shared second wind ends that same duel at tick 365 (`double_ko`). The director golden
-    is `cb03b044` (was `55419e4e`, before that `b661a684`).
+  - PvP content fingerprint `e749d2fd` (`CONTENT_FINGERPRINT` in `src/sim/pvp/rules.js`).
+    Was `c8a753da` until wager matches used campaign crits, element procs and splash, and
+    sprint cancelled zoom. Before that, `dc00f234` (grapple caps) and `b33eada6`.
+  - PvP golden state hash `da423456` (`scriptedMatch(7, 180)`, `GOLDEN_HASH` in
+    `tests/pvp-sim.test.js`). Was `6c1f740c`, before that `532a562e`. At 180 ticks both seats
+    are down; the second wind ends that duel at tick 365 (`double_ko`). The director golden
+    is `a5828d8c` (was `cb03b044`, before that `55419e4e`).
   - Wave Mode and Sandbox hashes in `tests/fixtures/baseline-hashes.json`
-    (`tests/levels/baseline.test.js`). The Wave Mode hashes at ticks 3000 and 6000 moved on
-    2026-11-11 with the arena balance pass (boss gun drops, wave spell unlocks); tick 600 and the
-    Sandbox hashes did not. `tests/performance-baseline.test.js` repeats all of them.
+    (`tests/levels/baseline.test.js`). They moved on 2026-11-12 because sprint cancels zoom,
+    which adds `zoomCancelled` to the player. `tests/performance-baseline.test.js` repeats them.
 - Never edit `src/sim/pvp/`, `src/net/inputCodec.js`, `src/net/protocol.js` or `src/server/`
   without rebuilding and re-pinning. `npm run build:server-sim` writes `build/shooter-sim.js`
   (campaign verifier, global `SprotoShooterSim`) and `build/shooter-pvp-sim.js` (Free 1v1,

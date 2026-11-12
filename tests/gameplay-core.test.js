@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { GAMEPLAY, WAGER_COMBAT, WAGER_COMBAT_KEYS } from '../src/data/gameplay.js';
+import { GAMEPLAY } from '../src/data/gameplay.js';
 import { TUNING } from '../src/data/tuning.js';
 import { stepLocomotion } from '../src/sim/gameplay.js';
 import { LOADOUT } from '../src/sim/pvp/rules.js';
@@ -106,35 +106,38 @@ describe('shared gameplay core', () => {
     expect(arena.stamina).toBe(campaign.stamina);
   });
 
-  it('blocks sprint while zoomed inside the shared step', () => {
+  it('drops zoom and sprints when sprint is held while zoomed', () => {
     const body = {
       pos: { x: 0, y: 0, z: 0 },
       vel: { x: 0, y: 0, z: 0 },
       yaw: 0, pitch: 0, onGround: true, downed: false,
       stamina: 1, staminaDelay: 0, staminaLock: false,
       coyoteT: 0, jumpBufferT: 0, jumpsLeft: 2, invulnT: 0, grapple: null,
+      zoomCancelled: false,
       move: { mode: 'walk', slideCd: 0, dashCd: 0, dashT: 0, dashDir: { x: 0, z: 0 }, slideT: 0 },
     };
-    for (let i = 0; i < 30; i++) {
-      stepLocomotion(body, {
-        moveX: 0, moveZ: 1, sprint: true, zoom: true, jump: false, dash: false, slide: false, crouch: false,
-      }, 1 / 60);
-    }
-    expect(Math.hypot(body.vel.x, body.vel.z)).toBeLessThanOrEqual(GAMEPLAY.walkSpeed + 1e-6);
-    expect(body.stamina).toBe(1);
+    const go = { moveX: 0, moveZ: 1, sprint: true, zoom: true, jump: false, dash: false, slide: false, crouch: false };
+    stepLocomotion(body, go, 1 / 60);
+    expect(body.zooming).toBe(false);
+    expect(body.zoomCancelled).toBe(true);
+    expect(body.move.mode).toBe('sprint');
+    for (let i = 0; i < 20; i++) stepLocomotion(body, go, 1 / 60);
+    expect(body.zooming).toBe(false);
+    expect(body.stamina).toBeLessThan(1);
+    expect(Math.hypot(body.vel.x, body.vel.z)).toBeGreaterThan(GAMEPLAY.walkSpeed + 0.2);
+    stepLocomotion(body, { ...go, zoom: false, sprint: false, moveZ: 0 }, 1 / 60);
+    expect(body.zoomCancelled).toBe(false);
   });
 
-  it('keeps wager guns from rolling crits, elements, or splash', () => {
+  it('rolls wager crits with the shared pellet rule and keeps splash on the gun', () => {
     const sim = fs.readFileSync('src/sim/pvp/sim.js', 'utf8');
     const trace = sim.slice(sim.indexOf('export function traceShots'), sim.indexOf('function canReload'));
-    expect(trace).not.toMatch(/crit/);
-    expect(trace).not.toMatch(/elementChance/);
-    expect(trace).not.toMatch(/splash/);
-    for (const gun of LOADOUT) {
-      for (const key of WAGER_COMBAT_KEYS) expect(gun.stats[key], `${gun.type}.${key}`).toBe(WAGER_COMBAT[key]);
-    }
+    expect(trace).toMatch(/resolvePellet/);
     const rules = fs.readFileSync('src/sim/pvp/rules.js', 'utf8');
-    expect(rules).toMatch(/applyWagerCombat\(stats\)/);
-    expect(rules).not.toMatch(/critChance\s*=/);
+    expect(rules).not.toMatch(/applyWagerCombat/);
+    expect(rules).toMatch(/crits: true/);
+    expect(LOADOUT.every((gun) => gun.stats.critChance > 0)).toBe(true);
+    expect(LOADOUT.every((gun) => gun.element === 'none')).toBe(true);
+    expect(LOADOUT.every((gun) => gun.stats.splashRadius === 0)).toBe(true);
   });
 });

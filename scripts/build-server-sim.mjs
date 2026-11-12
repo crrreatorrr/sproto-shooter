@@ -90,7 +90,7 @@ export async function buildPvpBundle(dir) {
     replayVersion: 2,
     rewind: REWIND,
     replayLimits: REPLAY_LIMITS,
-    crits: false,
+    crits: true,
     // sha256 commit in WELCOME/PHASE, reveal in RESULT; the RNG takes 128 bits of sha256(seed).
     combatSeed: 'sha256-commit-reveal-128',
     matchmakerQuery: matchmakerQuery(CONTENT_FINGERPRINT),

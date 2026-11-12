@@ -99,6 +99,6 @@ describe('campaign format v2', () => {
 
   it('keeps the campaign fingerprint and the PvP fingerprint', () => {
     expect(contentFingerprint(1)).toBe('73c6eb0f');
-    expect(CONTENT_FINGERPRINT).toBe('c8a753da');
+    expect(CONTENT_FINGERPRINT).toBe('e749d2fd');
   });
 });

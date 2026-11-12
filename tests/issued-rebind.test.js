@@ -54,6 +54,6 @@ describe('issued v2 section', () => {
     expect(state.enemies.some((e) => e.type === 'sahil' && e.boss && !e.dead)).toBe(true);
     expect(p.pos.y).toBeGreaterThan(-1);
     expect(contentFingerprint(1)).toBe('73c6eb0f');
-    expect(CONTENT_FINGERPRINT).toBe('c8a753da');
+    expect(CONTENT_FINGERPRINT).toBe('e749d2fd');
   });
 });

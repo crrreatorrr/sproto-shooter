@@ -57,17 +57,17 @@ function fuzzMatch(seed, ticks, noise = 0.06) {
 // Shared locomotion (campaign jump, dash end, crouch slide, downed timer) moved these.
 // Previous: 262/07a28146, 386/dc83064d, 116/8cd527fb, 2700/191c7bcf, 2700/fb1ace62.
 const FUZZ = Object.freeze([
-  { seed: 1, ticks: 900, noise: 0.06, tick: 435, reason: 'ko', hash: 'd2de7646' },
-  { seed: 7, ticks: 900, noise: 0.06, tick: 422, reason: 'ko', hash: '28b612cc' },
-  { seed: 2024, ticks: 2700, noise: 0.06, tick: 546, reason: 'ko', hash: 'caa3bdde' },
-  { seed: 5, ticks: 2700, noise: 0.5, tick: 2700, reason: 'time', hash: '6b92cca7' },
-  { seed: 6, ticks: 2700, noise: 0.35, tick: 1032, reason: 'ko', hash: 'a45de725' },
+  { seed: 1, ticks: 900, noise: 0.06, tick: 435, reason: 'ko', hash: '3e98274d' },
+  { seed: 7, ticks: 900, noise: 0.06, tick: 422, reason: 'ko', hash: 'd38ec7ad' },
+  { seed: 2024, ticks: 2700, noise: 0.06, tick: 541, reason: 'ko', hash: '6040b013' },
+  { seed: 5, ticks: 2700, noise: 0.5, tick: 1336, reason: 'ko', hash: 'bd4addd0' },
+  { seed: 6, ticks: 2700, noise: 0.35, tick: 1032, reason: 'ko', hash: '75d4d63a' },
 ]);
 
 describe('PvP sim split keeps the golden (SHOOTER-S1, sim 2 values)', () => {
-  it('keeps golden 6c1f740c in node', () => {
+  it('keeps golden da423456 in node', () => {
     const state = replay(scriptedMatch(7, 180));
-    expect(hashState(state)).toBe('6c1f740c');
+    expect(hashState(state)).toBe('da423456');
     expect(state.tick).toBe(180);
     expect(state.phase).toBe('live');
     expect(state.players[0].downed).toBe(true);

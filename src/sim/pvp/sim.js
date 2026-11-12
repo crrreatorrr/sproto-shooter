@@ -9,7 +9,7 @@
 //   both seats' RNG with all 128 bits of sfc32 state, taken from sha256(combatSeed). The raw
 //   combat seed is not kept in the state. Snapshots carry publicStateHash (the state without the
 //   RNG); replays check the full hashState and stateSha256.
-// - No crits. The only randomness left is pellet spread.
+// - Crits, element procs and splash use the shared rules and this match's combat RNG.
 import { GAMEPLAY as G } from '../../data/gameplay.js';
 import { TUNING } from '../../data/tuning.js';
 import { rangeFalloff } from '../../data/guns.js';
@@ -20,7 +20,7 @@ import { quantizeForHash, stableStringify, verifyStateHash } from '../hash.js';
 import { rayCapsule } from './hit.js';
 import { ARENA_SOLIDS, arenaHook, arenaOccludes } from './arena.js';
 import { releaseGrappleSpeed, steerGrapple } from '../grappleMotion.js';
-import { applyGravity, beginDowned, stepLocomotion, tickDowned } from '../gameplay.js';
+import { applyGravity, beginDowned, resolvePellet, stepLocomotion, tickDowned } from '../gameplay.js';
 import { groundHeight, snapToGround, firstSolid } from '../campaign/solids.js';
 import {
   DT, LOADOUT, MATCH_TICKS, RESERVE, REWIND, SPAWN_RADIUS, STAGE_ID,
@@ -82,7 +82,7 @@ function makePlayer(seat, pos, yaw, rng) {
     stamina: 1, staminaDelay: 0, staminaLock: false,
     slideT: 0, slideCd: 0,
     coyoteT: 0, jumpBufferT: 0, jumpsLeft: 2,
-    downed: false, downedT: 0, moveMode: 'walk',
+    downed: false, downedT: 0, moveMode: 'walk', zoomCancelled: false,
     grappleCd: 0, grapple: null,
     slot: 0,
     mag: LOADOUT.map((gun) => gun.stats.magSize),
@@ -164,7 +164,7 @@ export function normalizeWish(player, raw, tick = 0) {
     moveZ: Math.max(-1, Math.min(1, num(wish.moveZ, 0))),
     fire: !!wish.fire,
     zoom: !!wish.zoom,
-    sprint: !!wish.sprint && !wish.zoom,
+    sprint: !!wish.sprint,
     jump: !!wish.jump,
     dash: !!wish.dash,
     reload: !!wish.reload,
@@ -230,6 +230,7 @@ function ensureMove(p) {
   if (p.downed == null) p.downed = false;
   if (p.downedT == null) p.downedT = 0;
   if (p.moveMode == null) p.moveMode = 'walk';
+  if (p.zoomCancelled == null) p.zoomCancelled = false;
 }
 
 function eyeOf(p) {
@@ -358,6 +359,7 @@ export function movePlayer(p, wish, dt) {
     jumpsLeft: p.jumpsLeft,
     invulnT: p.invuln,
     grapple: p.grapple,
+    zoomCancelled: !!p.zoomCancelled,
     move: {
       mode: p.moveMode,
       slideCd: p.slideCd,
@@ -388,6 +390,8 @@ export function movePlayer(p, wish, dt) {
   p.dashZ = body.move.dashDir.z;
   p.slideCd = body.move.slideCd;
   p.moveMode = body.move.mode;
+  p.zooming = !!body.zooming;
+  p.zoomCancelled = !!body.zoomCancelled;
   p.slideT = body.move.mode === 'slide' ? Math.max(0, body.move.slideT) : 0;
   tickArenaGrapple(p, wish, dt);
   const prevY = p.y;
@@ -511,16 +515,17 @@ export function weaponTick(p, wish, dt) {
 }
 
 /**
- * Hitscan for one shot that weaponTick allowed: spread, ray against the target's capsule and
- * range falloff. No crits in PvP (sim 2). `target` is any {x, y, z} capsule base: the sim passes
- * the rewound one. Returns the damage of each pellet that hits, in milli-HP. It only advances
- * `p.rng` and never writes `target`.
+ * Hitscan for one shot that weaponTick allowed: spread, ray against the target's capsule,
+ * range falloff, then the shared crit, element and splash roll. `target` is any {x, y, z}
+ * capsule base: the sim passes the rewound one. Returns the damage of each pellet that hits,
+ * in milli-HP. It only advances `p.rng` and never writes `target`.
  */
 export function traceShots(p, target, wish) {
   const hits = [];
   const gun = LOADOUT[p.slot];
   const pellets = gun.stats.pellets || 1;
-  const spread = deg(wish.zoom ? gun.stats.adsSpread : gun.stats.spread);
+  const zoom = p.zoomCancelled ? false : !!wish.zoom;
+  const spread = deg(zoom ? gun.stats.adsSpread : gun.stats.spread);
   const eye = eyeOf(p);
   for (let i = 0; i < pellets; i++) {
     const jy = (float(p.rng) - 0.5) * spread;
@@ -532,8 +537,18 @@ export function traceShots(p, target, wish) {
     if (cover && cover.t < dist) continue;
     const fall = rangeFalloff(gun.range, dist);
     if (fall <= 0) continue;
-    const raw = gun.stats.damage * fall;
-    hits.push(Math.max(0, Math.round(raw * 1000)));
+    const strike = resolvePellet(p.rng, {
+      base: gun.stats.damage * fall,
+      canCrit: true,
+      critChance: gun.stats.critChance,
+      element: gun.element,
+      elementChance: gun.stats.elementChance,
+      noProc: false,
+      splashRadius: gun.stats.splashRadius,
+      splashDamage: gun.stats.splashDamage,
+      splashDistance: 0,
+    });
+    hits.push(Math.max(0, Math.round(strike.damage * 1000)));
   }
   return hits;
 }

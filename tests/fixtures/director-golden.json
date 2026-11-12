@@ -1,8 +1,8 @@
 {
-  "comment": "Director golden after the shared locomotion step. Outcome, tick, hits and damage match the previous pin 55419e4e; the state hash moved because both seats now use campaign jump, dash, slide and the downed timer. Before that: 55419e4e, b661a684, 078282e5, sim 1 e421cba8.",
+  "comment": "Director golden after wager crits and sprint cancelling zoom. Still a stall forfeit at tick 892. Hits moved 7 to 8 and damage 62876 to 71876 because crits land. State hash was cb03b044, before that 55419e4e, b661a684, 078282e5, sim 1 e421cba8.",
   "phase": "done",
   "tick": 892,
-  "stateHash": "cb03b044",
+  "stateHash": "a5828d8c",
   "outcome": "forfeit",
   "winner": 0,
   "reason": "stall",
@@ -14,10 +14,10 @@
   "replay": {
     "verified": true,
     "tick": 892,
-    "stateHash": "cb03b044"
+    "stateHash": "a5828d8c"
   },
-  "hits": 7,
-  "hitDamage": 62876,
+  "hits": 8,
+  "hitDamage": 71876,
   "combatCommit": "6d5a619f19877a1117fd391222a896a5c960b366944c0b81ca0e6ca1b71a1fc6",
   "combatSeed": "5eed00c0ffee5eed00c0ffee5eed0042"
 }

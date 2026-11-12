@@ -2,10 +2,8 @@
 // numbers are defined. Campaign, Wave Mode, Sandbox, and Free 1v1 read this.
 // A future coop sim must read it too. Modes do not get their own copies.
 //
-// Wager matches still clamp crit, element, and splash (see WAGER_COMBAT). Those
-// rolls use the combat RNG. Enabling them would let the combat seed change who
-// wins a wager. That clamp is the one remaining combat exception, and it lives
-// here so a mode file cannot invent a second set of numbers.
+// Crits, element procs and splash use these rules in every mode, including
+// wager matches. The roll is the match's seeded RNG, so a replay repeats it.
 
 export const GAMEPLAY = Object.freeze({
   eyeHeight: 1.6,
@@ -69,21 +67,8 @@ export const GAMEPLAY = Object.freeze({
   downedSpeedMult: 0.3,
   hitscanRange: 150,
   pitchLimit: 1.5,
+  /** Campaign damageEnemy multiplies a crit by this, not by the gun's critMult. */
+  critHitMult: 1.5,
+  /** Splash is full damage at the impact and this fraction at the edge. */
+  splashMinFalloff: 0.3,
 });
-
-/** Fields a wager loadout must not roll. Not a movement profile. */
-export const WAGER_COMBAT_KEYS = Object.freeze(['elementChance', 'critChance', 'splashRadius', 'splashDamage']);
-
-export const WAGER_COMBAT = Object.freeze({
-  elementChance: 0,
-  critChance: 0,
-  splashRadius: 0,
-  splashDamage: 0,
-});
-
-export function applyWagerCombat(stats) {
-  stats.elementChance = WAGER_COMBAT.elementChance;
-  stats.critChance = WAGER_COMBAT.critChance;
-  stats.splashRadius = WAGER_COMBAT.splashRadius;
-  stats.splashDamage = WAGER_COMBAT.splashDamage;
-}

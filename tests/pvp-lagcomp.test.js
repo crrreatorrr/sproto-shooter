@@ -228,9 +228,10 @@ describe('alive and invuln rules', () => {
   });
 });
 
-describe('crits off in PvP', () => {
-  it('never rolls a crit: every pellet is base damage times falloff, and spread is the only RNG', () => {
-    expect(LOADOUT.every((gun) => gun.stats.critChance === 0)).toBe(true);
+describe('crits in PvP', () => {
+  it('rolls one crit per pellet that hits, from the combat seed, and nothing for a miss', () => {
+    expect(LOADOUT.every((gun) => gun.stats.critChance > 0)).toBe(true);
+    expect(LOADOUT.every((gun) => gun.element === 'none')).toBe(true);
     for (const slot of [0, 1, 2]) {
       const state = createMatch(12, 77);
       const [p, target] = state.players;
@@ -245,10 +246,12 @@ describe('crits off in PvP', () => {
         expect(weaponTick(p, wish, DT)).toBe(true);
         const before = { ...p.rng };
         const hits = traceShots(p, target, wish);
-        for (const dmg of hits) expect(dmg).toBeLessThanOrEqual(gun.stats.damage * 1000);
-        // Two spread draws per pellet, nothing else.
+        const cap = Math.round(gun.stats.damage * 1.5 * 1000);
+        for (const dmg of hits) expect(dmg).toBeLessThanOrEqual(cap);
+        // Two spread draws per pellet, then one crit draw per pellet that connects.
+        // Element is none, so the element roll does not draw. Splash radius is 0.
         const probe = { ...before };
-        for (let i = 0; i < 2 * (gun.stats.pellets || 1); i++) pvpRngNext(probe);
+        for (let i = 0; i < 2 * (gun.stats.pellets || 1) + hits.length; i++) pvpRngNext(probe);
         expect(p.rng).toEqual(probe);
       }
     }

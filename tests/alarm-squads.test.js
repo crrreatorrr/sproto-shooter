@@ -53,7 +53,7 @@ function frames(s, p, n) {
 describe('optional alarm squads', () => {
   it('keeps the campaign and PvP pins', () => {
     expect(contentFingerprint(1)).toBe('73c6eb0f');
-    expect(CONTENT_FINGERPRINT).toBe('c8a753da');
+    expect(CONTENT_FINGERPRINT).toBe('e749d2fd');
   });
 
   it('clears a quiet run without waiting for an alarm pack that never rings', () => {

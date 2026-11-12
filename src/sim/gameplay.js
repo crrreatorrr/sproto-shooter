@@ -2,6 +2,7 @@
 // The numbers come from GAMEPLAY only. `world` may sample the map. It cannot
 // pass a speed, a jump, or a damage number.
 import { GAMEPLAY as G } from '../data/gameplay.js';
+import { float } from '../core/rng.js';
 
 /**
  * One tick of locomotion: stamina, sprint, coyote, jump buffer, double jump,
@@ -30,8 +31,12 @@ export function stepLocomotion(body, wish, dt, world = {}) {
   if (wl > 1) { wx /= wl; wz /= wl; }
 
   const canAct = !body.downed;
-  const zooming = !!(wish.zoom || body.zooming);
-  const wantSprint = canAct && !!wish.sprint && wish.moveZ > 0 && !zooming && !body.staminaLock && body.stamina > 0;
+  // Sprint cancels zoom and leaves it cancelled until the zoom button is released.
+  if (!wish.zoom) body.zoomCancelled = false;
+  const sprintHeld = canAct && !!wish.sprint && wish.moveZ > 0;
+  if (sprintHeld && wish.zoom) body.zoomCancelled = true;
+  body.zooming = !!wish.zoom && !body.zoomCancelled;
+  const wantSprint = sprintHeld && !body.staminaLock && body.stamina > 0;
   let sprinting = wantSprint;
   if (sprinting) {
     body.stamina = Math.max(0, body.stamina - dt / G.staminaSprint);
@@ -180,6 +185,25 @@ export function beginDowned(body) {
   body.hp = 0;
   body.downed = true;
   body.downedT = G.secondWindTime;
+}
+
+/**
+ * One pellet that connected. Uses the match RNG in a fixed order: crit, then
+ * element proc (only when the gun has an element), then splash at the impact.
+ * A miss must not call this, so a miss does not draw these numbers.
+ * Returns damage in the same units as `base` (HP, not milli-HP).
+ */
+export function resolvePellet(rng, hit) {
+  const crit = !!(hit.canCrit && float(rng) < (hit.critChance ?? 0.05));
+  let damage = hit.base * (crit ? G.critHitMult : 1);
+  const element = hit.element || 'none';
+  const elementProc = !hit.noProc && element !== 'none' && float(rng) < (hit.elementChance ?? 0);
+  const radius = hit.splashRadius || 0;
+  if (radius > 0 && hit.splashDistance <= radius) {
+    const f = 1 + (G.splashMinFalloff - 1) * ((hit.splashDistance || 0) / radius);
+    damage += (hit.splashDamage || 0) * f;
+  }
+  return { damage, crit, elementProc };
 }
 
 /** Returns true on the tick the downed timer runs out. The caller marks the death. */

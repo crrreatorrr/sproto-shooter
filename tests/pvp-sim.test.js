@@ -19,10 +19,11 @@ import './fixtures/director-golden.js';
 // SHOOTER-S2b: sim 2 (lag compensation, split seed, no crits) is a deliberate golden bump from
 // ce272de1 (sim 1, tick 61). The fingerprint went f5949631 (protocol 1) -> 0e584d36 (S2a) ->
 // ec36c8fa (S2b) -> 17d87c54 (S2b review fixes) -> dc00f234 (grapple caps) -> c8a753da
-// (shared locomotion). scriptedMatch(7, 180) is mid second-wind, not the knockout.
-const GOLDEN_HASH = '6c1f740c';
+// (shared locomotion) -> e749d2fd (wager crits, element, splash, sprint cancels zoom).
+// scriptedMatch(7, 180) is mid second-wind, not the knockout.
+const GOLDEN_HASH = 'da423456';
 const GOLDEN_TICK = 180;
-const FINGERPRINT = 'c8a753da';
+const FINGERPRINT = 'e749d2fd';
 const DRIVER = path.resolve('tests', 'fixtures', 'director-golden.js');
 const { comment: _comment, ...DIRECTOR_GOLDEN } = directorGoldenFixture;
 
@@ -56,9 +57,6 @@ function expectedGun(typeId) {
   for (const [key, add] of Object.entries(man.add || {})) if (key in stats) stats[key] += add;
   stats.magSize = Math.max(1, Math.round(stats.magSize));
   stats.reloadTime = Math.max(0.3, stats.reloadTime);
-  stats.elementChance = 0;
-  stats.splashRadius = 0;
-  stats.splashDamage = 0;
   for (const key of Object.keys(stats)) {
     if (key === 'magSize' || key === 'pellets' || key === 'pierce') stats[key] = Math.round(stats[key]);
     else stats[key] = round3(stats[key]);
@@ -84,10 +82,12 @@ describe('fixed loadout and spawns', () => {
         magSize: expectedGun(gun.type).magSize,
         spread: expectedGun(gun.type).spread,
         critMult: expectedGun(gun.type).critMult,
+        critChance: expectedGun(gun.type).critChance,
+        elementChance: expectedGun(gun.type).elementChance,
+        splashRadius: expectedGun(gun.type).splashRadius,
+        splashDamage: expectedGun(gun.type).splashDamage,
       });
-      // Crits are off in PvP (owner decision); the campaign gun keeps its chance.
-      expect(gun.stats.critChance).toBe(0);
-      expect(GUN_TYPES_BY_ID[gun.type].base.critChance).toBeGreaterThan(0);
+      expect(gun.stats.critChance).toBeGreaterThan(0);
     }
     expect(LOADOUT[0].infiniteReserve).toBe(true);
     expect(LOADOUT[1].infiniteReserve).toBe(false);
@@ -168,7 +168,7 @@ describe('browser, node, and goja', () => {
     expect(pin.limits).toMatchObject({ futureFrames: 8, maxFramesPerSecond: 45, maxFramesPerCursor: 9, holdTicks: 3, catchUpTicks: 4, maxHelloPerSecond: 2, maxReadyPerSecond: 2, frameBytes: 18 });
     expect(pin.rewind).toMatchObject({ maxTicks: 10, historyTicks: 12, maxBack: 255, fracSteps: 256, interpMs: 100, interpMinMs: 50, interpMaxMs: 150, extraTicks: 2, maxRttMs: 1000, maxBackStep: 2 });
     expect(pin.replayLimits).toEqual({ maxTicks: 2700, maxBytes: 524288 });
-    expect(pin.crits).toBe(false);
+    expect(pin.crits).toBe(true);
     expect(pin.combatSeed).toBe('sha256-commit-reveal-128');
     expect(pin.campaignProtocol).toBe(1);
     expect(pin.campaignContentFingerprint).toBe('73c6eb0f');

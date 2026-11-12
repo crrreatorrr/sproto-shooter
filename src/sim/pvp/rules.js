@@ -1,12 +1,12 @@
 // Free 1v1 arena rules. No loot, no perks, no Tickets. Both seats share one loadout.
-import { applyWagerCombat, GAMEPLAY as G } from '../../data/gameplay.js';
+import { GAMEPLAY as G } from '../../data/gameplay.js';
 import { TUNING } from '../../data/tuning.js';
 import { GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, QUALITIES_BY_ID } from '../../data/guns.js';
 import { fnv1a, stableStringify } from '../hash.js';
 import { ARENA_SOLIDS, ARENA_WALL_H } from './arena.js';
 
 export const PVP_PROTOCOL_VERSION = 2;
-/** Sim 2 (SHOOTER-S2b): history ring + viewTick rewind, split spawn/combat seed, crits off. */
+/** Sim 2 (SHOOTER-S2b): history ring + viewTick rewind, split spawn/combat seed. Crits use the combat seed. */
 export const PVP_SIM_VERSION = 2;
 export const MATCH_NAME = 'sproto_shooter_free';
 export const GAME_ID = 'sproto-shooter';
@@ -115,9 +115,6 @@ export function arenaGun(typeId) {
   stats.reloadTime = Math.max(0.3, stats.reloadTime * quality.reloadMult);
   stats.spread *= quality.spreadMult;
   stats.adsSpread *= quality.spreadMult;
-  // Crits, element procs, and splash stay off. Rolling them would let the combat
-  // seed change a wager. The zeros live in GAMEPLAY, not in this mode.
-  applyWagerCombat(stats);
   for (const key of Object.keys(stats)) {
     if (key === 'magSize' || key === 'pellets' || key === 'pierce') stats[key] = Math.round(stats[key]);
     else stats[key] = round3(stats[key]);
@@ -162,7 +159,7 @@ export function contentBody() {
     readyMs: READY_MS,
     stallMs: STALL_MS,
     perks: [],
-    crits: false,
+    crits: true,
     rewind: REWIND,
     // sha256 commit, reveal in RESULT; the RNG takes 128 bits of sha256(seed).
     combatSeed: 'commit-reveal-sha256-128',
@@ -180,7 +177,7 @@ export function contentBody() {
       ground: TUNING.groundAccel,
       friction: TUNING.friction,
       dashEnd: G.dashEndScale,
-      sprintBlockedWhileZoomed: true,
+      sprintCancelsZoom: true,
       downedTime: G.secondWindTime,
       downedSpeed: G.downedSpeedMult,
       slide: {
