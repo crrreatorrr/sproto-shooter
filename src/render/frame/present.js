@@ -67,7 +67,7 @@ export function mountPresent(env) {
 
     // enemies
     needsT -= fdt;
-    applyStage(stageFor(state, env.stageOverride));
+    applyStage(stageFor(state, env.stageOverride), state.mode === 'campaign' ? state.level?.id : null);
     if (needsT <= 0) { needsT = 0.25; requestNeeds(state); }
     const campaign = state.mode === 'campaign' && state.level;
     for (const mesh of arenaBits) mesh.visible = !campaign;
@@ -81,7 +81,7 @@ export function mountPresent(env) {
           scene.fog.near = Math.min(14, cap * 0.35);
           scene.fog.far = cap;
         } else {
-          scene.fog.near = dark ? 4 : 30;
+          scene.fog.near = dark ? 4 : state.level.id === 'L04' ? 90 : 30;
           scene.fog.far = dark ? 36 : 420;
         }
       }
