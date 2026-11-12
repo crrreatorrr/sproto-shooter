@@ -10,25 +10,63 @@ const PROPS = {
   barrel_shock: 'models/props/barrel_shock.glb',
   barricade: 'models/props/barricade.glb',
   bazaar_tent: 'models/props/bazaar_tent.glb',
-  bazaar_wall: 'models/props/bazaar_wall.glb',
+  bazaar_wall: 'models/props/bazaar_wall.glb.gz',
   bench: 'models/props/bench.glb',
   billboard: 'models/props/billboard.glb',
-  building_a: 'models/props/building_a.glb',
-  building_b: 'models/props/building_b.glb',
-  building_c: 'models/props/building_c.glb',
+  building_a: 'models/props/building_a.glb.gz',
+  building_b: 'models/props/building_b.glb.gz',
+  building_c: 'models/props/building_c.glb.gz',
   cart: 'models/props/cart.glb',
   chest: 'models/props/chest.glb',
   clay_pots: 'models/props/clay_pots.glb',
   crosswalk: 'models/props/crosswalk.glb',
-  drying_rack: 'models/props/drying_rack.glb',
+  drying_rack: 'models/props/drying_rack.glb.gz',
   dune: 'models/props/dune.glb',
   dye_vat_gold: 'models/props/dye_vat_gold.glb',
   dye_vat_red: 'models/props/dye_vat_red.glb',
   dye_vat_teal: 'models/props/dye_vat_teal.glb',
-  far_bazaar: 'models/props/far_bazaar.glb',
+  far_bazaar: 'models/props/far_bazaar.glb.gz',
   fountain: 'models/props/fountain.glb',
+  grove_arch: 'models/props/grove_arch.glb.gz',
+  grove_barn_roof: 'models/props/grove_barn_roof.glb.gz',
+  grove_beanstalk: 'models/props/grove_beanstalk.glb.gz',
+  grove_bloom: 'models/props/grove_bloom.glb.gz',
+  grove_boulder: 'models/props/grove_boulder.glb.gz',
+  grove_bridge: 'models/props/grove_bridge.glb.gz',
+  grove_cabbage: 'models/props/grove_cabbage.glb.gz',
+  grove_crate: 'models/props/grove_crate.glb.gz',
+  grove_crops: 'models/props/grove_crops.glb.gz',
+  grove_gazebo: 'models/props/grove_gazebo.glb.gz',
+  grove_greenhouse_glass: 'models/props/grove_greenhouse_glass.glb.gz',
+  grove_greenhouse_frame: 'models/props/grove_greenhouse_frame.glb.gz',
+  grove_greenhouse_roof: 'models/props/grove_greenhouse_roof.glb.gz',
+  grove_hay: 'models/props/grove_hay.glb.gz',
+  grove_hedge: 'models/props/grove_hedge.glb.gz',
+  grove_lantern: 'models/props/grove_lantern.glb.gz',
+  grove_leaf_step: 'models/props/grove_leaf_step.glb.gz',
+  grove_nest: 'models/props/grove_nest.glb.gz',
+  grove_patch: 'models/props/grove_patch.glb.gz',
+  grove_pines: 'models/props/grove_pines.glb.gz',
+  grove_planter: 'models/props/grove_planter.glb.gz',
+  grove_pod: 'models/props/grove_pod.glb.gz',
+  grove_pumpkin: 'models/props/grove_pumpkin.glb.gz',
+  grove_reeds: 'models/props/grove_reeds.glb.gz',
+  grove_root_wall: 'models/props/grove_root_wall.glb.gz',
+  grove_scarecrow: 'models/props/grove_scarecrow.glb.gz',
+  grove_shed: 'models/props/grove_shed.glb.gz',
+  grove_silo: 'models/props/grove_silo.glb.gz',
+  grove_stockade: 'models/props/grove_stockade.glb.gz',
+  grove_stones: 'models/props/grove_stones.glb.gz',
+  grove_timber_ramp: 'models/props/grove_timber_ramp.glb.gz',
+  grove_topiary: 'models/props/grove_topiary.glb.gz',
+  grove_totem: 'models/props/grove_totem.glb.gz',
+  grove_tower: 'models/props/grove_tower.glb.gz',
+  grove_tractor: 'models/props/grove_tractor.glb.gz',
+  grove_tree: 'models/props/grove_tree.glb.gz',
+  grove_truck: 'models/props/grove_truck.glb.gz',
+  grove_water_tower: 'models/props/grove_water_tower.glb.gz',
   guard_rail: 'models/props/guard_rail.glb',
-  hill_sign: 'models/props/hill_sign.glb',
+  hill_sign: 'models/props/hill_sign.glb.gz',
   hydrant: 'models/props/hydrant.glb',
   kiosk: 'models/props/kiosk.glb',
   lantern_post: 'models/props/lantern_post.glb',
@@ -37,17 +75,17 @@ const PROPS = {
   mesa_a: 'models/props/mesa_a.glb',
   mesa_b: 'models/props/mesa_b.glb',
   onion_dome: 'models/props/onion_dome.glb',
-  palm_tree: 'models/props/palm_tree.glb',
+  palm_tree: 'models/props/palm_tree.glb.gz',
   planter: 'models/props/planter.glb',
   road_dash: 'models/props/road_dash.glb',
-  sandstone_house: 'models/props/sandstone_house.glb',
+  sandstone_house: 'models/props/sandstone_house.glb.gz',
   secret: 'models/props/secret.glb',
   shrine: 'models/props/shrine.glb',
   sidewalk: 'models/props/sidewalk.glb',
-  skyline_a: 'models/props/skyline_a.glb',
+  skyline_a: 'models/props/skyline_a.glb.gz',
   skyline_b: 'models/props/skyline_b.glb',
-  skyline_c: 'models/props/skyline_c.glb',
-  slide_truck: 'models/props/slide_truck.glb',
+  skyline_c: 'models/props/skyline_c.glb.gz',
+  slide_truck: 'models/props/slide_truck.glb.gz',
   street_lamp: 'models/props/street_lamp.glb',
   switch: 'models/props/switch.glb',
   toll_booth: 'models/props/toll_booth.glb',
@@ -80,7 +118,19 @@ export const kitVersion = () => version;
 
 async function parse(path) {
   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-  return new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}assets/${path}`);
+  const url = `${import.meta.env.BASE_URL}assets/${path}`;
+  const loader = new GLTFLoader();
+  if (!path.endsWith('.gz')) return loader.loadAsync(url);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Could not load ${path}: HTTP ${response.status}`);
+  // Static hosts may serve the wrapper as a file or apply HTTP Content-Encoding.
+  const bytes = await response.arrayBuffer();
+  const magic = new Uint8Array(bytes);
+  const glb = magic[0] === 0x1f && magic[1] === 0x8b
+    ? await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()
+    : bytes;
+  return loader.parseAsync(glb, '');
+
 }
 
 async function loadGeometry(path) {

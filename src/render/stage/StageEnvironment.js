@@ -57,6 +57,17 @@ export function mountStage(env) {
     hemi.color.setHex(st.hemi.sky); hemi.groundColor.setHex(st.hemi.ground); hemi.intensity = st.hemi.intensity * 1.2;
     sun.color.setHex(st.sun.color); sun.intensity = st.sun.intensity * 0.9; sun.position.set(...st.sun.position);
     bounce.color.setHex(st.bounce.color); bounce.intensity = st.bounce.intensity;
+    if (id === 'grove') {
+      scene.fog.color.setHex(0x49445c);
+      hemi.color.setHex(0xffefd5);
+      hemi.groundColor.setHex(0x9d7a84);
+      hemi.intensity = 1.6;
+      sun.color.setHex(0xffd29e);
+      sun.position.set(-23, 28, 12);
+      sun.intensity = 2.12;
+      bounce.color.setHex(0xc1bbef);
+      bounce.intensity = .45;
+    }
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
     const skyTex = peekTexture(a.sky);
     sky.material.map = skyTex; sky.material.color.setHex(skyTex ? 0xffffff : st.background); sky.material.needsUpdate = true;

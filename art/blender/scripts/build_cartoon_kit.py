@@ -10,9 +10,11 @@
 # objects with keyframed transforms in one clip.
 #
 # Axes: X is the route direction in game, Z is up, and Blender -Y becomes game +Z.
+import gzip
 import math
 import os
 import sys
+from pathlib import Path
 
 import bmesh
 import bpy
@@ -967,7 +969,14 @@ def select_only(objs):
     bpy.context.view_layer.objects.active = objs[0]
 
 
-def export(objs, folder, name, animated=False):
+# Losslessly pack the largest legacy props so the expanded environment kit fits the static budget.
+COMPRESSED_PROPS = {
+    'bazaar_wall', 'building_a', 'building_b', 'building_c', 'drying_rack', 'far_bazaar',
+    'hill_sign', 'palm_tree', 'sandstone_house', 'skyline_a', 'skyline_c', 'slide_truck',
+}
+
+
+def export(objs, folder, name, animated=False, compressed=False):
     os.makedirs(os.path.join(OUT, folder), exist_ok=True)
     path = os.path.join(OUT, folder, name + '.glb')
     select_only(objs)
@@ -980,6 +989,12 @@ def export(objs, folder, name, animated=False):
         kwargs.update(export_animation_mode='SCENE', export_frame_range=True, export_force_sampling=True, export_optimize_animation_size=True)
     bpy.ops.export_scene.gltf(**kwargs)
     compact_glb(path)
+    if compressed:
+        glb = Path(path)
+        packed = glb.with_suffix('.glb.gz')
+        packed.write_bytes(gzip.compress(glb.read_bytes(), compresslevel=9, mtime=0))
+        glb.unlink()
+        return packed.stat().st_size
     return os.path.getsize(path)
 
 
@@ -1114,7 +1129,7 @@ def main():
     for folder, makers in (('props', PROPS), ('projectiles', PROJECTILES), ('pickups', PICKUPS)):
         for make in makers:
             obj = make().build()
-            size = export([obj], folder, obj.name)
+            size = export([obj], folder, obj.name, compressed=folder == 'props' and obj.name in COMPRESSED_PROPS)
             report.append((folder, obj.name, len(obj.data.polygons), size))
             preview.append(obj)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ROOT, 'art', 'blender', 'cartoon_kit.blend'))
