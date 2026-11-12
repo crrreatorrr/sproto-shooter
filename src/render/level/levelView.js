@@ -4,6 +4,13 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getLevelRuntime } from '../../sim/level/runtime.js';
 import { solidTerrain, terrainGrid } from '../../sim/campaign/terrain.js';
 import { DRESSING, HIDE_WHEN_GOT, MECHANISM_MODEL, STAGE_DRESSING } from './dressing.js';
+import { voidPlacements } from './voidDressing.js';
+import { voidMaterial } from './voidMaterial.js';
+import { groveGeometry, grovePlacements } from './groveDressing.js';
+import { groveMaterial } from './groveMaterials.js';
+import { decorMeshes } from './levelDecorMeshes.js';
+import { createKitObject, updateKitMotion } from './kitMotion.js';
+import { DT } from '../../sim/simulate.js';
 import { KIT, duelInstance, kitGeometry, kitMaterial, kitVersion } from './kitModels.js';
 
 export const LEVEL_COLOR = {
@@ -32,6 +39,9 @@ export function levelMaterial(name, cache, tint = null) {
   return mat;
 }
 
+const CAMPAIGN_KITS = { L03: grovePlacements, L04: voidPlacements };
+const groveLevelMaterial = (name, cache) => groveMaterial(name, cache, levelMaterial);
+
 function primitiveGeometry(g) {
   if (!g || g.kind === 'terrain' || !g.at) return null;
   let geo = null;
@@ -50,20 +60,20 @@ function primitiveGeometry(g) {
 }
 
 /** One mesh per material. Returns the meshes, not yet parented. */
-export function buildSectionMeshes(geometry, materials) {
+export function buildSectionMeshes(geometry, materials, materialFor = levelMaterial) {
   const buckets = new Map();
   for (const g of geometry || []) {
     const geo = primitiveGeometry(g);
     if (!geo) continue;
-    const name = g.mat || 'stone';
-    if (!buckets.has(name)) buckets.set(name, []);
-    buckets.get(name).push(geo);
+    const material = materialFor(g.mat || 'stone', materials);
+    if (!buckets.has(material)) buckets.set(material, []);
+    buckets.get(material).push(geo);
   }
   const meshes = [];
-  for (const [name, geos] of buckets) {
+  for (const [material, geos] of buckets) {
     const merged = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
     if (geos.length > 1) for (const geo of geos) geo.dispose();
-    const mesh = new THREE.Mesh(merged, levelMaterial(name, materials));
+    const mesh = new THREE.Mesh(merged, material);
     mesh.castShadow = mesh.receiveShadow = true;
     mesh.frustumCulled = true;
     meshes.push(mesh);
@@ -134,7 +144,7 @@ function fitKit(model, yaw, min, max, keepHeight = false) {
     max.y = min.y + kit.size.y * scale.y;
   }
   const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (yaw || 0) * Math.PI / 180);
-  const mesh = new THREE.Mesh(kit.geometry, kitMaterial());
+  const mesh = createKitObject(kit, kitMaterial(), Math.abs(min.x * .19 + min.z * .17));
   mesh.matrixAutoUpdate = false;
   mesh.matrix.compose(min.clone().add(max).multiplyScalar(0.5), q, scale)
     .multiply(new THREE.Matrix4().makeTranslation(-kit.center.x, -kit.center.y, -kit.center.z));
@@ -232,54 +242,23 @@ function backdropDecor(spec, sec) {
   return out;
 }
 
-/** Scenery for one section, one InstancedMesh per model. Models still loading are left out. */
-function decorMeshes(list, origin) {
-  const byModel = new Map();
-  for (const d of list || []) {
-    if (!d.model) continue;
-    if (!byModel.has(d.model)) byModel.set(d.model, []);
-    byModel.get(d.model).push(d);
-  }
-  const out = [];
-  const m = new THREE.Matrix4();
-  const q = new THREE.Quaternion();
-  const up = new THREE.Vector3(0, 1, 0);
-  const one = new THREE.Vector3(1, 1, 1);
-  for (const [model, items] of byModel) {
-    const kit = kitGeometry(KIT.prop(model));
-    if (!kit) continue;
-    const im = new THREE.InstancedMesh(kit.geometry, kitMaterial(), items.length);
-    items.forEach((d, i) => {
-      q.setFromAxisAngle(up, (d.yaw || 0) * Math.PI / 180);
-      const k = d.scale || 1;
-      m.compose(new THREE.Vector3(d.at[0] + origin[0], d.at[1] + (origin[1] || 0) - kit.minY * k, d.at[2] + origin[2]), q, k === 1 ? one : new THREE.Vector3(k, k, k));
-      im.setMatrixAt(i, m);
-    });
-    im.instanceMatrix.needsUpdate = true;
-    im.computeBoundingSphere();
-    im.receiveShadow = true;
-    im.userData.kit = true;
-    out.push(im);
-  }
-  return out;
-}
-
 export function createLevelView() {
   const group = new THREE.Group();
   group.name = 'campaign-level';
   const mats = new Map();
   let key = '';
   let gotViews = [];
-  function syncGot(lv) {
-    const got = (lv && lv.got) || {};
-    for (const v of gotViews) v.mesh.visible = !got[v.id];
+  function syncGot(state) {
+    const got = state.level?.got || {};
+    const hasJetpack = state.players?.[state.localPlayerId]?.jetpack;
+    for (const v of gotViews) v.mesh.visible = !got[v.id] && !(v.skipIfOwned && hasJetpack);
   }
   function rebuild(state) {
     const lv = state.level;
     const doors = (lv && lv.closedDoors) || [];
     // kitVersion: a section drawn before its models arrived redraws when they do.
     const next = lv ? `${lv.id}:${lv.section}:${doors.map((d) => d.id).join(',')}:${kitVersion()}` : '';
-    if (next === key) { syncGot(lv); return; }
+    if (next === key) { syncGot(state); return; }
     key = next;
     gotViews = [];
     for (let i = group.children.length - 1; i >= 0; i--) {
@@ -293,10 +272,14 @@ export function createLevelView() {
     const sec = rt.sectionById[lv.section];
     if (!sec) return;
     const field = solidTerrain(sec);
-    // A level with no dressing of its own still gets its stage's backdrop.
-    const dress = DRESSING[lv.id] || STAGE_DRESSING[lv.stage] || {};
+    const grove = lv.id === 'L03';
+    const voidLevel = lv.id === 'L04';
+    const polished = ['L01', 'L02', 'L03'].includes(lv.id);
+    const placements = CAMPAIGN_KITS[lv.id];
+    const dress = placements ? {} : DRESSING[lv.id] || STAGE_DRESSING[lv.stage] || {};
     const prims = new Map((sec.geometry || []).map((g) => [g.id, g]));
     const replaced = new Set();
+    if (placements) for (const mesh of decorMeshes(placements(sec, prims, doors), [0, 0, 0], replaced)) group.add(mesh);
     for (const [id, d] of Object.entries(dress.fit || {})) {
       const g = prims.get(id);
       if (!g) continue;
@@ -337,40 +320,62 @@ export function createLevelView() {
     }
     const hidden = (g) => !!(dress.hide && g.id && dress.hide.test(g.id));
     const geometry = (sec.geometry || []).filter((g) => !(field && g.tag === 'terrainStandIn') && !replaced.has(g.id) && !hidden(g));
-    for (const door of doors) geometry.push(aabbBox(door));
-    for (const mesh of buildSectionMeshes(geometry, mats)) group.add(mesh);
+    for (const door of doors) if (!replaced.has(door.id)) geometry.push(aabbBox(door));
+    for (const mesh of buildSectionMeshes(grove ? geometry.map(groveGeometry) : geometry, mats, grove ? groveLevelMaterial : levelMaterial)) group.add(mesh);
     if (field) group.add(terrainMesh(field, mats));
-    for (const g of sec.geometry || []) if (g.kind === 'terrain') group.add(terrainMesh(g, mats));
-    for (const m of sec.mechanisms || []) addMarker(m);
+    // The L03 Crop Fields use the flat walkable slab. Its Blender crop rows
+    // and path stones sit on that surface.
+    for (const g of sec.geometry || []) if (g.kind === 'terrain' && (!grove || g.id !== 'S1-T')) group.add(terrainMesh(g, mats));
+    for (const m of sec.mechanisms || []) {
+      if (grove && m.kind === 'manaBloom' && replaced.has(m.id.replace(/-use$/, '-flower'))) continue;
+      if (replaced.has(`marker:${m.id}`)) continue;
+      const special = voidLevel && m.kind === 'jetpack' ? 'void_jetpack'
+        : polished && m.kind === 'shrine' ? 'campaign_shrine' : null;
+      addMarker(m, special);
+    }
     for (const w of sec.weapons || []) addMarker({ ...w, kind: 'rack' });
-    syncGot(lv);
+    syncGot(state);
   }
   /** The mechanism's model, centred on its point. Null while loading or when it has none. */
-  function kitMarker(m, at) {
-    const pick = MECHANISM_MODEL[m.kind];
-    const kit = m.kind === 'ammo' ? kitGeometry(KIT.pickup('ammo_box')) : pick ? kitGeometry(KIT.prop(pick(m))) : null;
+  function kitMarker(m, at, special) {
+    const jetpack = special === 'void_jetpack';
+    const pick = special ?? MECHANISM_MODEL[m.kind]?.(m);
+    const kit = m.kind === 'ammo' ? kitGeometry(KIT.pickup('ammo_box')) : pick ? kitGeometry(KIT.prop(pick)) : null;
     if (!kit) return null;
-    const mesh = new THREE.Mesh(kit.geometry, kitMaterial());
+    const material = jetpack ? voidMaterial() : kitMaterial();
+    const mesh = createKitObject(kit, material, Math.abs(at[0] * .19 + at[2] * .17));
+    if (jetpack) mesh.name = `void_jetpack:${m.id}`;
     const k = m.kind === 'ammo' ? 0.42 : 1;
     mesh.scale.setScalar(k);
-    mesh.position.set(at[0] - kit.center.x * k, (at[1] || 0.6) - kit.center.y * k, at[2] - kit.center.z * k);
+    mesh.position.set(at[0] - kit.center.x * k, (at[1] || 0.6) - (jetpack ? kit.minY : kit.center.y) * k, at[2] - kit.center.z * k);
     mesh.castShadow = true;
     mesh.userData.kit = true;
     return mesh;
   }
-  function addMarker(m) {
+  function addMarker(m, special = null) {
+    const jetpack = special === 'void_jetpack';
     const at = m.at || m.from;
     if (!at) return;
-    const model = kitMarker(m, at);
+    const model = kitMarker(m, at, special);
     if (model) {
       group.add(model);
-      if (HIDE_WHEN_GOT.has(m.kind) && m.id) gotViews.push({ id: m.id, mesh: model });
+      if (jetpack || (HIDE_WHEN_GOT.has(m.kind) && m.id)) {
+        gotViews.push({ id: m.id, mesh: model, skipIfOwned: jetpack && m.skipIfOwned });
+      }
       return;
     }
     const color = m.kind === 'secret' ? 0xffd166 : m.kind === 'rack' ? 0x7fd34e : m.kind === 'hazard' ? 0xff5a1a : LEVEL_COLOR.trim;
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35, roughness: 0.4 }));
     mesh.position.set(at[0], at[1] || 0.6, at[2]);
+    if (jetpack) gotViews.push({ id: m.id, mesh, skipIfOwned: m.skipIfOwned });
     group.add(mesh);
   }
-  return { group, sync: rebuild };
+  return {
+    group,
+    sync(state) {
+      rebuild(state);
+      const seconds = state.tick * DT;
+      for (const child of group.children) updateKitMotion(child, seconds);
+    },
+  };
 }

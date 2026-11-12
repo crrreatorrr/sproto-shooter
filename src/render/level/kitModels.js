@@ -2,76 +2,146 @@
 // A static kit model is one merged geometry. An effect keeps its scene and clip.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { loadPackedGltf } from '../loadPackedGltf.js';
 import { PRIORITY, assetStatus, ensureStatic, enqueue, instantiateStatic, peekAsset, retainAsset } from '../assets.js';
 
 // Literal paths: scripts/asset-report.mjs finds references by reading them.
 const PROPS = {
-  barrel_fire: 'models/props/barrel_fire.glb',
-  barrel_shock: 'models/props/barrel_shock.glb',
-  barricade: 'models/props/barricade.glb',
-  bazaar_tent: 'models/props/bazaar_tent.glb',
-  bazaar_wall: 'models/props/bazaar_wall.glb',
-  bench: 'models/props/bench.glb',
-  billboard: 'models/props/billboard.glb',
-  building_a: 'models/props/building_a.glb',
-  building_b: 'models/props/building_b.glb',
-  building_c: 'models/props/building_c.glb',
-  cart: 'models/props/cart.glb',
-  chest: 'models/props/chest.glb',
-  clay_pots: 'models/props/clay_pots.glb',
-  crosswalk: 'models/props/crosswalk.glb',
-  drying_rack: 'models/props/drying_rack.glb',
-  dune: 'models/props/dune.glb',
-  dye_vat_gold: 'models/props/dye_vat_gold.glb',
-  dye_vat_red: 'models/props/dye_vat_red.glb',
-  dye_vat_teal: 'models/props/dye_vat_teal.glb',
-  far_bazaar: 'models/props/far_bazaar.glb',
-  fountain: 'models/props/fountain.glb',
-  guard_rail: 'models/props/guard_rail.glb',
-  hill_sign: 'models/props/hill_sign.glb',
-  hydrant: 'models/props/hydrant.glb',
-  kiosk: 'models/props/kiosk.glb',
-  lantern_post: 'models/props/lantern_post.glb',
-  low_wall: 'models/props/low_wall.glb',
-  machine: 'models/props/machine.glb',
-  mesa_a: 'models/props/mesa_a.glb',
-  mesa_b: 'models/props/mesa_b.glb',
-  onion_dome: 'models/props/onion_dome.glb',
-  palm_tree: 'models/props/palm_tree.glb',
-  planter: 'models/props/planter.glb',
-  road_dash: 'models/props/road_dash.glb',
-  sandstone_house: 'models/props/sandstone_house.glb',
-  secret: 'models/props/secret.glb',
-  shrine: 'models/props/shrine.glb',
-  sidewalk: 'models/props/sidewalk.glb',
-  skyline_a: 'models/props/skyline_a.glb',
-  skyline_b: 'models/props/skyline_b.glb',
-  skyline_c: 'models/props/skyline_c.glb',
-  slide_truck: 'models/props/slide_truck.glb',
-  street_lamp: 'models/props/street_lamp.glb',
-  switch: 'models/props/switch.glb',
-  toll_booth: 'models/props/toll_booth.glb',
-  traffic_cone: 'models/props/traffic_cone.glb',
-  water_tank: 'models/props/water_tank.glb',
-  weapon_rack: 'models/props/weapon_rack.glb',
-  well: 'models/props/well.glb',
+  barrel_fire: 'models/props/barrel_fire.glb.gz',
+  barrel_shock: 'models/props/barrel_shock.glb.gz',
+  barricade: 'models/props/barricade.glb.gz',
+  bazaar_tent: 'models/props/bazaar_tent.glb.gz',
+  bazaar_wall: 'models/props/bazaar_wall.glb.gz',
+  bench: 'models/props/bench.glb.gz',
+  billboard: 'models/props/billboard.glb.gz',
+  building_a: 'models/props/building_a.glb.gz',
+  building_b: 'models/props/building_b.glb.gz',
+  building_c: 'models/props/building_c.glb.gz',
+  campaign_shrine: 'models/props/campaign_shrine.glb.gz',
+  cart: 'models/props/cart.glb.gz',
+  chest: 'models/props/chest.glb.gz',
+  clay_pots: 'models/props/clay_pots.glb.gz',
+  crosswalk: 'models/props/crosswalk.glb.gz',
+  drying_rack: 'models/props/drying_rack.glb.gz',
+  dune: 'models/props/dune.glb.gz',
+  dye_vat_gold: 'models/props/dye_vat_gold.glb.gz',
+  dye_vat_red: 'models/props/dye_vat_red.glb.gz',
+  dye_vat_teal: 'models/props/dye_vat_teal.glb.gz',
+  far_bazaar: 'models/props/far_bazaar.glb.gz',
+  fountain: 'models/props/fountain.glb.gz',
+  grove_arch: 'models/props/grove_arch.glb.gz',
+  grove_barn_roof: 'models/props/grove_barn_roof.glb.gz',
+  grove_beanstalk: 'models/props/grove_beanstalk.glb.gz',
+  grove_bloom: 'models/props/grove_bloom.glb.gz',
+  grove_boulder: 'models/props/grove_boulder.glb.gz',
+  grove_bridge: 'models/props/grove_bridge.glb.gz',
+  grove_cabbage: 'models/props/grove_cabbage.glb.gz',
+  grove_crate: 'models/props/grove_crate.glb.gz',
+  grove_crops: 'models/props/grove_crops.glb.gz',
+  grove_gazebo: 'models/props/grove_gazebo.glb.gz',
+  grove_greenhouse_frame: 'models/props/grove_greenhouse_frame.glb.gz',
+  grove_greenhouse_glass: 'models/props/grove_greenhouse_glass.glb.gz',
+  grove_greenhouse_roof: 'models/props/grove_greenhouse_roof.glb.gz',
+  grove_hay: 'models/props/grove_hay.glb.gz',
+  grove_hedge: 'models/props/grove_hedge.glb.gz',
+  grove_lantern: 'models/props/grove_lantern.glb.gz',
+  grove_leaf_step: 'models/props/grove_leaf_step.glb.gz',
+  grove_nest: 'models/props/grove_nest.glb.gz',
+  grove_patch: 'models/props/grove_patch.glb.gz',
+  grove_pines: 'models/props/grove_pines.glb.gz',
+  grove_planter: 'models/props/grove_planter.glb.gz',
+  grove_pod: 'models/props/grove_pod.glb.gz',
+  grove_pumpkin: 'models/props/grove_pumpkin.glb.gz',
+  grove_reeds: 'models/props/grove_reeds.glb.gz',
+  grove_root_wall: 'models/props/grove_root_wall.glb.gz',
+  grove_scarecrow: 'models/props/grove_scarecrow.glb.gz',
+  grove_shed: 'models/props/grove_shed.glb.gz',
+  grove_silo: 'models/props/grove_silo.glb.gz',
+  grove_stockade: 'models/props/grove_stockade.glb.gz',
+  grove_stones: 'models/props/grove_stones.glb.gz',
+  grove_timber_ramp: 'models/props/grove_timber_ramp.glb.gz',
+  grove_topiary: 'models/props/grove_topiary.glb.gz',
+  grove_totem: 'models/props/grove_totem.glb.gz',
+  grove_tower: 'models/props/grove_tower.glb.gz',
+  grove_tractor: 'models/props/grove_tractor.glb.gz',
+  grove_tree: 'models/props/grove_tree.glb.gz',
+  grove_truck: 'models/props/grove_truck.glb.gz',
+  grove_water_tower: 'models/props/grove_water_tower.glb.gz',
+  guard_rail: 'models/props/guard_rail.glb.gz',
+  hill_sign: 'models/props/hill_sign.glb.gz',
+  hydrant: 'models/props/hydrant.glb.gz',
+  kiosk: 'models/props/kiosk.glb.gz',
+  lantern_post: 'models/props/lantern_post.glb.gz',
+  low_wall: 'models/props/low_wall.glb.gz',
+  machine: 'models/props/machine.glb.gz',
+  mesa_a: 'models/props/mesa_a.glb.gz',
+  mesa_b: 'models/props/mesa_b.glb.gz',
+  onion_dome: 'models/props/onion_dome.glb.gz',
+  palm_tree: 'models/props/palm_tree.glb.gz',
+  planter: 'models/props/planter.glb.gz',
+  road_dash: 'models/props/road_dash.glb.gz',
+  sandstone_house: 'models/props/sandstone_house.glb.gz',
+  secret: 'models/props/secret.glb.gz',
+  shrine: 'models/props/shrine.glb.gz',
+  sidewalk: 'models/props/sidewalk.glb.gz',
+  skyline_a: 'models/props/skyline_a.glb.gz',
+  skyline_b: 'models/props/skyline_b.glb.gz',
+  skyline_c: 'models/props/skyline_c.glb.gz',
+  slide_truck: 'models/props/slide_truck.glb.gz',
+  street_lamp: 'models/props/street_lamp.glb.gz',
+  switch: 'models/props/switch.glb.gz',
+  toll_booth: 'models/props/toll_booth.glb.gz',
+  traffic_cone: 'models/props/traffic_cone.glb.gz',
+  void_apron: 'models/props/void_apron.glb.gz',
+  void_asteroid: 'models/props/void_asteroid.glb.gz',
+  void_beacon: 'models/props/void_beacon.glb.gz',
+  void_bridge: 'models/props/void_bridge.glb.gz',
+  void_bulkhead: 'models/props/void_bulkhead.glb.gz',
+  void_candle_down: 'models/props/void_candle_down.glb.gz',
+  void_candle_up: 'models/props/void_candle_up.glb.gz',
+  void_cargo: 'models/props/void_cargo.glb.gz',
+  void_crystal: 'models/props/void_crystal.glb.gz',
+  void_deck: 'models/props/void_deck.glb.gz',
+  void_fuel: 'models/props/void_fuel.glb.gz',
+  void_gantry: 'models/props/void_gantry.glb.gz',
+  void_halo: 'models/props/void_halo.glb.gz',
+  void_jetpack: 'models/props/void_jetpack.glb.gz',
+  void_landing: 'models/props/void_landing.glb.gz',
+  void_ledger: 'models/props/void_ledger.glb.gz',
+  void_pylon: 'models/props/void_pylon.glb.gz',
+  void_rail: 'models/props/void_rail.glb.gz',
+  void_relay: 'models/props/void_relay.glb.gz',
+  void_rockfall: 'models/props/void_rockfall.glb.gz',
+  void_server: 'models/props/void_server.glb.gz',
+  void_shelter: 'models/props/void_shelter.glb.gz',
+  void_shield: 'models/props/void_shield.glb.gz',
+  void_sign: 'models/props/void_sign.glb.gz',
+  void_supply: 'models/props/void_supply.glb.gz',
+  void_terminal: 'models/props/void_terminal.glb.gz',
+  void_ticker: 'models/props/void_ticker.glb.gz',
+  void_vault: 'models/props/void_vault.glb.gz',
+  void_vent: 'models/props/void_vent.glb.gz',
+  void_vortex: 'models/props/void_vortex.glb.gz',
+  water_tank: 'models/props/water_tank.glb.gz',
+  weapon_rack: 'models/props/weapon_rack.glb.gz',
+  well: 'models/props/well.glb.gz',
 };
 const PICKUPS = {
-  ammo_box: 'models/pickups/ammo_box.glb',
-  gem: 'models/pickups/gem.glb',
-  heart: 'models/pickups/heart.glb',
-  potion: 'models/pickups/potion.glb',
-  ticket: 'models/pickups/ticket.glb',
+  ammo_box: 'models/pickups/ammo_box.glb.gz',
+  gem: 'models/pickups/gem.glb.gz',
+  heart: 'models/pickups/heart.glb.gz',
+  potion: 'models/pickups/potion.glb.gz',
+  ticket: 'models/pickups/ticket.glb.gz',
 };
 const FX = {
-  explosion: 'models/fx/explosion.glb',
-  poof: 'models/fx/poof.glb',
+  explosion: 'models/fx/explosion.glb.gz',
+  poof: 'models/fx/poof.glb.gz',
 };
 export const KIT = {
   prop: (name) => PROPS[name],
   pickup: (name) => PICKUPS[name],
   fx: (name) => FX[name],
-  bomb: 'models/projectiles/bomb.glb',
+  bomb: 'models/projectiles/bomb.glb.gz',
 };
 
 let version = 0;
@@ -80,17 +150,24 @@ export const kitVersion = () => version;
 
 async function parse(path) {
   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-  return new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}assets/${path}`);
+  return loadPackedGltf(new GLTFLoader(), path);
 }
 
 async function loadGeometry(path) {
   const g = await parse(path);
   g.scene.updateMatrixWorld(true);
   const parts = [];
+  let hasAuthoredGlow = false;
   g.scene.traverse((o) => {
     if (!o.isMesh) return;
     const geo = o.geometry.clone();
     for (const name of Object.keys(geo.attributes)) if (name !== 'position' && name !== 'normal' && name !== 'color') geo.deleteAttribute(name);
+    const source = o.material.emissive;
+    const power = source ? Math.max(source.r, source.g, source.b) * o.material.emissiveIntensity : 0;
+    const glow = Math.round(Math.min(2, power) * 127.5);
+    if (glow) hasAuthoredGlow = true;
+    const mask = new Uint8Array(geo.attributes.position.count).fill(glow);
+    geo.setAttribute('kitGlow', new THREE.Uint8BufferAttribute(mask, 1, true));
     geo.applyMatrix4(o.matrixWorld);
     parts.push(geo);
   });
@@ -100,16 +177,21 @@ async function loadGeometry(path) {
   const size = geometry.boundingBox.getSize(new THREE.Vector3());
   const center = geometry.boundingBox.getCenter(new THREE.Vector3());
   version++;
-  return { geometry, size, center, minY: geometry.boundingBox.min.y };
+  const name = path.split('/').at(-1).split('.')[0];
+  const motion = g.animations.length ? { scene: g.scene, clip: combinedClip(g, name) } : null;
+  return { geometry, size, center, minY: geometry.boundingBox.min.y, name, motion, hasAuthoredGlow };
+}
+
+function combinedClip(g, name) {
+  // Exported Blender tracks share a timeline.
+  return new THREE.AnimationClip(name, -1, g.animations.flatMap((a) => a.tracks));
 }
 
 async function loadScene(path) {
   const g = await parse(path);
   if (!g.animations.length) return null;
   version++;
-  // Blender writes one clip per object. They share a timeline, so they play as one.
-  const clip = new THREE.AnimationClip('fx', -1, g.animations.flatMap((a) => a.tracks));
-  return { scene: g.scene, clip };
+  return { scene: g.scene, clip: combinedClip(g, 'fx') };
 }
 
 function ensure(path, start, prio) {
@@ -176,6 +258,22 @@ export function duelInstance(name, prio = PRIORITY.NOW) {
 let lit = null;
 /** Shared lit material. Front faces only: the baked outline hull depends on it. */
 export function kitMaterial() {
-  if (!lit) lit = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 });
+  if (lit) return lit;
+  lit = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 });
+  lit.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
+      attribute float kitGlow;
+      varying float vKitGlow;
+    `).replace('#include <begin_vertex>', `#include <begin_vertex>
+      vKitGlow = kitGlow;
+    `);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>
+      varying float vKitGlow;
+    `).replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      #if defined(USE_COLOR) || defined(USE_COLOR_ALPHA)
+        totalEmissiveRadiance += vColor.rgb * vKitGlow * 2.;
+      #endif
+    `);
+  };
   return lit;
 }
