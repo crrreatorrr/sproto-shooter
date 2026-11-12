@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 249,
-    "runtimeBytes": 27050713,
-    "decodedBytes": 257771334,
-    "referenced": 249,
+    "runtimeFiles": 263,
+    "runtimeBytes": 27042833,
+    "decodedBytes": 257993542,
+    "referenced": 263,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -1310,7 +1310,91 @@
       ]
     },
     {
+      "path": "models/props/skyline_barrier.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
       "path": "models/props/skyline_c.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/skyline_canopy.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/skyline_cladding.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/skyline_crane.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/skyline_depot.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/skyline_fan.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/skyline_lamp.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/skyline_masonry.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/skyline_shop.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/skyline_slab.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/skyline_tower.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/skyline_trailer.glb.gz",
       "kind": "static",
       "from": [
         "src/render/level/kitModels.js"
@@ -1692,6 +1776,20 @@
       "from": [
         "src/data/stages.js",
         "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "textures/campaign/skyline-night.webp",
+      "kind": "static",
+      "from": [
+        "src/render/level/campaignSurfaceArt.js"
+      ]
+    },
+    {
+      "path": "textures/campaign/skyline-surface.webp",
+      "kind": "static",
+      "from": [
+        "src/render/level/campaignSurfaceArt.js"
       ]
     },
     {
@@ -7788,6 +7886,36 @@
       }
     },
     {
+      "path": "models/props/skyline_barrier.glb.gz",
+      "bytes": 3765,
+      "sha256": "e713d8ab02bc341c300c5c64a0843a887b1bc66435506f54afa25e6e339eb7a5",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 356,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_skyline_cyan",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
       "path": "models/props/skyline_c.glb.gz",
       "bytes": 6703,
       "sha256": "b2f9503785df5ec51b022762f24f963dcad6d099d513ca2fdaf99d5e719c64f2",
@@ -7812,6 +7940,343 @@
         "joints": 0,
         "nodes": 1,
         "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/skyline_canopy.glb.gz",
+      "bytes": 12738,
+      "sha256": "01f06a66652a2f1aef4af8138024bd3974e0b5f970d8dc0cbb870e3c8eb3d96e",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1504,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_skyline_cyan",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/skyline_cladding.glb.gz",
+      "bytes": 4081,
+      "sha256": "b1ad4909aeb3116a2c80e2b50d0e75db4406df600e35f48d52e0648a74a57937",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 440,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_skyline_amber",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/skyline_crane.glb.gz",
+      "bytes": 50516,
+      "sha256": "89e0ccbd4fbf0029b54191866bcdb12fe1b69291edeabd6d840a1b9a1988e214",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 5028,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "skyline_crane_lens",
+          "skyline_hoist_cable",
+          "skyline_hoist_load"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 4,
+        "materials": [
+          "campaign_glow_skyline_amber",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/skyline_depot.glb.gz",
+      "bytes": 8014,
+      "sha256": "c90b19bde380a00378d3b0f12c4c2007a7832e48e8ac3067ce577c2c1898ea5a",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 924,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_skyline_amber",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/skyline_fan.glb.gz",
+      "bytes": 12897,
+      "sha256": "85413461c679886a0a3aeebac2dab1a9abe4a2a873946179a8a3954bdf3b1790",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 992,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "skyline_fan_rotor"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 4,
+        "materials": [
+          "campaign_glow_skyline_cyan",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/skyline_lamp.glb.gz",
+      "bytes": 2958,
+      "sha256": "bd7a4610be870ffb0ec995709d7f48223d4607268ba7a97fd38c6a1cb1062c8b",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 220,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_skyline_amber",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/skyline_masonry.glb.gz",
+      "bytes": 3583,
+      "sha256": "d8c849dd12693889330ccad9357f18445a05a4c8bdd42014eb4dc9bbd7047dd2",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 352,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_skyline_coral",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/skyline_shop.glb.gz",
+      "bytes": 6364,
+      "sha256": "6b925c3c6b69e69bc453ca766da3cf8d4ee4532e68706d347df59d73e8fbaba1",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 748,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_skyline_coral",
+          "campaign_glow_skyline_window",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/skyline_slab.glb.gz",
+      "bytes": 5101,
+      "sha256": "bde3f9e7d50abbe256d0998e8a464545716cdd33a566f66fb685ac903f8a06eb",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 572,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/skyline_tower.glb.gz",
+      "bytes": 7511,
+      "sha256": "1420a5b5deafba4511c4fa3dab3e41c0cf993f15044f11f94d6ded286c90adfb",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 864,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_skyline_coral",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/skyline_trailer.glb.gz",
+      "bytes": 12771,
+      "sha256": "b53fc959ad6402be654efce1427c5f3458808839d63fe2af441e60ccaed61957",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1748,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_skyline_amber",
+          "campaign_glow_skyline_coral",
           "cartoon_kit"
         ]
       }
@@ -9507,6 +9972,36 @@
       }
     },
     {
+      "path": "textures/campaign/skyline-night.webp",
+      "bytes": 12632,
+      "sha256": "eb050b1cea33d8a27a0bfaacb8d600913ede641a17c5c287732c89cab3162b71",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/campaignSurfaceArt.js"
+      ],
+      "kind": "image",
+      "width": 896,
+      "height": 448,
+      "decodedBytes": 1605632,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/campaign/skyline-surface.webp",
+      "bytes": 23972,
+      "sha256": "43aa1f792fe438a1c46e9c1fc7fe387dd11c3e61462e43750bf598c8db97e034",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/campaignSurfaceArt.js"
+      ],
+      "kind": "image",
+      "width": 336,
+      "height": 336,
+      "decodedBytes": 451584,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
       "path": "textures/campaign/surface-art.webp",
       "bytes": 102506,
       "sha256": "311422ca7619381bbf0c8fc6b84a86cebd87aa5adece1a2741c7a6ffb1914884",
@@ -9778,17 +10273,17 @@
     },
     {
       "path": "textures/stages/void/stone.jpg",
-      "bytes": 252438,
-      "sha256": "5a87c1fcd81a35c83dd40b166f02417a0c1ebdb9048d4bf58d664893cfd2a944",
+      "bytes": 77655,
+      "sha256": "b236c4cbffd9b3aeb5a1c4df274406e683361667a76d634001a031d5efd4618e",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
         "src/data/stages.js"
       ],
       "kind": "image",
-      "width": 1024,
-      "height": 1024,
-      "decodedBytes": 4194304,
+      "width": 768,
+      "height": 768,
+      "decodedBytes": 2359296,
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     },
     {
@@ -10030,6 +10525,10 @@
       {
         "path": "art/blender/new_enemies.blend",
         "bytes": 43503325
+      },
+      {
+        "path": "art/blender/vape_cabal_skyline.blend",
+        "bytes": 223117
       },
       {
         "path": "art/blender/vegetable_grove.blend",

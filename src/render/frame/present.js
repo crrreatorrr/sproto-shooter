@@ -73,6 +73,12 @@ export function mountPresent(env) {
     const campaign = state.mode === 'campaign' && state.level;
     for (const mesh of arenaBits) mesh.visible = !campaign;
     levelView.group.visible = !!campaign;
+    const skyline = campaign && state.level.id === 'L06';
+    env.skylineRain.visible = !!skyline;
+    if (skyline) {
+      env.skylineRain.material.uniforms.eye.value.copy(camera.position);
+      env.skylineRain.material.uniforms.time.value = t % 120;
+    }
     if (campaign) {
       levelView.sync(state);
       if (scene.fog) {
@@ -87,7 +93,7 @@ export function mountPresent(env) {
           scene.fog.far = cap;
         } else {
           scene.fog.near = dark ? 4 : state.level.id === 'L04' ? 90 : 30;
-          scene.fog.far = dark ? 36 : 420;
+          scene.fog.far = dark ? 36 : skyline ? 134 : 420;
         }
       }
     } else if (scene.fog && scene.fog.far > 300) {

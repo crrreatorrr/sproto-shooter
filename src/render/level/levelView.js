@@ -4,6 +4,7 @@ import { getLevelRuntime } from '../../sim/level/runtime.js';
 import { solidTerrain } from '../../sim/campaign/terrain.js';
 import { DRESSING, HIDE_WHEN_GOT, MECHANISM_MODEL, STAGE_DRESSING } from './dressing.js';
 import { FROST_COLORS, frostspirePlacements } from './frostspireDressing.js';
+import { skylinePlacements } from './skylineDressing.js';
 import { syncFrostSearchlight } from './frostspireLights.js';
 import { voidPlacements } from './voidDressing.js';
 import { voidMaterial } from './voidMaterial.js';
@@ -19,7 +20,7 @@ import { KIT, duelInstance, kitGeometry, kitMaterial, kitVersion } from './kitMo
 
 export { buildLookGroup, buildSectionMeshes, LEVEL_COLOR, levelMaterial } from './levelGeometry.js';
 
-const CAMPAIGN_KITS = { L03: grovePlacements, L04: voidPlacements, L05: frostspirePlacements };
+const CAMPAIGN_KITS = { L03: grovePlacements, L04: voidPlacements, L05: frostspirePlacements, L06: skylinePlacements };
 const groveLevelMaterial = (name, cache) => groveMaterial(name, cache, levelMaterial);
 
 function aabbBox(s) {

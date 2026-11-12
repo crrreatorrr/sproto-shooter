@@ -1,11 +1,15 @@
-// Run with the two original ImageGen sheets, in A/B order.
+// Use the two original ImageGen sheets in A/B order, or --skyline with the Skyline sheet and panorama.
 import sharp from 'sharp';
 
-const [sheetA, sheetB] = process.argv.slice(2);
-if (!sheetA || !sheetB) throw new Error('Supply the paths to campaign-surface-art-a.png and campaign-surface-art-b.png');
+const [first, second, third] = process.argv.slice(2);
+const skyline = first === '--skyline';
+if (!first || !second || (skyline && !third)) {
+  throw new Error('Supply both campaign surface sheets, or --skyline <2 × 2 surface sheet> <panorama>');
+}
 
 const size = 160, gutter = 4, cell = size + 2 * gutter;
-const width = cell * 4, height = cell * 6;
+const cols = skyline ? 2 : 4, rows = skyline ? 2 : 3;
+const width = cell * cols, height = cell * (skyline ? rows : 2 * rows);
 const atlas = Buffer.alloc(width * height * 4);
 const byte = n => Math.max(0, Math.min(255, Math.round(n)));
 const smooth = (start, end, x) => {
@@ -15,6 +19,11 @@ const smooth = (start, end, x) => {
 
 function lampMask(tile, r, g, b) {
   const luma = r * .21 + g * .72 + b * .07;
+  if (skyline) {
+    if (tile === 1) return smooth(158, 224, Math.max(r, g)) * smooth(22, 62, Math.abs(g - r));
+    if (tile === 2) return smooth(157, 224, luma);
+    return 0;
+  }
   if (tile === 9 || tile === 11) return smooth(25, 65, g - r) * smooth(128, 190, luma);
   if (tile === 10 || tile === 23) return smooth(176, 231, luma);
   return 0;
@@ -39,10 +48,10 @@ function matchEdges(pixels) {
 
 async function pack(file, rowOffset) {
   const { width: w, height: h } = await sharp(file).metadata();
-  if (w % 4 || h % 3) throw new Error(`Expected a regular 4 by 3 sheet: ${file}`);
-  const sw = w / 4, sh = h / 3;
-  for (let row = 0; row < 3; row++) for (let col = 0; col < 4; col++) {
-    const tile = (row + rowOffset) * 4 + col;
+  if (w % cols || h % rows) throw new Error(`Expected a regular ${cols} by ${rows} sheet: ${file}`);
+  const sw = w / cols, sh = h / rows;
+  for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
+    const tile = (row + rowOffset) * cols + col;
     const rgb = await sharp(file).extract({ left: col * sw + 3, top: row * sh + 3, width: sw - 6, height: sh - 6 })
       .resize(size, size, { fit: 'fill' }).removeAlpha().raw().toBuffer();
     const average = [0, 0, 0];
@@ -70,8 +79,27 @@ async function pack(file, rowOffset) {
   }
 }
 
-await pack(sheetA, 0);
-await pack(sheetB, 3);
-const path = new URL('../public/assets/textures/campaign/surface-art.webp', import.meta.url);
+const campaignTextures = new URL('../public/assets/textures/campaign/', import.meta.url);
+if (skyline) {
+  await pack(second, 0);
+  // Match the east/west seam of the sky sphere.
+  const w = 896, h = 448, blend = 26;
+  const sky = await sharp(third).resize(w, h, { fit: 'fill' }).removeAlpha().raw().toBuffer();
+  for (let y = 0; y < h; y++) for (let x = 0; x < blend; x++) {
+    const weight = .5 * (1 - smooth(0, blend, x));
+    for (let channel = 0; channel < 3; channel++) {
+      const a = (y * w + x) * 3 + channel, b = (y * w + w - 1 - x) * 3 + channel;
+      const delta = (sky[b] - sky[a]) * weight;
+      sky[a] = byte(sky[a] + delta);
+      sky[b] = byte(sky[b] - delta);
+    }
+  }
+  await sharp(sky, { raw: { width: w, height: h, channels: 3 } })
+    .webp({ quality: 86, effort: 6 }).toFile(new URL('skyline-night.webp', campaignTextures).pathname);
+} else {
+  await pack(first, 0);
+  await pack(second, rows);
+}
+const name = skyline ? 'skyline-surface.webp' : 'surface-art.webp';
 await sharp(atlas, { raw: { width, height, channels: 4 } })
-  .webp({ quality: 81, alphaQuality: 100, effort: 6 }).toFile(path.pathname);
+  .webp({ quality: 81, alphaQuality: 100, effort: 6 }).toFile(new URL(name, campaignTextures).pathname);

@@ -7,6 +7,8 @@ const FIXTURES = {
   grove_lantern: { lens: [.72, 2.22, 0], color: 0xffb969, intensity: 15, range: 7 },
   void_beacon: { lens: [0, 1.27, 0], color: 0xffc562, intensity: 8, range: 5 },
   frost_floodlight: { lens: [0, 2.29, .53], color: 0xffd286, intensity: 23, range: 10 },
+  skyline_lamp: { lens: [0, 5.66, 1.09], color: 0xffc783, intensity: 36, range: 15 },
+  skyline_canopy: { lens: [0, .02, 1.56], color: 0x62deff, intensity: 16, range: 9 },
   frost_beacon: { lens: [0, 1.83, 0], color: 0xffc66c, intensity: 9, range: 6 },
 };
 

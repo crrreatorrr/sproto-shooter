@@ -1,11 +1,11 @@
 import { Color } from 'three';
 import { peekTexture } from '../assets.js';
 import {
-  ART_GLSL, CAMPAIGN_SURFACE_ART, ceilingSurface, GLASS_CEILING_SURFACE, kitCeilingSurface, surfaceArtTheme,
+  ART_GLSL, CAMPAIGN_SURFACE_ART, ceilingSurface, GLASS_CEILING_SURFACE, kitCeilingSurface, SKYLINE_SURFACE_ART, surfaceArtPath, surfaceArtTheme,
 } from './campaignSurfaceArt.js';
 import { CAMPAIGN_SURFACE_PATTERNS, SURFACE_GLSL } from './campaignSurfacePatterns.js';
 
-const HARD = 0, SOFT = 1, WOOD = 2, ICE = 3, GRASS = 4;
+const HARD = 0, SOFT = 1, WOOD = 2, ICE = 3, GRASS = 4, MASONRY = 5, ROAD = 6;
 const SUBSTRATE = {
   stone: HARD, rock: HARD, concrete: HARD, metal: HARD, pillar: HARD,
   grass: GRASS, dirt: SOFT, sand: SOFT, snow: SOFT, creekBed: SOFT, wood: WOOD, ice: ICE,
@@ -20,6 +20,8 @@ const KIT_SURFACES = {
   void_deck: HARD, void_bulkhead: HARD, void_vault: HARD, void_apron: HARD, void_shelter: HARD, void_landing: HARD,
   frost_wall: HARD, frost_panel: HARD, frost_deck: HARD, frost_ice_floor: ICE,
   frost_glacier: ICE, frost_drift: SOFT, frost_roof: HARD,
+  skyline_barrier: MASONRY, skyline_cladding: MASONRY, skyline_masonry: MASONRY,
+  skyline_shop: MASONRY, skyline_depot: MASONRY, skyline_canopy: HARD, skyline_tower: HARD, skyline_slab: HARD,
 };
 
 const SURFACE_EXCLUSIONS = new Set(['energyBridge', 'fireRing', 'lockWall', 'mover', 'crackTiles']);
@@ -92,6 +94,17 @@ const SHADE_SURFACE = /* glsl */ `
         campaignGleam += campaignArtLight * lamp * detail * (surfaceCeiling ? .72 : .32);
       }
     }
+    #ifdef CAMPAIGN_ART_SKYLINE
+      if (surfaceGround && campaignSurfaceKind == 6.) {
+        float z = vCampaignSurface.z;
+        float shoulder = surfaceStamp(min(abs(z - 1.55), abs(z - 20.45)), .095);
+        float stripes = surfaceStamp(min(abs(z - 7.85), abs(z - 14.15)), .078)
+          * surfaceLine(vCampaignSurface.x, 6.4, 1.36);
+        float flecks = mix(.62, 1., surfaceNoise(surfaceUV * 7.));
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.49, .27, .073), shoulder * flecks * .67);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.30, .35, .43), stripes * flecks * .63);
+      }
+    #endif
     diffuseColor.rgb *= mix(vec3(1.), max(campaignTint, vec3(.39)), campaignWeight);
   #endif
 `;
@@ -99,8 +112,9 @@ const SHADE_SURFACE = /* glsl */ `
 export function createCampaignSurfaceMaterials() {
   const materials = new WeakMap();
   const time = { value: 0 };
-  const art = { value: null };
-  const artReady = { value: 0 };
+  const atlases = new Map([CAMPAIGN_SURFACE_ART, SKYLINE_SURFACE_ART].map(
+    (path) => [path, { texture: { value: null }, ready: { value: 0 } }],
+  ));
   const themes = new Map();
   function decorate(base, level, kind, ceiling) {
     const glassRoof = ceiling === GLASS_CEILING_SURFACE;
@@ -109,6 +123,7 @@ export function createCampaignSurfaceMaterials() {
     if (!themes.has(level)) themes.set(level, surfaceArtTheme(level));
     const theme = themes.get(level);
     const pattern = CAMPAIGN_SURFACE_PATTERNS[level];
+    const art = atlases.get(surfaceArtPath(level));
     if (!materials.has(base)) materials.set(base, new Map());
     const cache = materials.get(base);
     const key = level + ':' + kind + ':' + ceiling;
@@ -123,9 +138,10 @@ export function createCampaignSurfaceMaterials() {
       const kitGlow = shader.vertexShader.includes('attribute float kitGlow;');
       shader.uniforms.campaignSurfaceTime = time;
       shader.uniforms.campaignSurfaceKind = { value: kind };
-      shader.uniforms.campaignSurfaceArt = art;
-      shader.uniforms.campaignArtReady = artReady;
+      shader.uniforms.campaignSurfaceArt = art.texture;
+      shader.uniforms.campaignArtReady = art.ready;
       shader.uniforms.campaignCeiling = { value: ceiling };
+      shader.uniforms.campaignArtLayout = { value: theme.layout };
       shader.uniforms.campaignArtTiles = { value: theme.tiles };
       shader.uniforms.campaignArtMetresX = { value: theme.metresX };
       shader.uniforms.campaignArtMetresY = { value: theme.metresY };
@@ -139,6 +155,7 @@ export function createCampaignSurfaceMaterials() {
           ${kitGlow ? '#define CAMPAIGN_KIT_GLOW' : ''}
           ${level === 'L03' ? '#define CAMPAIGN_ART_GROVE' : ''}
           ${level === 'L05' ? '#define CAMPAIGN_ART_FROST' : ''}
+          ${level === 'L06' ? '#define CAMPAIGN_ART_SKYLINE' : ''}
           ${glassRoof ? '#define CAMPAIGN_GLASS_ROOF' : ''}
           ${SURFACE_GLSL}
           ${ART_GLSL}
@@ -158,13 +175,16 @@ export function createCampaignSurfaceMaterials() {
   return {
     update(seconds) {
       time.value = seconds;
-      art.value = peekTexture(CAMPAIGN_SURFACE_ART) || null;
-      artReady.value = art.value ? 1 : 0;
+      for (const [path, art] of atlases) {
+        art.texture.value = peekTexture(path) || null;
+        art.ready.value = art.texture.value ? 1 : 0;
+      }
     },
     primitive(base, level, geometry) {
       if (!geometry) return base;
       const ceiling = ceilingSurface(level, geometry);
-      const kind = ceiling === GLASS_CEILING_SURFACE ? HARD : primitiveSurfaceKind(geometry);
+      const kind = ceiling === GLASS_CEILING_SURFACE ? HARD
+        : level === 'L06' && /^S[1-4]-floor$/.test(geometry.id) ? ROAD : primitiveSurfaceKind(geometry);
       return decorate(base, level, kind, ceiling);
     },
     kit(base, level, model) {
