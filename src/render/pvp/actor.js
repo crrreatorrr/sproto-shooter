@@ -5,6 +5,8 @@ import { GUN_MODEL_LEN, HAND_FRAC } from '../viewmodel/gunMesh.js';
 import { GUN_IDS, LOADOUT } from '../../sim/pvp/rules.js';
 import { createSlidePose } from './slidePose.js';
 import { wrapAngle } from '../anim.js';
+import { leftGrapplerArm } from '../viewmodel/grappleArm.js';
+import { createArenaWeaponPose } from './weaponPose.js';
 
 // World-space machine gun length for the 1.8 m Arena character rigs.
 const ARENA_MG_LENGTH = 0.96;
@@ -22,15 +24,15 @@ export function attachModel(body, source, path) {
   body.group.add(model);
   body.capsule.visible = false;
   body.model = model;
+  body.grappleArm = leftGrapplerArm(model);
   body.path = path;
   retainAsset(path);
   body.slide = createSlidePose(model);
   body.slideWeight = 0;
   body.slideYaw = null;
-  const grip = model.getObjectByName('weapon_grip');
-  const aim = model.getObjectByName('weapon_aim');
-  if (!grip || !aim) return;
-  const mixer = new THREE.AnimationMixer(model);
+  const weaponPose = createArenaWeaponPose(model, body.group);
+  if (!weaponPose) return;
+  const mixer = source.animations.length ? new THREE.AnimationMixer(model) : null;
   const actions = {};
   // The original Pepe clips use 9 and 7 frames for a full stride; give each step time to read.
   const pace = { idle: 0.64, jog: 0.60, dash: 0.68 };
@@ -43,25 +45,26 @@ export function attachModel(body, source, path) {
   }
   const gun = new THREE.Group();
   body.group.add(gun);
-  body.motion = { mixer, actions, grip, aim, gun, held: null, heldType: null };
+  body.motion = { mixer, actions, weaponPose, gun, held: null, heldType: null };
 }
 
 export function disposeModel(body) {
   if (!body.model) return;
-  body.motion?.mixer.stopAllAction();
+  body.motion?.mixer?.stopAllAction();
   body.motion?.held?.userData.releaseAsset();
   body.motion?.gun.removeFromParent();
   body.model.traverse((obj) => { if (obj.isSkinnedMesh) obj.skeleton.dispose(); });
   body.model.removeFromParent();
   releaseAsset(body.path);
-  body.slide = body.motion = body.model = null;
+  body.slide = body.motion = body.model = body.grappleArm = null;
 }
 
 const gripAt = new THREE.Vector3(), aimAt = new THREE.Vector3();
-export function poseModel(body, player, shotAge, dt, yaw = null) {
+export function poseModel(body, player, shotAge, dt, yaw = null, grapplePose = 0) {
   const motion = body.motion;
   const sliding = player.alive !== false && player.slideT > 0;
   const speed = Math.hypot(player.vx || 0, player.vz || 0);
+  motion?.weaponPose.restore();
   body.slide?.restore();
   body.slideWeight = THREE.MathUtils.damp(body.slideWeight ?? 0, Number(sliding), sliding ? 24 : 14, dt);
   if (yaw !== null) {
@@ -80,7 +83,7 @@ export function poseModel(body, player, shotAge, dt, yaw = null) {
     body.slide?.apply(body.slideWeight);
     return;
   }
-  const { actions, mixer, gun, grip, aim } = motion;
+  const { actions, mixer, gun, weaponPose } = motion;
   const gait = sliding ? 'idle' : speed > 8 ? 'dash' : speed > 0.35 ? 'jog' : 'idle';
   for (const name of ['idle', 'jog', 'dash']) {
     const action = actions[name];
@@ -101,24 +104,27 @@ export function poseModel(body, player, shotAge, dt, yaw = null) {
       motion.heldType = type;
     }
   }
-  const shooting = shotAge >= 0 && shotAge < actions.shoot.getClip().duration * 1000;
-  const reloading = player.reloadT > 0;
-  // Keep sampling the existing pose during a cancel; fade it out instead of jumping to frame zero.
-  const reload = actions.reload;
-  const reloadTime = LOADOUT[slot].stats.reloadTime;
-  if (reloading) reload.time = reload.getClip().duration * THREE.MathUtils.clamp(1 - player.reloadT / reloadTime, 0, 0.999);
-  reload.weight = THREE.MathUtils.damp(reload.weight, Number(reloading), 16, dt);
-  reload.paused = true;
-  const shootingWeight = shooting && !reloading ? 1 - reload.weight : 0;
-  actions.ready.weight = 1 - reload.weight - shootingWeight;
-  actions.shoot.weight = shootingWeight;
-  actions.shoot.time = shooting ? shotAge / 1000 : 0;
-  actions.shoot.paused = true;
-  mixer.update(dt);
+  if (actions.ready && actions.shoot && actions.reload) {
+    const shooting = shotAge >= 0 && shotAge < actions.shoot.getClip().duration * 1000;
+    const reloading = player.reloadT > 0;
+    // Keep sampling the existing pose during a cancel; fade it out instead of jumping to frame zero.
+    const reload = actions.reload;
+    const reloadTime = LOADOUT[slot].stats.reloadTime;
+    if (reloading) reload.time = reload.getClip().duration * THREE.MathUtils.clamp(1 - player.reloadT / reloadTime, 0, 0.999);
+    reload.weight = THREE.MathUtils.damp(reload.weight, Number(reloading), 16, dt);
+    reload.paused = true;
+    const shootingWeight = shooting && !reloading ? (1 - reload.weight) * (1 - grapplePose) : 0;
+    actions.ready.weight = 1 - reload.weight - shootingWeight;
+    actions.shoot.weight = shootingWeight;
+    actions.shoot.time = shooting ? shotAge / 1000 : 0;
+    actions.shoot.paused = true;
+  }
+  mixer?.update(dt);
   body.slide?.apply(body.slideWeight);
+  weaponPose.apply(grapplePose);
   body.group.updateMatrixWorld(true);
-  body.group.worldToLocal(grip.getWorldPosition(gripAt));
-  body.group.worldToLocal(aim.getWorldPosition(aimAt));
+  body.group.worldToLocal(weaponPose.grip.getWorldPosition(gripAt));
+  body.group.worldToLocal(weaponPose.tip.getWorldPosition(aimAt));
   gun.position.copy(gripAt);
   // The socket points +Z. Weapon meshes are authored with the barrel toward -Z.
   gun.lookAt(body.group.localToWorld(aimAt.negate().addScaledVector(gripAt, 2)));

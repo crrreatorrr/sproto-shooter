@@ -119,13 +119,13 @@ describe('L03 Vegetable Grove', () => {
     const sec = rt.sectionById.S5;
     noteV2Section(s, sec, rt);
     const hook = sec.grappleAnchors.find((a) => a.id === 'S5-GA-N');
-    p.pos = { x: hook.at[0], y: 0, z: hook.at[2] + 16 };
+    p.pos = { x: hook.at[0], y: 0, z: hook.at[2] + 12 };
     p.prevPos = { ...p.pos };
     p.vel = { x: 0, y: 0, z: 0 };
     p.grapple = null;
     p.grappleCd = 0;
     const yaw = 0;
-    const pitch = Math.atan2(hook.at[1] - 1.6, 16);
+    const pitch = Math.atan2(hook.at[1] - 1.6, 12);
     simulate(s, { [p.id]: cmd({ yaw, pitch, held: { grapple: true } }) });
     expect(p.grapple && p.grapple.id).toBe('S5-GA-N');
   });

@@ -19,7 +19,7 @@ Outputs:
 
 `sourceCommit` is `git rev-parse HEAD` baked into the bundle before the sha256. Rebuild on the merged shooter SHA and vendor both files. Refuse to boot if `bundleSha256` or `contentFingerprint` disagrees with the running copy. A stale pin is not accepted.
 
-Measured on this phase's build host: the bundle is about 277 KB. Content fingerprint for protocol 1 is `cea1f88b`. The sha256 changes with the commit baked into the file, so read it from the pin of the build you vendor.
+Measured on this phase's build host: the bundle is about 277 KB. Content fingerprint for protocol 1 is `73c6eb0f`. The sha256 changes with the commit baked into the file, so read it from the pin of the build you vendor.
 
 Entry points:
 
@@ -79,7 +79,7 @@ H2-S stores this. The client never supplies it.
   "parts": ["sahil"],
   "countAs": 1,
   "loadout": "canonical-start",
-  "contentFingerprint": "cea1f88b",
+  "contentFingerprint": "73c6eb0f",
   "maxFrames": 162000,
   "duelId": "sahil",
   "distinctFrom": [],
@@ -170,7 +170,7 @@ Check order inside `verifyRun`, before the sim loop: shape, hostile keys, versio
   "tick": 2491,
   "frames": 2491,
   "protocol": 1,
-  "contentFingerprint": "cea1f88b",
+  "contentFingerprint": "73c6eb0f",
   "sourceCommit": "40 hex chars or null in unpacked source",
   "logDigest": "8 hex chars",
   "bindingHash": "8 hex chars",
