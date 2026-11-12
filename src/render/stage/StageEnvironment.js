@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import { STAGES, stageAssets } from '../../data/stages.js';
 import { peekTexture, instantiateStatic, assetsVersion } from '../assets.js';
-import { createBlockchainSky } from './voidSky.js';
+import { createAuroraSky } from './auroraSky.js';
 import { createLevelView } from '../level/levelView.js';
 
 export function mountStage(env) {
   const { ARENA_R, E, M, bounce, hemi, scene, sun } = env;
   const sky = new THREE.Mesh(new THREE.SphereGeometry(260, 48, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide, fog: false, depthWrite: false, toneMapped: false }));
   const standardSky = sky.material;
-  let blockchainSky;
+  let blockchainSky, frostspireSky;
   sky.renderOrder = -1;
   scene.add(sky);
   const groundMat = M(0xffffff, { roughness: 0.92 });
@@ -52,8 +52,9 @@ export function mountStage(env) {
 
   function applyStage(id, levelId) {
     const blockchain = id === 'void' && levelId === 'L04';
+    const frostspire = id === 'glacier' && levelId === 'L05';
     const st = STAGES[id], a = stageAssets(id);
-    const key = id + ':' + blockchain + ':' + assetsVersion();
+    const key = id + ':' + (blockchain || frostspire) + ':' + assetsVersion();
     if (key === stageKey) return;
     stageKey = key;
     scene.background = new THREE.Color(st.background);
@@ -74,7 +75,8 @@ export function mountStage(env) {
     }
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
     const skyTex = peekTexture(a.sky);
-    sky.material = blockchain ? (blockchainSky ||= createBlockchainSky()) : standardSky;
+    sky.material = blockchain ? (blockchainSky ||= createAuroraSky())
+      : frostspire ? (frostspireSky ||= createAuroraSky(true)) : standardSky;
     standardSky.map = skyTex;
     standardSky.color.setHex(skyTex ? 0xffffff : st.background);
     standardSky.needsUpdate = true;
@@ -88,6 +90,17 @@ export function mountStage(env) {
       sun.intensity = 1.72;
       bounce.color.setHex(0x8f81e4);
       bounce.intensity = .42;
+    }
+    if (frostspire) {
+      scene.fog.color.setHex(0x465b7a);
+      hemi.color.setHex(0xc5dbfa);
+      hemi.groundColor.setHex(0x7791b0);
+      hemi.intensity = 1.32;
+      sun.color.setHex(0xc4deff);
+      sun.position.set(-26, 34, -16);
+      sun.intensity = 1.7;
+      bounce.color.setHex(0x8fbaf8);
+      bounce.intensity = .45;
     }
     const floor = peekTexture(a.floor);
     setStageMap(groundMat, floor, st.floorRepeat, st.floorRepeat);
