@@ -11,6 +11,7 @@ import { ensureCharacter, ensureGunModel, ensureStage } from '../../src/render/a
 import { levelAssets } from '../../src/data/stages.js';
 import { PLAYER_CHARACTERS } from '../../src/render/playerCharacters.js';
 import { loadPlayerModel } from '../../src/render/firstPerson.js';
+import { attachModel, disposeModel } from '../../src/render/pvp/actor.js';
 
 const cmd = (o = {}) => ({ yaw: 0, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [], ...o });
 
@@ -191,7 +192,13 @@ export async function grapplerRun(game) {
     const weapon = () => camera.children.flatMap((child) => child.children).find((object) => object.userData.gunId !== undefined);
     for (const { id, model } of PLAYER_CHARACTERS) {
       firstPerson.selectModel(model);
-      await loadPlayerModel(model);
+      const source = await loadPlayerModel(model);
+      const arenaBody = { group: new THREE.Group(), capsule: new THREE.Group() };
+      arenaBody.group.position.set(8, 0.5, -14);
+      arenaBody.group.rotation.y = Math.PI;
+      attachModel(arenaBody, source, model);
+      const arenaFit = arenaBody.grappleArm.surface.length > 0;
+      disposeModel(arenaBody);
       Object.assign(player.pos, { x: 0, y: 0, z: 0 });
       Object.assign(player.prevPos, player.pos);
       Object.assign(player.vel, { x: 0, y: 0, z: 0 });
@@ -244,7 +251,7 @@ export async function grapplerRun(game) {
       step(false, 1);
       const quickTap = cue && !effects.visible && stowed.visible;
       step(false, 7);
-      report[id] = { docked, flight, latch, returned, aimed, handoff, canceled, extended, quickTap, gunLowered, gunRaised };
+      report[id] = { docked, flight, latch, returned, aimed, handoff, canceled, extended, quickTap, gunLowered, gunRaised, arenaFit };
     }
     return report;
   } finally {

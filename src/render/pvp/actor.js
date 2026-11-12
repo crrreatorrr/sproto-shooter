@@ -104,7 +104,7 @@ export function poseModel(body, player, shotAge, dt, yaw = null, grapplePose = 0
       motion.heldType = type;
     }
   }
-  if (mixer) {
+  if (actions.ready && actions.shoot && actions.reload) {
     const shooting = shotAge >= 0 && shotAge < actions.shoot.getClip().duration * 1000;
     const reloading = player.reloadT > 0;
     // Keep sampling the existing pose during a cancel; fade it out instead of jumping to frame zero.
@@ -118,8 +118,8 @@ export function poseModel(body, player, shotAge, dt, yaw = null, grapplePose = 0
     actions.shoot.weight = shootingWeight;
     actions.shoot.time = shooting ? shotAge / 1000 : 0;
     actions.shoot.paused = true;
-    mixer.update(dt);
   }
+  mixer?.update(dt);
   body.slide?.apply(body.slideWeight);
   weaponPose.apply(grapplePose);
   body.group.updateMatrixWorld(true);

@@ -3,6 +3,9 @@ import { aim } from './handFrame.js';
 
 /** Sample the sleeve near the rail in the forearm bone's local space. */
 export function forearmSurface(model, { lower, hand }) {
+  model.updateWorldMatrix(true, false);
+  // SkinnedMesh refreshes the attached bind inverse in updateMatrixWorld.
+  model.updateMatrixWorld(true);
   const inverse = lower.matrixWorld.clone().invert();
   const axis = hand.getWorldPosition(new THREE.Vector3()).applyMatrix4(inverse);
   const length = axis.length();
@@ -41,7 +44,6 @@ export function leftGrapplerArm(model) {
     if (name === 'LeftHandMiddle1') arm.middle1 = joint;
   });
   if (!arm.upper || !arm.lower || !arm.hand) return null;
-  model.updateWorldMatrix(true, true);
   arm.surface = forearmSurface(model, arm);
   return arm;
 }
