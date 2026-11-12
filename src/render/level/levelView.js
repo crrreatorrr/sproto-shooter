@@ -9,6 +9,7 @@ import { voidPlacements } from './voidDressing.js';
 import { voidMaterial } from './voidMaterial.js';
 import { groveGeometry, grovePlacements } from './groveDressing.js';
 import { groveMaterial } from './groveMaterials.js';
+import { createCampaignFixtureLights } from './campaignFixtureLights.js';
 import { createCampaignSurfaceMaterials } from './campaignSurfaceMaterials.js';
 import { buildSectionMeshes, LEVEL_COLOR, levelMaterial, terrainMesh } from './levelGeometry.js';
 import { decorMeshes } from './levelDecorMeshes.js';
@@ -162,6 +163,7 @@ export function createLevelView() {
   const group = new THREE.Group();
   group.name = 'campaign-level';
   const surfaces = createCampaignSurfaceMaterials();
+  const fixtures = createCampaignFixtureLights();
   const mats = new Map();
   const frostMats = new Map();
   const frostMaterial = (name) => levelMaterial(name, frostMats, FROST_COLORS[name]);
@@ -188,7 +190,7 @@ export function createLevelView() {
       if (c.userData.kit) { if (c.isInstancedMesh) c.dispose(); if (c.userData.release) c.userData.release(); } else if (c.geometry) c.geometry.dispose();
       group.remove(c);
     }
-    if (!lv) return;
+    if (!lv) { fixtures.rebuild(group); return; }
     const rt = getLevelRuntime(lv.id);
     const sec = rt.sectionById[lv.section];
     if (!sec) return;
@@ -261,6 +263,7 @@ export function createLevelView() {
       addMarker(m, special);
     }
     for (const w of sec.weapons || []) addMarker({ ...w, kind: 'rack' });
+    fixtures.rebuild(group, lv.id);
     syncGot(state);
   }
   /** The mechanism's model, centred on its point. Null while loading or when it has none. */
@@ -303,6 +306,7 @@ export function createLevelView() {
       rebuild(state);
       const seconds = state.tick * DT;
       surfaces.update(seconds);
+      fixtures.sync(state.players?.[state.localPlayerId]?.pos, seconds);
       const drilling = state.level?.v2?.enc?.['S5-F2']?.hold || 0;
       for (const child of group.children) {
         updateKitMotion(child, child.name === 'frost_drill' ? drilling : seconds);

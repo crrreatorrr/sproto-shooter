@@ -55,3 +55,28 @@ describe('campaign surface materials', () => {
     expect(surfaces.kit(kitMaterial(), 'L04', 'void_deck')).toBe(material);
   });
 });
+
+it('assigns a ceiling finish only to authored overhead surfaces', () => {
+  const surfaces = createCampaignSurfaceMaterials();
+  const base = new MeshStandardMaterial();
+  const roof = { ...floor, id: 'S4-f2s' };
+  const overhead = surfaces.primitive(base, 'L05', roof);
+  const walking = surfaces.primitive(base, 'L05', floor);
+  expect(overhead).not.toBe(walking);
+  const shader = {
+    vertexShader: '#include <common>\n#include <project_vertex>',
+    fragmentShader: '#include <common>\n#include <color_fragment>\n#include <emissivemap_fragment>',
+    uniforms: {},
+  };
+  overhead.onBeforeCompile(shader);
+  expect(shader.uniforms.campaignCeiling.value).toBe(1);
+  expect(shader.fragmentShader).toContain('surfaceNormal.y < -.57');
+  expect(shader.fragmentShader).toContain('textureGrad(campaignSurfaceArt');
+  expect(shader.fragmentShader).toContain('campaignArtLight * lamp');
+
+  const glass = new MeshStandardMaterial({ transparent: true, depthWrite: false });
+  const greenhouse = surfaces.primitive(glass, 'L03', { ...roof, id: 'HH-ROOF' });
+  expect(greenhouse).not.toBe(glass);
+  expect(greenhouse.transparent).toBe(true);
+  expect(greenhouse.depthWrite).toBe(false);
+});
