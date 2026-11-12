@@ -8,11 +8,13 @@ import { activeSolids, groundHeight } from '../../sim/campaign/solids.js';
 import { damp } from '../anim.js';
 import { creatureClip, creatureTravel, creatureYaw } from '../creatureMotion.js';
 import { createClock } from '../core/clock.js';
+import { createGrappler } from '../vfx/grappler.js';
 import { createFirstPersonView } from './firstPersonView.js';
 
 export function mountPresent(env) {
   const { AMMO_COL, CONF_N, G, GUN_MODEL_LEN, PK, ensurePickupModel, PK_COL, RES_COL, TRACER_N, VM_LAYER, addTracer, applyStage, arenaBits, beginGpu, booms, boxView, boxViews, buildAlly, buildBoss, buildEnemy, buildGunModel, buildGunPickup, buildHazard, camera, cl, confetti, cp, cr, cv, disposeTree, dummy, endGpu, ensureProjectileModel, inst, lerp, levelView, pollGpu, releaseUnseen, renderer, requestNeeds, scene, syncView, tracerGeo, tracerPos, tracers, updateBeams, viewKey } = env;
   const updateFirstPersonView = createFirstPersonView(env);
+  const grappler = createGrappler(scene, env.fp.root, { camera, layer: VM_LAYER });
   let needsT = 0;
   const clock = createClock();
   const cues = new Map();
@@ -46,7 +48,13 @@ export function mountPresent(env) {
     motionState = state;
     for (const [id, cue] of cues) if (state.tick - cue.tick > 60) cues.delete(id);
 
-    updateFirstPersonView(p, alpha, look, opts, now, fdt, resetMotion);
+    const grapplePose = grappler.advance(p.grapple, fdt, {
+      active: !p.dead && !p.downed, reset: resetMotion,
+      cooldown: p.grappleCd, missedShot: p.grappleMiss, yaw: p.yaw, pitch: p.pitch,
+    });
+    updateFirstPersonView(p, alpha, look, opts, now, fdt, resetMotion, grapplePose);
+    grappler.update(env.fp.grappleArm);
+    env.flushWeaponTracers();
     // The sky is a dome, not a place. Campaign routes run for hundreds of metres, so it travels with the eye.
     env.sky.position.copy(camera.position);
 

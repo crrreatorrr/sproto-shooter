@@ -13,6 +13,7 @@ import { PLAYER_CHARACTERS, selectedCharacter } from '../playerCharacters.js';
 import { GUN_IDS } from '../../sim/pvp/rules.js';
 import { attachModel, disposeModel, poseModel } from './actor.js';
 import { chaseCamera } from './aim.js';
+import { createGrappler } from '../vfx/grappler.js';
 
 export { chaseCamera };
 
@@ -94,16 +95,6 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
     floor.material.needsUpdate = true;
   });
 
-  const ropes = [0, 1].map(() => {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
-    const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xffd166 }));
-    line.visible = false;
-    line.frustumCulled = false;
-    scene.add(line);
-    return line;
-  });
-
   const bodies = [0, 1].map((seat) => {
     const group = new THREE.Group();
     const capsule = new THREE.Mesh(
@@ -120,7 +111,7 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
     pad.position.y = 0.04;
     group.add(pad);
     scene.add(group);
-    return { group, capsule, slideYaw: null };
+    return { group, capsule, slideYaw: null, grappler: createGrappler(scene, group) };
   });
 
   // Predicted shots: a muzzle flash and a pool of tracer lines.
@@ -141,6 +132,7 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
     tracers.push(line);
   }
 
+  const shotOrigins = new WeakMap();
   function drawShots(shots, now, seat) {
     flash.visible = false;
     for (const line of tracers) line.visible = false;
@@ -152,11 +144,18 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
       if (age < 0 || age > TRACER_MS) continue;
       const dir = dirFromYawPitch(shot.yaw, shot.pitch);
       const eye = { x: shot.x, y: shot.y + TUNING.eyeHeight, z: shot.z };
-      const weapon = bodies[seat]?.motion;
-      const from = weapon?.held && weapon.muzzle
-        ? weapon.held.localToWorld(weapon.muzzle.clone())
-        : null;
-      const muzzle = from || { x: eye.x + dir.x * MUZZLE_AHEAD, y: eye.y + dir.y * MUZZLE_AHEAD, z: eye.z + dir.z * MUZZLE_AHEAD };
+      let origin = shotOrigins.get(shot);
+      if (!origin) {
+        const actor = bodies[seat];
+        const weapon = actor?.motion;
+        const lowered = actor?.grapplePose > 0.15;
+        const muzzle = !lowered && weapon?.held && weapon.muzzle
+          ? weapon.held.localToWorld(weapon.muzzle.clone())
+          : { x: eye.x + dir.x * MUZZLE_AHEAD, y: eye.y + dir.y * MUZZLE_AHEAD, z: eye.z + dir.z * MUZZLE_AHEAD };
+        origin = { muzzle, lowered };
+        shotOrigins.set(shot, origin);
+      }
+      const { muzzle, lowered } = origin;
       let len = TRACER_M;
       if (dir.y < -1e-6) len = Math.min(len, -eye.y / dir.y);
       const line = tracers[used++];
@@ -166,7 +165,7 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
       pos.needsUpdate = true;
       line.material.opacity = 1 - age / TRACER_MS;
       line.visible = true;
-      if (age <= FLASH_MS && !flash.visible) {
+      if (!lowered && age <= FLASH_MS && !flash.visible) {
         flash.position.set(muzzle.x, muzzle.y, muzzle.z);
         flash.visible = true;
       }
@@ -182,8 +181,8 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
   const ready = Promise.all([loadPlayerModel(stock.model), loadPlayerModel(selection.model).catch(() => null)]).then(([source, selected]) => {
     if (disposed) return;
     if (source?.scene) for (const body of bodies) attachModel(body, source, stock.model);
+    if (source?.scene || selected?.scene) for (const type of GUN_IDS) void ensureGunModel(type).catch(() => {});
     if (selected?.scene && selection.id !== stock.id) {
-      for (const type of GUN_IDS) void ensureGunModel(type).catch(() => {});
       setLocalSkin = (seat) => {
         if (seat === localSeat) return;
         if (localSeat >= 0) {
@@ -227,20 +226,16 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
     for (let i = 0; i < 2; i++) {
       const p = players && players[i];
       const entry = bodies[i], body = entry.group;
-      if (!p) { body.visible = false; ropes[i].visible = false; continue; }
-      body.visible = !!p.alive || p.hp > 0;
+      body.visible = !!p && (!!p.alive || p.hp > 0);
+      const grapplePose = entry.grappler.advance(p?.grapple, dt, {
+        active: body.visible, cooldown: p?.grappleCd, missedShot: p?.grappleMiss, yaw: p?.yaw, pitch: p?.pitch,
+      });
+      entry.grapplePose = grapplePose;
+      if (!p) continue;
       body.position.set(p.x, p.y, p.z);
       const facing = i === seat && look ? look.yaw : p.yaw;
-      poseModel(entry, p, i === seat ? now - lastShot : Infinity, dt, facing);
-      const rope = ropes[i];
-      const hook = p.grapple;
-      if (hook) {
-        const pos = rope.geometry.attributes.position;
-        pos.setXYZ(0, p.x, p.y + 0.9, p.z);
-        pos.setXYZ(1, hook.x, hook.y, hook.z);
-        pos.needsUpdate = true;
-        rope.visible = true;
-      } else rope.visible = false;
+      poseModel(entry, p, i === seat ? now - lastShot : Infinity, dt, facing, grapplePose);
+      entry.grappler.update(entry.grappleArm);
     }
     const me = players && players[seat] ? players[seat] : { x: 0, y: 0, z: 16, yaw: 0, pitch: 0 };
     const kick = fx ? recoilAt(fx.shots, fx.now) : 0;
@@ -253,7 +248,10 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
 
   function dispose() {
     disposed = true;
-    for (const body of bodies) disposeModel(body);
+    for (const body of bodies) {
+      body.grappler.dispose();
+      disposeModel(body);
+    }
     renderer.dispose();
     floor.geometry.dispose();
     ring.geometry.dispose();
