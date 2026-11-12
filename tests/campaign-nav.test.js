@@ -65,7 +65,7 @@ describe('campaign nav', () => {
   });
 
   it('does not move the campaign or PvP pins', () => {
-    expect(contentFingerprint(1)).toBe('cea1f88b');
-    expect(CONTENT_FINGERPRINT).toBe('b33eada6');
+    expect(contentFingerprint(1)).toBe('73c6eb0f');
+    expect(CONTENT_FINGERPRINT).toBe('dc00f234');
   });
 });

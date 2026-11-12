@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 216,
-    "runtimeBytes": 27622097,
+    "runtimeFiles": 217,
+    "runtimeBytes": 27575518,
     "decodedBytes": 258207558,
-    "referenced": 216,
+    "referenced": 217,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -337,6 +337,13 @@
       ]
     },
     {
+      "path": "models/gear/grappler.glb",
+      "kind": "static",
+      "from": [
+        "src/render/vfx/grappler.js"
+      ]
+    },
+    {
       "path": "models/guns/toy_bazooka.glb",
       "kind": "static",
       "from": [
@@ -484,14 +491,14 @@
       ]
     },
     {
-      "path": "models/projectiles/duck.glb",
+      "path": "models/projectiles/duck.glb.gz",
       "kind": "static",
       "from": [
         "src/render/instancing/ProjectileBatches.js"
       ]
     },
     {
-      "path": "models/projectiles/missile.glb",
+      "path": "models/projectiles/missile.glb.gz",
       "kind": "static",
       "from": [
         "src/render/instancing/ProjectileBatches.js"
@@ -505,14 +512,14 @@
       ]
     },
     {
-      "path": "models/projectiles/rocket.glb",
+      "path": "models/projectiles/rocket.glb.gz",
       "kind": "static",
       "from": [
         "src/render/instancing/ProjectileBatches.js"
       ]
     },
     {
-      "path": "models/projectiles/rubber_bullet.glb",
+      "path": "models/projectiles/rubber_bullet.glb.gz",
       "kind": "static",
       "from": [
         "src/render/instancing/ProjectileBatches.js"
@@ -3116,6 +3123,41 @@
       }
     },
     {
+      "path": "models/gear/grappler.glb",
+      "bytes": 58264,
+      "sha256": "8add18d81ace1c118f9955162ed044e6f39b7329d9b34298955ea9774c0391f4",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/vfx/grappler.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 716,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "Grappler jaws"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 23,
+        "materials": [
+          "Charcoal",
+          "Graphite",
+          "Ion cyan",
+          "Ochre",
+          "Satin steel"
+        ]
+      }
+    },
+    {
       "path": "models/guns/toy_bazooka.glb",
       "bytes": 611672,
       "sha256": "3dde06de76e8f15837ad3b3d6b59154304c7e1be86fbff6f19faf8169700b7e8",
@@ -4009,9 +4051,9 @@
       }
     },
     {
-      "path": "models/projectiles/duck.glb",
-      "bytes": 9528,
-      "sha256": "49ef700a6f0e7886010c726a8dcb26cbb4de67d1ade9f3b021a78c77934a4c40",
+      "path": "models/projectiles/duck.glb.gz",
+      "bytes": 3468,
+      "sha256": "2dd846d435d1d45ba06f9755d46bc23ac48e8dc7cbebc811bc08df277ae7b951",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -4038,9 +4080,9 @@
       }
     },
     {
-      "path": "models/projectiles/missile.glb",
-      "bytes": 93652,
-      "sha256": "5b3ef8b7128c1baf34c5e89f8af07ed88a7fda6d20ff4c0a76981cd80a56a5ce",
+      "path": "models/projectiles/missile.glb.gz",
+      "bytes": 84390,
+      "sha256": "a2abd11a4c882546eddad4bbf4cc6098e49593c9c20b7e054bb6b102526dfcf2",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -4124,9 +4166,9 @@
       }
     },
     {
-      "path": "models/projectiles/rocket.glb",
-      "bytes": 12544,
-      "sha256": "9079e97cdfdd3012a78246b10ac202c19251c3bcae88ef43f6155dfec4bf4d9f",
+      "path": "models/projectiles/rocket.glb.gz",
+      "bytes": 3450,
+      "sha256": "80833b24be10df20edd6300ca8ba3c45c6e231ddbccd21a9c2e71310f45bca7a",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -4153,9 +4195,9 @@
       }
     },
     {
-      "path": "models/projectiles/rubber_bullet.glb",
-      "bytes": 151008,
-      "sha256": "0a89ba3108b4ad8ff31cda3ceb7dcf7d6df5c8550e0d7ac3be1dcb2751d77f50",
+      "path": "models/projectiles/rubber_bullet.glb.gz",
+      "bytes": 127585,
+      "sha256": "1feb57b2be0ed418fc939cb5597b585a350af1ba027977a3ae413e72b13bebde",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -6860,8 +6902,8 @@
     },
     {
       "path": "models/props/void_bridge.glb.gz",
-      "bytes": 3748,
-      "sha256": "5a903687ed8dd9c2f23bb9a07c7df4f9e00117c534d1ba2faa0403c08f8e191f",
+      "bytes": 4251,
+      "sha256": "f015e3d02f74dc25fb61c2233ba9c7b2428b86ed236b35f1dee1c01d20863ad1",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -6871,7 +6913,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 396,
+      "triangles": 572,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -6883,14 +6925,15 @@
         "joints": 0,
         "nodes": 1,
         "materials": [
+          "campaign_glow_void_arc",
           "cartoon_kit"
         ]
       }
     },
     {
       "path": "models/props/void_bulkhead.glb.gz",
-      "bytes": 5763,
-      "sha256": "96b3728893bd967335fa67ad17a4902f5d3558b20afd7be5adedaf0c4df7974d",
+      "bytes": 8304,
+      "sha256": "168be909dbaa5f874fed0c38da76734346fb00985a1e9a552107172392407e32",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -6900,7 +6943,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 660,
+      "triangles": 1012,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -6912,6 +6955,7 @@
         "joints": 0,
         "nodes": 1,
         "materials": [
+          "campaign_glow_void_arc",
           "cartoon_kit"
         ]
       }
@@ -7034,8 +7078,8 @@
     },
     {
       "path": "models/props/void_deck.glb.gz",
-      "bytes": 6408,
-      "sha256": "2b021b65ff71534c198bec7752c4ac78e03213371c2a234b87c08c3822c6c41b",
+      "bytes": 7048,
+      "sha256": "ef96711a2e9e3d6067424cc85c879c92224f60076ed7d208c569d67a9e8e8c45",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -7045,7 +7089,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 748,
+      "triangles": 888,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -7057,14 +7101,15 @@
         "joints": 0,
         "nodes": 1,
         "materials": [
+          "campaign_glow_void_arc",
           "cartoon_kit"
         ]
       }
     },
     {
       "path": "models/props/void_fuel.glb.gz",
-      "bytes": 2050,
-      "sha256": "f1700f88db51a110ce8c26f471fa14898869ee0a01158ef18df806184b317e95",
+      "bytes": 4418,
+      "sha256": "8a4890702ea12ccfe2710951a1472888b94fd68bfa5a483185e3334ab985d541",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -7074,7 +7119,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 144,
+      "triangles": 368,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -7086,6 +7131,7 @@
         "joints": 0,
         "nodes": 1,
         "materials": [
+          "campaign_glow_void_arc",
           "cartoon_kit"
         ]
       }
@@ -7121,8 +7167,8 @@
     },
     {
       "path": "models/props/void_halo.glb.gz",
-      "bytes": 17999,
-      "sha256": "128b2257c501a81050c54828208c9c56cc66d0930fecf806fcb9bdb69b221092",
+      "bytes": 29904,
+      "sha256": "823bff4e35b6262481789deb4f0b7af441f8312e7be5e3f4d792b4834e118771",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -7132,18 +7178,22 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 1812,
+      "triangles": 2840,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
       "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
       "images": [],
       "rig": {
-        "clips": [],
+        "clips": [
+          "void_exchange_rotor"
+        ],
         "skins": 0,
         "joints": 0,
-        "nodes": 1,
+        "nodes": 2,
         "materials": [
+          "campaign_glow_void_arc",
+          "campaign_glow_void_core",
           "cartoon_kit"
         ]
       }
@@ -7179,8 +7229,8 @@
     },
     {
       "path": "models/props/void_landing.glb.gz",
-      "bytes": 10088,
-      "sha256": "f1a6fe3be3c4c04550ada9b8f47fb1e8603d9c2f1f3ca3f354e08756b116ca31",
+      "bytes": 13796,
+      "sha256": "cb26622bc0965280c73cdc0739982523b318dbd537a46583322e23d19af8462e",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -7190,7 +7240,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 980,
+      "triangles": 1388,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -7202,6 +7252,7 @@
         "joints": 0,
         "nodes": 1,
         "materials": [
+          "campaign_glow_void_arc",
           "cartoon_kit"
         ]
       }
@@ -7237,8 +7288,8 @@
     },
     {
       "path": "models/props/void_pylon.glb.gz",
-      "bytes": 4164,
-      "sha256": "0c6b6d7034a8a69563f8b5d0752d281ca1d80f0f5c79eb8078f357652ed46e93",
+      "bytes": 9205,
+      "sha256": "7795f8a6589826c2c8ec5dc8f975ecb6659d93de90b68fec1b73410c20d22ed7",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -7248,18 +7299,22 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 250,
+      "triangles": 510,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
       "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
       "images": [],
       "rig": {
-        "clips": [],
+        "clips": [
+          "void_pylon_core"
+        ],
         "skins": 0,
         "joints": 0,
-        "nodes": 1,
+        "nodes": 2,
         "materials": [
+          "campaign_glow_void_arc",
+          "campaign_glow_void_core",
           "cartoon_kit"
         ]
       }
@@ -7295,8 +7350,8 @@
     },
     {
       "path": "models/props/void_relay.glb.gz",
-      "bytes": 4959,
-      "sha256": "effab0c804faf36e30b856f24ec3872666fa5a0122c7924221228cb6dce39d6b",
+      "bytes": 12603,
+      "sha256": "b85ba0ab6d56afb128c3febe7cf6b36ba4d1af4842636557cb0ce04b5cc161ff",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -7306,26 +7361,29 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 396,
+      "triangles": 874,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
       "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
       "images": [],
       "rig": {
-        "clips": [],
+        "clips": [
+          "void_relay_core"
+        ],
         "skins": 0,
         "joints": 0,
-        "nodes": 1,
+        "nodes": 2,
         "materials": [
+          "campaign_glow_void_arc",
           "cartoon_kit"
         ]
       }
     },
     {
       "path": "models/props/void_rockfall.glb.gz",
-      "bytes": 1682,
-      "sha256": "abfbbe5a9be7cf4a8c4c2898c3744579501bf55bdb5bdbb7be33977bb94bb314",
+      "bytes": 2320,
+      "sha256": "ca6860ba0bded956dc94719a4763a1b3ee5fc234394f7be100bdeb8307659766",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -7335,7 +7393,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 52,
+      "triangles": 86,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -7556,8 +7614,8 @@
     },
     {
       "path": "models/props/void_vault.glb.gz",
-      "bytes": 9914,
-      "sha256": "3d17fd3d9496fb47826092fb4b0b05fa523f20d829406d7d3dfea0c81c1c4d2e",
+      "bytes": 15628,
+      "sha256": "5b4713e58dc7607fc7de70d01206453f60bc03be3155b942fd8c6bcad27f1af9",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -7567,7 +7625,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 1144,
+      "triangles": 2004,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -7579,6 +7637,8 @@
         "joints": 0,
         "nodes": 1,
         "materials": [
+          "campaign_glow_void_arc",
+          "campaign_glow_void_core",
           "cartoon_kit"
         ]
       }
@@ -7614,8 +7674,8 @@
     },
     {
       "path": "models/props/void_vortex.glb.gz",
-      "bytes": 6696,
-      "sha256": "da3ddc3903a375be622afbd6901ef86db5318ecae149b62a93e9b57b8f565b55",
+      "bytes": 13556,
+      "sha256": "5c74807bf1f3f285d1170907f3442abb96e88baa2d5d1dd28571cdf69fe7cc29",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -7625,18 +7685,22 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 582,
+      "triangles": 1222,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
       "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
       "images": [],
       "rig": {
-        "clips": [],
+        "clips": [
+          "void_vortex_ring_1",
+          "void_vortex_ring_2"
+        ],
         "skins": 0,
         "joints": 0,
-        "nodes": 1,
+        "nodes": 3,
         "materials": [
+          "campaign_glow_void_ion",
           "cartoon_kit"
         ]
       }
@@ -8322,8 +8386,8 @@
     },
     {
       "path": "textures/stages/city/stone.jpg",
-      "bytes": 601054,
-      "sha256": "213e5358656e7cb80bad822f8603f817936e1684cc53b14dc4f04c32fcb7ad9a",
+      "bytes": 550822,
+      "sha256": "c3b301bdae65c3d0ac25efb903c49e976c343f59706675037b0ed4ad0325eab7",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
@@ -8382,8 +8446,8 @@
     },
     {
       "path": "textures/stages/glacier/floor.jpg",
-      "bytes": 530635,
-      "sha256": "ee320e6d5a4f8a4537e1d8bf41a865c81be64b27b8afe85fb7320242ffafbc66",
+      "bytes": 476301,
+      "sha256": "9ad5f515b1616b0a0333efed41d1fb0d77aadfd9c6a40cb312d87c905b31d944",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
@@ -8766,7 +8830,7 @@
     "blenderFiles": [
       {
         "path": "art/blender/blockchain_void.blend",
-        "bytes": 225331
+        "bytes": 283984
       },
       {
         "path": "art/blender/boss_animations.blend",
@@ -8787,6 +8851,10 @@
       {
         "path": "art/blender/fx_poof.blend",
         "bytes": 94744
+      },
+      {
+        "path": "art/blender/grappler.blend",
+        "bytes": 2609596
       },
       {
         "path": "art/blender/new_enemies.blend",

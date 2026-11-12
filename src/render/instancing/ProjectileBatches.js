@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RESOURCES } from '../../data/drops.js';
 import { PRIORITY, assetStatus, enqueue, peekAsset, retainAsset } from '../assets.js';
+import { loadPackedGltf } from '../loadPackedGltf.js';
 import { KIT, kitGeometry } from '../level/kitModels.js';
 
 export function mountProjectiles(env) {
@@ -10,7 +11,8 @@ export function mountProjectiles(env) {
     try {
       const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
       const { MeshoptDecoder } = await import('three/examples/jsm/libs/meshopt_decoder.module.js');
-      const g = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(`${import.meta.env.BASE_URL}assets/${d.model}`);
+      const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+      const g = await loadPackedGltf(loader, d.model);
       let mesh = null;
       g.scene.traverse((o) => { if (!mesh && o.isMesh) mesh = o; });
       if (!mesh) return null;
@@ -46,19 +48,19 @@ export function mountProjectiles(env) {
     orb: { color: 0xc77dff, scale: 0.35, cap: 500 }, taxBolt: { color: 0xff3bd4, scale: 0.4, cap: 32 },
     spit: { color: 0x9be33b, scale: 0.3, cap: 64 }, gooBolt: { color: 0x7fff4a, scale: 0.28, cap: 64 },
     // Cartoon kit rounds (`kit`): modelled nose-first along +Z, fitted to `len` metres. A sphere until loaded.
-    rocket: { color: 0xff6a3d, scale: 0.22, cap: 32, kit: true, model: 'models/projectiles/rocket.glb', len: 1.3, noseYaw: 0 },
-    duckBullet: { color: 0xffe14a, scale: 0.2, cap: 128, kit: true, model: 'models/projectiles/duck.glb', len: 0.55, noseYaw: 0 },
+    rocket: { color: 0xff6a3d, scale: 0.22, cap: 32, kit: true, model: 'models/projectiles/rocket.glb.gz', len: 1.3, noseYaw: 0 },
+    duckBullet: { color: 0xffe14a, scale: 0.2, cap: 128, kit: true, model: 'models/projectiles/duck.glb.gz', len: 0.55, noseYaw: 0 },
     megaBullet: { color: 0xffffff, scale: 0.6, cap: 16, kit: true, model: 'models/projectiles/bullet.glb', key: 'models/projectiles/bullet.glb#mega', len: 2.4, noseYaw: 0 },
     yeetGun: { color: 0xaaaaaa, scale: 0.35, cap: 16 },
     bigBullet: { color: 0xffa21f, scale: 0.26, cap: 32, kit: true, model: 'models/projectiles/slug.glb', len: 1.15, noseYaw: 0 }, // Big Bullets round: fat and stubby
     // Duck Gun rubber bullet: the modelled round, medium sized, tumbling as it flies
-    rubberBullet: { color: 0xffd23a, scale: 0.3, cap: 64, model: 'models/projectiles/rubber_bullet.glb', len: 0.42, noseYaw: 0 },
+    rubberBullet: { color: 0xffd23a, scale: 0.3, cap: 64, model: 'models/projectiles/rubber_bullet.glb.gz', len: 0.42, noseYaw: 0 },
     bullet: { color: 0xffc93c, scale: 0.22, cap: 600, kit: true, model: 'models/projectiles/bullet.glb', len: 0.8, noseYaw: 0 },
     flame: { color: 0xff7a1a, scale: 0.4, cap: 300 }, fireball: { color: 0xff4a1a, scale: 0.6, cap: 16 },
     pellet: { color: 0xff5ec4, scale: 0.12, cap: 300 },
     // boss projectiles drawn with 3D models (`model`, fitted to `len` metres, nose along +Z); a sphere until loaded
     monsterBullet: { color: 0x4a5a2a, scale: 0.35, cap: 200, model: 'models/projectiles/monster_bullet.glb', len: 0.9, noseYaw: -Math.PI / 2 },
-    missile: { color: 0xff8a1a, scale: 0.4, cap: 64, model: 'models/projectiles/missile.glb', len: 1.3, noseYaw: -Math.PI / 2, glow: 0xff6a10 },
+    missile: { color: 0xff8a1a, scale: 0.4, cap: 64, model: 'models/projectiles/missile.glb.gz', len: 1.3, noseYaw: -Math.PI / 2, glow: 0xff6a10 },
     // Car Part Monster's tyres (tumble end over end, glowing hot) and the Mole Monster's drill heads (spin nose-first)
     tyre: { color: 0x222222, scale: 0.6, cap: 48, model: 'models/projectiles/tyre.glb', len: 1.5, noseYaw: 0, glow: 0x5a1c04 }, // dark rubber, ember glow
     drill: { color: 0x9a7a5a, scale: 0.4, cap: 96, model: 'models/projectiles/drill_head.glb', len: 1.1, noseYaw: Math.PI / 2 },

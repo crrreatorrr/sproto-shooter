@@ -51,7 +51,7 @@ export function mountViewmodel(env, playerModel) {
       idle(() => colliderFor(mesh, key));
     }
   }
-  const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, swap: 0, lastYaw: 0, lastPitch: 0 };
+  const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, swap: 0, lastYaw: 0, lastPitch: 0, grapplePose: 0 };
 
   // ---------- reload animations ----------
   // Procedural, per gun type, driven by reload progress t (0..1) so they always fit the real reload time.
@@ -230,18 +230,36 @@ export function mountViewmodel(env, playerModel) {
     addTrauma(ev.mega ? 0.5 : ev.gunType === 'mg' ? 0.03 : ev.gunType === 'raygun' ? 0.02 : ev.gunType === 'sniper' ? 0.25 : ev.gunType === 'bigbullets' ? 0.4 : 0.2);
     feel.fovPunch += ev.gunType === 'mg' || ev.gunType === 'raygun' ? 0.2 : ev.gunType === 'bigbullets' ? 3.5 : 2;
   });
-  bus.on('tracer', (ev) => {
+  const beamStart = new THREE.Vector3(), beamSide = new THREE.Vector3(), beamRotation = new THREE.Quaternion();
+  const pendingWeaponTracers = [];
+  bus.on('tracer', (ev) => pendingWeaponTracers.push(ev));
+  function drawWeaponTracer(ev) {
     const col = ev.zap ? 0x9ff3ff : ELEM_COL[ev.element] || 0xffe9a8;
+    const localShot = !ev.zap && Math.hypot(ev.from.x - camera.position.x, ev.from.z - camera.position.z) < 1.5;
     let from = ev.from;
-    if (!ev.zap) {
-      // start at viewmodel muzzle for player's shots
-      const mp = new THREE.Vector3(); muzzleFlash.getWorldPosition(mp);
-      if (Math.hypot(ev.from.x - camera.position.x, ev.from.z - camera.position.z) < 1.5) from = { x: mp.x, y: mp.y, z: mp.z };
+    if (localShot && vm.grapplePose <= 0.15) {
+      from = muzzleFlash.getWorldPosition(new THREE.Vector3());
     }
-    if (ev.gunType === 'raygun') addBeam(from, ev.to, ev.element && ev.element !== 'none' ? ELEM_COL[ev.element] : RAY_COL);
-    else addTracer(from, ev.to, col, ev.zap ? 0.18 : ev.gunType === 'sniper' ? 0.15 : 0.05, !!ev.zap);
+    if (ev.gunType === 'raygun') {
+      const color = ev.element && ev.element !== 'none' ? ELEM_COL[ev.element] : RAY_COL;
+      if (localShot && vm.grapplePose > 0.15) {
+        // Move the beam opening ahead and to the side so its wide shell clears the camera.
+        beamStart.copy(ev.to).sub(ev.from);
+        if (beamStart.lengthSq() < 1) {
+          addBoom(ev.to, 0.35, color, 0.12);
+          return;
+        }
+        beamSide.set(0.23, -0.04, 0).applyQuaternion(camera.getWorldQuaternion(beamRotation));
+        from = beamStart.setLength(0.75).add(ev.from).add(beamSide);
+      }
+      addBeam(from, ev.to, color);
+    } else addTracer(from, ev.to, col, ev.zap ? 0.18 : ev.gunType === 'sniper' ? 0.15 : 0.05, !!ev.zap);
     if (ev.mega) addTracer(from, ev.to, 0xffffff, 0.2);
-  });
+  }
+  function flushWeaponTracers() {
+    for (const event of pendingWeaponTracers) drawWeaponTracer(event);
+    pendingWeaponTracers.length = 0;
+  }
   bus.on('impact', (ev) => burstConfetti({ ...ev.pos, y: Math.max(0.05, ev.pos.y) }, 3, 2, [new THREE.Color(ELEM_COL[ev.element])]));
   bus.on('damage', (ev) => {
     if (ev.isWeak) burstConfetti(ev.pos, 6, 3, [new THREE.Color(0xffee55), new THREE.Color(0xffffff)]);
@@ -281,5 +299,5 @@ export function mountViewmodel(env, playerModel) {
   bus.on('levelUp', () => feel.fovPunch += 3);
   bus.on('duckBounce', (ev) => burstConfetti(ev.pos, 2, 2, [new THREE.Color(0xffe14a)]));
   bus.on('bounce', (ev) => burstConfetti(ev.pos, 3, 3, [new THREE.Color(0x6b6b6b), new THREE.Color(0x3a3a3a)])); // tyre hitting the ground
-  Object.assign(env, { vmRoot, vmLight, muzzleFlash, setVmLayer, VM_POSE, fp, warmed, idle, warmColliders, vm, smooth, pulse, RELOAD_ANIM, NO_RELOAD, reloadOffsets, reloadProgress, track, PALM_DOWN_L, PUSH_FWD_L, BOLT_R, HAND_ANIM, reloadHands, feel, addTrauma });
+  Object.assign(env, { vmRoot, vmLight, muzzleFlash, setVmLayer, VM_POSE, fp, warmed, idle, warmColliders, vm, smooth, pulse, RELOAD_ANIM, NO_RELOAD, reloadOffsets, reloadProgress, track, PALM_DOWN_L, PUSH_FWD_L, BOLT_R, HAND_ANIM, reloadHands, feel, addTrauma, flushWeaponTracers });
 }

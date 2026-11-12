@@ -14,7 +14,7 @@ export const TUNING = {
   slideMinSpeed: 4.2, slideBoost: 16, slideCruise: 8, slideDrag: 2.4, slideTime: 0.7,
   slideCd: 0.22, slideHopCd: 0.85, slideHopBoost: 1.12, slideSlope: 14, slideStamina: 0.14,
   staminaSprint: 4.5, staminaRegenDelay: 0.55, staminaRegen: 1.7, staminaRefill: 0.28,
-  grappleRange: 30, grappleCd: 6, grapplePull: 90, grappleArrive: 1.35,
+  grappleRange: 16, grappleCd: 6, grapplePull: 54, grappleSpeed: 12.5, grappleReleaseSpeed: 8.5, grappleArrive: 1.35,
   dashSpeed: 24, dashTime: 0.15, dashCd: 2.0, dashInvuln: 0.12,
 
   fovBase: 90, fovSprint: 6, fovAds: 70, fovScope: 12,

@@ -75,6 +75,7 @@ export const CRITICAL_ASSETS = [
   'models/guns/toy_mg.glb',
   'models/guns/toy_duckgun.glb',
   'models/characters/sproto_player.glb',
+  'models/gear/grappler.glb',
 ];
 
 function gzipSize(buf) {
