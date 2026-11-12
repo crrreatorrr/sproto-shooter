@@ -3,9 +3,18 @@ import { Vector3, Vector4 } from 'three';
 export const CAMPAIGN_SURFACE_ART = 'textures/campaign/surface-art.webp';
 export const SKYLINE_SURFACE_ART = 'textures/campaign/skyline-surface.webp';
 export const SKYLINE_PANORAMA = 'textures/campaign/skyline-night.webp';
+export const UNDERWORKS_SURFACE_ART = 'textures/campaign/underworks-surface.webp';
+export const UNDERWORKS_PANORAMA = 'textures/campaign/underworks-cavern.webp';
+
+const LEVEL_ATLASES = { L06: SKYLINE_SURFACE_ART, L07: UNDERWORKS_SURFACE_ART };
+const PANORAMAS = { L06: SKYLINE_PANORAMA, L07: UNDERWORKS_PANORAMA };
+
+export function panoramaPath(level) {
+  return PANORAMAS[level];
+}
 
 export function surfaceArtPath(level) {
-  return level === 'L06' ? SKYLINE_SURFACE_ART : CAMPAIGN_SURFACE_ART;
+  return LEVEL_ATLASES[level] || CAMPAIGN_SURFACE_ART;
 }
 
 // Floor, wall, ceiling, and accent tile numbers in each runtime atlas.
@@ -17,7 +26,7 @@ const THEMES = {
   L04: [[6, 7, 11, 11], [5.1, 4.6, 5.1, 5.1], [5.1, 3.9, 4.2, 4.2], [1.00, 1.18, 1.32, 1.2], 0x53e5ff],
   L05: [[8, 9, 10, 9], [8.1, 6.4, 5.4, 5.2], [8.1, 4.8, 4.4, 4.9], [1.15, 1.04, 1.40, 1.09], 0x99e7ff],
   L06: [[0, 1, 2, 3], [8.2, 4.8, 4.35, 4.4], [7.8, 4.7, 4.3, 2.65], [1.64, 1.48, 1.35, 1.47], 0x6edbff],
-  L07: [[14, 15, 15, 15], [4.3, 3.9, 4.2, 4.2], [4.3, 2.7, 3.4, 3.4], [1.32, 1.44, 1.2, 1.12], 0xff9849],
+  L07: [[0, 1, 2, 3], [6.3, 5.4, 7.6, 6.1], [6.1, 4.15, 6.2, 5.25], [2.4, 2.06, 1.54, 1.92], 0xffac52],
   L08: [[16, 17, 23, 23], [3.8, 5.2, 4.5, 4.5], [3.8, 3.8, 4.5, 4.5], [1.30, 1.30, 1.30, 1.10], 0xe2f3ff],
   L09: [[18, 19, 19, 19], [5.5, 5.1, 5.1, 5.1], [5.5, 3.6, 3.6, 3.6], [1.45, 1.45, 1.20, 1.18], 0xb3a3ff],
   L10: [[20, 21, 21, 21], [6.3, 5.5, 5.5, 5.5], [6.3, 3.9, 3.9, 3.9], [1.45, 1.48, 1.20, 1.18], 0xff9147],
@@ -40,13 +49,14 @@ export function ceilingSurface(level, geometry) {
 
 export function kitCeilingSurface(model) {
   return model === 'void_bulkhead' || model === 'grove_shed' || model === 'grove_barn_roof'
-    || model === 'frost_roof' || model === 'skyline_canopy' ? CEILING_SURFACE : 0;
+    || model === 'frost_roof' || model === 'skyline_canopy'
+    || model === 'underworks_roof' || model === 'underworks_tunnel' ? CEILING_SURFACE : 0;
 }
 
 export function surfaceArtTheme(level) {
   const [tiles, metresX, metresY, amounts, light] = THEMES[level];
   return {
-    layout: level === 'L06' ? new Vector3(336, 336, 2) : new Vector3(672, 1008, 4),
+    layout: Object.hasOwn(LEVEL_ATLASES, level) ? new Vector3(336, 336, 2) : new Vector3(672, 1008, 4),
     tiles: new Vector4(...tiles),
     metresX: new Vector4(...metresX),
     metresY: new Vector4(...metresY),
@@ -98,6 +108,12 @@ export const ART_GLSL = /* glsl */ `
         return sampleCampaignArt(p, tiles.w, vec2(x.w, y.w), dx, dy);
       }
       if (campaignSurfaceKind == 3.) { amount = a.x; return sampleCampaignArt(p, tiles.x, vec2(x.x, y.x), dx, dy); }
+    #endif
+    #if defined(CAMPAIGN_ART_UNDERWORKS)
+      if (campaignSurfaceKind == 7.) {
+        amount = a.w;
+        return sampleCampaignArt(p, tiles.w, vec2(x.w, y.w), dx, dy);
+      }
     #endif
     #if defined(CAMPAIGN_ART_SKYLINE)
       if (!ground && campaignSurfaceKind == 5.) {

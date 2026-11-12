@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { underworksMagmaMaterial } from './underworksMagma.js';
 import { voidMaterial } from './voidMaterial.js';
 import { grovePaneMaterial } from './groveMaterials.js';
 import { mountFrostSearchlight } from './frostspireLights.js';
@@ -23,7 +24,8 @@ export function decorMeshes(list, origin, replaced = null, surfaceFor = (base) =
     const kit = kitGeometry(KIT.prop(model));
     if (!kit) continue;
     const base = model.startsWith('void_') && !kit.hasAuthoredGlow ? voidMaterial()
-      : model === 'grove_greenhouse_glass' ? grovePaneMaterial : kitMaterial();
+      : model === 'grove_greenhouse_glass' ? grovePaneMaterial
+        : model === 'underworks_magma' || model === 'underworks_lavafall' ? underworksMagmaMaterial(model === 'underworks_lavafall') : kitMaterial();
     const material = surfaceFor(base, model);
     const batch = kit.motion ? null : new THREE.InstancedMesh(kit.geometry, material, items.length);
     items.forEach((d, i) => {

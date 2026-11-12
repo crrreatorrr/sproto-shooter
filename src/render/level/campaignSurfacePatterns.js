@@ -148,13 +148,13 @@ export const CAMPAIGN_SURFACE_PATTERNS = {
     return mix(vec3(.88, .97, 1.12) * (panels - sheen * .20), vec3(.82, 1.10, 1.28), streak * .37);
   `,
   L07: /* glsl */ `
-    vec2 size = ground ? vec2(2.7, 1.75) : vec2(1.9, .72);
-    float blocks = surfaceBlocks(p, size, .5, .40);
+    vec2 size = ground ? vec2(4.0, 3.5) : vec2(2.4, 2.8);
+    float blocks = surfaceBlocks(p, size, .5, .19);
     float soot = surfaceGrain(p, vec2(.34, .62));
     float seam = surfaceLine(p.y, size.y, .025);
     float furnace = .55 + .45 * sin(campaignSurfaceTime * 1.24 + p.x * .69);
-    gleam = vec3(.30, .079, .022) * seam * furnace * (ground ? .23 : .54);
-    return vec3(1.09, .98, .89) * blocks * soot;
+    gleam = vec3(.30, .079, .022) * seam * furnace * (ground ? .033 : .18);
+    return vec3(1.04, 1.01, 1.16) * blocks * soot;
   `,
   L08: /* glsl */ `
     vec2 tile = ground ? vec2(1.6) : vec2(2.4, 1.14);

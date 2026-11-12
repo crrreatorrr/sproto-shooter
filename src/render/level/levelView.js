@@ -4,6 +4,8 @@ import { getLevelRuntime } from '../../sim/level/runtime.js';
 import { solidTerrain } from '../../sim/campaign/terrain.js';
 import { DRESSING, HIDE_WHEN_GOT, MECHANISM_MODEL, STAGE_DRESSING } from './dressing.js';
 import { FROST_COLORS, frostspirePlacements } from './frostspireDressing.js';
+import { underworksPlacements } from './underworksDressing.js';
+import { updateUnderworksMagma } from './underworksMagma.js';
 import { skylinePlacements } from './skylineDressing.js';
 import { syncFrostSearchlight } from './frostspireLights.js';
 import { voidPlacements } from './voidDressing.js';
@@ -20,7 +22,7 @@ import { KIT, duelInstance, kitGeometry, kitMaterial, kitVersion } from './kitMo
 
 export { buildLookGroup, buildSectionMeshes, LEVEL_COLOR, levelMaterial } from './levelGeometry.js';
 
-const CAMPAIGN_KITS = { L03: grovePlacements, L04: voidPlacements, L05: frostspirePlacements, L06: skylinePlacements };
+const CAMPAIGN_KITS = { L03: grovePlacements, L04: voidPlacements, L05: frostspirePlacements, L06: skylinePlacements, L07: underworksPlacements };
 const groveLevelMaterial = (name, cache) => groveMaterial(name, cache, levelMaterial);
 
 function aabbBox(s) {
@@ -167,7 +169,10 @@ export function createLevelView() {
   const fixtures = createCampaignFixtureLights();
   const mats = new Map();
   const frostMats = new Map();
+  const underworksMats = new Map();
   const frostMaterial = (name) => levelMaterial(name, frostMats, FROST_COLORS[name]);
+  const underworksMaterial = (name) => levelMaterial(name, underworksMats,
+    name === 'rock' ? 0x786577 : name === 'stone' ? 0x69566e : null);
   let key = '';
   let gotViews = [];
   function syncGot(state) {
@@ -198,7 +203,8 @@ export function createLevelView() {
     const field = solidTerrain(sec);
     const grove = lv.id === 'L03';
     const surfaceKit = (base, model) => surfaces.kit(base, lv.id, model);
-    const levelBase = grove ? groveLevelMaterial : frost ? frostMaterial : levelMaterial;
+    const levelBase = grove ? groveLevelMaterial : frost ? frostMaterial
+      : lv.id === 'L07' ? underworksMaterial : levelMaterial;
     const surfacePrimitive = (base, g) => surfaces.primitive(base, lv.id, g);
     const voidLevel = lv.id === 'L04';
     const polished = frost || ['L01', 'L02', 'L03'].includes(lv.id);
@@ -307,6 +313,7 @@ export function createLevelView() {
       rebuild(state);
       const seconds = state.tick * DT;
       surfaces.update(seconds);
+      if (state.level?.id === 'L07') updateUnderworksMagma(seconds);
       fixtures.sync(state.players?.[state.localPlayerId]?.pos, seconds);
       const drilling = state.level?.v2?.enc?.['S5-F2']?.hold || 0;
       for (const child of group.children) {

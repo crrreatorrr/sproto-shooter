@@ -1,15 +1,17 @@
-// Use the two original ImageGen sheets in A/B order, or --skyline with the Skyline sheet and panorama.
+// Use the original A/B sheets, or supply a level flag, its 2 × 2 sheet and panorama.
 import sharp from 'sharp';
 
 const [first, second, third] = process.argv.slice(2);
 const skyline = first === '--skyline';
-if (!first || !second || (skyline && !third)) {
-  throw new Error('Supply both campaign surface sheets, or --skyline <2 × 2 surface sheet> <panorama>');
+const underworks = first === '--underworks';
+const levelAtlas = skyline || underworks;
+if (!first || !second || (levelAtlas && !third)) {
+  throw new Error('Supply both campaign surface sheets, or --skyline/--underworks <2 × 2 surface sheet> <panorama>');
 }
 
 const size = 160, gutter = 4, cell = size + 2 * gutter;
-const cols = skyline ? 2 : 4, rows = skyline ? 2 : 3;
-const width = cell * cols, height = cell * (skyline ? rows : 2 * rows);
+const cols = levelAtlas ? 2 : 4, rows = levelAtlas ? 2 : 3;
+const width = cell * cols, height = cell * (levelAtlas ? rows : 2 * rows);
 const atlas = Buffer.alloc(width * height * 4);
 const byte = n => Math.max(0, Math.min(255, Math.round(n)));
 const smooth = (start, end, x) => {
@@ -22,6 +24,11 @@ function lampMask(tile, r, g, b) {
   if (skyline) {
     if (tile === 1) return smooth(158, 224, Math.max(r, g)) * smooth(22, 62, Math.abs(g - r));
     if (tile === 2) return smooth(157, 224, luma);
+    return 0;
+  }
+  if (underworks) {
+    if (tile === 1) return smooth(70, 155, r) * smooth(34, 98, r - b) * .38;
+    if (tile === 2) return smooth(136, 223, r) * smooth(47, 132, r - b);
     return 0;
   }
   if (tile === 9 || tile === 11) return smooth(25, 65, g - r) * smooth(128, 190, luma);
@@ -80,10 +87,10 @@ async function pack(file, rowOffset) {
 }
 
 const campaignTextures = new URL('../public/assets/textures/campaign/', import.meta.url);
-if (skyline) {
+if (levelAtlas) {
   await pack(second, 0);
   // Match the east/west seam of the sky sphere.
-  const w = 896, h = 448, blend = 26;
+  const w = skyline ? 896 : 768, h = w / 2, blend = Math.round(w * .029);
   const sky = await sharp(third).resize(w, h, { fit: 'fill' }).removeAlpha().raw().toBuffer();
   for (let y = 0; y < h; y++) for (let x = 0; x < blend; x++) {
     const weight = .5 * (1 - smooth(0, blend, x));
@@ -95,11 +102,11 @@ if (skyline) {
     }
   }
   await sharp(sky, { raw: { width: w, height: h, channels: 3 } })
-    .webp({ quality: 86, effort: 6 }).toFile(new URL('skyline-night.webp', campaignTextures).pathname);
+    .webp({ quality: 86, effort: 6 }).toFile(new URL(skyline ? 'skyline-night.webp' : 'underworks-cavern.webp', campaignTextures).pathname);
 } else {
   await pack(first, 0);
   await pack(second, rows);
 }
-const name = skyline ? 'skyline-surface.webp' : 'surface-art.webp';
+const name = skyline ? 'skyline-surface.webp' : underworks ? 'underworks-surface.webp' : 'surface-art.webp';
 await sharp(atlas, { raw: { width, height, channels: 4 } })
   .webp({ quality: 81, alphaQuality: 100, effort: 6 }).toFile(new URL(name, campaignTextures).pathname);

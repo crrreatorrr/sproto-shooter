@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { STAGES, stageAssets } from '../../data/stages.js';
 import { peekTexture, instantiateStatic, assetsVersion } from '../assets.js';
 import { createAuroraSky } from './auroraSky.js';
-import { SKYLINE_PANORAMA } from '../level/campaignSurfaceArt.js';
+import { panoramaPath } from '../level/campaignSurfaceArt.js';
 import { createSkylineRain } from './skylineRain.js';
 import { createLevelView } from '../level/levelView.js';
 
@@ -57,8 +57,9 @@ export function mountStage(env) {
     const blockchain = id === 'void' && levelId === 'L04';
     const frostspire = id === 'glacier' && levelId === 'L05';
     const skyline = id === 'city' && levelId === 'L06';
+    const underworks = id === 'volcano' && levelId === 'L07';
     const st = STAGES[id], a = stageAssets(id);
-    const variant = blockchain || frostspire || skyline ? levelId : '';
+    const variant = blockchain || frostspire || skyline || underworks ? levelId : '';
     const key = id + ':' + variant + ':' + assetsVersion();
     if (key === stageKey) return;
     stageKey = key;
@@ -79,13 +80,12 @@ export function mountStage(env) {
       bounce.intensity = .45;
     }
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
-    const skylineTex = skyline ? peekTexture(SKYLINE_PANORAMA) : null;
-    const skyTex = skyline ? skylineTex : peekTexture(a.sky);
-    if (skylineTex) skylineTex.offset.y = -.16;
+    const skyTex = peekTexture(skyline || underworks ? panoramaPath(levelId) : a.sky);
+    if (skyTex && (skyline || underworks)) skyTex.offset.y = skyline ? -.16 : .035;
     sky.material = blockchain ? (blockchainSky ||= createAuroraSky())
       : frostspire ? (frostspireSky ||= createAuroraSky(true)) : standardSky;
     standardSky.map = skyTex;
-    standardSky.color.setHex(skyTex ? 0xffffff : skyline ? 0x242d54 : st.background);
+    standardSky.color.setHex(skyTex ? 0xffffff : skyline ? 0x242d54 : underworks ? 0x472840 : st.background);
     standardSky.needsUpdate = true;
     if (blockchain) {
       scene.fog.color.setHex(0x312445);
@@ -119,6 +119,17 @@ export function mountStage(env) {
       sun.intensity = 1.58;
       bounce.color.setHex(0x9f82f8);
       bounce.intensity = .44;
+    }
+    if (underworks) {
+      scene.fog.color.setHex(0x503147);
+      hemi.color.setHex(0xd4b9f2);
+      hemi.groundColor.setHex(0xb78386);
+      hemi.intensity = 1.29;
+      sun.color.setHex(0xe4cbf0);
+      sun.position.set(-13, 24, -10);
+      sun.intensity = 1.25;
+      bounce.color.setHex(0xff8e4f);
+      bounce.intensity = .86;
     }
     const floor = peekTexture(a.floor);
     setStageMap(groundMat, floor, st.floorRepeat, st.floorRepeat);
