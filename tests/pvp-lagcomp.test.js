@@ -213,7 +213,7 @@ describe('alive and invuln rules', () => {
     expect(dead.state.players[0].mag[2]).toBe(mag);
   });
 
-  it('trades on the same tick go through double_ko, rewind or not', () => {
+  it('trades on the same tick down both seats instead of ending the match', () => {
     const state = sniperMatch();
     state.players[0].hp = 1000;
     state.players[0].shield = 0;
@@ -222,13 +222,16 @@ describe('alive and invuln rules', () => {
     const w0 = sniperAt(state, 0, historyAt(state, 1, state.tick - 1), { rewind: 1 });
     const w1 = sniperAt(state, 1, state.players[0], { rewind: 0 });
     step(state, [w0, w1]);
-    expect(state).toMatchObject({ phase: 'done', outcome: 'draw', reason: 'double_ko', winner: null });
+    expect(state.phase).toBe('live');
+    expect(state.players[0]).toMatchObject({ hp: 0, alive: true, downed: true });
+    expect(state.players[1]).toMatchObject({ hp: 0, alive: true, downed: true });
   });
 });
 
-describe('crits off in PvP', () => {
-  it('never rolls a crit: every pellet is base damage times falloff, and spread is the only RNG', () => {
-    expect(LOADOUT.every((gun) => gun.stats.critChance === 0)).toBe(true);
+describe('crits in PvP', () => {
+  it('rolls one crit per pellet that hits, from the combat seed, and nothing for a miss', () => {
+    expect(LOADOUT.every((gun) => gun.stats.critChance > 0)).toBe(true);
+    expect(LOADOUT.every((gun) => gun.element === 'none')).toBe(true);
     for (const slot of [0, 1, 2]) {
       const state = createMatch(12, 77);
       const [p, target] = state.players;
@@ -243,10 +246,12 @@ describe('crits off in PvP', () => {
         expect(weaponTick(p, wish, DT)).toBe(true);
         const before = { ...p.rng };
         const hits = traceShots(p, target, wish);
-        for (const dmg of hits) expect(dmg).toBeLessThanOrEqual(gun.stats.damage * 1000);
-        // Two spread draws per pellet, nothing else.
+        const cap = Math.round(gun.stats.damage * 1.5 * 1000);
+        for (const dmg of hits) expect(dmg).toBeLessThanOrEqual(cap);
+        // Two spread draws per pellet, then one crit draw per pellet that connects.
+        // Element is none, so the element roll does not draw. Splash radius is 0.
         const probe = { ...before };
-        for (let i = 0; i < 2 * (gun.stats.pellets || 1); i++) pvpRngNext(probe);
+        for (let i = 0; i < 2 * (gun.stats.pellets || 1) + hits.length; i++) pvpRngNext(probe);
         expect(p.rng).toEqual(probe);
       }
     }

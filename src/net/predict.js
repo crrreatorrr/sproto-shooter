@@ -47,6 +47,10 @@ export function quantizePlayer(p) {
   if (typeof p.staminaDelay === 'number') p.staminaDelay = q4(Math.max(0, p.staminaDelay));
   if (typeof p.slideT === 'number') p.slideT = q4(Math.max(0, p.slideT));
   if (typeof p.slideCd === 'number') p.slideCd = q4(Math.max(0, p.slideCd));
+  if (typeof p.coyoteT === 'number') p.coyoteT = q4(Math.max(0, p.coyoteT));
+  if (typeof p.jumpBufferT === 'number') p.jumpBufferT = q4(Math.max(0, p.jumpBufferT));
+  if (typeof p.jumpsLeft === 'number') p.jumpsLeft = Math.max(0, Math.round(p.jumpsLeft));
+  if (typeof p.downedT === 'number') p.downedT = q4(Math.max(0, p.downedT));
   if (typeof p.grappleCd === 'number') p.grappleCd = q4(Math.max(0, p.grappleCd));
   if (p.grapple) {
     p.grapple.x = q4(p.grapple.x);

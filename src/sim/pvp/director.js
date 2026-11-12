@@ -388,6 +388,8 @@ export function createDirector({
         vx: p.vx, vz: p.vz,
         hp: p.hp, shield: p.shield,
         alive: p.alive,
+        downed: !!p.downed,
+        downedT: p.downedT || 0,
         slot: p.slot,
         slideT: p.slideT,
         grappleCd: p.grappleCd, grappleMiss: p.grappleMiss,

@@ -13,10 +13,13 @@ are the hub contracts.
   - Campaign content fingerprint `73c6eb0f` (`contentFingerprint(1)` in
     `src/data/serverManifest.js`; `tests/pvp-sim.test.js`, `tests/fixtures/boss-goldens.json`). It
     covers boss, encounter, gun, part, element, spell and tuning data.
-  - PvP content fingerprint `dc00f234` (`CONTENT_FINGERPRINT` in `src/sim/pvp/rules.js`).
-    Was `b33eada6` before the grapple range and speed caps changed.
-  - PvP golden state hash `532a562e` (`scriptedMatch(7, 180)`, `GOLDEN_HASH` in
-    `tests/pvp-sim.test.js`). Was `6545ca0a`. The director golden is `55419e4e` (was `b661a684`).
+  - PvP content fingerprint `e749d2fd` (`CONTENT_FINGERPRINT` in `src/sim/pvp/rules.js`).
+    Was `c8a753da` until wager matches used campaign crits, element procs and splash, and
+    sprint cancelled zoom. Before that, `dc00f234` (grapple caps) and `b33eada6`.
+  - PvP golden state hash `da423456` (`scriptedMatch(7, 180)`, `GOLDEN_HASH` in
+    `tests/pvp-sim.test.js`). Was `6c1f740c`, before that `532a562e`. At 180 ticks both seats
+    are down; the second wind ends that duel at tick 365 (`double_ko`). The director golden
+    is `a5828d8c` (was `cb03b044`, before that `55419e4e`).
   - Wave Mode and Sandbox hashes in `tests/fixtures/baseline-hashes.json`
     (`tests/levels/baseline.test.js`). The Wave Mode hashes at ticks 3000 and 6000 moved on
     2026-11-11 with the arena balance pass (boss gun drops, wave spell unlocks); tick 600 and the

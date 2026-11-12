@@ -1,11 +1,12 @@
 // Free 1v1 arena rules. No loot, no perks, no Tickets. Both seats share one loadout.
+import { GAMEPLAY as G } from '../../data/gameplay.js';
 import { TUNING } from '../../data/tuning.js';
 import { GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, QUALITIES_BY_ID } from '../../data/guns.js';
 import { fnv1a, stableStringify } from '../hash.js';
 import { ARENA_SOLIDS, ARENA_WALL_H } from './arena.js';
 
 export const PVP_PROTOCOL_VERSION = 2;
-/** Sim 2 (SHOOTER-S2b): history ring + viewTick rewind, split spawn/combat seed, crits off. */
+/** Sim 2 (SHOOTER-S2b): history ring + viewTick rewind, split spawn/combat seed. Crits use the combat seed. */
 export const PVP_SIM_VERSION = 2;
 export const MATCH_NAME = 'sproto_shooter_free';
 export const GAME_ID = 'sproto-shooter';
@@ -114,12 +115,6 @@ export function arenaGun(typeId) {
   stats.reloadTime = Math.max(0.3, stats.reloadTime * quality.reloadMult);
   stats.spread *= quality.spreadMult;
   stats.adsSpread *= quality.spreadMult;
-  stats.elementChance = 0;
-  // Crits are off in PvP (owner decision): a crit makes the Sniper a one-shot, and luck must
-  // not decide a wager. The campaign guns keep theirs.
-  stats.critChance = 0;
-  stats.splashRadius = 0;
-  stats.splashDamage = 0;
   for (const key of Object.keys(stats)) {
     if (key === 'magSize' || key === 'pellets' || key === 'pierce') stats[key] = Math.round(stats[key]);
     else stats[key] = round3(stats[key]);
@@ -164,7 +159,7 @@ export function contentBody() {
     readyMs: READY_MS,
     stallMs: STALL_MS,
     perks: [],
-    crits: false,
+    crits: true,
     rewind: REWIND,
     // sha256 commit, reveal in RESULT; the RNG takes 128 bits of sha256(seed).
     combatSeed: 'commit-reveal-sha256-128',
@@ -175,9 +170,16 @@ export function contentBody() {
       sprint: TUNING.sprintSpeed,
       gravity: TUNING.gravity,
       jump: TUNING.jumpVel,
+      doubleJump: G.doubleJumpVel,
+      coyote: G.coyote,
+      jumpBuffer: G.jumpBuffer,
       air: TUNING.airAccel,
       ground: TUNING.groundAccel,
       friction: TUNING.friction,
+      dashEnd: G.dashEndScale,
+      sprintCancelsZoom: true,
+      downedTime: G.secondWindTime,
+      downedSpeed: G.downedSpeedMult,
       slide: {
         min: TUNING.slideMinSpeed,
         boost: TUNING.slideBoost,
@@ -187,6 +189,8 @@ export function contentBody() {
         cd: TUNING.slideCd,
         hopCd: TUNING.slideHopCd,
         hop: TUNING.slideHopBoost,
+        slope: G.slideSlope,
+        steer: G.slideSteer,
         stamina: TUNING.slideStamina,
       },
       stamina: {

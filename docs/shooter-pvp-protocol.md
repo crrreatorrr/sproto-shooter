@@ -19,7 +19,7 @@ npm run build:server-sim
 | `build/shooter-sim.js` | Unchanged campaign verifier. Global `SprotoShooterSim`. |
 | `build/shooter-sim.pin.json` | Campaign pin. `protocol` 1, `contentFingerprint` `73c6eb0f`. |
 | `build/shooter-pvp-sim.js` | Free arena. Global `SprotoShooterPvp`. |
-| `build/shooter-pvp-sim.pin.json` | Arena pin. `protocol` 2, `sim` 2, `contentFingerprint` `dc00f234`, `directorState` 3, `replayVersion` 2, `rewind` (the REWIND table), `replayLimits`, `crits` false, `combatSeed` `"sha256-commit-reveal-128"`. |
+| `build/shooter-pvp-sim.pin.json` | Arena pin. `protocol` 2, `sim` 2, `contentFingerprint` `e749d2fd`, `directorState` 3, `replayVersion` 2, `rewind` (the REWIND table), `replayLimits`, `crits` true, `combatSeed` `"sha256-commit-reveal-128"`. |
 
 `sourceCommit` is `git rev-parse HEAD` baked in before the sha256. Rebuild on the merged shooter SHA and vendor `shooter-pvp-sim.js` plus its pin. Refuse the match if `bundleSha256`, `protocol`, `sim`, or `contentFingerprint` disagrees with the running copy.
 
@@ -29,7 +29,7 @@ Measured identity of this phase:
 |---|---|
 | `protocol` | 2 (was 1) |
 | `sim` | 2 (S2a was 1) |
-| `contentFingerprint` | `dc00f234` (shorter grapple with pull and release speed caps; previous `b33eada6`, `17d87c54`, S2a `0e584d36`, protocol 1 `f5949631`) |
+| `contentFingerprint` | `e749d2fd` (shared locomotion with campaign; previous `dc00f234`, `b33eada6`, `17d87c54`, S2a `0e584d36`, protocol 1 `f5949631`) |
 | `loadoutHash` | `4cdfab55` (S2a `9eb7cd63`; crit chance is now 0) |
 | Global | `SprotoShooterPvp` |
 | JSON entry | `replayJSON` (v1 `{seed, inputs}` and v2 used-input logs) |
@@ -42,8 +42,8 @@ Measured identity of this phase:
 
 Two goldens, each checked in Node, Chromium and goja:
 
-- The mirrored sim golden (`scriptedMatch(7, 180)` in `src/sim/pvp/sim.js`) ends `outcome: "draw"`, `reason: "double_ko"`, `winner: null`, `tick: 65`, `stateHash: "532a562e"` (was `6545ca0a`; sim 1: tick 61, `ce272de1`).
-- The director golden (`tests/fixtures/director-golden.js`: a scripted two-client session with a lead-in, jittered and stalled uplinks, a resent frame, a frame past the window, a disconnect and a rejoin on a new session id, pings and PING echoes, viewTick claims (some oversized, so clamped), then a stall) ends `outcome: "forfeit"`, `winner: 0`, `reason: "stall"`, `tick: 892`, `stateHash: "55419e4e"` (was `b661a684`; before the S2b review fixes `078282e5`; sim 1 `e421cba8`), 57 late frames, 7 server-confirmed hits (62876 milli-HP), combat commit `6d5a619f…1fc6` for seed `5eed00c0ffee5eed00c0ffee5eed0042`, and its used-input log replays verified. It gives the same result when the director is frozen and thawed after every call.
+- The mirrored sim golden (`scriptedMatch(7, 180)` in `src/sim/pvp/sim.js`) is still in the shared second wind: `outcome: null`, `phase: "live"`, both seats down, `tick: 180`, `stateHash: "da423456"` (was `532a562e` at tick 65 `double_ko`; before that `6545ca0a`; sim 1: tick 61, `ce272de1`). The same inputs run to tick 365 finish `draw` / `double_ko`.
+- The director golden (`tests/fixtures/director-golden.js`: a scripted two-client session with a lead-in, jittered and stalled uplinks, a resent frame, a frame past the window, a disconnect and a rejoin on a new session id, pings and PING echoes, viewTick claims (some oversized, so clamped), then a stall) ends `outcome: "forfeit"`, `winner: 0`, `reason: "stall"`, `tick: 892`, `stateHash: "a5828d8c"` (was `55419e4e`, before that `b661a684`; before the S2b review fixes `078282e5`; sim 1 `e421cba8`), 57 late frames, 8 server-confirmed hits (71876 milli-HP), combat commit `6d5a619f…1fc6` for seed `5eed00c0ffee5eed00c0ffee5eed0042`, and its used-input log replays verified. It gives the same result when the director is frozen and thawed after every call.
 
 ## Match
 
@@ -67,7 +67,7 @@ Two goldens, each checked in Node, Chromium and goja:
 Matchmaker, through the hub SDK. The query requires the same protocol **and** content fingerprint, so mismatched builds never pair:
 
 ```text
-query: +properties.game:sproto-shooter +properties.mode:free +properties.protocol:2 +properties.content:dc00f234
+query: +properties.game:sproto-shooter +properties.mode:free +properties.protocol:2 +properties.content:e749d2fd
 minCount: 2
 maxCount: 2
 stringProperties:
@@ -75,7 +75,7 @@ stringProperties:
   mode: free
   protocol: "2"
   sim: "2"
-  content: dc00f234
+  content: e749d2fd
 ```
 
 One account, one seat. A HELLO from the same account on a new session replaces that seat's session. The previous session is `wrong_sender`. A third account is `match_full`. Guests are not given a second seat. Do not reuse a Fighter match id or its wallet functions.
@@ -83,7 +83,7 @@ One account, one seat. A HELLO from the same account on a new session replaces t
 Label the match so listings can see it is free:
 
 ```json
-{"kind":"sproto_shooter_free","game":"sproto-shooter","mode":"free","protocol":2,"content":"dc00f234","stake":0}
+{"kind":"sproto_shooter_free","game":"sproto-shooter","mode":"free","protocol":2,"content":"e749d2fd","stake":0}
 ```
 
 ## Loadout
@@ -144,7 +144,7 @@ Every director output is `{ op, body, to }`. `to` is `null` (broadcast to the ma
 `HELLO`:
 
 ```json
-{"accountId":"nakama-user-id","protocol":2,"sim":2,"content":"dc00f234","interpMs":100}
+{"accountId":"nakama-user-id","protocol":2,"sim":2,"content":"e749d2fd","interpMs":100}
 ```
 
 `interpMs` (optional, sim 2) is the client's remote interpolation delay in ms; the director clamps it to 50..150 and uses it in the rewind cap (100 until announced). `accountId` must equal the socket's user id. `protocol`, `sim`, and `content` must all match or the reason is `version`. The presence session id is the seat session. The body does not get to name a session. The seat's display name is the presence `username` (cut to 32 chars); the hub sanitizes names before they reach the director.
@@ -160,7 +160,7 @@ Message data may arrive as a string, a `Uint8Array` or a raw `ArrayBuffer` (what
   "matchId": "nakama-match-id",
   "protocol": 2,
   "sim": 2,
-  "content": "dc00f234",
+  "content": "e749d2fd",
   "spawnSeed": 7,
   "combatCommit": "64 hex chars: sha256(combatSeed)",
   "loadoutHash": "4cdfab55",
@@ -383,7 +383,7 @@ Clients render the other seat at estimated server time minus D, interpolating po
 
 ## Client prediction and reconciliation (S3)
 
-Prediction steps the same `movePlayer` as the server, so slide, grapple and stamina stay authoritative. Protocol stays 2. After that movement the pins are fingerprint `dc00f234`, mirrored golden `532a562e` and director golden `55419e4e` (asserted in `tests/net/predict.test.js` and `tests/net/baseline.test.js`).
+Prediction steps the same `movePlayer` as the server, so slide, grapple and stamina stay authoritative. Protocol stays 2. After that movement the pins are fingerprint `e749d2fd`, mirrored golden `da423456` and director golden `a5828d8c` (asserted in `tests/net/predict.test.js` and `tests/net/baseline.test.js`).
 
 - **Prediction** (`src/net/predict.js`). Each input tick encodes the wish, decodes it back (so the client predicts with exactly what the director will use), keeps it in a ring of 64 by frame, and steps the local player with the sim's own `normalizeWish` + `movePlayer` + `weaponTick` and the sim's per-tick quantization. Body contact (`separate`), damage and shield regen are left to the server. The local player is drawn from the prediction, blended between the last two predicted ticks by the input clock's phase. A repeated frame (a hold) replays from the base.
 - **Reconciliation.** Each snapshot (tick T, the state after ticks 0..T-1) rebuilds this seat from `players[seat]` + `you.private`, drops the inputs below T, and replays the rest. Frames the client never sent are filled the way the director fills them: the wish at `you.ackFrame` held for 3 ticks (move, aim, held buttons), then neutral (aim only), counting from the ack. The difference between the old and the new prediction for the same frame is one correction sample and is added to a visual offset that decays as `exp(-t/100 ms)`; a correction (or offset) above 2 m snaps.
@@ -411,7 +411,7 @@ No profile has a reject (S2b: none either; the spike's 3 `viewClamped` per seat 
 The director records the exact wish it applied for each seat on each tick, held and neutral substitutes included: 10 bytes per seat-tick as hex (`src/sim/pvp/used.js`; sim 2 added the clamped `rewind` and `viewFrac` bytes to S2a's 8), in chunks of 30 ticks. It steps the sim with the entry **decoded back from the log**, not the in-memory record, so a replay of the log is the same match by construction. A full 90 s match is about 108 KB. `director.usedAt(tick)` decodes one tick. `director.replayRecord()` returns:
 
 ```json
-{"v":2,"spawnSeed":4242,"combatSeed":"5eed00c0ffee5eed00c0ffee5eed0042","combatCommit":"6d5a619f…1fc6","matchId":"golden","accounts":["ada","bea"],"bundleSha256":null,"sourceCommit":null,"protocol":2,"sim":2,"content":"dc00f234","used":["<hex>", "..."],"expect":{"tick":892,"stateHash":"55419e4e","stateSha256":"<64 hex>","outcome":null,"winner":null,"reason":null},"result":{"outcome":"forfeit","winner":0,"reason":"stall","tick":892,"stateHash":"55419e4e","stateSha256":"<64 hex>","spawnSeed":4242,"combatSeed":"…","combatCommit":"…","ticketsMinted":0,"stakes":false},"ticketsMinted":0}
+{"v":2,"spawnSeed":4242,"combatSeed":"5eed00c0ffee5eed00c0ffee5eed0042","combatCommit":"6d5a619f…1fc6","matchId":"golden","accounts":["ada","bea"],"bundleSha256":null,"sourceCommit":null,"protocol":2,"sim":2,"content":"e749d2fd","used":["<hex>", "..."],"expect":{"tick":892,"stateHash":"a5828d8c","stateSha256":"<64 hex>","outcome":null,"winner":null,"reason":null},"result":{"outcome":"forfeit","winner":0,"reason":"stall","tick":892,"stateHash":"a5828d8c","stateSha256":"<64 hex>","spawnSeed":4242,"combatSeed":"…","combatCommit":"…","ticketsMinted":0,"stakes":false},"ticketsMinted":0}
 ```
 
 - `accounts`: the account id in seat 0 and seat 1. A host that passes `accounts: [a, b]` to the director pins that order: those two accounts get those seats whoever says HELLO first, and anyone else gets `not_invited` (in `joinAttempt` and HELLO).

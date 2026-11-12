@@ -52,7 +52,9 @@ describe('Free 1v1 practice opponent', () => {
       const old = play(seed, still, practiceWish).state;
       expect(fresh.winner).toBe(1);
       expect(old.winner).toBe(1);
-      expect(fresh.tick).toBeGreaterThan(old.tick * 1.5); // its aim sways; the old one never misses
+      // Shared locomotion (double jump, dash end) lets the bot close a little faster than the
+      // old 1.5x gap. The sway still makes it slower than the aimbot, which never misses.
+      expect(fresh.tick).toBeGreaterThan(old.tick * 1.25);
       expect(fresh.tick).toBeLessThan(MATCH_TICKS / 2);
     }
   });

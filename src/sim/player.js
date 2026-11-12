@@ -1,6 +1,7 @@
 // Player input, movement, combat (firing/reload/swap), vitals. PLAN §4.4, §7.1
 import { abyssY } from './campaign/abyss.js';
 import { TUNING, ARENA_R } from '../data/tuning.js';
+import { applyGravity, stepLocomotion, tickDowned } from './gameplay.js';
 import { GUN_TYPES_BY_ID, hasInfiniteReserve, gunRange, rangeFalloff, slotUsable, SLOT_COUNT } from '../data/guns.js';
 import { float, range } from '../core/rng.js';
 import { dirFromYawPitch, deg, clamp } from '../core/math.js';
@@ -30,9 +31,6 @@ export function playerMovement(state, dt) {
   for (const p of Object.values(state.players)) {
     if (p.dead) { p.vel.x = p.vel.z = 0; continue; }
     const c = p.cmd;
-    const m = p.move;
-    m.slideCd = Math.max(0, m.slideCd - dt);
-    m.dashCd = Math.max(0, m.dashCd - dt);
     if (p.stamina == null) {
       p.stamina = 1;
       p.staminaDelay = 0;
@@ -40,138 +38,64 @@ export function playerMovement(state, dt) {
       p.grappleCd = 0;
       p.grapple = null;
     }
-    // wish dir in world space from yaw
-    const sy = Math.sin(p.yaw), cy = Math.cos(p.yaw);
-    // forward = (-sin, -cos); right = (cos, -sin). moveZ>0 is forward
-    let wx = -sy * c.moveZ + cy * c.moveX;
-    let wz = -cy * c.moveZ - sy * c.moveX;
-    const wl = Math.hypot(wx, wz);
-    if (wl > 1) { wx /= wl; wz /= wl; }
-    const canAct = !p.downed;
-    const wantSprint = canAct && c.held.sprint && c.moveZ > 0 && !p.zooming && !p.staminaLock && p.stamina > 0;
-    let sprinting = wantSprint;
-    if (sprinting) {
-      p.stamina = Math.max(0, p.stamina - dt / TUNING.staminaSprint);
-      p.staminaDelay = TUNING.staminaRegenDelay;
-      if (p.stamina <= 0) { p.staminaLock = true; sprinting = false; }
-    } else {
-      if (p.staminaDelay > 0) p.staminaDelay = Math.max(0, p.staminaDelay - dt);
-      else if (p.stamina < 1) p.stamina = Math.min(1, p.stamina + dt / TUNING.staminaRegen);
-      if (p.staminaLock && p.stamina >= TUNING.staminaRefill) p.staminaLock = false;
-    }
-    let maxSpeed = sprinting ? TUNING.sprintSpeed : TUNING.walkSpeed;
-    if (p.campaignSpeed) maxSpeed *= p.campaignSpeed;
-    if (state.mode === 'campaign' && p.hazardSlow != null && p.hazardSlow < 1) maxSpeed *= p.hazardSlow;
-    if (p.iceSlow != null && p.iceSlow < 1) maxSpeed *= p.iceSlow;
-    if (state.mode === 'campaign' && p.scriptSlow != null && p.scriptSlow < 1) maxSpeed *= p.scriptSlow;
-    if (p.downed) maxSpeed *= TUNING.downedSpeedMult;
-
-    // jump buffering
-    if (c.pressed.jump) p.jumpBufferT = TUNING.jumpBuffer;
-    else p.jumpBufferT = Math.max(0, p.jumpBufferT - dt);
-    if (p.onGround) { p.coyoteT = TUNING.coyote; p.jumpsLeft = 2; } else p.coyoteT = Math.max(0, p.coyoteT - dt);
-
-    // dash
-    if (canAct && c.pressed.dash && m.dashCd <= 0) {
-      const dl = Math.hypot(wx, wz);
-      m.dashDir = dl > 0.1 ? { x: wx / dl, z: wz / dl } : { x: -sy, z: -cy };
-      m.mode = 'dash'; m.dashT = TUNING.dashTime; m.dashCd = TUNING.dashCd;
-      p.invulnT = Math.max(p.invulnT, TUNING.dashInvuln);
-      emit(state, 'dash', { playerId: p.id });
-    }
-    // slide
-    const hs = Math.hypot(p.vel.x, p.vel.z);
-    const crouch = !!(c.held && c.held.crouch);
-    const wantSlide = canAct && p.onGround && m.mode !== 'slide' && m.slideCd <= 0
-      && (c.pressed.slide || (crouch && sprinting))
-      && (hs > TUNING.slideMinSpeed || sprinting);
-    if (wantSlide) {
-      const dirx = hs > 0.4 ? p.vel.x / hs : -Math.sin(p.yaw);
-      const dirz = hs > 0.4 ? p.vel.z / hs : -Math.cos(p.yaw);
-      const boost = Math.max(hs, TUNING.slideBoost);
-      p.vel.x = dirx * boost;
-      p.vel.z = dirz * boost;
-      m.mode = 'slide';
-      m.slideT = TUNING.slideTime;
-      p.stamina = Math.max(0, p.stamina - TUNING.slideStamina);
-      p.staminaDelay = TUNING.staminaRegenDelay;
-      if (p.stamina <= 0) p.staminaLock = true;
-      emit(state, 'slide', { playerId: p.id });
-    }
-
-    // An attached hook drives movement instead of the usual ground and air controls.
-    const hooked = !!p.grapple;
-    if (m.mode === 'dash') {
-      m.dashT -= dt;
-      p.vel.x = m.dashDir.x * TUNING.dashSpeed; p.vel.z = m.dashDir.z * TUNING.dashSpeed;
-      p.vel.y = Math.max(p.vel.y, 0);
-      if (m.dashT <= 0) { m.mode = 'walk'; p.vel.x *= 0.45; p.vel.z *= 0.45; }
-    } else if (m.mode === 'slide' && !hooked) {
-      m.slideT -= dt;
-      if (wl > 0.2) { p.vel.x += wx * 10 * dt; p.vel.z += wz * 10 * dt; }
-      let sp = Math.hypot(p.vel.x, p.vel.z) || 0.0001;
-      const solidsNow = activeSolids(state);
-      if (solidsNow) {
-        const ux = p.vel.x / sp, uz = p.vel.z / sp;
-        const here = groundHeight(solidsNow, p.pos.x, p.pos.z, 0.15, p.pos.y + 0.5, 0.8);
-        const there = groundHeight(solidsNow, p.pos.x + ux * 0.75, p.pos.z + uz * 0.75, 0.15, p.pos.y + 1.4, 1.4);
-        if (here > -1e8 && there > -1e8 && here - there > 0.02) {
-          const gain = Math.min(TUNING.slideSlope * dt, (here - there) * 12);
-          p.vel.x += ux * gain;
-          p.vel.z += uz * gain;
-          sp = Math.hypot(p.vel.x, p.vel.z) || 0.0001;
-        }
-      }
-      const next = sp + (TUNING.slideCruise - sp) * Math.min(1, TUNING.slideDrag * dt);
-      const k = Math.max(0, next) / sp;
-      p.vel.x *= k;
-      p.vel.z *= k;
-      if (m.slideT <= 0 || next < TUNING.walkSpeed * 0.9 || !p.onGround) {
-        m.mode = p.onGround ? 'walk' : 'air';
-        m.slideCd = TUNING.slideCd;
-      }
-    } else if (p.onGround && !hooked) {
-      // ground accel + friction
-      const tx = wx * maxSpeed, tz = wz * maxSpeed;
-      const dx = tx - p.vel.x, dz = tz - p.vel.z;
-      const dl = Math.hypot(dx, dz);
-      const acc = (wl > 0.01 ? TUNING.groundAccel : TUNING.friction * Math.max(hs, 2)) * dt;
-      if (dl > 0) { const k = Math.min(1, acc / dl); p.vel.x += dx * k; p.vel.z += dz * k; }
-      m.mode = sprinting ? 'sprint' : 'walk';
-    } else if (hooked) {
-      m.mode = 'air';
-    } else {
-      const cap = Math.max(hs, TUNING.walkSpeed);
-      p.vel.x += wx * TUNING.airAccel * dt; p.vel.z += wz * TUNING.airAccel * dt;
-      const nh = Math.hypot(p.vel.x, p.vel.z);
-      if (nh > cap) { p.vel.x *= cap / nh; p.vel.z *= cap / nh; }
-      m.mode = 'air';
-    }
-
-    // jump
-    if (canAct && p.jumpBufferT > 0) {
-      if (p.onGround || p.coyoteT > 0) {
-        p.vel.y = TUNING.jumpVel; p.onGround = false; p.coyoteT = 0; p.jumpsLeft = 1; p.jumpBufferT = 0;
-        if (m.mode === 'slide') {
-          const sp = Math.hypot(p.vel.x, p.vel.z);
-          if (sp > 0.1) {
-            const boosted = sp * TUNING.slideHopBoost;
-            p.vel.x = (p.vel.x / sp) * boosted;
-            p.vel.z = (p.vel.z / sp) * boosted;
-          }
-          m.mode = 'air';
-          m.slideCd = TUNING.slideHopCd;
-        }
-        emit(state, 'jump', { playerId: p.id });
-      } else if (p.jumpsLeft > 0) {
-        p.vel.y = TUNING.doubleJumpVel; p.jumpsLeft = 0; p.jumpBufferT = 0;
-        emit(state, 'doubleJump', { playerId: p.id });
-      }
-    }
+    const scales = [];
+    if (p.campaignSpeed) scales.push(p.campaignSpeed);
+    if (state.mode === 'campaign' && p.hazardSlow != null && p.hazardSlow < 1) scales.push(p.hazardSlow);
+    if (p.iceSlow != null && p.iceSlow < 1) scales.push(p.iceSlow);
+    if (state.mode === 'campaign' && p.scriptSlow != null && p.scriptSlow < 1) scales.push(p.scriptSlow);
+    const solidsNow = activeSolids(state);
+    const body = {
+      pos: p.pos,
+      vel: p.vel,
+      yaw: p.yaw,
+      pitch: p.pitch,
+      onGround: p.onGround,
+      downed: !!p.downed,
+      zooming: !!p.zooming,
+      stamina: p.stamina,
+      staminaDelay: p.staminaDelay,
+      staminaLock: !!p.staminaLock,
+      coyoteT: p.coyoteT || 0,
+      jumpBufferT: p.jumpBufferT || 0,
+      jumpsLeft: p.jumpsLeft == null ? 2 : p.jumpsLeft,
+      invulnT: p.invulnT || 0,
+      grapple: p.grapple,
+      move: p.move,
+      speedScales: scales,
+      zoomCancelled: !!p.zoomCancelled,
+    };
+    stepLocomotion(body, {
+      moveX: c.moveX || 0,
+      moveZ: c.moveZ || 0,
+      sprint: !!(c.held && c.held.sprint),
+      jump: !!(c.pressed && c.pressed.jump),
+      dash: !!(c.pressed && c.pressed.dash),
+      slide: !!(c.pressed && c.pressed.slide),
+      crouch: !!(c.held && c.held.crouch),
+      zoom: !!(c.held && c.held.zoom),
+    }, dt, {
+      groundAt: solidsNow
+        ? (x, z, radius, feet, reach) => groundHeight(solidsNow, x, z, radius, feet, reach)
+        : null,
+      emit: (name) => emit(state, name, { playerId: p.id }),
+    });
+    p.onGround = body.onGround;
+    p.stamina = body.stamina;
+    p.staminaDelay = body.staminaDelay;
+    p.staminaLock = body.staminaLock;
+    p.coyoteT = body.coyoteT;
+    p.jumpBufferT = body.jumpBufferT;
+    p.jumpsLeft = body.jumpsLeft;
+    p.invulnT = body.invulnT;
+    p.zooming = !!body.zooming;
+    // Absent unless sprint has cancelled zoom, so replays that never do that keep their hash.
+    if (body.zoomCancelled) p.zoomCancelled = true;
+    else delete p.zoomCancelled;
 
     const seal = sealOf(state, p);
+    const m = p.move;
     // Apply gravity and jetpack thrust before the grapple limits the speed.
-    if (m.mode !== 'dash') p.vel.y -= TUNING.gravity * dt;
+    applyGravity(body, dt);
     if (state.mode === 'campaign' && state.level && state.level.gravityMult !== 1 && m.mode !== 'dash') {
       p.vel.y -= TUNING.gravity * (state.level.gravityMult - 1) * dt;
     }
@@ -461,9 +385,9 @@ export function playerVitals(state, dt) {
       continue;
     }
     if (p.downed) {
-      p.downedT -= dt;
-      if (p.downedT <= 0) {
-        p.dead = true; p.downed = false; p.respawnT = TUNING.sandboxRespawn;
+      if (tickDowned(p, dt)) {
+        p.dead = true;
+        p.respawnT = TUNING.sandboxRespawn;
         emit(state, 'playerDied', { playerId: p.id });
       }
       continue;

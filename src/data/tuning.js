@@ -1,31 +1,33 @@
-// Global tuning constants (PLAN §7.1)
+// Global tuning constants (PLAN §7.1). Movement and combat numbers come from GAMEPLAY.
+import { GAMEPLAY as G } from './gameplay.js';
+
 export const TUNING = {
   arenaRadius: 45,
   spawnRadius: 43,
   spawnPointCount: 16,
 
-  eyeHeight: 1.6, slideEye: 0.72, downedEye: 0.6,
-  playerRadius: 0.4, playerHeight: 1.8,
-  walkSpeed: 6.5, sprintSpeed: 9.5,
-  groundAccel: 60, friction: 10, airAccel: 18,
-  gravity: 22,
-  jumpVel: 8.0, doubleJumpVel: 7.0,
-  coyote: 0.1, jumpBuffer: 0.1,
-  slideMinSpeed: 4.2, slideBoost: 16, slideCruise: 8, slideDrag: 2.4, slideTime: 0.7,
-  slideCd: 0.22, slideHopCd: 0.85, slideHopBoost: 1.12, slideSlope: 14, slideStamina: 0.14,
-  staminaSprint: 4.5, staminaRegenDelay: 0.55, staminaRegen: 1.7, staminaRefill: 0.28,
-  grappleRange: 16, grappleCd: 6, grapplePull: 54, grappleSpeed: 12.5, grappleReleaseSpeed: 8.5, grappleArrive: 1.35,
-  dashSpeed: 24, dashTime: 0.15, dashCd: 2.0, dashInvuln: 0.12,
+  eyeHeight: G.eyeHeight, slideEye: G.slideEye, downedEye: G.downedEye,
+  playerRadius: G.playerRadius, playerHeight: G.playerHeight,
+  walkSpeed: G.walkSpeed, sprintSpeed: G.sprintSpeed,
+  groundAccel: G.groundAccel, friction: G.friction, airAccel: G.airAccel,
+  gravity: G.gravity,
+  jumpVel: G.jumpVel, doubleJumpVel: G.doubleJumpVel,
+  coyote: G.coyote, jumpBuffer: G.jumpBuffer,
+  slideMinSpeed: G.slideMinSpeed, slideBoost: G.slideBoost, slideCruise: G.slideCruise, slideDrag: G.slideDrag, slideTime: G.slideTime,
+  slideCd: G.slideCd, slideHopCd: G.slideHopCd, slideHopBoost: G.slideHopBoost, slideSlope: G.slideSlope, slideStamina: G.slideStamina,
+  staminaSprint: G.staminaSprint, staminaRegenDelay: G.staminaRegenDelay, staminaRegen: G.staminaRegen, staminaRefill: G.staminaRefill,
+  grappleRange: G.grappleRange, grappleCd: G.grappleCd, grapplePull: G.grapplePull, grappleSpeed: G.grappleSpeed, grappleReleaseSpeed: G.grappleReleaseSpeed, grappleArrive: G.grappleArrive,
+  dashSpeed: G.dashSpeed, dashTime: G.dashTime, dashCd: G.dashCd, dashInvuln: G.dashInvuln,
 
   fovBase: 90, fovSprint: 6, fovAds: 70, fovScope: 12,
   // god mode keeps you at or above these while it's on
   godTickets: 99999,
 
-  maxHp: 100, maxShield: 50, maxMana: 100,
-  shieldDelay: 3.0, shieldRegen: 25,
+  maxHp: G.maxHp, maxShield: G.maxShield, maxMana: 100,
+  shieldDelay: G.shieldDelay, shieldRegen: G.shieldRegen,
   quickShieldDelay: 1.8, quickShieldRegenMult: 1.5,
   manaRegen: 5,
-  secondWindTime: 10, reviveHpFrac: 0.3, reviveInvuln: 2, downedSpeedMult: 0.3,
+  secondWindTime: G.secondWindTime, reviveHpFrac: 0.3, reviveInvuln: 2, downedSpeedMult: G.downedSpeedMult,
   sandboxRespawn: 3,
 
   startAmmo: { bullets: 240, shells: 24, sniper: 12, rockets: 4 },
@@ -35,7 +37,7 @@ export const TUNING = {
   healthOrb: 20, bigOrb: 60, manaOrb: 25,
   magnetRadius: 4, magnetAccel: 30, collectRadius: 0.9, pickupTtl: 30, gunPickupTtl: 120,
   gunPickupRadius: 2.2,
-  hitscanRange: 150,
+  hitscanRange: G.hitscanRange,
 };
 
 export const ARENA_R = TUNING.arenaRadius;
