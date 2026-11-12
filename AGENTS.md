@@ -21,8 +21,9 @@ are the hub contracts.
     are down; the second wind ends that duel at tick 365 (`double_ko`). The director golden
     is `a5828d8c` (was `cb03b044`, before that `55419e4e`).
   - Wave Mode and Sandbox hashes in `tests/fixtures/baseline-hashes.json`
-    (`tests/levels/baseline.test.js`). They moved on 2026-11-12 because sprint cancels zoom,
-    which adds `zoomCancelled` to the player. `tests/performance-baseline.test.js` repeats them.
+    (`tests/levels/baseline.test.js`). The Wave Mode hashes at ticks 3000 and 6000 moved on
+    2026-11-11 with the arena balance pass (boss gun drops, wave spell unlocks); tick 600 and the
+    Sandbox hashes did not. `tests/performance-baseline.test.js` repeats all of them.
 - Never edit `src/sim/pvp/`, `src/net/inputCodec.js`, `src/net/protocol.js` or `src/server/`
   without rebuilding and re-pinning. `npm run build:server-sim` writes `build/shooter-sim.js`
   (campaign verifier, global `SprotoShooterSim`) and `build/shooter-pvp-sim.js` (Free 1v1,

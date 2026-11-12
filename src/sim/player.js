@@ -88,7 +88,9 @@ export function playerMovement(state, dt) {
     p.jumpsLeft = body.jumpsLeft;
     p.invulnT = body.invulnT;
     p.zooming = !!body.zooming;
-    p.zoomCancelled = !!body.zoomCancelled;
+    // Absent unless sprint has cancelled zoom, so replays that never do that keep their hash.
+    if (body.zoomCancelled) p.zoomCancelled = true;
+    else delete p.zoomCancelled;
 
     const seal = sealOf(state, p);
     const m = p.move;
