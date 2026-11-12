@@ -51,7 +51,7 @@ export function mountViewmodel(env, playerModel) {
       idle(() => colliderFor(mesh, key));
     }
   }
-  const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, swap: 0, lastYaw: 0, lastPitch: 0 };
+  const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, swap: 0, lastYaw: 0, lastPitch: 0, grapplePose: 0 };
 
   // ---------- reload animations ----------
   // Procedural, per gun type, driven by reload progress t (0..1) so they always fit the real reload time.
@@ -233,8 +233,8 @@ export function mountViewmodel(env, playerModel) {
   bus.on('tracer', (ev) => {
     const col = ev.zap ? 0x9ff3ff : ELEM_COL[ev.element] || 0xffe9a8;
     let from = ev.from;
-    if (!ev.zap) {
-      // start at viewmodel muzzle for player's shots
+    if (!ev.zap && vm.grapplePose <= 0.15) {
+      // Use the visible muzzle when the gun is raised.
       const mp = new THREE.Vector3(); muzzleFlash.getWorldPosition(mp);
       if (Math.hypot(ev.from.x - camera.position.x, ev.from.z - camera.position.z) < 1.5) from = { x: mp.x, y: mp.y, z: mp.z };
     }

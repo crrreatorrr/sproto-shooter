@@ -10,7 +10,6 @@ import { createArenaWeaponPose } from './weaponPose.js';
 
 // World-space machine gun length for the 1.8 m Arena character rigs.
 const ARENA_MG_LENGTH = 0.96;
-export const ARENA_TRACER_MS = 90;
 
 const ARMS = /^(?:mixamorig)?(?:Left|Right)(?:Shoulder|Arm|ForeArm|Hand)|^weapon_/;
 
@@ -114,7 +113,7 @@ export function poseModel(body, player, shotAge, dt, yaw = null, grapplePose = 0
     if (reloading) reload.time = reload.getClip().duration * THREE.MathUtils.clamp(1 - player.reloadT / reloadTime, 0, 0.999);
     reload.weight = THREE.MathUtils.damp(reload.weight, Number(reloading), 16, dt);
     reload.paused = true;
-    const shootingWeight = shooting && !reloading ? 1 - reload.weight : 0;
+    const shootingWeight = shooting && !reloading ? (1 - reload.weight) * (1 - grapplePose) : 0;
     actions.ready.weight = 1 - reload.weight - shootingWeight;
     actions.shoot.weight = shootingWeight;
     actions.shoot.time = shooting ? shotAge / 1000 : 0;
@@ -122,9 +121,7 @@ export function poseModel(body, player, shotAge, dt, yaw = null, grapplePose = 0
   }
   mixer?.update(dt);
   body.slide?.apply(body.slideWeight);
-  // A live weapon shot takes precedence over the dip while the left arm continues the grapple.
-  const dipBlend = shotAge >= 0 ? THREE.MathUtils.smoothstep(shotAge, ARENA_TRACER_MS, ARENA_TRACER_MS + 65) : 1;
-  weaponPose.apply(grapplePose * dipBlend);
+  weaponPose.apply(grapplePose);
   body.group.updateMatrixWorld(true);
   body.group.worldToLocal(weaponPose.grip.getWorldPosition(gripAt));
   body.group.worldToLocal(weaponPose.tip.getWorldPosition(aimAt));

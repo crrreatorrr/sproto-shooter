@@ -191,6 +191,18 @@ export async function grapplerRun(game) {
     viewmodelCamera.fov = TUNING.fovBase;
     viewmodelCamera.updateProjectionMatrix();
     const weapon = () => camera.children.flatMap((child) => child.children).find((object) => object.userData.gunId !== undefined);
+    const cablePoint = (y) => tether.localToWorld(new THREE.Vector3(0, y, 0));
+    function straightTo(hook) {
+      const start = cablePoint(-0.5);
+      const ray = new THREE.Vector3().copy(hook).sub(start);
+      return cablePoint(0.5).sub(start).cross(ray).length() / ray.length() < 0.002;
+    }
+    function resetCast() {
+      Object.assign(player.pos, { x: 0, y: 0, z: 0 });
+      Object.assign(player.prevPos, player.pos);
+      Object.assign(player.vel, { x: 0, y: 0, z: 0 });
+      player.grappleCd = 0;
+    }
     for (const { id, model } of PLAYER_CHARACTERS) {
       firstPerson.selectModel(model);
       const source = await loadPlayerModel(model);
@@ -200,10 +212,7 @@ export async function grapplerRun(game) {
       attachModel(arenaBody, source, model);
       const arenaFit = arenaBody.grappleArm.surface.length > 0;
       disposeModel(arenaBody);
-      Object.assign(player.pos, { x: 0, y: 0, z: 0 });
-      Object.assign(player.prevPos, player.pos);
-      Object.assign(player.vel, { x: 0, y: 0, z: 0 });
-      player.grappleCd = 0;
+      resetCast();
       draw();
       const launcher = camera.getObjectByName('Launcher');
       const dock = launcher.getObjectByName('Dock');
@@ -217,8 +226,8 @@ export async function grapplerRun(game) {
       step(true, 3);
       const windsUp = effects.visible && tether.visible && !head.visible && stowed.visible;
       step(true, 1);
-      const gunLowered = weapon().position.y < gunAtRest - 0.10 && weapon().rotation.x < pitchAtRest - 0.32
-        && camera.worldToLocal(rightHand.getWorldPosition(new THREE.Vector3())).y < rightAtRest.y - 0.025;
+      const weaponIsLow = () => weapon().position.y < gunAtRest - 0.24 && weapon().rotation.x < pitchAtRest - 0.64;
+      const gunLowered = weaponIsLow() && camera.worldToLocal(rightHand.getWorldPosition(new THREE.Vector3())).y < rightAtRest.y - 0.025;
       const launchZ = head.position.z;
       const shoulder = upper.getWorldPosition(new THREE.Vector3());
       const elbow = lower.getWorldPosition(new THREE.Vector3());
@@ -227,13 +236,28 @@ export async function grapplerRun(game) {
       const extended = windsUp && effects.visible && reach > 0.95 && wrist.sub(player.pos).distanceTo(wristAtRest) > 0.045;
       step(true, 2);
       const flight = effects.visible && !stowed.visible && head.position.z < launchZ - 3 && jaws.every((jaw) => jaw.rotation.x < -0.4);
+      const straightFlight = straightTo(player.grapple) && cablePoint(0.5).distanceTo(head.position) < 0.002;
       step(true, 7);
+      const hook = new THREE.Vector3().copy(player.grapple);
       const latch = !!player.grapple && impact.visible && Math.abs(head.position.z - player.grapple.z) < 0.25
         && jaws.every((jaw) => Math.abs(jaw.rotation.x) < 0.16);
-      step(false, 12);
+      const anchored = cablePoint(0.5).distanceTo(hook) < 0.002;
+      step(true, 1, false, true);
+      const firesLow = state.events.some((event) => event.type === 'shot') && weaponIsLow();
+      let staysLow = weaponIsLow();
+      let staysAnchored = anchored;
+      for (let i = 0; player.grapple && i < 75; i++) {
+        step(true, 1);
+        if (player.grapple) {
+          staysLow &&= weaponIsLow();
+          staysAnchored &&= cablePoint(0.5).distanceTo(hook) < 0.002;
+        }
+      }
+      const reached = !player.grapple && Math.hypot(hook.x - player.pos.x, hook.y - player.pos.y - 0.9, hook.z - player.pos.z) < TUNING.grappleArrive + 0.4;
+      step(false, 15);
       const returned = !effects.visible && stowed.visible;
       const gunRaised = Math.abs(weapon().position.y - gunAtRest) < 0.04 && Math.abs(weapon().rotation.x - pitchAtRest) < 0.07;
-      player.grappleCd = 0;
+      resetCast();
       step(true, 4, true);
       const fovScale = Math.tan(camera.fov * Math.PI / 360) / Math.tan(TUNING.fovBase * Math.PI / 360);
       const handoff = Math.abs(head.scale.x - dock.getWorldScale(new THREE.Vector3()).x * fovScale) < 0.002;
@@ -246,19 +270,16 @@ export async function grapplerRun(game) {
       step(false, 3);
       const canceled = !impact.visible && head.position.z > canceledAt;
       step(false, 12);
-      player.grappleCd = 0;
+      resetCast();
       step(true, 2);
       const cue = effects.visible && tether.visible && tether.material.opacity < 0.4 && !head.visible;
       step(false, 1);
       const quickTap = cue && !effects.visible && stowed.visible;
       step(false, 7);
-      player.grappleCd = 0;
-      step(true, 4);
-      step(true, 1, false, true);
-      const firesLevel = state.events.some((event) => event.type === 'shot') && effects.visible
-        && weapon().rotation.x > pitchAtRest - 0.09;
-      step(false, 14);
-      report[id] = { docked, flight, latch, returned, aimed, handoff, canceled, extended, quickTap, gunLowered, gunRaised, arenaFit, firesLevel };
+      report[id] = {
+        docked, flight, latch, returned, aimed, handoff, canceled, extended, quickTap, gunLowered, gunRaised,
+        arenaFit, straightFlight, staysAnchored, staysLow, firesLow, reached,
+      };
     }
     return report;
   } finally {

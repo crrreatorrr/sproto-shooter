@@ -67,8 +67,8 @@ export function createArenaWeaponPose(model, body) {
       upperBase.copy(upper.quaternion);
       handBase.copy(hand.quaternion);
       right.set(1, 0, 0).applyQuaternion(body.getWorldQuaternion(bodyQ));
-      rotateWorld(upper, turn.setFromAxisAngle(right, weight * 0.23));
-      rotateWorld(hand, turn.setFromAxisAngle(right, weight * 0.29));
+      rotateWorld(upper, turn.setFromAxisAngle(right, weight * 0.43));
+      rotateWorld(hand, turn.setFromAxisAngle(right, weight * 0.47));
       lowered = true;
     },
   };

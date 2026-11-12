@@ -7,7 +7,7 @@ from math import cos, pi, sin
 from pathlib import Path
 
 import bpy
-from mathutils import Quaternion, Vector
+from mathutils import Vector
 
 
 REPO = Path(__file__).resolve().parents[3]
@@ -201,8 +201,8 @@ scene.render.resolution_percentage = 100
 deck = material("Studio blue", "536379")
 slate = material("Anchor body", "495873")
 edge = material("Anchor edge", "71839B")
-box("Stage", (0, -0.535, 1.60), (13.0, 0.10, 13.0), deck, bevel=0.05)
-box("Anchor pedestal", (0, -0.205, 3.42), (0.68, 0.57, 0.62), slate, bevel=0.055)
+box("Stage", (0, -0.70, 1.60), (13.0, 0.10, 13.0), deck, bevel=0.05)
+box("Anchor pedestal", (0, -0.285, 3.42), (0.68, 0.73, 0.62), slate, bevel=0.055)
 box("Anchor plate", (0, 0.089, 3.13), (0.41, 0.14, 0.10), edge, bevel=0.028)
 tube("Grip rail", (-0.235, 0.106, 3.07), (0.235, 0.106, 3.07), 0.026, housing, sides=12)
 for x in (-0.24, 0.24):
@@ -213,7 +213,9 @@ sleeve = material("Field jacket", "596150")
 seam = material("Cuff seam", "404740")
 glove = material("Glove", "30363D")
 knuckles = material("Glove padding", "454F5B")
-shoulder = empty("Demo shoulder", at=(0, 0, -0.61))
+traveler = empty("Demo player travel")
+key(traveler, "location", [(f, xyz((0, 0, z))) for f, z in [(1, 0), (43, 0), (78, 2.36), (108, 2.36)]])
+shoulder = empty("Demo shoulder", traveler, (0, 0, -0.61))
 elbow = empty("Demo elbow", shoulder, (0, 0, 0.36))
 tube("Upper sleeve", (0, 0, -0.035), (0, 0, 0.367), 0.111, sleeve, shoulder, 10, 0.089)
 tube("Elbow seam", (0, 0, -0.023), (0, 0, 0.045), 0.091, seam, elbow, 10, 0.087)
@@ -226,12 +228,12 @@ launcher.parent = elbow
 launcher.location = xyz((0, -0.003, 0.25))
 
 arm_keys = [(1, 0.58, -1.18), (12, 0.58, -1.18), (19, 0, 0), (22, 0.045, -0.07),
-            (27, 0, 0), (43, 0, 0), (67, 0.58, -1.18), (108, 0.58, -1.18)]
+            (27, 0, 0), (78, 0, 0), (97, 0.58, -1.18), (108, 0.58, -1.18)]
 key(shoulder, "rotation_euler", [(f, (a, 0, 0)) for f, a, _ in arm_keys])
 key(elbow, "rotation_euler", [(f, (a, 0, 0)) for f, _, a in arm_keys])
 
 # Preview the right hand and the same toy machine gun used in the game.
-gun_arm = empty("Demo gun arm", at=(-0.30, 0.012, -0.50))
+gun_arm = empty("Demo gun arm", traveler, (-0.30, 0.012, -0.50))
 tube("Gun-side sleeve", (0, 0, -0.05), (0, 0, 0.285), 0.084, sleeve, gun_arm, 10, 0.063)
 box("Gun-side glove", (0, 0.002, 0.309), (0.111, 0.115, 0.117), glove, gun_arm, 0.023)
 box("Gun-side knuckles", (0.034, 0.023, 0.322), (0.059, 0.067, 0.073), knuckles, gun_arm, 0.012)
@@ -252,43 +254,59 @@ size = Vector([hi - lo for lo, hi in bounds])
 grip = center + Vector((0, 0.23 * size.y, -0.26 * size.z))
 gun.location += xyz((0, 0.011, 0.311)) - grip
 
-gun_keys = [(1, 0), (12, 0), (19, 1), (22, 1), (38, 1), (67, 0), (108, 0)]
-key(gun_arm, "location", [(f, xyz((-0.30 - 0.055 * w, 0.012 - 0.11 * w, -0.50))) for f, w in gun_keys])
-key(gun_arm, "rotation_euler", [(f, (0.40 * w, 0, -0.06 * w)) for f, w in gun_keys])
+gun_keys = [(1, 0), (12, 0), (19, 1), (94, 1), (108, 0)]
+key(gun_arm, "location", [(f, xyz((-0.30 - 0.085 * w, 0.012 - 0.23 * w, -0.50 - 0.07 * w))) for f, w in gun_keys])
+key(gun_arm, "rotation_euler", [(f, (0.74 * w, 0, -0.06 * w)) for f, w in gun_keys])
 
 
-stop = 2.965
+contact = xyz((0, 0.106, 3.07))
 claw.rotation_mode = "QUATERNION"
-docked = []
-for f in [*range(1, 20), 95, 108]:
+claw_keys = []
+cable_keys = []
+for f in range(1, 109):
     scene.frame_set(f)
-    docked.append((f, socket.matrix_world.translation.copy(), socket.matrix_world.to_quaternion()))
-flight = [(f, xyz((0, 0.106, z)), Quaternion()) for f, z in
-          [(23, 0.43), (32, 1.59), (43, stop), (77, stop)]]
-claw_keys = sorted(docked + flight)
+    dock = socket.matrix_world.translation.copy()
+    dock_rotation = socket.matrix_world.to_quaternion()
+    line = (contact - dock).normalized()
+    hub = contact - line * 0.105
+    flight_rotation = line.to_track_quat("-Y", "Z")
+    if f < 19 or f >= 95:
+        position, rotation = dock, dock_rotation
+    elif f <= 78:
+        flight = min(1, (f - 19) / 24)
+        position = dock.lerp(hub, flight)
+        rotation = dock_rotation.slerp(flight_rotation, min(1, flight * 5))
+    else:
+        retract = (f - 78) / 17
+        position = hub.lerp(dock, retract)
+        rotation = flight_rotation.slerp(dock_rotation, retract)
+    claw_keys.append((f, position, rotation))
+    cable_keys.append((f, contact if 43 <= f <= 78 else position))
 key(claw, "location", [(f, position) for f, position, _ in claw_keys])
 key(claw, "rotation_quaternion", [(f, rotation) for f, _, rotation in claw_keys])
 for hinge in hinges:
     hinge.animation_data_clear()
     key(hinge, "rotation_euler", [(f, (-a, 0, 0)) for f, a in [
         (1, 0), (19, 0), (25, 0.43), (39, 0.75), (43, 0.73),
-        (47, -0.04), (50, 0.13), (77, 0.13), (83, 0.46), (95, 0), (108, 0),
+        (47, -0.04), (50, 0.13), (78, 0.13), (84, 0.46), (95, 0), (108, 0),
     ]])
 
 # The tether follows the moving dock as the arm drops after the shot.
+tether_end = empty("Tether endpoint")
+key(tether_end, "location", cable_keys)
 cable = empty("Tether")
 tube("Tether filament", (0, 0, 0), (0, 0, 1), 0.006, cyan, cable, 10)
 origin = cable.constraints.new("COPY_LOCATION")
 origin.target = socket
 track = cable.constraints.new("DAMPED_TRACK")
-track.target = claw
+track.target = tether_end
 track.track_axis = "TRACK_NEGATIVE_Y"
 driver = cable.driver_add("scale", 1).driver
 travel = driver.variables.new()
 travel.name = "tether_length"
 travel.type = "LOC_DIFF"
 travel.targets[0].id = socket
-travel.targets[1].id = claw
+travel.targets[1].id = tether_end
 driver.expression = "max(0.0001, tether_length)"
 
 flare = empty("Latch flash", at=(0, 0.106, 3.07))
@@ -307,15 +325,14 @@ cam_data.type = "ORTHO"
 shots = [(1, (0.80, 1.04, -0.57), (-0.14, 0.015, -0.13), 1.46),
          (20, (0.80, 1.04, -0.57), (-0.14, 0.015, -0.13), 1.46),
          (32, (3.4, 1.95, 1.90), (0, 0.09, 1.39), 4.55),
-         (44, (3.4, 1.95, 1.90), (0, 0.09, 1.39), 4.55),
-         (59, (1.74, 1.13, 3.00), (0, 0.09, 3.03), 0.89),
-         (71, (1.74, 1.13, 3.00), (0, 0.09, 3.03), 0.89),
-         (89, (3.4, 1.95, 1.90), (0, 0.09, 1.39), 4.55),
-         (108, (0.80, 1.04, -0.57), (-0.14, 0.015, -0.13), 1.46)]
+         (52, (3.4, 1.95, 1.90), (0, 0.09, 1.39), 4.55),
+         (67, (1.74, 1.13, 2.84), (0, 0.03, 2.60), 2.55),
+         (81, (0.80, 1.04, 1.79), (-0.14, -0.09, 2.44), 1.75),
+         (108, (0.80, 1.04, 1.79), (-0.14, -0.09, 2.44), 1.75)]
 key(cam, "location", [(f, xyz(p)) for f, p, _, _ in shots])
 key(cam, "rotation_quaternion", [(f, (xyz(t) - xyz(p)).to_track_quat("-Z", "Y")) for f, p, t, _ in shots])
 key(cam_data, "ortho_scale", [(f, scale) for f, _, _, scale in shots])
-for label, frame in [("Docked", 1), ("Lower gun and extend arm", 13), ("Launch", 19), ("Flight", 32), ("Latch", 43), ("Retract", 77)]:
+for label, frame in [("Docked", 1), ("Lower gun and extend arm", 13), ("Launch", 19), ("Flight", 32), ("Latch and pull", 43), ("Reach anchor", 78), ("Raise gun", 95)]:
     scene.timeline_markers.new(label, frame=frame)
 for screen in bpy.data.screens:
     for area in screen.areas:
