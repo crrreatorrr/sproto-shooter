@@ -29,7 +29,8 @@ describe('budget pins', () => {
     expect(MEASURED.criticalTransferBytes).toBeLessThanOrEqual(6 * 1024 * 1024);
     expect(MEASURED.criticalFirstPartyRequests).toBeLessThanOrEqual(20);
     expect(GATE.titleShellGzipBytes).toBe(150 * 1024);
-    expect(GATE.staticShipBytes).toBe(28 * 1024 * 1024);
+    // Raised by 64 KiB for full screen, menu options and Controller settings (owner approved).
+    expect(GATE.staticShipBytes).toBe(28 * 1024 * 1024 + 64 * 1024);
     expect(GATE.criticalTransferBytes).toBe(6 * 1024 * 1024);
     expect(GATE.criticalRequests).toBe(20);
     expect(GATE.glbBytes).toBe(3 * 1024 * 1024);
