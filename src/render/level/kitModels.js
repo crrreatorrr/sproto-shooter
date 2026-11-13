@@ -23,6 +23,7 @@ export const KIT = {
   fx: (name) => FX[name],
   bomb: 'models/projectiles/bomb.glb.gz',
 };
+
 let version = 0;
 /** Goes up when a kit model finishes loading. Views that fell back to primitives rebuild on it. */
 export const kitVersion = () => version;

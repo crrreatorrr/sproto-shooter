@@ -236,9 +236,6 @@ export function createLevelView() {
     if (lv.id === 'L02') {
       for (const mesh of decorMeshes(bazaarPlacements(sec, prims), [0, 0, 0], replaced, surfaceKit)) group.add(mesh);
     }
-    if (lv.id === 'L01') {
-      for (const mesh of decorMeshes(landingPlacements(sec, prims), [0, 0, 0], replaced, surfaceKit)) group.add(mesh);
-    }
     if (placements) for (const mesh of decorMeshes(placements(sec, prims, doors), [0, 0, 0], replaced, surfaceKit)) group.add(mesh);
     for (const [id, d] of Object.entries(dress.fit || {})) {
       const g = prims.get(id);
