@@ -70,7 +70,7 @@ export function createRenderer(container, bus, playerModel, graphicsPreset = 'hi
       demandNow.push(art);
       loadTexture(art, { color: false });
       const panorama = panoramaPath(state.level.id);
-      if (panorama) {
+      if (panorama && (state.level.id !== 'L08' || state.level.section === 'S4')) {
         demandNow.push(panorama);
         loadTexture(panorama);
       }

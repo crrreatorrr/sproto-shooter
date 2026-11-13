@@ -6,8 +6,11 @@ export const SKYLINE_PANORAMA = 'textures/campaign/skyline-night.webp';
 export const UNDERWORKS_SURFACE_ART = 'textures/campaign/underworks-surface.webp';
 export const UNDERWORKS_PANORAMA = 'textures/campaign/underworks-cavern.webp';
 
-const LEVEL_ATLASES = { L06: SKYLINE_SURFACE_ART, L07: UNDERWORKS_SURFACE_ART };
-const PANORAMAS = { L06: SKYLINE_PANORAMA, L07: UNDERWORKS_PANORAMA };
+export const OFFICE_SURFACE_ART = 'textures/campaign/office-surface.webp';
+export const OFFICE_PANORAMA = 'textures/campaign/office-night.webp';
+
+const LEVEL_ATLASES = { L06: SKYLINE_SURFACE_ART, L07: UNDERWORKS_SURFACE_ART, L08: OFFICE_SURFACE_ART };
+const PANORAMAS = { L06: SKYLINE_PANORAMA, L07: UNDERWORKS_PANORAMA, L08: OFFICE_PANORAMA };
 
 export function panoramaPath(level) {
   return PANORAMAS[level];
@@ -27,7 +30,7 @@ const THEMES = {
   L05: [[8, 9, 10, 9], [8.1, 6.4, 5.4, 5.2], [8.1, 4.8, 4.4, 4.9], [1.15, 1.04, 1.40, 1.09], 0x99e7ff],
   L06: [[0, 1, 2, 3], [8.2, 4.8, 4.35, 4.4], [7.8, 4.7, 4.3, 2.65], [1.64, 1.48, 1.35, 1.47], 0x6edbff],
   L07: [[0, 1, 2, 3], [6.3, 5.4, 7.6, 6.1], [6.1, 4.15, 6.2, 5.25], [2.4, 2.06, 1.54, 1.92], 0xffac52],
-  L08: [[16, 17, 23, 23], [3.8, 5.2, 4.5, 4.5], [3.8, 3.8, 4.5, 4.5], [1.30, 1.30, 1.30, 1.10], 0xe2f3ff],
+  L08: [[0, 1, 2, 3], [7.5, 6.1, 8.1, 6.7], [7.5, 4.4, 6.7, 6.7], [1.49, 1.55, 1.36, 1.64], 0x99e7ff],
   L09: [[18, 19, 19, 19], [5.5, 5.1, 5.1, 5.1], [5.5, 3.6, 3.6, 3.6], [1.45, 1.45, 1.20, 1.18], 0xb3a3ff],
   L10: [[20, 21, 21, 21], [6.3, 5.5, 5.5, 5.5], [6.3, 3.9, 3.9, 3.9], [1.45, 1.48, 1.20, 1.18], 0xff9147],
 };
@@ -50,7 +53,8 @@ export function ceilingSurface(level, geometry) {
 export function kitCeilingSurface(model) {
   return model === 'void_bulkhead' || model === 'grove_shed' || model === 'grove_barn_roof'
     || model === 'frost_roof' || model === 'skyline_canopy'
-    || model === 'underworks_roof' || model === 'underworks_tunnel' ? CEILING_SURFACE : 0;
+    || model === 'underworks_roof' || model === 'underworks_tunnel'
+    || model === 'office_soffit' || model === 'office_portal' ? CEILING_SURFACE : 0;
 }
 
 export function surfaceArtTheme(level) {
@@ -109,7 +113,7 @@ export const ART_GLSL = /* glsl */ `
       }
       if (campaignSurfaceKind == 3.) { amount = a.x; return sampleCampaignArt(p, tiles.x, vec2(x.x, y.x), dx, dy); }
     #endif
-    #if defined(CAMPAIGN_ART_UNDERWORKS)
+    #if defined(CAMPAIGN_ART_FOUNDRY_OR_OFFICE)
       if (campaignSurfaceKind == 7.) {
         amount = a.w;
         return sampleCampaignArt(p, tiles.w, vec2(x.w, y.w), dx, dy);
