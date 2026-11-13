@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { loadPackedGltf } from '../loadPackedGltf.js';
 import { PRIORITY, assetStatus, ensureStatic, enqueue, instantiateStatic, peekAsset, retainAsset } from '../assets.js';
-
 // Literal paths: scripts/asset-report.mjs finds references by reading them.
 const PROPS = {
   barrel_fire: 'models/props/barrel_fire.glb.gz',
