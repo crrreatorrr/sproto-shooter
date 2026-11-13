@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { loadPackedGltf } from '../loadPackedGltf.js';
 import { PRIORITY, assetStatus, ensureStatic, enqueue, instantiateStatic, peekAsset, retainAsset } from '../assets.js';
+import { OFFICE_EXPANSION_PROPS } from './officePropPaths.js';
 // Literal paths: scripts/asset-report.mjs finds references by reading them.
 const PROPS = {
   barrel_fire: 'models/props/barrel_fire.glb.gz',
@@ -258,12 +259,11 @@ const FX = {
   poof: 'models/fx/poof.glb.gz',
 };
 export const KIT = {
-  prop: (name) => PROPS[name],
+  prop: (name) => PROPS[name] ?? OFFICE_EXPANSION_PROPS[name],
   pickup: (name) => PICKUPS[name],
   fx: (name) => FX[name],
   bomb: 'models/projectiles/bomb.glb.gz',
 };
-
 let version = 0;
 /** Goes up when a kit model finishes loading. Views that fell back to primitives rebuild on it. */
 export const kitVersion = () => version;

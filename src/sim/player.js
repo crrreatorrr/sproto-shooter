@@ -118,7 +118,13 @@ export function playerMovement(state, dt) {
     const wasAir = !p.onGround;
     const solids = activeSolids(state);
     if (solids) {
-      pushHorizontal(p, solids, TUNING.playerRadius, playerHeight(p), STEP_UP);
+      const height = playerHeight(p);
+      const ceiling = state.level.legacyCeiling;
+      if (ceiling && p.pos.y + height > ceiling) {
+        p.pos.y = ceiling - height;
+        p.vel.y = Math.min(0, p.vel.y);
+      }
+      pushHorizontal(p, solids, TUNING.playerRadius, height, STEP_UP);
       const beforeY = p.pos.y;
       snapToGround(p, solids, TUNING.playerRadius, STEP_UP);
       if (wasAir && p.onGround && beforeY - p.pos.y > 0.05 && p.vel.y < -6) {

@@ -113,13 +113,13 @@ export function mountStage(env) {
       bounce.color.setHex(0xbbd7e1);
     }
     if (skyTex && (bazaar || skyline || underworks || roof || moonlit)) {
-      skyTex.offset.y = bazaar ? -.018 : skyline ? -.088 : underworks ? .035 : moonlit ? -.036 : -.098;
+      skyTex.offset.y = bazaar ? -.018 : skyline ? -.088 : underworks ? .035 : moonlit ? -.036 : -.049;
       if (bazaar || skyline || roof || moonlit) {
         // Frame a different part of the painted skyline along each approach.
         skyTex.wrapS = THREE.RepeatWrapping;
         const skylineOffset = { S1: .09, S2: .195, S3: -.17, S4: .275 };
         skyTex.offset.x = skyline ? (skylineOffset[sectionId] ?? skylineOffset.S1)
-          : bazaar ? (showroom ? -.13 : .04) : moonlit ? .208 : .185;
+          : bazaar ? (showroom ? -.13 : .04) : moonlit ? .208 : .292;
         skyTex.needsUpdate = true;
       }
     }
@@ -192,7 +192,7 @@ export function mountStage(env) {
       bounce.intensity = .86;
     }
     if (office) {
-      scene.fog.color.setHex(roof ? 0x232f57 : 0x293745);
+      scene.fog.color.setHex(roof ? 0x38446d : 0x293745);
       hemi.color.setHex(roof ? 0xb5c8f4 : 0xe4f0ff);
       hemi.groundColor.setHex(roof ? 0x606a84 : 0x9299a4);
       hemi.intensity = roof ? 1.16 : 1.47;
