@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 351,
-    "runtimeBytes": 27364834,
+    "runtimeFiles": 353,
+    "runtimeBytes": 27387929,
     "decodedBytes": 258148166,
-    "referenced": 351,
+    "referenced": 353,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -1496,6 +1496,20 @@
       "kind": "static",
       "from": [
         "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_annex.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/officePropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/office_atrium_sign.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/officePropPaths.js"
       ]
     },
     {
@@ -9308,6 +9322,67 @@
       }
     },
     {
+      "path": "models/props/office_annex.glb.gz",
+      "bytes": 3147,
+      "sha256": "9ed9eb9075e95b553b6dfe40cf89bf4a206fc8cd096c018b7e59fe344316e3c4",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/officePropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 360,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_office_amber",
+          "campaign_glow_office_red",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_atrium_sign.glb.gz",
+      "bytes": 6158,
+      "sha256": "8927f3db889b647b154027bcbf8395f1734476babfc6eeb51f2ca1c9b3202ac0",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/officePropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 616,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_office_cyan",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
       "path": "models/props/office_clock.glb.gz",
       "bytes": 13366,
       "sha256": "452848cc7184cdb46007fec7ae16765aa21e6ec8335b22d3aee6231e441730cc",
@@ -13008,8 +13083,8 @@
     },
     {
       "path": "textures/campaign/office-night.webp",
-      "bytes": 16390,
-      "sha256": "c0018054d5a8d6980c6041bf56d6d9857b046565cb05c0b64a79568ceddae8a7",
+      "bytes": 30180,
+      "sha256": "19380a558596ffbcf973c0f5e311b0c415f3fe007b08510ca4a3e54942ef2057",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -13630,7 +13705,7 @@
       },
       {
         "path": "art/blender/government_office.blend",
-        "bytes": 244328
+        "bytes": 254984
       },
       {
         "path": "art/blender/grand_bazaar.blend",
