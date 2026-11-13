@@ -12,8 +12,9 @@ export const MOONLIT_SURFACE_ART = 'textures/campaign/moonlit-surface.webp';
 export const MOONLIT_PANORAMA = 'textures/campaign/moonlit-night.webp';
 
 const LEVEL_ATLASES = { L06: SKYLINE_SURFACE_ART, L07: UNDERWORKS_SURFACE_ART, L08: OFFICE_SURFACE_ART, L09: MOONLIT_SURFACE_ART };
+export const BAZAAR_PANORAMA = 'textures/campaign/bazaar-sunset.webp';
 export const GROVE_PANORAMA = 'textures/campaign/grove-orchard.webp';
-const PANORAMAS = { L03: GROVE_PANORAMA, L06: SKYLINE_PANORAMA, L07: UNDERWORKS_PANORAMA, L08: OFFICE_PANORAMA, L09: MOONLIT_PANORAMA };
+const PANORAMAS = { L02: BAZAAR_PANORAMA, L03: GROVE_PANORAMA, L06: SKYLINE_PANORAMA, L07: UNDERWORKS_PANORAMA, L08: OFFICE_PANORAMA, L09: MOONLIT_PANORAMA };
 
 export function panoramaPath(level, section) {
   if ((level === 'L08' && section && section !== 'S4') || (level === 'L09' && section === 'S2')) return;
@@ -28,7 +29,7 @@ export function surfaceArtPath(level) {
 // Repeat distances are world metres; each tile contains several painted shapes.
 const THEMES = {
   L01: [[0, 1, 23, 23], [8.5, 3.5, 4.2, 4.2], [8.5, 2.8, 4.2, 4.2], [1.05, 1.18, 1.1, 1.0], 0xdee9ff],
-  L02: [[2, 3, 22, 22], [7.3, 4.6, 4.3, 4.3], [7.3, 3.2, 4.3, 4.3], [1.10, 1.25, 1.20, 1.15], 0xffd4aa],
+  L02: [[2, 3, 22, 22], [8.6, 5.2, 5.1, 4.3], [8.1, 3.6, 4.6, 4.3], [1.19, 1.42, .60, 1.15], 0xffd4aa],
   L03: [[4, 5, 5, 5], [5.6, 3.5, 3.5, 3.5], [5.6, 2.4, 2.8, 2.4], [1.13, 1.17, 1.16, 1.23], 0xffd4aa],
   L04: [[6, 7, 11, 11], [5.1, 4.6, 5.1, 5.1], [5.1, 3.9, 4.2, 4.2], [1.00, 1.18, 1.32, 1.2], 0x53e5ff],
   L05: [[8, 9, 10, 9], [8.1, 6.4, 5.4, 5.2], [8.1, 4.8, 4.4, 4.9], [1.15, 1.04, 1.40, 1.09], 0x99e7ff],
@@ -58,7 +59,7 @@ export function kitCeilingSurface(model) {
   return model === 'void_bulkhead' || model === 'grove_shed' || model === 'grove_barn_roof'
     || model === 'frost_roof' || model === 'skyline_canopy'
     || model === 'underworks_roof' || model === 'underworks_tunnel'
-    || model === 'office_soffit' || model === 'office_portal' || model === 'moonlit_vault' ? CEILING_SURFACE : 0;
+    || model === 'office_soffit' || model === 'office_portal' || model === 'moonlit_vault' || model === 'bazaar2_canopy' ? CEILING_SURFACE : 0;
 }
 
 export function surfaceArtTheme(level) {

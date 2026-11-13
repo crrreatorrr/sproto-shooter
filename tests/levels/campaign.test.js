@@ -44,12 +44,13 @@ function aim(st) {
   pl._stuck = moved < 0.02 && dist > 1.4 ? stuck + 1 : 0;
   // The quick sidestep below only fires on a dead stop. Pressed head-on into a car or a tank the bot
   // jitters instead, never counts as stuck, and stays there. So also watch progress: a fixed target that
-  // (an encounter or the exit, not an enemy) that gets no closer for a few seconds means walk one way for a stretch to get round, the other way next time.
+  // or a nearby enemy that gets no closer for a few seconds means walk one way for a stretch
+  // to get around the cover, then try the other direction if it is still in the way.
   const sameTarget = Math.hypot(tx - (pl._tx ?? tx), tz - (pl._tz ?? tz)) < 1;
   pl._tx = tx; pl._tz = tz;
   if (!sameTarget || pl._near == null || dist < pl._near - 0.3) { pl._near = dist; pl._idle = 0; }
   else if (dist > 1.4) pl._idle = (pl._idle || 0) + 1;
-  if (!best && pl._idle > 150 && !(pl._detour > 0)) { pl._detour = 45; pl._detourDir = pl._detourDir === 1 ? -1 : 1; pl._idle = 0; pl._near = null; }
+  if ((!best || dist < 2) && pl._idle > 150 && !(pl._detour > 0)) { pl._detour = 45; pl._detourDir = pl._detourDir === 1 ? -1 : 1; pl._idle = 0; pl._near = null; }
   const detour = pl._detour > 0;
   if (detour) pl._detour--;
   const sidestep = detour || pl._stuck > 30;

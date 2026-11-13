@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 326,
-    "runtimeBytes": 27252535,
-    "decodedBytes": 258123590,
-    "referenced": 326,
+    "runtimeFiles": 340,
+    "runtimeBytes": 27329246,
+    "decodedBytes": 258139974,
+    "referenced": 340,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -569,6 +569,97 @@
     },
     {
       "path": "models/props/bazaar_wall.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/bazaar2_archway.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/bazaar2_beacon.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/bazaar2_brazier.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/bazaar2_canopy.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/bazaar2_city.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/bazaar2_lantern.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/bazaar2_ridge.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/bazaar2_ring_inlay.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/bazaar2_rug.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/bazaar2_shop.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/bazaar2_support.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/bazaar2_tower.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/bazaar2_wall_panel.glb.gz",
       "kind": "static",
       "from": [
         "src/render/level/kitModels.js"
@@ -2168,6 +2259,13 @@
       "from": [
         "src/data/stages.js",
         "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "textures/campaign/bazaar-sunset.webp",
+      "kind": "static",
+      "from": [
+        "src/render/level/campaignSurfaceArt.js"
       ]
     },
     {
@@ -5204,6 +5302,385 @@
       "height": null,
       "meshopt": false,
       "triangles": 2580,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/bazaar2_archway.glb.gz",
+      "bytes": 10553,
+      "sha256": "87d2fdc09e1116c33f7fe99bdd742a66408043c0755a3204517d511e20b82e69",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1096,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/bazaar2_beacon.glb.gz",
+      "bytes": 1896,
+      "sha256": "d8066402f942d9360824d6546e5cdf87bb873e377a90c834013cfc12dcad5b46",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 104,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/bazaar2_brazier.glb.gz",
+      "bytes": 4375,
+      "sha256": "eb6b8acc3743284421a957ebe168b84ca3d20043be5c32b43cf9f5b3f7cd828d",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 304,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_bazaar_ember",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/bazaar2_canopy.glb.gz",
+      "bytes": 3513,
+      "sha256": "f84d7c14df552dc0de2819ec1fb2d7e23a1031b0200a8c1192f85c91ccb5333f",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 344,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/bazaar2_city.glb.gz",
+      "bytes": 4285,
+      "sha256": "78b777f0aa59ec93b1dec425df173d59601c156b37d26b2b95bcd24b86bdeb18",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 364,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/bazaar2_lantern.glb.gz",
+      "bytes": 2737,
+      "sha256": "e8a8ff9456c11ae853dcd2148b9da2ff5bfd939091a5503cb3f6e6e9b1bd2dc6",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 180,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_bazaar_ember",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/bazaar2_ridge.glb.gz",
+      "bytes": 7307,
+      "sha256": "5375983d18d009b405ea02be5beecaddcc1452099788be18ab91b49108519843",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 444,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/bazaar2_ring_inlay.glb.gz",
+      "bytes": 14388,
+      "sha256": "db5fc9f3cc3c300a68f963637afaec8a007dca98e5c35178b6017a989af23271",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1680,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/bazaar2_rug.glb.gz",
+      "bytes": 2059,
+      "sha256": "d33f436fabc0e2d04d5c3a373e2c77a96b05df63f8fd2bcddc48aafb34aa79d4",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 130,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/bazaar2_shop.glb.gz",
+      "bytes": 7605,
+      "sha256": "d9dd1df2b9bbe82574612e1d838ae92c6292bea447b43cbec6481df57d163473",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 784,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/bazaar2_support.glb.gz",
+      "bytes": 1894,
+      "sha256": "58850b2a92a6a13d2fa809bc7f8daf238d9832d26c2fd814804722b741c27ab6",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 140,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/bazaar2_tower.glb.gz",
+      "bytes": 4288,
+      "sha256": "118fab612e2e536a6e9f43b5e609312104b1264b2f26df94d7d0362e1f29cde5",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 400,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/bazaar2_wall_panel.glb.gz",
+      "bytes": 1353,
+      "sha256": "75d91e82536908a7c2069a5db66025166c2139316570a6a7b73997d45e159631",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 80,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -12106,6 +12583,21 @@
       }
     },
     {
+      "path": "textures/campaign/bazaar-sunset.webp",
+      "bytes": 22408,
+      "sha256": "14352cf0aa959dd5feee8ae0706a2ff7fc40f18464918614b5fa7e388b2c9b02",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/campaignSurfaceArt.js"
+      ],
+      "kind": "image",
+      "width": 768,
+      "height": 384,
+      "decodedBytes": 1179648,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
       "path": "textures/campaign/grove-orchard.webp",
       "bytes": 14134,
       "sha256": "7e2a9e5a17c1a13c8a5c87acedc22756821247cf42d02ef625c8afa8e4f5651e",
@@ -12317,32 +12809,32 @@
     },
     {
       "path": "textures/stages/desert/sky.jpg",
-      "bytes": 55962,
-      "sha256": "632d058b6ef428c656338a43a67e1263481dc8bf2901ca5519811bf3944ffc0c",
+      "bytes": 49749,
+      "sha256": "32477b9a2e1772fcc12066fbd5792a7d2844c82ed0a291f77aeacacdc14f868f",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
         "src/data/stages.js"
       ],
       "kind": "image",
-      "width": 1024,
-      "height": 512,
-      "decodedBytes": 2097152,
+      "width": 768,
+      "height": 384,
+      "decodedBytes": 1179648,
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     },
     {
       "path": "textures/stages/desert/stone.jpg",
-      "bytes": 63020,
-      "sha256": "6e2d9b2d79e222054a6ea8dda6be8eb07242ce520b2bc010a5be7e2a4e7ae57d",
+      "bytes": 57283,
+      "sha256": "bece394e3b27fb20b0b2955c57eed0535fb5d86dfe61878d1d5528edae3873d9",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
         "src/data/stages.js"
       ],
       "kind": "image",
-      "width": 512,
-      "height": 512,
-      "decodedBytes": 1048576,
+      "width": 448,
+      "height": 448,
+      "decodedBytes": 802816,
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     },
     {
@@ -12760,6 +13252,10 @@
       {
         "path": "art/blender/government_office.blend",
         "bytes": 244328
+      },
+      {
+        "path": "art/blender/grand_bazaar.blend",
+        "bytes": 158185
       },
       {
         "path": "art/blender/grappler.blend",
