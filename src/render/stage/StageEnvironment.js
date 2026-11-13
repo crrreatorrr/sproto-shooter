@@ -54,6 +54,7 @@ export function mountStage(env) {
   }
 
   function applyStage(id, levelId, sectionId) {
+    const grove = id === 'grove' && levelId === 'L03';
     const blockchain = id === 'void' && levelId === 'L04';
     const frostspire = id === 'glacier' && levelId === 'L05';
     const skyline = id === 'city' && levelId === 'L06';
@@ -65,7 +66,7 @@ export function mountStage(env) {
     const st = STAGES[id], a = stageAssets(id);
     const variant = office ? (roof ? 'L08-roof' : 'L08-interior')
       : moonlit ? (crypt ? 'L09-crypt' : 'L09-exterior')
-      : blockchain || frostspire || skyline || underworks ? levelId : '';
+      : grove || blockchain || frostspire || skyline || underworks ? levelId : '';
     const key = id + ':' + variant + ':' + assetsVersion();
     if (key === stageKey) return;
     stageKey = key;
@@ -86,8 +87,21 @@ export function mountStage(env) {
       bounce.intensity = .45;
     }
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
-    const panorama = skyline || underworks || office || moonlit ? panoramaPath(levelId, sectionId) : a.sky;
-    const skyTex = panorama ? peekTexture(panorama) : null;
+    const panorama = grove || skyline || underworks || office || moonlit ? panoramaPath(levelId, sectionId) : a.sky;
+    const skyTex = panorama ? peekTexture(panorama) || (grove ? peekTexture(a.sky) : null) : null;
+    const orchardSky = grove && skyTex && skyTex === peekTexture(panorama);
+    if (orchardSky) {
+      skyTex.wrapS = THREE.RepeatWrapping;
+      skyTex.offset.set(.07, -.046);
+      skyTex.needsUpdate = true;
+      scene.fog.color.setHex(0x97a878);
+      hemi.color.setHex(0xffedcf);
+      hemi.groundColor.setHex(0x748859);
+      hemi.intensity = 1.51;
+      sun.color.setHex(0xffda9f);
+      sun.intensity = 1.68;
+      bounce.color.setHex(0xbbd7e1);
+    }
     if (skyTex && (skyline || underworks || roof || moonlit)) {
       skyTex.offset.y = skyline ? -.16 : underworks ? .035 : moonlit ? -.036 : -.098;
       if (roof || moonlit) {

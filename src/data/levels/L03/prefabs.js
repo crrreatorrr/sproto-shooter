@@ -157,11 +157,11 @@ export function totem() {
   ];
 }
 
-export function rootArch() {
+export function rootArch(halfSpan) {
   return [
-    cylinder({ id: 'l', at: [-2.5, 0, 0], r: 0.6, h: 5, mat: 'wood' }),
-    cylinder({ id: 'r', at: [2.5, 0, 0], r: 0.6, h: 5, mat: 'wood' }),
-    box({ id: 'lintel', at: [0, 5.5, 0], size: [7, 1, 1.5], mat: 'wood' }),
+    cylinder({ id: 'l', at: [-halfSpan, 0, 0], r: 0.6, h: 5, mat: 'wood' }),
+    cylinder({ id: 'r', at: [halfSpan, 0, 0], r: 0.6, h: 5, mat: 'wood' }),
+    box({ id: 'lintel', at: [0, 5.5, 0], size: [2 * halfSpan + 2, 1, 1.5], mat: 'wood' }),
   ];
 }
 

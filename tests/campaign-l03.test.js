@@ -64,6 +64,29 @@ describe('L03 Vegetable Grove', () => {
     for (const rack of L03.sections.flatMap((s) => s.weapons)) expect(rack.why).toBeTruthy();
   });
 
+  it('widens walkable areas and matches the Hothouse doors to the lockdown', () => {
+    const [fields, maze, creek, greenhouse, rootway, patch] = L03.sections;
+    const find = (section, id) => section.geometry.find((g) => g.id === id);
+    expect(find(fields, 'S1-FL').size[2]).toBe(196);
+    const court = maze.encounters.find((e) => e.id === 'S2-E4').lockdown.room;
+    expect(court.max[2] - court.min[2]).toBe(48);
+    for (const id of ['S3-BR1', 'S3-BR2', 'S3-BR3']) expect(find(creek, id).size[2]).toBe(12);
+    const { room, threshold, entry, exit } = greenhouse.encounters.find((e) => e.id === 'S4-E7').lockdown;
+    expect(room.max[2] - room.min[2]).toBe(56);
+    for (const id of [entry, exit]) {
+      const door = greenhouse.mechanisms.find((m) => m.id === id);
+      const walls = greenhouse.geometry.filter((g) => g.id.startsWith(id === entry ? 'HH-WW' : 'HH-WE'))
+        .sort((a, b) => a.at[2] - b.at[2]);
+      expect(door.at[2] - door.size[2] / 2).toBe(walls[0].at[2] + walls[0].size[2] / 2);
+      expect(door.at[2] + door.size[2] / 2).toBe(walls[1].at[2] - walls[1].size[2] / 2);
+      expect(threshold.max[2] - threshold.min[2]).toBe(door.size[2]);
+    }
+    const left = find(rootway, 'S5-TW1');
+    const right = find(rootway, 'S5-TW2');
+    expect(right.at[0] - right.size[0] / 2 - left.at[0] - left.size[0] / 2).toBe(14);
+    for (const id of ['S6-T1', 'S6-T2']) expect(find(patch, id).size[2]).toBe(56);
+  });
+
   it('loads at the truck and shows the opening card', () => {
     const s = createGameState({ seed: 3 });
     const p = s.players[s.localPlayerId];
