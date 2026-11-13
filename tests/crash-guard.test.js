@@ -354,7 +354,7 @@ describe('CrashPanel', () => {
       mode: 'waves', tier: 4, seed: 123, tick: 456, wave: { index: 1, phase: 'boss' },
     });
     const report = body.find('pre');
-    expect(report.textContent).toContain('Mode: waves · Tier: 4');
+    expect(report.textContent).toContain('Mode: waves · Difficulty: 4');
     expect(report.textContent).toContain('Seed: 123 · Tick: 456');
     expect(report.textContent).toContain('Wave: 2 · Phase: boss');
     expect(report.textContent).toContain('<img src=x onerror=bad()>');

@@ -1,5 +1,6 @@
-// Wave director: 3 waves, staggered groups, bosses, intermission, victory/defeat. PLAN §4.12
-import { WAVES, INTERMISSION_TIME, VICTORY_TICKETS, tierRewardMult, tierWave, nextWaveSpell } from '../data/waves.js';
+// Wave director: endless waves (the three arenas in turn, a difficulty step harder each round),
+// staggered groups, bosses, intermission, defeat. PLAN §4.12
+import { INTERMISSION_TIME, VICTORY_TICKETS, tierRewardMult, waveConfig, waveDifficulty, waveEndsRound, nextWaveSpell } from '../data/waves.js';
 import { range, float, next } from '../core/rng.js';
 import { emit } from './events.js';
 import { createEnemy, createBoss, createHazard, nextId } from './state.js';
@@ -9,9 +10,9 @@ import { spawnGunPickup } from './drops.js';
 import { rollGunType } from './drops.js';
 import { grantSpell } from './spellbook.js';
 
-export function startWaves(state, tier) {
+export function startWaves(state) {
   state.mode = 'waves';
-  state.tier = tier;
+  state.tier = waveDifficulty(0);
   state.enemies.length = 0;
   state.projectiles.length = 0;
   state.hazards.length = 0;
@@ -19,17 +20,28 @@ export function startWaves(state, tier) {
   state.wave = { index: 0, phase: 'pre', t: 0, groupIdx: 0, spawnQueue: [], spawnedCount: 0, killedCount: 0, totalCount: 0, bossIds: [], intermissionT: 0 };
   initWave(state, 0);
   for (const p of Object.values(state.players)) { p.unkillableUsed = false; }
-  emit(state, 'modeStart', { mode: 'waves', tier });
+  emit(state, 'modeStart', { mode: 'waves', tier: state.tier });
+}
+
+/** Debug: drop whatever the current wave holds and start wave `idx` (0-based) of the run. */
+export function jumpToWave(state, idx) {
+  if (state.mode !== 'waves' || !state.wave || !(idx >= 0)) return;
+  state.enemies.length = 0;
+  state.projectiles.length = 0;
+  state.hazards.length = 0;
+  initWave(state, Math.floor(idx));
 }
 
 function initWave(state, idx) {
   const w = state.wave;
-  const cfg = tierWave(idx, state.tier);
+  // The difficulty step follows the wave: enemies, drops and rewards from here on read it.
+  state.tier = waveDifficulty(idx);
+  const cfg = waveConfig(idx);
   w.index = idx; w.phase = 'pre'; w.t = 0; w.groupIdx = 0; w.spawnQueue = []; w.spawnedCount = 0; w.killedCount = 0;
   w.totalCount = cfg.groups.reduce((n, g) => n + g.spawns.reduce((m, s) => m + s.count, 0), 0);
   w.bossIds = [];
   if (w.lateIdx != null) delete w.lateIdx;
-  emit(state, 'wavePre', { waveIndex: idx, name: cfg.name });
+  emit(state, 'wavePre', { waveIndex: idx, name: cfg.name, difficulty: state.tier });
 }
 
 const alive = (state) => state.enemies.filter((e) => !e.dead && !e.boss && e.type !== 'dummy').length;
@@ -56,16 +68,16 @@ function pickPoints(state, pattern, n) {
 export function waveDirector(state, dt) {
   const w = state.wave;
   if (state.mode !== 'waves' || !w) return;
-  const cfg = tierWave(w.index, state.tier);
+  const cfg = waveConfig(w.index);
   const p = state.players[state.localPlayerId];
   w.t += dt;
   state.run.time += dt;
 
-  if (p.dead && w.phase !== 'defeat' && w.phase !== 'victory') {
+  if (p.dead && w.phase !== 'defeat') {
     w.phase = 'defeat'; w.t = 0;
     const lost = Math.floor(state.run.ticketsEarned * 0.5);
     p.tickets = Math.max(0, p.tickets - lost);
-    emit(state, 'defeat', { tier: state.tier, ticketsLost: lost });
+    emit(state, 'defeat', { tier: state.tier, waveIndex: w.index, ticketsLost: lost });
     return;
   }
 
@@ -117,7 +129,7 @@ export function waveDirector(state, dt) {
       break;
     case 'boss': {
       const bossCount = state.enemies.filter((e) => !e.dead && w.bossIds.includes(e.id)).length;
-      // A late boss (tier 7 and up) walks in once only one of the others is left standing.
+      // A late boss (difficulty 7 and up) walks in once only one of the others is left standing.
       const late = cfg.boss.late || [];
       if ((w.lateIdx || 0) < late.length && bossCount <= 1) {
         const type = late[w.lateIdx || 0];
@@ -135,21 +147,21 @@ export function waveDirector(state, dt) {
     }
     case 'cleared':
       if (w.t >= 2) {
-        if (w.index >= WAVES.length - 1) {
-          w.phase = 'victory'; w.t = 0;
+        // The run never ends in a win. Closing a round of the three arenas pays the old victory prize:
+        // Run Cash and a Legendary gun in the middle of the arena, there to grab during the intermission.
+        if (waveEndsRound(w.index)) {
           const tk = Math.round(VICTORY_TICKETS * tierRewardMult(state.tier));
           p.tickets += tk; state.run.ticketsEarned += tk;
           const gun = generateGun({ seed: next(state.rng), level: state.tier, forced: { type: rollGunType(state.rng), quality: 'legendary' } });
           gun.id = nextId(state);
           spawnGunPickup(state, gun, { x: 0, z: 0 }, 'boss');
-          rollShopOffers(state);
-          emit(state, 'victory', { tier: state.tier, tickets: tk });
-        } else {
-          w.phase = 'intermission'; w.t = 0; w.intermissionT = INTERMISSION_TIME;
-          rollShopOffers(state);
-          for (const pl of Object.values(state.players)) pl.unkillableUsed = false;
-          emit(state, 'intermissionStart', { waveIndex: w.index });
+          emit(state, 'roundCleared', { waveIndex: w.index, tickets: tk });
+          emit(state, 'ticketsGained', { amount: tk, reason: 'Round clear' });
         }
+        w.phase = 'intermission'; w.t = 0; w.intermissionT = INTERMISSION_TIME;
+        rollShopOffers(state);
+        for (const pl of Object.values(state.players)) pl.unkillableUsed = false;
+        emit(state, 'intermissionStart', { waveIndex: w.index });
       }
       break;
     case 'intermission':
@@ -164,7 +176,7 @@ export function waveDirector(state, dt) {
 
 function clearWave(state) {
   const w = state.wave;
-  const cfg = tierWave(w.index, state.tier);
+  const cfg = waveConfig(w.index);
   const p = state.players[state.localPlayerId];
   const tk = Math.round(cfg.clearTickets * tierRewardMult(state.tier));
   p.tickets += tk; state.run.ticketsEarned += tk;

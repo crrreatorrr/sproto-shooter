@@ -105,10 +105,12 @@ describe('local Wave Mode in Chromium', () => {
     });
   }, 60000);
 
-  it('draws a full run through all three waves, four bosses, and intermission panels', async () => {
+  it('draws the first round through all three waves, four bosses, and intermission panels', async () => {
     await visit(async (page) => {
-      const report = await page.evaluate("import('/tests/fixtures/local-gameplay.js').then(({ waveRun }) => waveRun(window.__game, 1))");
-      expect(report.phase).toBe('victory');
+      const report = await page.evaluate("import('/tests/fixtures/local-gameplay.js').then(({ waveRun }) => waveRun(window.__game))");
+      expect(report.wave).toBe(3); // the run goes on: wave 4 is the first wave of round two
+      expect(report.events.roundCleared).toBe(1);
+      expect(report.events.victory).toBeUndefined();
       expect(report.bosses).toBe(4);
       expect(report.kills).toBeGreaterThan(100);
       expect(report.frames).toBeGreaterThan(30);

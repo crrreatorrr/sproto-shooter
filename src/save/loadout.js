@@ -1,4 +1,4 @@
-// Wave Mode progress kept on this device: skill levels, the guns you carry and your best tier.
+// Wave Mode progress kept on this device: skill levels, the guns you carry and the furthest wave you cleared.
 // Game layer only. The sim never reads this file; a save reaches it as one `loadLoadout` action at the
 // start of a Wave Mode run (src/sim/actions.js), which the sim checks and applies itself.
 //
@@ -16,7 +16,9 @@ export const LOADOUT_KEY = 'sproto-shooter-loadout';
 export const LOADOUT_VERSION = 1;
 /** Guns kept: the five you can carry, plus up to three saved guns that lie on the floor. */
 export const MAX_SAVED_GUNS = 8;
-const MAX_TIER = 10;
+const MAX_GUN_LEVEL = 10;
+/** Highest `bestWave` a save may hold; far beyond any run. */
+const MAX_BEST_WAVE = 9999;
 
 const int = (v, lo, hi, fallback) => {
   const n = Math.floor(Number(v));
@@ -32,7 +34,7 @@ export function gunSpec(gun, slot) {
   const parts = {};
   if (gun.parts && typeof gun.parts === 'object') for (const k of ['barrel', 'grip', 'mag', 'scope']) { const id = str(gun.parts[k]); if (id) parts[k] = id; }
   return {
-    slot: int(slot, 0, 4, 0), seed: gun.seed >>> 0, level: int(gun.level, 1, MAX_TIER, 1), type, quality,
+    slot: int(slot, 0, 4, 0), seed: gun.seed >>> 0, level: int(gun.level, 1, MAX_GUN_LEVEL, 1), type, quality,
     manufacturer: str(gun.manufacturer), element: str(gun.element), wacky: str(gun.wacky), parts, arcane: !!gun.arcane,
   };
 }
@@ -46,7 +48,8 @@ export function normalizeLoadout(raw) {
     skills[id] = { level: int(s && s.level, 1, 10, 1), xp: Math.max(0, Number(s && s.xp) || 0), total: Math.max(0, Number(s && s.total) || 0) };
   }
   const guns = (Array.isArray(src.guns) ? src.guns : []).map((g) => gunSpec(g, g && g.slot)).filter(Boolean).slice(0, MAX_SAVED_GUNS);
-  return { v: LOADOUT_VERSION, skills, guns, bestTier: int(src.bestTier, 0, MAX_TIER, 0) };
+  // `bestTier` from saves made before tiers were removed is dropped: it does not translate to a wave.
+  return { v: LOADOUT_VERSION, skills, guns, bestWave: int(src.bestWave, 0, MAX_BEST_WAVE, 0) };
 }
 
 /** Gun sources that are never saved: the debug panel's spawns, god mode's free guns and sandbox toys. */
@@ -65,13 +68,13 @@ export function debugTaints(action) {
 const FLOOR_SLOT = 3;
 
 /**
- * Read the player's Wave Mode loadout out of a game state. `bestTier` carries over from the last save.
+ * Read the player's Wave Mode loadout out of a game state. `bestWave` carries over from the last save.
  * Carried guns come first. Then the saved guns that are lying on the floor: the ones a load put there
  * because their slot was locked or taken, and any saved gun dropped or swapped out that has not despawned.
  * Without them, a gun the player never got to pick up would vanish from the save the next time it is
  * written. Session loot left on the floor is not progress and is not saved.
  */
-export function loadoutFromState(state, bestTier = 0) {
+export function loadoutFromState(state, bestWave = 0) {
   const p = state.players[state.localPlayerId];
   const guns = [];
   p.guns.forEach((g, slot) => { const spec = g && !UNSAVED_SOURCES.includes(g.source) ? gunSpec(g, slot) : null; if (spec) guns.push(spec); });
@@ -82,7 +85,7 @@ export function loadoutFromState(state, bestTier = 0) {
   }
   const skills = {};
   for (const id of SKILL_IDS) skills[id] = { level: p.skills[id].level, xp: p.skills[id].xp, total: p.skills[id].total };
-  return normalizeLoadout({ skills, guns, bestTier });
+  return normalizeLoadout({ skills, guns, bestWave });
 }
 
 /** The action that puts a saved loadout on the player. */

@@ -13,6 +13,7 @@ import { createBoss } from '../src/sim/state.js';
 import { addXp } from '../src/sim/progression.js';
 import { spawnGunPickup } from '../src/sim/drops.js';
 import { nonEconomicSave } from '../src/hub/link.js';
+import { FIXED_DIFFICULTY } from '../src/data/waves.js';
 import {
   LOADOUT_KEY, MAX_SAVED_GUNS, debugTaints, gunSpec, loadoutAction, loadoutEmpty, loadoutFromState, normalizeLoadout, readLoadout, writeLoadout,
 } from '../src/save/loadout.js';
@@ -38,7 +39,10 @@ describe('saved Wave Mode loadout', () => {
     const { epic, leg } = kit(a.s, a.p);
     const saved = JSON.parse(JSON.stringify(loadoutFromState(a.s, 2)));
     expect(saved.guns.map((g) => g.slot)).toEqual([0, 1, LEGENDARY_SLOT]);
-    expect(saved.bestTier).toBe(2);
+    expect(saved.bestWave).toBe(2);
+    // a save from before tiers were removed loses its best tier: it does not translate to a wave
+    expect(normalizeLoadout({ ...saved, bestWave: undefined, bestTier: 7 }).bestWave).toBe(0);
+    expect(normalizeLoadout({ ...saved, bestTier: 7 }).bestTier).toBeUndefined();
     const b = waves(9);
     apply(b.s, saved);
     expect(b.p.guns[1].stats).toEqual(epic.stats);
@@ -148,7 +152,7 @@ describe('saved Wave Mode loadout', () => {
       writeLoadout(loadoutFromState(s, 3));
       expect([...mem.keys()]).toEqual([LOADOUT_KEY]);
       expect(readLoadout().guns.length).toBe(3);
-      expect(readLoadout().bestTier).toBe(3);
+      expect(readLoadout().bestWave).toBe(3);
       // the campaign profile's cloud body has no room for it, and the hub filter strips `guns` anyway
       expect(Object.keys(cloudBody({ ...readLoadout(), unlocked: ['L01'] })).sort()).toEqual(['modifiers', 'settings', 'unlocked', 'updatedAt', 'v']);
       expect(nonEconomicSave({ guns: readLoadout().guns, unlocked: ['L01'] }).guns).toBeUndefined();
@@ -191,7 +195,9 @@ describe('saved progress never leaves Wave Mode', () => {
     // nothing from the save, carried or on the floor
     const all = [...p.guns.filter(Boolean), ...s.pickups.map((k) => k.gun).filter(Boolean)];
     expect(all.filter((g) => g.source === 'stash'), why).toEqual([]);
-    expect(all.filter((g) => g.level > 1 || g.type === 'raygun' || g.type === 'bigbullets'), why).toEqual([]);
+    // Boss Fight, the sandbox and the Test Range hand out guns at their fixed difficulty; elsewhere a clean gun is level 1.
+    const cleanLevel = mode === 'boss' || mode === 'sandbox' || mode === 'test' ? FIXED_DIFFICULTY : 1;
+    expect(all.filter((g) => g.level > cleanLevel || g.type === 'raygun' || g.type === 'bigbullets'), why).toEqual([]);
     const sources = p.guns.filter(Boolean).map((g) => g.source);
     if (mode === 'campaign' || mode === 'sandbox') expect(sources, why).toEqual(['start']);
     if (mode === 'boss') { expect(sources.every((x) => x === 'start' || x === 'god'), why).toBe(true); expect(p.guns[LEGENDARY_SLOT], why).toBeNull(); }
@@ -310,7 +316,7 @@ describe('Wave Mode save across mode switches', () => {
       gunSpec(generateGun({ seed: 605, level: 3, forced: { type: 'raygun', quality: 'legendary' } }), LEGENDARY_SLOT),
       gunSpec(generateGun({ seed: 606, level: 3, forced: { type: 'bigbullets', quality: 'legendary' } }), LEGENDARY_SLOT), // a second legendary
     ],
-    bestTier: 2,
+    bestWave: 2,
   });
   const seeds = (l) => l.guns.map((g) => g.seed).sort();
   const skillsOf = (l) => SKILL_IDS.map((id) => `${l.skills[id].level}:${l.skills[id].xp}`).join(' ');
@@ -318,14 +324,14 @@ describe('Wave Mode save across mode switches', () => {
   // The client's own sequence. `disk` stands in for localStorage.
   function start(s, disk, mode, extra = {}, flag = true) {
     const from = s.mode;
-    if (from === 'waves') disk.save = JSON.parse(JSON.stringify(loadoutFromState(s, disk.save.bestTier)));
+    if (from === 'waves') disk.save = JSON.parse(JSON.stringify(loadoutFromState(s, disk.save.bestWave)));
     // `flag` false leaves out the campaign's flag, which the sim must not need. Leaving the sandbox always
     // carries it: only the client knows a sandbox from a state that no mode has started.
     const fresh = (from === 'sandbox' && !s.testMode && mode !== 'sandbox' && mode !== 'test') || (flag && mode === 'campaign' && from !== 'campaign');
     const actions = [{ type: 'startMode', mode, tier: 1, ...extra, ...(fresh ? { freshLoadout: true } : {}) }];
     if (mode === 'waves' && from !== 'waves' && !loadoutEmpty(disk.save)) actions.push(loadoutAction(disk.save));
     run(s, 1, () => cmd({ actions }));
-    if (mode === 'waves') disk.save = JSON.parse(JSON.stringify(loadoutFromState(s, disk.save.bestTier))); // any later save point
+    if (mode === 'waves') disk.save = JSON.parse(JSON.stringify(loadoutFromState(s, disk.save.bestWave))); // any later save point
   }
   // Progress made where it must not count: levels, perks, carried loot, loot on the floor, a wave spell.
   function earnOutside(s) {

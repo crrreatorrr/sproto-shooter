@@ -18,7 +18,7 @@ function newRunId() {
  * Dragon Scale Relic: clearing wave 1 ("Midget Rush", the Jade Dragon) of Wave Mode. God Mode counts,
  * and the report says whether it was on. Campaign, Boss Fight and sandbox clears never report.
  *
- * One report per Wave Mode run. A run starts at each `modeStart` with mode `waves` (a new tier too),
+ * One report per Wave Mode run. A run starts at each `modeStart` with mode `waves` (Play again too),
  * and gets its own idempotency key, so the body under a key never changes. The hub has no server
  * evidence for Wave Mode; it grants the Relic once per account and answers `{}` after that.
  */

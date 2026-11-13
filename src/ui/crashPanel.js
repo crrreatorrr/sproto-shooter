@@ -46,7 +46,7 @@ export class CrashPanel {
       const report = doc.createElement('pre');
       report.tabIndex = 0;
       report.textContent = [
-        `Mode: ${state?.mode ?? 'loading'} · Tier: ${state?.tier ?? '-'}`,
+        `Mode: ${state?.mode ?? 'loading'} · Difficulty: ${state?.tier ?? '-'}`,
         `Seed: ${state?.seed ?? '-'} · Tick: ${state?.tick ?? '-'}`,
         ...(state?.wave ? [`Wave: ${state.wave.index + 1} · Phase: ${state.wave.phase}`] : []),
         `Source: ${info.source}`,

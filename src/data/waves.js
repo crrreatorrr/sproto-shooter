@@ -37,8 +37,22 @@ export const WAVES = [
 ];
 
 export const INTERMISSION_TIME = 15;
+// Paid out (with a Legendary gun) each time a full round of the three arenas is cleared.
 export const VICTORY_TICKETS = 150;
+// There is no tier to pick. Everyone plays the same difficulty, and it rises as the run goes on:
+//  - Wave Mode is endless. Waves cycle through the three arenas (WAVES), and every full round of
+//    three is one difficulty step harder (waveDifficulty), up to MAX_TIER at wave 28 and on.
+//  - The campaign takes each level's own `tier` (L01 is 1, L10 is 10).
+//  - Boss Fight, the sandbox and the Test Range sit at FIXED_DIFFICULTY.
+// `state.tier` holds the difficulty step in force; the curves below take it as `t`.
 export const MAX_TIER = 10;
+export const FIXED_DIFFICULTY = 5;
+/** Which of the three arenas (an index into WAVES) wave `index` of an endless run uses. */
+export const waveLayout = (index) => ((index % WAVES.length) + WAVES.length) % WAVES.length;
+/** The difficulty step of wave `index` (0-based): 1 for waves 1 to 3, 2 for waves 4 to 6, ... capped at MAX_TIER. */
+export const waveDifficulty = (index) => Math.max(1, Math.min(MAX_TIER, Math.floor(index / WAVES.length) + 1));
+/** True when wave `index` closes a round of the three arenas. */
+export const waveEndsRound = (index) => waveLayout(index) === WAVES.length - 1;
 
 export const tierEnemyMult = (t) => Math.pow(1.15, t - 1);
 // Wave Mode and Boss Fight only: enemy health climbs faster than enemy damage, so a higher tier takes
@@ -54,8 +68,8 @@ export const tierArenaHpMult = (t) => Math.pow(ARENA_HP.step, Math.min(t, ARENA_
 export const SECOND_WIND = { step: 3, min: 3 };
 export const secondWindTime = (base, downs) => Math.max(SECOND_WIND.min, base - SECOND_WIND.step * downs);
 
-// Wave Mode spell unlocks: each cleared wave grants the next spell you do not have. Tier 1 stops after
-// Sproto Swarm; from tier 2 the list runs to the end. Kept for the session, like looted guns.
+// Wave Mode spell unlocks: each cleared wave grants the next spell you do not have. Difficulty step 1
+// (waves 1 to 3) stops after Sproto Swarm; from step 2 the list runs to the end. Kept for the session, like looted guns.
 export const WAVE_SPELLS = ['chainZap', 'swarm', 'manaShield', 'meteor'];
 export function nextWaveSpell(unlocks, tier) {
   const pool = tier >= 2 ? WAVE_SPELLS : WAVE_SPELLS.slice(0, 2);
@@ -117,3 +131,14 @@ export function tierWave(index, tier = 1) {
 }
 export const tierRewardMult = (t) => 1 + 0.1 * (t - 1);
 export const tierPriceMult = (t) => 1 + 0.15 * (t - 1);
+
+const waveConfigCache = new Map();
+/** Wave `index` (0-based) of an endless Wave Mode run: its arena's layout at its difficulty step, named by its number. */
+export function waveConfig(index) {
+  if (!(index >= 0)) return undefined;
+  if (waveConfigCache.has(index)) return waveConfigCache.get(index);
+  const base = tierWave(waveLayout(index), waveDifficulty(index));
+  const out = { ...base, name: base.name.replace(/^Wave \d+/, `Wave ${index + 1}`) };
+  if (waveConfigCache.size < 1000) waveConfigCache.set(index, out);
+  return out;
+}

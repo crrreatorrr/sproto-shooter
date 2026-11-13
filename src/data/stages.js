@@ -1,6 +1,6 @@
 // Stages (environments) and character models reused from Sproto Duel. Paths are under public/assets/.
 // Lighting values are copied from sproto-duel src/arena/themes.ts.
-import { WAVES, tierWave } from './waves.js';
+import { waveConfig, waveDifficulty, waveLayout } from './waves.js';
 import { ENEMIES, BOSSES, enemyStage } from './enemies.js';
 export const STAGES = {
   city: {
@@ -77,7 +77,7 @@ export const stageAssets = (id) => {
 };
 
 /**
- * Wave 1 → Los Angeles, wave 2 → Ashen Caldera, wave 3 → The Void.
+ * Wave 1 → Los Angeles, wave 2 → Ashen Caldera, wave 3 → The Void, then round again (wave 4 is Los Angeles).
  * Title and sandbox share wave 1's stage so the first download serves all three; Glacier is debug-only.
  */
 export const WAVE_STAGES = ['city', 'volcano', 'void'];
@@ -85,7 +85,7 @@ export const SANDBOX_STAGE = 'city';
 export function stageFor(state, override = null) {
   if (override) return override;
   if (state.mode === 'campaign' && state.level && state.level.stage && STAGES[state.level.stage]) return state.level.stage;
-  if (state.mode === 'waves' && state.wave) return WAVE_STAGES[Math.min(WAVE_STAGES.length - 1, state.wave.index)];
+  if (state.mode === 'waves' && state.wave) return WAVE_STAGES[waveLayout(state.wave.index)];
   return SANDBOX_STAGE;
 }
 
@@ -95,8 +95,9 @@ export function stageFor(state, override = null) {
  * - `characters`: every enemy model+stage the wave can spawn (type, elite, tier),
  * - `bosses`: every boss model for every phase (loaded after the rest, before the boss fight).
  */
-export function levelAssets(waveIdx, tier) {
-  const w = tierWave(waveIdx, tier);
+export function levelAssets(waveIdx) {
+  const w = waveConfig(waveIdx);
+  const tier = waveDifficulty(waveIdx);
   if (!w) return null;
   const set = new Map();
   const add = (model, stage) => set.set(`${model}:${stage}`, { model, stage });
@@ -115,7 +116,7 @@ export function levelAssets(waveIdx, tier) {
     // bosses summon midgets
     if (b.ai === 'mega') add('midget', enemyStage({ type: 'midget', elite: false, tier }));
   }
-  return { stage: WAVE_STAGES[Math.min(WAVE_STAGES.length - 1, waveIdx)], characters: [...set.values()], bosses: [...bosses.values()] };
+  return { stage: WAVE_STAGES[waveLayout(waveIdx)], characters: [...set.values()], bosses: [...bosses.values()] };
 }
 
 /** Rigged characters (24-joint humanoid with clips idle/run/cast/cast_big/hit/defeat/roll/victory/jump/stun/strafe_l/strafe_r). */

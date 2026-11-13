@@ -276,7 +276,7 @@ label.nav-focus { padding: 2px 6px; }
 .btn.boss-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 14px 16px; border: 2px solid var(--c); }
 .btn.boss-card b { font-family: var(--display); font-size: 20px; color: var(--c); }
 .btn.boss-card small { font-size: 12px; opacity: .85; } .btn.boss-card span { font-size: 13px; font-weight: 400; }
-.tier select { font-family: var(--display); font-size: 16px; background: var(--night); color: var(--sun); border: 2px solid var(--sun); border-radius: 8px; padding: 4px 8px; }
+.best-wave { font-family: var(--display); font-size: 15px; color: var(--sun); text-align: center; }
 .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 6px 18px; text-align: left; font-size: 13px; margin-top: 8px; width: 100%; }
 .controls div { display: flex; gap: 8px; align-items: center; } .controls span { color: var(--ink-dim); }
 .end h1, .pause h1 { font-family: var(--display); font-size: clamp(44px, 8vw, 90px); margin: 0; color: var(--sun); text-shadow: 0 6px 0 #b0306f; }

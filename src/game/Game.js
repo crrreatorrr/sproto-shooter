@@ -24,7 +24,6 @@ import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY, zoomLevelsOf, zoomFovFor } from 
 import { swappedWeapon } from '../input/aimRules.js';
 import { SKILL_IDS, SPELL_IDS } from '../data/skills.js';
 import { nearBox } from '../sim/economy.js';
-import { MAX_TIER } from '../data/waves.js';
 import { createPerfCounters } from '../render/debug/perfCounters.js';
 import { createStatsOverlay } from '../render/debug/StatsOverlay.js';
 import { createFeel, wireHitstop } from './feel.js';
@@ -42,7 +41,7 @@ import { PLAYER_CHARACTERS, saveCharacter, selectedCharacter } from '../render/p
 const MAX_FRAME = 0.25, MAX_TICKS = 5;
 
 export class Game {
-  constructor({ seed, mode = 'title', tier = 1, debug = false, boss = null, level = null, stats = false, hub = null }) {
+  constructor({ seed, mode = 'title', debug = false, boss = null, level = null, stats = false, hub = null }) {
     this.hub = hub ?? { status: 'offline', connected: false, bankable: false, balance: null, error: null, refreshBalance: () => Promise.resolve(null), exitHub() {} };
     this.playing = false;
     this.hubLeaveArmed = false;
@@ -94,8 +93,8 @@ export class Game {
     this.waveRelic = createWaveRelicReporter({ hub: this.hub, onGranted: (id) => this.ui.toast(`Relic: ${relicName(id)}`, 'good') });
     this.bus.on('modeStart', (ev) => this.waveRelic.modeStart(ev));
     this.bus.on('waveCleared', (ev) => this.waveRelic.waveCleared(ev, this.state));
-    // Wave Mode progress (skills, carried guns, best tier) is kept on this device: src/save/loadout.js.
-    for (const type of ['waveCleared', 'victory', 'defeat']) this.bus.on(type, (ev) => this.saveWaveLoadout(ev));
+    // Wave Mode progress (skills, carried guns, furthest wave cleared) is kept on this device: src/save/loadout.js.
+    for (const type of ['waveCleared', 'defeat']) this.bus.on(type, (ev) => this.saveWaveLoadout(ev));
     // Menu focus for keyboard and gamepad, and the gamepad itself (polled every frame).
     this.nav = createMenuNav();
     this.padStyle = 'xbox';
@@ -123,13 +122,13 @@ export class Game {
     if (debug) this.openDebugPanel();
 
     // initial sandbox content so the title screen has something going on behind it
-    this.queue({ type: 'startMode', mode: 'sandbox', tier: 1 });
+    this.queue({ type: 'startMode', mode: 'sandbox' });
     this.queue({ type: 'debug', op: 'spawnDummies' });
-    if (mode === 'waves') this.start('waves', tier);
-    else if (mode === 'sandbox') this.start('sandbox', tier);
-    else if (mode === 'test') this.start('test', tier);
-    else if (mode === 'boss') this.start('boss', tier, { boss: BOSSES[boss] && !BOSSES[boss].campaign ? boss : 'monster' });
-    else if (mode === 'campaign') this.start('campaign', tier, { level: level || 'L01' });
+    if (mode === 'waves') this.start('waves');
+    else if (mode === 'sandbox') this.start('sandbox');
+    else if (mode === 'test') this.start('test');
+    else if (mode === 'boss') this.start('boss', { boss: BOSSES[boss] && !BOSSES[boss].campaign ? boss : 'monster' });
+    else if (mode === 'campaign') this.start('campaign', { level: level || 'L01' });
     else this.showScreen('title');
     if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('pvpMock') === '1') this.openPvp({ demo: true });
 
@@ -226,21 +225,21 @@ export class Game {
     return true;
   }
   /**
-   * Save Wave Mode progress after a wave clear, a victory or a defeat, and on the way out of Wave Mode.
+   * Save Wave Mode progress after a wave clear or a defeat, and on the way out of Wave Mode.
    * Never from a rewarded run, never while god mode is on, and never in a session that has used the
    * debug panel (it can spawn guns and max every skill).
    */
   saveWaveLoadout(ev) {
     const s = this.state;
     if (s.mode !== 'waves' || this.rewardedCampaign?.active || s.tuning.godMode || this.debugSession) return;
-    const best = readLoadout().bestTier;
-    writeLoadout(loadoutFromState(s, ev.type === 'victory' ? Math.max(best, s.tier) : best));
+    const best = readLoadout().bestWave;
+    writeLoadout(loadoutFromState(s, ev.type === 'waveCleared' ? Math.max(best, ev.waveIndex + 1) : best));
   }
   findGun(id) {
     const p = this.state.players[this.state.localPlayerId];
     return p.guns.find((g) => g && g.id === id) || this.state.pickups.find((k) => k.gun && k.gun.id === id)?.gun;
   }
-  shopOpen() { const s = this.state; return s.mode === 'sandbox' || (s.wave && (s.wave.phase === 'intermission' || s.wave.phase === 'victory')); }
+  shopOpen() { const s = this.state; return s.mode === 'sandbox' || (s.wave && s.wave.phase === 'intermission'); }
   skipIntermission() { this._skip = true; }
 
   wireInput() {
@@ -274,7 +273,7 @@ export class Game {
     });
   }
 
-  start(mode, tier = 1, extra = {}) {
+  start(mode, extra = {}) {
     if (this.rewardedCampaign?.controlsRestricted) { this.rewardedCampaign.unsupportedControl(); return; }
     this.playing = true;
     this.hubLeaveArmed = false;
@@ -290,13 +289,13 @@ export class Game {
     const enterCampaign = mode === 'campaign' && s.mode !== 'campaign';
     // Leaving Wave Mode wipes its progress from the player (the sim does that), so write it down first.
     if (s.mode === 'waves' && mode !== 'waves') this.saveWaveLoadout({ type: 'leave' });
-    this.queue({ type: 'startMode', mode, tier, ...extra, ...(leaveSandbox || enterCampaign ? { freshLoadout: true } : {}) });
-    // Coming into Wave Mode from anywhere else picks the saved Wave Mode loadout back up. Tier to tier
-    // inside Wave Mode keeps what you are carrying.
+    this.queue({ type: 'startMode', mode, ...extra, ...(leaveSandbox || enterCampaign ? { freshLoadout: true } : {}) });
+    // Coming into Wave Mode from anywhere else picks the saved Wave Mode loadout back up. A new run
+    // started from inside Wave Mode (Play again after a defeat) keeps what you are carrying.
     if (mode === 'waves' && s.mode !== 'waves') {
       const saved = readLoadout();
       if (!loadoutEmpty(saved)) this.queue(loadoutAction(saved));
-    } else if (mode === 'waves') this.saveWaveLoadout({ type: 'nextTier' }); // keeps what you grabbed after the last boss
+    } else if (mode === 'waves') this.saveWaveLoadout({ type: 'restart' });
     this.hideScreen();
     this.paused = false;
     this.input.lock();
@@ -306,7 +305,7 @@ export class Game {
   showScreen(kind) {
     if (kind === 'title') this.rewardedCampaign?.leave();
     else if (this.rewardedCampaign?.controlsRestricted) { this.rewardedCampaign.unsupportedControl(); return; }
-    if (kind === 'victory' || kind === 'defeat' || kind === 'bossWon' || kind === 'bossLost' || kind === 'levelClear' || kind === 'levelLost') {
+    if (kind === 'defeat' || kind === 'bossWon' || kind === 'bossLost' || kind === 'levelClear' || kind === 'levelLost') {
       this.playing = false;
     }
     const s = this.state, p = s.players[s.localPlayerId];
@@ -322,11 +321,11 @@ export class Game {
         ${this.hubChip()}
         <p class="tag">A wacky loot shooter. Blast blobs, grab guns, find better ones, beat the bosses.</p>
         <div class="menu">
-          <button class="btn big" data-go="waves">▶ Wave Mode <small>3 waves + bosses</small></button>
+          <button class="btn big" data-go="waves">▶ Wave Mode <small>endless waves, harder every round</small></button>
           <button class="btn big alt" data-go="bossSelect">👑 Boss Fight <small>pick a boss to fight</small></button>
           <button class="btn big alt" data-go="pvp">Play free <small>equal guns, no Tickets</small></button>
           <button class="btn big" data-go="campaignSelect">🗺 Campaign <small>The Great Sproto Audit</small></button>
-          <div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select>${bestTierHtml()}</div>
+          ${bestWaveHtml()}
         </div>
         <div class="menu minor">
           <button class="btn alt" data-go="characters">Choose Character <small>${this.character.name}</small></button>
@@ -355,8 +354,7 @@ export class Game {
       body = `<div class="title boss-select"><h1>BOSS <span>FIGHT</span></h1>
         <p class="tag">Pick a boss. You get one of every gun with full ammo. Real damage: no god mode unless you press P.</p>
         <div class="boss-grid">${cards}</div>
-        <div class="menu"><div class="tier">Tier <select id="tier-sel">${Array.from({ length: MAX_TIER }, (_, i) => `<option ${i + 1 === s.tier ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>
-          <button class="btn alt" data-go="title" data-nav-back>← Back</button></div>${std}</div>`;
+        <div class="menu"><button class="btn alt" data-go="title" data-nav-back>← Back</button></div>${std}</div>`;
     } else if (kind === 'bossWon' || kind === 'bossLost') {
       const win = kind === 'bossWon', b = BOSSES[this.lastBoss] || {}, r = s.run;
       body = `<div class="end ${win ? 'victory' : 'defeat'}"><h1>${win ? `${b.name} DOWN!` : 'DEFEATED'}</h1>
@@ -371,7 +369,7 @@ export class Game {
       const cards = CAMPAIGN.map((id, i) => {
         const lv = getLevelData(id);
         const open = prof.unlocked.includes(id);
-        return `<button class="btn boss-card" data-go="campaign" data-level="${id}" ${open ? '' : 'disabled'}><b>${i + 1}. ${lv.name}</b><small>${open ? lv.stage : 'locked'} · tier ${lv.tier}</small></button>`;
+        return `<button class="btn boss-card" data-go="campaign" data-level="${id}" ${open ? '' : 'disabled'}><b>${i + 1}. ${lv.name}</b><small>${open ? lv.stage : 'locked'}</small></button>`;
       }).join('');
       body = `<div class="title boss-select"><h1>THE GREAT <span>SPROTO AUDIT</span></h1>
         <p class="tag">Ten levels. Your guns stay the same. The world does not.</p>
@@ -391,11 +389,10 @@ export class Game {
           ${kind === 'levelLost' ? `<button class="btn" data-go="checkpoint">Checkpoint</button>` : ''}
           <button class="btn alt" data-go="campaignSelect">Level select</button>
         </div>${std}</div>`;
-    } else if (kind === 'victory' || kind === 'defeat') {
-      const r = s.run, win = kind === 'victory';
-      const next = Math.min(MAX_TIER, s.tier + 1);
-      body = `<div class="end ${kind}"><h1>${win ? (s.tier >= MAX_TIER ? 'SPROTO SUPREME!' : 'VICTORY!') : 'DEFEATED'}</h1>
-        <p>${win ? `Tier ${s.tier} cleared. A Legendary gun dropped in the middle of the arena. Grab it before you go!` : `You lost half the Run Cash you earned this run.`}</p>
+    } else if (kind === 'defeat') {
+      const r = s.run, reached = s.wave ? s.wave.index + 1 : 1, best = readLoadout().bestWave;
+      body = `<div class="end defeat"><h1>DEFEATED</h1>
+        <p>You fell on wave ${reached}${best > 0 ? ` · best cleared: wave ${best}` : ''}. You lost half the Run Cash you earned this run.</p>
         <div class="stats">
           <div><b>${r.kills}</b>kills</div><div><b>${r.eliteKills}</b>elites</div><div><b>${r.bossKills}</b>bosses</div>
           <div><b>${Math.round(r.damageDealt).toLocaleString()}</b>damage</div><div><b>${r.bestHit}</b>best hit</div><div><b>${r.weakHits}</b>BONKs</div>
@@ -403,7 +400,7 @@ export class Game {
         </div>
         <div class="xpgain">${SKILL_IDS.map((k) => `<span>${k}: +${Math.round(r.xpGained[k])} XP (Lv ${p.skills[k].level})</span>`).join('')}</div>
         <div class="menu">
-          ${win ? `<button class="btn big" data-go="waves" data-tier="${next}">▶ Next: Tier ${next}</button><button class="btn" data-go="continue">Keep looting (shop open)</button>` : `<button class="btn big" data-go="waves" data-tier="${s.tier}">↻ Retry Tier ${s.tier}</button>`}
+          <button class="btn big" data-go="waves">↻ Play again from wave 1</button>
           <button class="btn alt" data-go="sandbox">🧪 Sandbox</button>
         </div>${std}</div>`;
     }
@@ -432,11 +429,10 @@ export class Game {
       }
       if (go === 'title' || go === 'characters' || go === 'bossSelect' || go === 'campaignSelect') { this.showScreen(go); return; }
       if (go === 'checkpoint') { restoreCheckpoint(this.state); this._campaignShown = false; this.hideScreen(); this.paused = false; this.input.lock(); return; }
-      const tier = b.dataset.tier ? +b.dataset.tier : +(this.screen.querySelector('#tier-sel')?.value || s.tier);
       const extra = {};
       if (go === 'boss') extra.boss = b.dataset.boss;
       if (go === 'campaign' || go === 'retryLevel') extra.level = b.dataset.level;
-      this.start(go === 'retryLevel' ? 'campaign' : go, tier, extra);
+      this.start(go === 'retryLevel' ? 'campaign' : go, extra);
     };
   }
   hideScreen() { this.screen.hidden = true; this.screen.innerHTML = ''; }
@@ -685,21 +681,22 @@ export class Game {
     if (this.rewardedCampaign?.unsupportedControl()) return;
     const gui = new GUI({ title: 'Sproto Debug [`]', width: 300 });
     this.gui = gui;
-    const d = { enemy: 'midget', count: 1, elite: false, tier: 1, boss: 'monster', gunType: 'random', quality: 'random', element: 'random', wacky: 'random',
+    const d = { enemy: 'midget', count: 1, elite: false, gunLevel: 1, wave: 1, boss: 'monster', gunType: 'random', quality: 'random', element: 'random', wacky: 'random',
       tickets: 200, skill: 'health', god: false, infAmmo: false, freeze: false, unlock: false, hitboxes: false, dummyInf: false, hpMult: 1, dmgMult: 1, timeScale: 1 };
     const q = (op, args) => this.queue({ type: 'debug', op, args });
     const sp = gui.addFolder('Spawn');
-    sp.add(d, 'enemy', Object.keys(ENEMIES)); sp.add(d, 'count', 1, 10, 1); sp.add(d, 'elite'); sp.add(d, 'tier', 1, 10, 1);
-    sp.add({ go: () => q('spawnEnemy', { type: d.enemy, count: d.count, elite: d.elite, tier: d.tier }) }, 'go').name('Spawn enemy');
+    sp.add(d, 'enemy', Object.keys(ENEMIES)); sp.add(d, 'count', 1, 10, 1); sp.add(d, 'elite');
+    sp.add({ go: () => q('spawnEnemy', { type: d.enemy, count: d.count, elite: d.elite }) }, 'go').name('Spawn enemy');
     sp.add(d, 'boss', Object.keys(BOSSES));
-    sp.add({ go: () => q('spawnBoss', { type: d.boss, tier: d.tier }) }, 'go').name('Spawn boss');
+    sp.add({ go: () => q('spawnBoss', { type: d.boss }) }, 'go').name('Spawn boss');
     sp.add({ go: () => q('spawnDummies') }, 'go').name('Spawn 5 dummies');
     sp.add({ go: () => q('killAll') }, 'go').name('Kill all');
     sp.add({ go: () => q('clearEnemies') }, 'go').name('Clear (no drops)');
     const gn = gui.addFolder('Guns');
     gn.add(d, 'gunType', ['random', ...GUN_TYPES.map((g) => g.id)]); gn.add(d, 'quality', ['random', ...QUALITIES.map((x) => x.id)]);
     gn.add(d, 'element', ['random', ...ELEMENTS.map((x) => x.id)]); gn.add(d, 'wacky', ['random', ...WACKY.map((x) => x.id)]);
-    gn.add({ go: () => q('spawnGun', { type: d.gunType, quality: d.quality, element: d.element, wacky: d.wacky, level: d.tier }) }, 'go').name('Spawn gun');
+    gn.add(d, 'gunLevel', 1, 10, 1).name('Gun level');
+    gn.add({ go: () => q('spawnGun', { type: d.gunType, quality: d.quality, element: d.element, wacky: d.wacky, level: d.gunLevel }) }, 'go').name('Spawn gun');
     gn.add({ go: () => { for (let i = 0; i < 6; i++) q('spawnGun', {}); } }, 'go').name('Loot explosion (6)');
     gn.add({ go: () => q('refillAmmo') }, 'go').name('Refill ammo');
     const pl = gui.addFolder('Player');
@@ -713,7 +710,6 @@ export class Game {
     pl.add(god, 'on').name('God mode [P]').listen();
     pl.add(d, 'infAmmo').name('Infinite ammo').onChange((v) => q('setTuning', { key: 'infiniteAmmo', value: v }));
     const w = gui.addFolder('World & tuning');
-    w.add(d, 'tier', 1, 10, 1).name('Set tier').onFinishChange((v) => q('setTier', { tier: v }));
     w.add(d, 'freeze').name('Freeze enemies').onChange((v) => q('setTuning', { key: 'freezeEnemies', value: v }));
     w.add(d, 'dummyInf').name('Dummies infinite HP').onChange((v) => q('setTuning', { key: 'dummyInfinite', value: v }));
     w.add(d, 'hpMult', 0.1, 5, 0.1).name('Enemy HP × (new)').onChange((v) => q('setTuning', { key: 'enemyHpMult', value: v }));
@@ -721,6 +717,7 @@ export class Game {
     w.add(d, 'timeScale', 0.1, 2, 0.05).name('Time scale').onChange((v) => { this.timeScale = v; });
     w.add(d, 'hitboxes').name('Show hitboxes').onChange((v) => this.renderer.setShowHitboxes(v));
     w.add({ go: () => q('skipWave') }, 'go').name('Skip wave (waves mode)');
+    w.add(d, 'wave', 1, 40, 1).name('Jump to wave').onFinishChange((v) => q('jumpToWave', { wave: v }));
     const gs = gui.addFolder('Live gun stats (equipped)');
     this.gunStatProxy = { damage: 0, fireRate: 0, spread: 0, magSize: 0, reloadTime: 0, critMult: 0, elementChance: 0 };
     const ranges = { damage: [1, 500], fireRate: [0.2, 30], spread: [0, 15], magSize: [1, 200], reloadTime: [0.2, 5], critMult: [1, 6], elementChance: [0, 1] };
@@ -1274,10 +1271,10 @@ export class Game {
   }
 }
 
-/** "best 4" beside the tier picker once a Wave Mode tier has been cleared on this device. */
-function bestTierHtml() {
-  const best = readLoadout().bestTier;
-  return best > 0 ? ` <small class="best-tier">best ${best}</small>` : '';
+/** "Best: wave 12" under the mode buttons once a Wave Mode wave has been cleared on this device. */
+function bestWaveHtml() {
+  const best = readLoadout().bestWave;
+  return best > 0 ? `<small class="best-wave">Wave Mode best: wave ${best}</small>` : '';
 }
 
 /** Seconds as m:ss. */
