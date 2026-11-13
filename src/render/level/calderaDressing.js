@@ -1,46 +1,62 @@
-// Section-local scenery for the playable Hellfire Caldera route.
+// Local landmarks use the original detailed Blender kit. The outer cliffs use
+// one lower-poly silhouette so the wider landscape leaves room for those props.
 const FEATURES = {
   S1: [
-    ['overhang', 8.4, 4.45, 1.76, 2, [1.08, 1.16, 1.14]],
-    ['overhang', 17.1, 5.02, 1.35, -6, [1.06, 1.30, 1.07]],
-    ['spires', 10.1, -.7, -4.29, 5, [1.49, 1.60, 1.35]],
-    ['spires', 26.5, -1.4, -4.28, 12, [1.15, 1.13, 1.26]],
-    ['scree', 11.8, .02, 1.51, 14], ['scree', 16.2, .02, 1.42, 175, .83],
-    ['brazier', 8.0, .02, 3.28], ['brazier', 19.5, .02, 3.0, -11, .95],
-    ['brazier', 29.1, .02, 20.3, 180, .98], ['obelisk', 44.6, .05, 1.53, 15, 1.05],
-    ['obelisk', 44.9, .05, 20.35, 165, .92],
+    ['overhang', 10.8, 4.6, 11.5, 2, [1.18, 1.12, 1.35]],
+    ['overhang', 19.6, 5.0, 10.2, -6, [1.04, 1.25, 1.28]],
+    ['escarpment', 12.2, -.10, 4.2, 14, [.82, .48, .64]],
+    ['spires', 46, -.40, -5.5, 13, [1.27, .75, .93]],
+    ['spires', 54.4, -.55, 26.0, 151, [1.32, .54, .92]],
+    ['scree', 12.0, .02, 8.2, 14], ['scree', 18.3, .02, 7.1, 175, .83],
+    ['brazier', 7.2, .02, 10.5], ['brazier', 20.0, .02, 9.0, -11, .95],
+    ['brazier', 30.5, .02, 14.7, 180, .98],
+    ['obelisk', 51.0, .05, .2, 15, 1.05], ['obelisk', 57.5, .05, 21.8, 165, .92],
   ],
   S2: [
-    ['spires', 29.1, -2.45, -4.47, -7, [1.24, 1.08, 1.15]],
-    ['spires', 38.2, -2.65, 26.12, 158, [1.20, 1.32, 1.25]],
-    ['brazier', 4.9, .02, 1.67, 0, .84], ['brazier', 18.6, .02, 20.3, 164, .85],
-    ['brazier', 39.2, .02, 1.64, 31, 1.10], ['brazier', 46.5, .02, 20.25, 168, .92],
+    ['brazier', 6.5, .02, 8.2, 0, .84], ['brazier', 19.5, .02, 16.0, 164, .85],
+    ['brazier', 34.5, .02, 1.7, 31, 1.10], ['brazier', 49.7, .02, 26.0, 168, .92],
     ['scree', 30.4, .012, 3.03, 19, .72], ['scree', 25.9, .012, 2.98, -4, .60],
+    ['spires', 48, -.65, -8.4, -16, [1.18, .61, .86]],
+    ['spires', 27.5, -.44, 28.9, 27, [1.37, .70, .97]],
+    ['spires', 55.6, -.62, 29.8, 174, [1.11, .74, .90]],
+    ['scree', 26.7, .012, 16.4, 19, .84], ['scree', 32.0, .012, 7.9, -4, 1.05],
   ],
   S3: [
-    ['seal', 24.25, .018, 11, 0, [1.16, 1, 1.16]],
-    ['shrine', 56.8, -.025, 7.3, -90, [1.32, 1.47, 1.21]],
-    ['obelisk', 37.0, .03, 1.63, -25, 1.35], ['obelisk', 33.6, .03, 20.65, 163, 1.35],
-    ['obelisk', 12.5, .03, 1.61, 17, 1.13], ['obelisk', 12.8, .03, 20.34, 162, 1.13],
-    ['brazier', 20.1, .02, 1.73, 6, 1.04], ['brazier', 22.7, .02, 20.2, 170, 1.04],
-    ['spires', 44.4, -2.77, -6.6, -21, [1.20, 1.45, 1.16]],
+    ['spires', 36.4, -1.0, -15.7, 10, [1.52, .95, .95]],
+    ['spires', 36.4, -1.0, 37.7, 165, [1.45, 1.06, .87]],
+    ['spires', 70.9, -.55, -8.5, -5, [1.42, .78, .97]],
+    ['spires', 70.9, -.55, 30.5, 145, [1.42, .86, .97]],
+    ['seal', 24.25, .018, 11, 0, [2.0, 1, 1.92]],
+    ['obelisk', 44.5, .03, -4.6, -25, 1.35], ['obelisk', 44.5, .03, 26.6, 163, 1.35],
+    ['obelisk', 13, .03, -4.6, 17, 1.13], ['obelisk', 13, .03, 26.6, 162, 1.13],
+    ['brazier', 24.8, .02, -2.6, 6, 1.04], ['brazier', 24.8, .02, 24.6, 170, 1.04],
+    ['brazier', 60.0, .02, 6.0, -16, 1.06], ['brazier', 60.0, .02, 16.0, 163, 1.06],
   ],
   S4: [
-    ['spires', 10.6, -2.4, -4.9, -23, [1.44, 1.39, 1.21]],
-    ['spires', 26.3, -2.2, -4.82, 18, [1.46, 2.05, 1.24]],
-    ['spires', 22.7, -2.1, 27.4, 177, [1.20, 1.77, 1.23]],
-    ['spires', 45.7, -3.1, 26.35, 141, [1.61, 1.91, 1.39]],
-    ['brazier', 13.0, .02, 20.38, 180, .95], ['obelisk', 41.8, .03, 1.61, 6, 1.20],
-    ['obelisk', 41.2, .03, 20.31, 180, 1.20],
+    ['spires', 49, -.75, -12.0, -9, [1.42, .88, 1.25]],
+    ['spires', 59, -1.1, 36.4, 167, [1.26, 1.27, 1.40]],
+    ['scree', 19, .015, 5.0, 147, 1.05], ['scree', 32, .01, 18.8, 153, .95],
+    ['spires', 22, -1.0, -7.0, 18, [1.34, 1.18, 1.14]],
+    ['spires', 32, -1.0, 34.2, 177, [1.20, 1.35, 1.14]],
+    ['brazier', 9.5, .02, 6.1, 180, .95], ['brazier', 25.2, .02, 16.0, 180, 1.12],
+    ['obelisk', 46.5, .03, 1.9, 6, 1.20], ['obelisk', 55.2, .03, 24.8, 180, 1.20],
   ],
+};
+
+const SHORE = {
+  S1: [[.29, .74], [.51, .89]],
+  S2: [[.41, .78], [.26, .71]],
+  S3: [[.58, .91], [.49, .92]],
+  S4: [[.32, .59, .88], [.38, .68, .93]],
 };
 
 export function calderaPlacements(sec, prims) {
   const floor = prims.get(`${sec.id}-floor`);
   if (!floor || !FEATURES[sec.id]) return [];
-  const length = floor.size[0] - 1;
-  const start = floor.at[0] - length / 2;
+  const start = sec.start[0] - 3.5;
+  const length = floor.size[0];
   const centre = floor.at[2];
+  const end = floor.at[0] - start + length / 2;
   const eruption = sec.id === 'S4';
   const out = [];
   const place = (model, x, y, z, yaw = 0, scale = 1, replace) =>
@@ -48,38 +64,35 @@ export function calderaPlacements(sec, prims) {
   const add = (name, ...args) => place(`caldera_${name}`, ...args);
   const magma = (name, ...args) => place(`underworks_${name}`, ...args);
 
-  for (const side of ['N', 'S']) {
+  for (const [index, side] of ['N', 'S'].entries()) {
     const wall = prims.get(`${sec.id}-wall${side}`);
     if (!wall) continue;
-    const [width, height, depth] = wall.size;
-    const bays = Math.ceil(width / 7);
-    const span = width / bays;
-    const north = side === 'N', sign = north ? -1 : 1;
-    const yaw = north ? 0 : 180;
+    const [span, height, depth] = wall.size;
+    const left = wall.at[0] - start - span / 2;
+    const bays = Math.ceil(span / 8.5);
+    const bay = span / bays;
+    const sign = index === 0 ? -1 : 1;
+    const yaw = index * 180;
+    const edge = wall.at[2];
     for (let i = 0; i < bays; i++) {
-      add('wall', span * (i + .5) - .5, wall.at[1] - height / 2, wall.at[2],
-        yaw, [span / 2, height, depth / 2], [wall.id]);
+      add('wall', left + bay * (i + .5), wall.at[1] - height / 2, edge,
+        yaw, [bay / 2, height, depth / 2], [wall.id]);
     }
-    add('apron', length / 2, -.42, centre + sign * 13.28, 0, [(length + 1.25) / 2, 1, 2.4]);
-    for (let i = 0; i < 5; i++) {
-      const shape = (i * 7 + (north ? 0 : 3) + Number(sec.id.slice(1))) % 5;
-      const x = i * 14.5 - 7 + shape;
-      const z = centre + sign * (23 + (shape % 3) * 3.6);
-      add('spires', x, -4.35, z, i * 37 + yaw, [1.07 + shape * .14, 1.19 + shape * .20, 1.15 + shape * .15]);
+    add('apron', floor.at[0] - start, -.42, edge + sign * 2.7, 0, [length / 2, 1, 2.8]);
+    magma('magma', floor.at[0] - start, -4.15, edge + sign * 15.7, 0, [length * .68, 1, 13]);
+    for (const [i, fraction] of SHORE[sec.id][index].entries()) {
+      const x = end * fraction;
+      const h = (eruption ? 10.6 : 7.2) + i * 1.32;
+      const z = edge + sign * (7.4 + i * 2.1);
+      add('escarpment', x, -4.05, z + sign * 2.1, yaw + sign * (8 + i * 9), [1.08, h / 12, .9]);
+      magma('lavafall', x, -4.03, z, yaw, [1.12 + i * .19, h, 1]);
     }
-    magma('magma', length / 2, -3.9, centre + sign * 25, 0, [length * .82, 1, 10]);
-    for (const x of (eruption ? [14, 28, 41] : [23, 41])) {
-      const z = centre + sign * (eruption ? 15.96 : 19.07);
-      const h = eruption ? 10.7 + x % 4 * .62 : 7.1 + x % 5 * .38;
-      add('spires', x - .47, -3.64, z + sign * 2.11, yaw, [.69, h / 6.3, .9]);
-      add('scree', x + .28, h - 4.12, z + sign * .46, yaw, [1.20, .79, .96]);
-      magma('lavafall', x, -3.87, z, yaw, [1.04 + x % 5 * .17, h, 1]);
-    }
+    add('escarpment', end + 12 - index * 6, -6, edge + sign * 23, yaw + 31, [1.62, 1.06, 1.52]);
+    add('escarpment', end * .3 + index * 14, -5.8, edge + sign * 28, yaw - 19, [1.81, 1.21, 1.46]);
   }
 
-  add('apron', length + 4.72, -.42, centre, 0, [5.06, 1, 11.35]);
-  add('spires', length + 13.8, -5.45, 24.2, 147, [1.62, eruption ? 2.03 : 1.63, 1.48]);
-  add('spires', length + 17.8, -4.95, -4.6, -19, [1.49, eruption ? 1.88 : 1.52, 1.54]);
+  add('apron', end + 5.6, -.42, centre, 0, [5.8, 1, floor.size[2] * .36]);
+  if (sec.id === 'S3') add('shrine', end + 6.9, -.025, centre, -90, [1.72, 1.75, 1.4]);
   for (const feature of FEATURES[sec.id]) add(...feature);
   for (const m of sec.mechanisms || []) {
     if (m.kind === 'bridge') {

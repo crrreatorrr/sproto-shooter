@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 394,
-    "runtimeBytes": 26959949,
+    "runtimeFiles": 395,
+    "runtimeBytes": 26964053,
     "decodedBytes": 257493830,
-    "referenced": 394,
+    "referenced": 395,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -716,6 +716,13 @@
     },
     {
       "path": "models/props/caldera_bridge.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/caldera_escarpment.glb.gz",
       "kind": "static",
       "from": [
         "src/render/level/kitPropPaths.js"
@@ -6313,6 +6320,36 @@
         "joints": 0,
         "nodes": 1,
         "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/caldera_escarpment.glb.gz",
+      "bytes": 2900,
+      "sha256": "a79891e822af7566a7ee9675a61e89552b13275aa99d2b493114c751b0fdb6a7",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 136,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_caldera_ember",
           "cartoon_kit"
         ]
       }
@@ -14446,8 +14483,8 @@
     },
     {
       "path": "textures/campaign/caldera-sky.webp",
-      "bytes": 21226,
-      "sha256": "904423850e60176858b24cb7a41f279643872b185a601cb2e093cef67bdc84f4",
+      "bytes": 22430,
+      "sha256": "203730a77a854a179b610bf6acae8fd698ea2c0719e3ff9a4db5a556e3a7bc03",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -15185,7 +15222,7 @@
       },
       {
         "path": "art/blender/hellfire_caldera.blend",
-        "bytes": 349887
+        "bytes": 349910
       },
       {
         "path": "art/blender/hellfire_underworks.blend",
