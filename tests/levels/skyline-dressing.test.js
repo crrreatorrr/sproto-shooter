@@ -20,7 +20,10 @@ function triangleCount(model) {
   return triangleCounts.get(model);
 }
 
-it.each(L06.sections)('keeps $name wall spans aligned and art under 50,000 triangles', (sec) => {
+const originalKitTriangles = { S1: 27224, S2: 33872, S3: 31632, S4: 30048 };
+const expandedWidths = { S1: 36, S2: 44, S3: 48, S4: 52 };
+
+it.each(L06.sections)('keeps $name wall spans aligned and below its original triangle count', (sec) => {
   const prims = new Map(sec.geometry.map(g => [g.id, g]));
   const models = skylinePlacements(sec, prims);
   const replacements = models.filter(p => p.replace);
@@ -42,7 +45,31 @@ it.each(L06.sections)('keeps $name wall spans aligned and art under 50,000 trian
   }
   const triangles = models.reduce((sum, p) => sum + triangleCount(p.model), 0);
   expect(triangles).toBeGreaterThan(10000);
-  expect(triangles).toBeLessThanOrEqual(50000);
+  expect(triangles).toBeLessThan(originalKitTriangles[sec.id]);
+});
+
+it('supports both widened shoulders at each seamless handoff and preserves the issued boss start', () => {
+  for (const sec of L06.sections) {
+    const floor = sec.geometry.find(g => g.id === `${sec.id}-floor`);
+    const half = floor.size[2] / 2;
+    const z0 = floor.at[2] - half;
+    const z1 = floor.at[2] + half;
+    expect(floor.size[2]).toBe(expandedWidths[sec.id]);
+    expect(sec.encounters[0].activate.min[2]).toBeCloseTo(z0 + 1.2);
+    expect(sec.encounters[0].activate.max[2]).toBeCloseTo(z1 - 1.2);
+    if (!sec.exit) continue;
+
+    const next = L06.sections.find(s => s.id === sec.exit.to);
+    const incoming = next.geometry.find(g => g.id === `${next.id}-floor`);
+    expect(sec.exit.min[0]).toBeGreaterThan(incoming.at[0] - incoming.size[0] / 2);
+    expect(sec.exit.min[2]).toBeCloseTo(z0 + 2);
+    expect(sec.exit.max[2]).toBeCloseTo(z1 - 2);
+    expect(incoming.at[2] - incoming.size[2] / 2).toBeLessThan(sec.exit.min[2]);
+    expect(incoming.at[2] + incoming.size[2] / 2).toBeGreaterThan(sec.exit.max[2]);
+  }
+  const streets = L06.sections[3];
+  expect(streets.start).toEqual([153.5, 0, 11]);
+  expect(streets.geometry.find(g => g.id === 'S4-floor').size[0]).toBe(67);
 });
 
 it('isolates the Skyline atlas and puts the ceiling finish on the arcade canopy', () => {

@@ -270,6 +270,45 @@ def slab():
     return m
 
 
+def spire():
+    """Distant stepped tower with a thin beacon and a few lit office bands."""
+    m = model('spire')
+    m.box(0x303C5B, (6.8, 5.4, 11), (0, 0, 5.5))
+    m.box(0x3D506E, (4.5, 4.2, 6.2), (.55, 0, 14.1))
+    m.box(INK, (1.4, 1.25, 1.5), (.65, 0, 17.95))
+    m.box(STEEL, (.16, .16, 3.2), (.65, 0, 19.25))
+    m.box(CORAL, (.20, .20, .18), (.65, 0, 20.9))
+    for side in (-1, 1):
+        for height, x, face in ((4.4, -1.85, 2.7), (8.2, .9, 2.7), (13.7, .5, 2.1), (15.4, 1.35, 2.1)):
+            m.box(CYAN, (1.05, .07, .17), (x, side * face, height))
+        m.box(AMBER, (.07, 2.7, .16), (side * 3.4, .15, 6.1))
+    return m
+
+
+def midrise():
+    """Wide, low silhouette for the blocks below the freeway and skybridges."""
+    m = model('midrise')
+    m.box(0x344363, (9.4, 5.3, 7.4), (0, 0, 3.7))
+    m.box(0x495572, (5.4, 3.9, 2.1), (-1.4, -.3, 8.45))
+    m.box(INK, (9.6, 5.5, .26), (0, 0, 7.45))
+    m.box(INK, (1.9, 1.65, .64), (2.6, .85, 7.9))
+    for side in (-1, 1):
+        for x, height in ((-2.6, 2.3), (.3, 4.6), (2.8, 2.3)):
+            m.box(AMBER, (1.45, .07, .17), (x, side * 2.65, height))
+        m.box(CYAN, (2.15, .07, .18), (-1.6, side * 1.95 - .3, 8.35))
+    return m
+
+
+def skybridge():
+    m = model('skybridge')
+    m.box(0x394765, (12, 1.84, 1.48), (0, 0, .74))
+    for side in (-1, 1):
+        m.box(INK, (12, .085, .27), (0, side * .93, 1.43))
+        for x in (-4.2, -1.4, 1.4, 4.2):
+            m.box(CYAN, (1.45, .05, .32), (x, side * .93, .89))
+    return m
+
+
 def main():
     clear_scene()
     MATERIALS.clear()
@@ -277,14 +316,18 @@ def main():
     scene = bpy.context.scene
     scene.render.fps = 24
     scene.frame_start, scene.frame_end = FRAMES[0], FRAMES[-1]
-    makers = (barrier, cladding, masonry, crane, trailer, depot, canopy, fan, shop, lamp, tower, slab)
+    landmarks = (spire, midrise, skybridge)
+    makers = (barrier, cladding, masonry, crane, trailer, depot, canopy, fan, shop, lamp, tower, slab, *landmarks)
+    args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+    landmarks_only = '--landmarks-only' in args
     for i, make in enumerate(makers):
         result = make()
         mesh, motion = result if isinstance(result, tuple) else (result, [])
         obj = bake(mesh, *GLOW)
         objects = [obj, *motion]
         scene.frame_set(scene.frame_start)
-        export(objects, 'props', mesh.name, animated=bool(motion), compressed=True)
+        if not landmarks_only or make in landmarks:
+            export(objects, 'props', mesh.name, animated=bool(motion), compressed=True)
         collection = bpy.data.collections.new(mesh.name)
         scene.collection.children.link(collection)
         root = bpy.data.objects.new(f'{mesh.name} | Editable prop', None)
@@ -303,8 +346,8 @@ def main():
         if area.type == 'VIEW_3D':
             area.spaces.active.shading.color_type = 'VERTEX'
             region = area.spaces.active.region_3d
-            region.view_location = (29, 16, 4)
-            region.view_distance = 94
+            region.view_location = (29, 23, 4)
+            region.view_distance = 108
             region.view_rotation = Vector((-.20, 1, -.82)).to_track_quat('-Z', 'Y')
     target = Path(__file__).resolve().parents[1] / 'vape_cabal_skyline.blend'
     bpy.ops.wm.save_as_mainfile(filepath=str(target), compress=True)
