@@ -57,6 +57,7 @@ export function mountStage(env) {
     const grove = id === 'grove' && levelId === 'L03';
     const bazaar = id === 'desert' && levelId === 'L02';
     const showroom = bazaar && sectionId === 'S4';
+    const landing = id === 'city' && levelId === 'L01';
     const blockchain = id === 'void' && levelId === 'L04';
     const frostspire = id === 'glacier' && levelId === 'L05';
     const skyline = id === 'city' && levelId === 'L06';
@@ -70,7 +71,7 @@ export function mountStage(env) {
       : moonlit ? (crypt ? 'L09-crypt' : 'L09-exterior')
       : frostspire || blockchain || skyline ? `${levelId}-${sectionId || 'S1'}`
       : bazaar ? (showroom ? 'L02-showroom' : 'L02-exterior')
-        : grove || underworks ? levelId : '';
+        : grove || landing || underworks ? levelId : '';
     const key = id + ':' + variant + ':' + assetsVersion();
     if (key === stageKey) return;
     stageKey = key;
@@ -91,7 +92,7 @@ export function mountStage(env) {
       bounce.intensity = .45;
     }
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
-    const panorama = frostspire || blockchain || grove || bazaar || skyline || underworks || office || moonlit ? panoramaPath(levelId, sectionId) : a.sky;
+    const panorama = landing || frostspire || blockchain || grove || bazaar || skyline || underworks || office || moonlit ? panoramaPath(levelId, sectionId) : a.sky;
     const skyTex = panorama ? peekTexture(panorama) || (grove ? peekTexture(a.sky) : null) : null;
     if (blockchain && skyTex) {
       skyTex.wrapS = THREE.RepeatWrapping;
@@ -112,14 +113,14 @@ export function mountStage(env) {
       sun.intensity = 1.68;
       bounce.color.setHex(0xbbd7e1);
     }
-    if (skyTex && (bazaar || skyline || underworks || roof || moonlit)) {
-      skyTex.offset.y = bazaar ? -.018 : skyline ? -.088 : underworks ? .035 : moonlit ? -.036 : -.098;
-      if (bazaar || skyline || roof || moonlit) {
+    if (skyTex && (landing || bazaar || skyline || underworks || roof || moonlit)) {
+      skyTex.offset.y = landing ? -.106 : bazaar ? -.018 : skyline ? -.088 : underworks ? .035 : moonlit ? -.036 : -.098;
+      if (landing || bazaar || skyline || roof || moonlit) {
         // Frame a different part of the painted skyline along each approach.
         skyTex.wrapS = THREE.RepeatWrapping;
         const skylineOffset = { S1: .09, S2: .195, S3: -.17, S4: .275 };
         skyTex.offset.x = skyline ? (skylineOffset[sectionId] ?? skylineOffset.S1)
-          : bazaar ? (showroom ? -.13 : .04) : moonlit ? .208 : .185;
+          : landing ? .10 : bazaar ? (showroom ? -.13 : .04) : moonlit ? .208 : .185;
         skyTex.needsUpdate = true;
       }
     }
@@ -138,6 +139,17 @@ export function mountStage(env) {
       sun.intensity = showroom ? 1.23 : 1.58;
       bounce.color.setHex(showroom ? 0x8d9bee : 0xc0a8ed);
       bounce.intensity = showroom ? .54 : .42;
+    }
+    if (landing) {
+      scene.fog.color.setHex(0x6c5c80);
+      hemi.color.setHex(0xe1c9f0);
+      hemi.groundColor.setHex(0x77829a);
+      hemi.intensity = 1.42;
+      sun.color.setHex(0xffc4a5);
+      sun.position.set(-26, 24, -15);
+      sun.intensity = 1.27;
+      bounce.color.setHex(0x8bbbe8);
+      bounce.intensity = .54;
     }
     if (blockchain) {
       scene.fog.color.setHex(0x312445);

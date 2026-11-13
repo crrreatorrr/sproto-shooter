@@ -62,6 +62,7 @@ describe('asset manifest', () => {
       'art/blender/hellfire_underworks.blend',
       'art/blender/moonlit_ruins.blend',
       'art/blender/new_enemies.blend',
+      'art/blender/sproto_landing.blend',
       'art/blender/vape_cabal_skyline.blend',
       'art/blender/vegetable_grove.blend',
       'art/blender/weapon_animations.blend',

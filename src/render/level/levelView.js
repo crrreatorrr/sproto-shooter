@@ -5,6 +5,7 @@ import { solidTerrain } from '../../sim/campaign/terrain.js';
 import { DRESSING, HIDE_WHEN_GOT, MECHANISM_MODEL, STAGE_DRESSING } from './dressing.js';
 import { FROST_COLORS, frostspirePlacements } from './frostspireDressing.js';
 import { bazaarPaving, bazaarPlacements } from './bazaarDressing.js';
+import { landingPlacements } from './landingDressing.js';
 import { moonlitPlacements } from './moonlitDressing.js';
 import { officePlacements } from './officeDressing.js';
 import { underworksPlacements } from './underworksDressing.js';
@@ -227,6 +228,9 @@ export function createLevelView() {
     if (lv.id === 'L02') {
       for (const mesh of decorMeshes(bazaarPlacements(sec, prims), [0, 0, 0], replaced, surfaceKit)) group.add(mesh);
     }
+    if (lv.id === 'L01') {
+      for (const mesh of decorMeshes(landingPlacements(sec, prims), [0, 0, 0], replaced, surfaceKit)) group.add(mesh);
+    }
     if (placements) for (const mesh of decorMeshes(placements(sec, prims, doors), [0, 0, 0], replaced, surfaceKit)) group.add(mesh);
     for (const [id, d] of Object.entries(dress.fit || {})) {
       const g = prims.get(id);
@@ -261,10 +265,11 @@ export function createLevelView() {
       // City floor under and around the route. Just below the walkable slab so the two never fight.
       const nb = sec.navBounds;
       const w = nb.max[0] - nb.min[0] + 500;
+      const overpass = lv.id === 'L01' && sec.id === 'S5';
       const base = levelMaterial(`ground:${dress.ground}`, mats, dress.ground);
       const material = surfaces.primitive(base, lv.id, { kind: 'terrain', mat: 'concrete' });
       const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, 420).rotateX(-Math.PI / 2), material);
-      plane.position.set((nb.min[0] + nb.max[0]) / 2, (sec.origin ? sec.origin[1] || 0 : 0) - 0.55, (nb.min[1] + nb.max[1]) / 2);
+      plane.position.set((nb.min[0] + nb.max[0]) / 2, (sec.origin ? sec.origin[1] || 0 : 0) - (overpass ? 13.03 : .55), (nb.min[1] + nb.max[1]) / 2);
       plane.receiveShadow = true;
       group.add(plane);
     }

@@ -61,9 +61,20 @@ export const CAMPAIGN_SURFACE_PATTERNS = {
   L01: /* glsl */ `
     float grain = surfaceGrain(p, vec2(.28, .38));
     if (ground) {
-      float asphalt = surfaceBlocks(p, vec2(9., 5.), .5, .30);
-      float tar = surfaceLine(p.x + .34 * surfaceNoise(p * .44), 9., .040);
-      return vec3(.92, .94, .99) * grain * (asphalt - .10 * tar);
+      if (campaignSurfaceKind == 7.) {
+        float tile = surfaceBlocks(p, vec2(1.48, 1.48), 0., .23);
+        vec2 q = abs(fract((p + vec2(.74)) / 2.96) - .5);
+        float inlay = surfaceStamp((q.x + q.y - .22) * 2.96, .045);
+        return vec3(.99, 1.04, 1.07) * grain * tile - vec3(.17, .10, .062) * inlay;
+      }
+      if (campaignSurfaceKind == 6.) {
+        float tar = surfaceLine(p.x + .42 * surfaceNoise(p * .44), 9., .047);
+        float repairs = surfaceBlocks(p, vec2(11.2, 5.2), .53, .23);
+        float grit = surfaceNoise(p * 17.) * (1. - smoothstep(.022, .11, surfacePixel));
+        return vec3(.94, .99, 1.065) * grain * (repairs - .17 * tar + .13 * grit);
+      }
+      float slabs = surfaceBlocks(p, vec2(3.2, 2.9), .5, .28);
+      return vec3(1.04, .995, .98) * grain * slabs;
     }
     float panels = surfaceBlocks(p, vec2(2.65, 1.18), .5, .33);
     float band = surfaceLine(p.y - .10, 2.36, .071);

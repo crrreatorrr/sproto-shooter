@@ -179,6 +179,25 @@ it('an identity change observed in the input callback invalidates even a later s
     accepted: { tick: 0 }, recorder: { retainedFrames: 2, totalFrames: 2 } });
 });
 
+it('uploads a sealed tail as soon as the idle status already in flight returns', async () => {
+  const pending = [];
+  const { control, requests } = setup((url, body) => new Promise((done) => {
+    pending.push(() => done(jsonResponse(url.includes('run.append') ? ack(body) : snapshot())));
+  }), { controller: { recorderOptions: { bufferLimits: { batchFrames: 120 } } } });
+  for (let tick = 0; tick < 6; tick++) control.record(frame(tick), tick);
+  const pumping = control.pump();
+  await vi.waitFor(() => expect(requests).toHaveLength(1));
+  expect(requests[0].url).toContain('run.status');
+  control.finish();
+  pending.shift()();
+  await vi.waitFor(() => expect(requests.some((row) => row.url.includes('run.append'))).toBe(true));
+  pending.shift()();
+  await pumping;
+  const appended = JSON.parse(requests.find((row) => row.url.includes('run.append')).body);
+  expect(appended).toMatchObject({ sequence: 0, n: 6, tick0: 0 });
+  expect(control.status()).toMatchObject({ accepted: { sequence: 0, tick: 6 }, recorder: { retainedFrames: 0 } });
+});
+
 it('a background codec/storage error pauses as local failure without infinite pre-request retries', async () => {
   const { control, requests } = setup(vi.fn(), { controller: { recorderOptions: {
     bufferLimits: { batchFrames: 2 }, storageLimits: { maxFrames: 1 } } } });

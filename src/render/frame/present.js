@@ -95,12 +95,13 @@ export function mountPresent(env) {
           const bazaar = state.level.id === 'L02';
           const grove = state.level.id === 'L03';
           const blockchain = state.level.id === 'L04';
+          const landing = state.level.id === 'L01';
           const underworks = state.level.id === 'L07';
           const office = state.level.id === 'L08';
           const moonlit = state.level.id === 'L09';
           const interior = (office && state.level.section !== 'S4') || (moonlit && state.level.section === 'S2');
-          scene.fog.near = dark ? 4 : blockchain ? 105 : underworks ? 19 : interior ? 23 : bazaar ? 74 : grove ? 82 : skyline ? 43 : 30;
-          scene.fog.far = dark ? 36 : skyline ? 168 : underworks ? 104 : interior ? 92 : office || moonlit ? 152 : bazaar ? 262 : grove ? 300 : blockchain ? 290 : 420;
+          scene.fog.near = dark ? 4 : blockchain ? 105 : underworks ? 19 : interior ? 23 : bazaar ? 74 : grove ? 82 : skyline ? 43 : landing ? 49 : 30;
+          scene.fog.far = dark ? 36 : skyline ? 168 : underworks ? 104 : interior ? 92 : office || moonlit ? 152 : bazaar ? 262 : grove ? 300 : blockchain || landing ? 290 : 420;
         }
       }
     } else if (scene.fog && scene.fog.far > 300) {
