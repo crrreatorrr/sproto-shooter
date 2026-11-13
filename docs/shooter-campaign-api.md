@@ -190,12 +190,17 @@ slot. Retry that same instance/key after a lost response; never select protocol,
 seed/loadout/run ID or regenerate a fallback key to enter legacy. Server legacy
 selection is reported as unsupported for this v2 controller. Unknown protocol or
 retained manifest support blocks start; it does not trigger a completed-log path.
-The client accepts the retained campaign verifier built from `e063f8a5be736031aa4c4b803ab46bf66c814e65`.
-Its SHA-256 is `12332a4d2f34b8a282d0426d474698db978c1676bf86ba2c23ab6d826fb8ceed` and its content
+The client accepts the retained campaign verifier built from `7137f558846da4c552f6c21ef74756eb527c657d`.
+Its SHA-256 is `ae9ede47f2bdb4896820810888e62cca9eb3c9f6675052645dae0fb31518145b` and its content
 fingerprint is `73c6eb0f` (simulator 1, upload 2, replay API 2,
-checkpoint 2 and economy 1). Register this exact build for new rewarded runs
-before shipping this client. Keep the previous retained executable available
-for runs issued against it.
+checkpoint 2 and economy 1). That commit is the shared-gameplay merge. It changed
+the campaign bundle bytes, so it replaces both the older client pin
+`e063f8a5be736031aa4c4b803ab46bf66c814e65` /
+`12332a4d2f34b8a282d0426d474698db978c1676bf86ba2c23ab6d826fb8ceed` and the
+pre-merge hub artifact `4968fa64` from `2215995f`. Register this exact build for
+new rewarded runs before shipping this client. Rebuilding the bundle at a later
+commit changes the SHA-256, because the commit is baked into the file. Keep the
+previous retained executable available for runs issued against it.
 
 An issued response must have the exact0056 shape and limits, canonical engine
 issuance/start hash, owner/run binding, fixed45-minute upload deadline and an
