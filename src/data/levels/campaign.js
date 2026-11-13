@@ -1,5 +1,5 @@
 // The Great Sproto Audit. Ten levels, one section chain each.
-// L01, L02, L03, L04, L05 and L07 register themselves from their own folders. Later levels
+// L01 through L07 register themselves from their own folders. Later levels
 // still live here until each one moves into src/data/levels/LNN/.
 import { makeLevel } from './assemble.js';
 import { L01 } from './L01/index.js';
@@ -7,42 +7,12 @@ import { L02 } from './L02/index.js';
 import { L03 } from './L03/index.js';
 import { L04 } from './L04/index.js';
 import { L05 } from './L05/index.js';
+import { L06 } from './L06/index.js';
 import { L07 } from './L07/index.js';
 
-export { L01, L02, L03, L04, L05, L07 };
+export { L01, L02, L03, L04, L05, L06, L07 };
 
 const card = (title, lines) => ({ title, lines });
-
-export const L06 = makeLevel({
-  id: 'L06', name: 'Vape Cabal Skyline', stage: 'city', tier: 6, parTime: 22 * 60, jetpack: true,
-  lighting: { weather: 'rain' },
-  sections: [
-    {
-      id: 'S1', name: 'Freeway', length: 56, floor: 'metal',
-      encounters: [{ id: 'E1', x: 18, space: 'rail', units: [['boomMidget', 3], ['riotMidget', 2]] }],
-      weapons: [{ id: 'sg-traffic', x: 30, gun: 'shotgun', why: 'traffic jam' }],
-      mechanisms: [{ kind: 'crusher', id: 'bus-lane', x: 24 }],
-      secret: { x: 8, modifier: 'duckHunt' },
-    },
-    {
-      id: 'S2', name: 'Crane Yard', length: 50, floor: 'metal',
-      encounters: [{ id: 'E2', x: 16, space: 'vertical', units: [['jetObama', 3]] }],
-      weapons: [{ id: 'sn-crane', x: 28, gun: 'sniper', why: 'crane cab overlook' }],
-      mechanisms: [{ kind: 'zipline', id: 'roof-line', x: 20 }, { kind: 'mover', id: 'crane-hook', x: 34 }],
-    },
-    {
-      id: 'S3', name: 'Rain Canyon', length: 50, floor: 'metal',
-      encounters: [{ id: 'E3', x: 16, space: 'sky', units: [['bitbug', 4], ['balloonMidget', 2]] }],
-      weapons: [{ id: 'mg-canyon', x: 12, gun: 'mg', why: 'bitbugs in the canyon' }],
-    },
-    {
-      id: 'S4', name: 'Cabal Streets', length: 48,
-      intro: card('Los Angeles', ['Broccoli Head owns the night.', 'The clouds are not weather.']),
-      encounters: [{ id: 'E4', x: 16, space: 'arena', objective: 'boss', units: [['broccoli', 1]] }],
-      weapons: [{ id: 'bz-broc', x: 10, gun: 'bazooka', why: 'Broccoli Head' }],
-    },
-  ],
-});
 
 export const L08 = makeLevel({
   id: 'L08', name: 'Government Office', stage: 'office', tier: 8, parTime: 18 * 60,

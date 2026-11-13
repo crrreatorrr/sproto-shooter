@@ -117,6 +117,15 @@ export function createCampaignController({ enabled = false, transport, uploadDea
     if (busy || paused) return state();
     busy = true; const generation = epoch;
     try {
+      // An idle status can already be in flight when the run seals its tail.
+      // Upload that tail in this same turn. Another baseDelay gap loses the
+      // append when a long frame delays the status until the end of the
+      // caller's one-second observation window.
+      let uploadTail = false;
+      let passes = 0;
+      do {
+      uploadTail = false;
+      if (++passes > 2) break;
       deadline();
       if (offlineSince !== null && time() - offlineSince >= cap.maxOfflineMs) haltWrites('offline_budget_exhausted');
       if (time() < nextAt) return state();
@@ -164,8 +173,10 @@ export function createCampaignController({ enabled = false, transport, uploadDea
           if (generation !== epoch) return state();
           offlineSince = null; nextPollAt = time() + cap.pollDelayMs;
           if ('received' in response) snapshot(response); else failure(response);
+          uploadTail = finishRequested && !current && !writesStopped && !paused && time() >= nextAt;
         }
       }
+      } while (uploadTail && generation === epoch);
     } catch (error) {
       if (generation !== epoch) return state();
       if (CONTRACT_ERRORS.includes(error?.code)) pause(error.code);

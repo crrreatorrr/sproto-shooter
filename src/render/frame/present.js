@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TUNING } from '../../data/tuning.js';
 import { BOSSES, ENEMIES as ENEMY_DEFS } from '../../data/enemies.js';
+import { getLevelRuntime } from '../../sim/level/runtime.js';
 import { stageFor } from '../../data/stages.js';
 import { worldHitboxes } from '../../sim/collision.js';
 import { DT } from '../../sim/simulate.js';
@@ -79,6 +80,13 @@ export function mountPresent(env) {
       env.skylineRain.material.uniforms.eye.value.copy(camera.position);
       env.skylineRain.material.uniforms.time.value = t % 120;
     }
+    const eruption = campaign && state.level.id === 'L10' && state.level.section === 'S4';
+    env.calderaEmbers.visible = !!eruption;
+    if (eruption) {
+      const section = getLevelRuntime(state.level.id).sectionById[state.level.section];
+      env.calderaEmbers.material.uniforms.start.value = section.start[0];
+      env.calderaEmbers.material.uniforms.time.value = t % 120;
+    }
     if (campaign) {
       levelView.sync(state);
       if (scene.fog) {
@@ -92,15 +100,17 @@ export function mountPresent(env) {
           scene.fog.near = Math.min(14, cap * 0.35);
           scene.fog.far = cap;
         } else {
+          const landing = state.level.id === 'L01';
           const bazaar = state.level.id === 'L02';
           const grove = state.level.id === 'L03';
           const blockchain = state.level.id === 'L04';
           const underworks = state.level.id === 'L07';
           const office = state.level.id === 'L08';
           const moonlit = state.level.id === 'L09';
+          const caldera = state.level.id === 'L10';
           const interior = (office && state.level.section !== 'S4') || (moonlit && state.level.section === 'S2');
-          scene.fog.near = dark ? 4 : blockchain ? 105 : underworks ? 27 : interior ? 23 : bazaar ? 74 : grove ? 82 : 30;
-          scene.fog.far = dark ? 36 : skyline ? 134 : underworks ? 136 : interior ? 92 : office || moonlit ? 152 : bazaar ? 262 : grove ? 300 : blockchain ? 290 : 420;
+          scene.fog.near = dark ? 4 : blockchain ? 105 : caldera ? 19 : underworks ? 27 : interior ? 23 : bazaar ? 74 : grove ? 82 : skyline ? 43 : landing ? 49 : 30;
+          scene.fog.far = dark ? 36 : skyline ? 168 : underworks ? 136 : interior ? 92 : caldera ? (eruption ? 105 : 142) : office || moonlit ? 152 : bazaar ? 262 : grove ? 300 : blockchain ? 290 : landing ? 290 : 420;
         }
       }
     } else if (scene.fog && scene.fog.far > 300) {
