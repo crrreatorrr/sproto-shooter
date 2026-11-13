@@ -17,7 +17,7 @@ const KIT_SURFACES = {
   bazaar_wall: HARD, sandstone_house: HARD, low_wall: HARD,
   grove_shed: WOOD, grove_bridge: WOOD, grove_timber_ramp: WOOD, grove_root_wall: WOOD,
   grove_stockade: WOOD, grove_barn_roof: WOOD,
-  void_deck: HARD, void_bulkhead: HARD, void_vault: HARD, void_apron: HARD, void_shelter: HARD, void_landing: HARD,
+  void_deck: HARD, void_bulkhead: HARD, void_vault: HARD, void_apron: ROAD, void_shelter: HARD, void_landing: HARD,
   frost_wall: HARD, frost_panel: HARD, frost_deck: HARD, frost_ice_floor: ICE,
   frost_glacier: ICE, frost_drift: SOFT, frost_roof: HARD,
   skyline_barrier: MASONRY, skyline_cladding: MASONRY, skyline_masonry: MASONRY,
@@ -30,6 +30,8 @@ const KIT_SURFACES = {
   moonlit_vault: HARD, moonlit_column: HARD, moonlit_ruin_arch: HARD, moonlit_tomb: HARD,
   moonlit_ridge: HARD,
   caldera_apron: HARD, caldera_wall: HARD, caldera_spires: HARD, caldera_overhang: HARD,
+  bazaar2_wall_panel: HARD, bazaar2_shop: HARD, bazaar2_tower: HARD,
+  bazaar2_support: HARD, bazaar2_ridge: MASONRY, bazaar2_canopy: WOOD,
 };
 
 const SURFACE_EXCLUSIONS = new Set(['energyBridge', 'fireRing', 'lockWall', 'mover', 'crackTiles']);
@@ -71,7 +73,7 @@ const SHADE_SURFACE = /* glsl */ `
     : vec2(dot(vCampaignSurface.xz, vec2(surfaceNormal.z, -surfaceNormal.x)), -vCampaignSurface.y);
   vec3 campaignGleam = vec3(0.);
   #ifndef CAMPAIGN_GLASS_ROOF
-    vec3 campaignTint = shadeCampaignSurface(surfaceUV, surfaceGround, campaignGleam);
+    vec3 campaignTint = shadeCampaignSurface(surfaceUV, surfaceGround, surfaceNormal.y > .57, campaignGleam);
   #endif
   #ifdef CAMPAIGN_KIT_GLOW
     float campaignWeight = 1. - smoothstep(.025, .14, vKitGlow);
@@ -169,7 +171,7 @@ export function createCampaignSurfaceMaterials() {
           ${glassRoof ? '#define CAMPAIGN_GLASS_ROOF' : ''}
           ${SURFACE_GLSL}
           ${ART_GLSL}
-          vec3 shadeCampaignSurface(vec2 p, bool ground, out vec3 gleam) {
+          vec3 shadeCampaignSurface(vec2 p, bool ground, bool upward, out vec3 gleam) {
             gleam = vec3(0.);
             ${pattern}
           }`)
@@ -197,6 +199,7 @@ export function createCampaignSurfaceMaterials() {
         || ((level === 'L09' || level === 'L10') && geometry.id === 'S3-floor');
       const kind = ceiling === GLASS_CEILING_SURFACE ? HARD
         : level === 'L06' && /^S[1-4]-floor$/.test(geometry.id) ? ROAD
+          : level === 'L02' && geometry.mat === 'rock' ? MASONRY
           : accentFloor ? PANEL_FLOOR : primitiveSurfaceKind(geometry);
       return decorate(base, level, kind, ceiling);
     },

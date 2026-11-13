@@ -1,5 +1,5 @@
 """Build the Vegetable Grove kit from the repo root with Blender --background --python."""
-from math import cos, pi, sin
+from math import cos, degrees, pi, sin
 from pathlib import Path
 from random import Random
 import sys
@@ -124,17 +124,17 @@ def foliage(m, at, width, depth, height, seed, dark=False):
 
 def tree():
     m = Grove('tree')
-    m.tube([((0, 0, 0), .76), ((-.27, .2, 2.7), .63), ((.22, -.18, 5.3), .46),
-            ((.2, 0, 7.7), .24)], BARK, 8)
+    m.tube([((0, 0, 0), .78), ((-.25, .15, 3.6), .61), ((.18, 0, 7.5), .31)], BARK, 7)
     for k in range(4):
-        a = k * 2 * pi / 4 + .25
+        a = k * pi / 2 + .30
         x, y = cos(a), sin(a)
-        m.beam((0, 0, .55), (x * 1.45, y * 1.45, .11), .26)
-        m.beam((0, 0, 4.4), (x * 1.95, y * 1.95, 7), .34)
-        foliage(m, (x * 1.42, y * 1.42, 7.35 + .3 * (k % 2)), 3.4, 3.1, 2.0, k + 30, k % 3 == 0)
-    foliage(m, (.1, 0, 8.65), 4.2, 4, 2.4, 26)
+        m.beam((0, 0, 4.3), (x * 1.82, y * 1.82, 6.85), .29)
+        m.rock((x * 1.75, y * 1.75, 7.5 + .27 * (k % 2)), (2.1, 2.0, 1.58), LEAF[1:], k + 31, 2)
+        for j in range(2):
+            angle = a + .3 - .6 * j
+            m.rock((cos(angle) * 2.94, sin(angle) * 2.94, 7.3 + .48 * j), (.28, .27, .30), ORANGE[1:], 81 + k + j)
+    m.rock((.1, 0, 8.82), (2.25, 2.17, 1.64), LEAF[1:], 26, 2)
     return m
-
 
 def pines():
     m = Grove('pines')
@@ -149,17 +149,50 @@ def pines():
 
 def hedge():
     m = Grove('hedge')
-    m.box(LEAF[0], (1.99, 1.72, 1.63), (0, 0, .8), bevel=.12)
-    rng = Random(62)
-    for i in range(14):
-        x = rng.uniform(-.68, .68)
-        side = -1 if i % 2 else 1
-        m.rock((x, side * .83, rng.uniform(.32, 1.57)), (.35, .16, .37),
-               LEAF[:4], i)
-    for i, x in enumerate((-.71, -.28, .18, .63)):
-        m.rock((x, 0, 1.53 + .09 * (i % 2)), (.34, .89, .38), LEAF[1:], i + 20, 2)
+    m.box(LEAF[0], (2, 1.92, 1.62), (0, 0, .81))
+    for k, x in enumerate((-.65, 0, .65)):
+        m.rock((x, 0, 1.48 + .09 * (k % 2)), (.48, 1.0, .44), LEAF[1:], 23 + k)
+    for side in (-1, 1):
+        for k in range(2):
+            m.leaf((-.43 + k * .84, side * .966, .63 + .25 * k), side * pi / 2, .12, .33, .41, LEAF[1:])
     return m
 
+def orchard_rise():
+    m = Grove('orchard_rise')
+    # A distant grass bank with three silhouettes and alternating meadow strata.
+    for k, (x, y, h) in enumerate(((-18, 2, 6), (0, 5, 8), (18, 1, 4.9))):
+        m.rock((x, y, -1), (15, 10, h), (0x567E63, 0x74905B, 0x9AA763), k + 54, 2)
+        for j in range(4):
+            tx = x + (j - 1.5) * 4.7
+            ty = y + (j % 2) * 2.1
+            tree_h = 3.8 + ((k + j) % 3) * .7
+            m.cyl(BARK[1], .28, tree_h, (tx, ty, h - 4.4), seg=5, smooth=False)
+            m.rock((tx, ty, h + tree_h - 3.8), (1.9, 1.8, 1.7), (0x466F55, 0x648447, 0x88A05C), 42 + j + k)
+    return m
+
+def orchard_barn():
+    m = Grove('orchard_barn')
+    m.box(0xB07A49, (7.8, 6.4, 4.7), (0, 0, 2.35), bevel=.08)
+    for sign in (-1, 1):
+        m.box(0x556D4D, (7.9, 3.8, .34), (0, sign*1.55, 5.34), rot=(-sign * 30, 0, 0))
+        m.box(BARK[0], (2.15, .11, 2.8), (0, sign * 3.23, 1.40))
+        for x in (-2.45, 2.45):
+            m.box(CREAM, (.95, .11, .82), (x, sign * 3.23, 2.94))
+        for x in (-3.65, 3.65):
+            m.box(CREAM, (.18, .10, 4.5), (x, sign * 3.23, 2.25))
+    return m
+
+def orchard_windmill():
+    m = Grove('orchard_windmill')
+    m.cyl(0xBA905C, 2.9, 9.6, (0, 0, 0), r2=2.14, seg=8, smooth=False)
+    m.cyl(0x637E57, 2.65, 2.65, (0, 0, 9.56), r2=.33, seg=8, smooth=False)
+    m.box(BARK[0], (1.21, .15, 2.1), (0, -2.73, 1.12))
+    for i in range(4):
+        a = i * pi / 2 + .37
+        x, z = cos(a), sin(a)
+        m.beam((0, -2.36, 7.85), (6.4*x, -2.36, 7.85 + 6.4*z), .128)
+        m.box(CREAM, (3.7, .11, 1.12), (4.36*x, -2.38, 7.85 + 4.36*z), rot=(0, -degrees(a), 0))
+    return m
 
 def vehicle(name, tractor=False):
     m = Grove(name)
@@ -315,6 +348,24 @@ def arch():
     return m
 
 
+def wide_root_arch():
+    m = Grove('wide_root_arch')
+    span = 7.3
+    for side in (-1, 1):
+        x = side * span
+        m.tube([((x, 0, 0), .55), ((x + side * .13, .1, 2.3), .46),
+                ((x, -.02, 4.8), .51), ((x - side * .47, .08, 5.48), .42)], BARK, 7)
+        m.tube([((x + side * .33, -.39, 0), .22), ((x + side * .47, -.28, 2.5), .25),
+                ((x + side * .18, -.37, 4.8), .27)], BARK[1:], 5)
+    for y in (-.34, .36):
+        m.tube([((x, y + .12 * sin(i * 1.7), 5.49 + .11 * sin(i)), .36)
+                for i, x in enumerate((-7.2, -4.8, -2.4, 0, 2.4, 4.8, 7.2))], BARK, 7)
+    for i in range(9):
+        x = (i - 4) * 1.67
+        m.leaf((x, .06, 5.77), i * 2.41, 1.17, .8, .46, LEAF[1:])
+    return m
+
+
 def totem():
     m = Grove('totem')
     m.tube([((0, 0, 0), .79), ((.08, 0, .51), .8), ((-.05, .02, 1.87), .61),
@@ -442,20 +493,16 @@ def nest():
 
 def greenhouse_frame():
     m = Grove('greenhouse_frame')
-    # A repeatable four-metre panel. The original glass sits behind this trim.
     for x in (-1.98, 0, 1.98):
-        m.box(BARK[0], (.17, .19, 8), (x, 0, 4), bevel=.035)
-        m.box(BARK[2], (.11, .21, 7.98), (x, 0, 4), bevel=.022)
-    for z in (.18, .71, 3.76, 6.65, 7.84):
-        m.box(BARK[1], (4, .2, .19), (0, 0, z), bevel=.03)
-    for x in (-1.49, -.5, .5, 1.49):
-        m.box(STONE[1], (.965, .35, .53), (x, 0, .27), bevel=.07)
+        m.box(BARK[0], (.17, .19, 8), (x, 0, 4))
+    for z in (.30, .72, 3.76, 6.65, 7.85):
+        m.box(BARK[2], (4, .2, .19), (0, 0, z))
+    for x in (-1.44, -.48, .48, 1.44):
+        m.box(STONE[1], (.94, .35, .53), (x, 0, .27))
     return m
-
 
 ROOF_PROFILE = [(-22.5, 0), (-18.5, 2.8), (-12, 5.6), (-5, 7.2), (0, 7.5),
                 (5, 7.2), (12, 5.6), (18.5, 2.8), (22.5, 0)]
-
 
 def greenhouse_roof():
     m = Grove('greenhouse_roof')
@@ -630,18 +677,13 @@ def cabbage():
 
 def root_wall():
     m = Grove('root_wall')
-    m.box(BARK[0], (3, 1.95, 4.9), (0, 0, 2.45), bevel=.16)
-    for k in range(5):
-        x = (k - 2) * .55
-        for s in (-1, 1):
-            m.tube([((x - .19, s * .78, 0), .36), ((x + .22, s * .86, 1.24), .29),
-                    ((x - .11, s * .83, 2.9), .31), ((x + .05, s * .68, 4.36), .32),
-                    ((x + .2, s * .47, 5.03), .2)], BARK, 5)
-    for k in range(4):
-        x = (k - 1.5) * .64
-        m.leaf((x, 0, 4.75), k * 2.4, .85, .68, .38, LEAF[:4])
+    m.box(BARK[0], (3, 1.95, 4.9), (0, 0, 2.45))
+    for k, x in enumerate((-.76, .55)):
+        for side in (-1, 1):
+            m.tube([((x - .17, side * .79, 0), .33), ((x + .25, side * .91, 2.35), .29),
+                    ((x - .13, side * .71, 4.62), .28), ((x + .20, side * .42, 5.02), .17)], BARK, 5)
+        m.leaf((x, 0, 4.74), k * 2.4, 1.05, .69, .38, LEAF[:4])
     return m
-
 
 def water_tower():
     m = Grove('water_tower')
@@ -673,19 +715,23 @@ def water_tower():
 
 
 MAKERS = (
-    tree, pines, hedge, lambda: vehicle('truck'), lambda: vehicle('tractor', tractor=True), scarecrow,
+    tree, pines, hedge, orchard_rise, orchard_barn, orchard_windmill, lambda: vehicle('truck'), lambda: vehicle('tractor', tractor=True), scarecrow,
     tower, shed, hay, silo, beanstalk, leaf_step, gazebo, topiary, bridge, crate, greenhouse_frame,
-    greenhouse_roof, greenhouse_glass, planter, nest, arch, totem, bloom, pod, patch, crops, lantern, reeds, stones,
+    greenhouse_roof, greenhouse_glass, planter, nest, arch, wide_root_arch, totem, bloom, pod, patch, crops, lantern, reeds, stones,
     water_tower, giant_pumpkin, cabbage, root_wall, timber_ramp, barn_roof, stockade, boulder,
 )
 
 
 def main():
+    # Preserve the separate campaign polish GLBs when rebuilding only the expansion.
+    expansion = {tree, hedge, orchard_rise, orchard_barn, orchard_windmill, greenhouse_frame, root_wall, wide_root_arch}
+    expansion_only = '--expansion-only' in sys.argv
     clear_scene()
     bpy.context.preferences.filepaths.save_version = 0
     for i, make in enumerate(MAKERS):
         obj = make().build()
-        export([obj], 'props', obj.name, compressed=True)
+        if not expansion_only or make in expansion:
+            export([obj], 'props', obj.name, compressed=True)
         obj.location = ((i % 6) * 13, (i // 6) * 13, 0)
         # Keep very large landmarks readable beside the rest of the source kit.
         obj.scale *= min(1.0, 10.0 / max(obj.dimensions))

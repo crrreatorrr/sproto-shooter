@@ -46,14 +46,14 @@ export function podIsle(id, at) {
 }
 
 /** Link boxes every 2 m. Long axis is world X; L04's chains run east. */
-export function chain(id, from, to) {
+export function chain(id, from, to, width = 1.6) {
   const dx = to[0] - from[0];
   const dy = to[1] - from[1];
   const dz = to[2] - from[2];
   const len = Math.hypot(dx, dy, dz);
   const n = Math.max(1, Math.round(len / 2));
   const alongX = Math.abs(dx) >= Math.abs(dz);
-  const size = alongX ? [2.4, 0.6, 1.6] : [1.6, 0.6, 2.4];
+  const size = alongX ? [2.4, 0.6, width] : [width, 0.6, 2.4];
   const parts = [];
   for (let i = 0; i < n; i++) {
     const t = (i + 0.5) / n;
@@ -102,15 +102,15 @@ export function vent(id, at) {
 }
 
 /** Floor, roof and side walls. Ends stay open so the connector can be walked. */
-export function tunnel(id, { length, floorAt, innerH = 4 }) {
+export function tunnel(id, { length, floorAt, innerH = 4, innerWidth = 6 }) {
   const [x, y, z] = floorAt;
   const wallH = innerH + 2;
   const wallY = (y - 0.5) + wallH / 2;
   return [
-    box({ id: `${id}-floor`, at: [x, y, z], size: [length, 1, 8], mat: 'metal' }),
-    box({ id: `${id}-roof`, at: [x, y + innerH + 1, z], size: [length, 1, 8], mat: 'metal' }),
-    box({ id: `${id}-n`, at: [x, wallY, z - 3.5], size: [length, wallH, 1], mat: 'metal' }),
-    box({ id: `${id}-s`, at: [x, wallY, z + 3.5], size: [length, wallH, 1], mat: 'metal' }),
+    box({ id: `${id}-floor`, at: [x, y, z], size: [length, 1, innerWidth + 2], mat: 'metal' }),
+    box({ id: `${id}-roof`, at: [x, y + innerH + 1, z], size: [length, 1, innerWidth + 2], mat: 'metal' }),
+    box({ id: `${id}-n`, at: [x, wallY, z - (innerWidth + 1) / 2], size: [length, wallH, 1], mat: 'metal' }),
+    box({ id: `${id}-s`, at: [x, wallY, z + (innerWidth + 1) / 2], size: [length, wallH, 1], mat: 'metal' }),
   ];
 }
 

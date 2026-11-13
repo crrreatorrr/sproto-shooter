@@ -56,6 +56,9 @@ export function mountStage(env) {
   }
 
   function applyStage(id, levelId, sectionId) {
+    const grove = id === 'grove' && levelId === 'L03';
+    const bazaar = id === 'desert' && levelId === 'L02';
+    const showroom = bazaar && sectionId === 'S4';
     const blockchain = id === 'void' && levelId === 'L04';
     const frostspire = id === 'glacier' && levelId === 'L05';
     const skyline = id === 'city' && levelId === 'L06';
@@ -70,7 +73,10 @@ export function mountStage(env) {
     const variant = office ? (roof ? 'L08-roof' : 'L08-interior')
       : moonlit ? (crypt ? 'L09-crypt' : 'L09-exterior')
       : caldera ? (eruption ? 'L10-eruption' : 'L10-ridge')
-        : blockchain || frostspire || skyline || underworks ? levelId : '';
+      : frostspire ? `L05-${sectionId || 'S1'}`
+      : blockchain ? `L04-${sectionId || 'S1'}`
+      : bazaar ? (showroom ? 'L02-showroom' : 'L02-exterior')
+        : grove || skyline || underworks ? levelId : '';
     const key = id + ':' + variant + ':' + assetsVersion();
     if (key === stageKey) return;
     stageKey = key;
@@ -91,22 +97,53 @@ export function mountStage(env) {
       bounce.intensity = .45;
     }
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
-    const panorama = skyline || underworks || office || moonlit || caldera ? panoramaPath(levelId, sectionId) : a.sky;
-    const skyTex = panorama ? peekTexture(panorama) : null;
-    if (skyTex && (skyline || underworks || roof || moonlit || caldera)) {
-      skyTex.offset.y = skyline ? -.16 : underworks ? .035 : moonlit ? -.036 : caldera ? .057 : -.098;
-      if (roof || moonlit || caldera) {
+    const panorama = frostspire || blockchain || grove || bazaar || skyline || underworks || office || moonlit || caldera
+      ? panoramaPath(levelId, sectionId) : a.sky;
+    const skyTex = panorama ? peekTexture(panorama) || (grove ? peekTexture(a.sky) : null) : null;
+    if (blockchain && skyTex) {
+      skyTex.wrapS = THREE.RepeatWrapping;
+      const offset = { S1: -.18, S2: -.15, S3: -.25, S4: -.31, S5: -.125, SB: -.02 };
+      skyTex.offset.set(offset[sectionId] ?? offset.S1, -.027);
+      skyTex.needsUpdate = true;
+    }
+    const orchardSky = grove && skyTex && skyTex === peekTexture(panorama);
+    if (orchardSky) {
+      skyTex.wrapS = THREE.RepeatWrapping;
+      skyTex.offset.set(.07, -.046);
+      skyTex.needsUpdate = true;
+      scene.fog.color.setHex(0x97a878);
+      hemi.color.setHex(0xffedcf);
+      hemi.groundColor.setHex(0x748859);
+      hemi.intensity = 1.51;
+      sun.color.setHex(0xffda9f);
+      sun.intensity = 1.68;
+      bounce.color.setHex(0xbbd7e1);
+    }
+    if (skyTex && (bazaar || skyline || underworks || roof || moonlit || caldera)) {
+      skyTex.offset.y = bazaar ? -.018 : skyline ? -.16 : underworks ? .035 : moonlit ? -.036 : caldera ? .057 : -.098;
+      if (bazaar || roof || moonlit || caldera) {
         // Orient the painted landmark above the eastward approach.
         skyTex.wrapS = THREE.RepeatWrapping;
-        skyTex.offset.x = moonlit ? .208 : caldera ? .204 : .185;
+        skyTex.offset.x = bazaar ? (showroom ? -.13 : .04) : moonlit ? .208 : caldera ? .204 : .185;
         skyTex.needsUpdate = true;
       }
     }
-    sky.material = blockchain ? (blockchainSky ||= createAuroraSky())
+    sky.material = blockchain && !skyTex ? (blockchainSky ||= createAuroraSky())
       : frostspire ? (frostspireSky ||= createAuroraSky(true)) : standardSky;
     standardSky.map = skyTex;
     standardSky.color.setHex(skyTex ? 0xffffff : skyline ? 0x242d54 : underworks || caldera ? 0x472840 : st.background);
     standardSky.needsUpdate = true;
+    if (bazaar) {
+      scene.fog.color.setHex(showroom ? 0x866977 : 0xb98780);
+      hemi.color.setHex(showroom ? 0xd6bef1 : 0xffdfd7);
+      hemi.groundColor.setHex(0xA17D78);
+      hemi.intensity = showroom ? 1.38 : 1.42;
+      sun.color.setHex(0xffca9d);
+      sun.position.set(-22, 26, -14);
+      sun.intensity = showroom ? 1.23 : 1.58;
+      bounce.color.setHex(showroom ? 0x8d9bee : 0xc0a8ed);
+      bounce.intensity = showroom ? .54 : .42;
+    }
     if (blockchain) {
       scene.fog.color.setHex(0x312445);
       hemi.color.setHex(0xe5dcff);
@@ -119,6 +156,14 @@ export function mountStage(env) {
       bounce.intensity = .42;
     }
     if (frostspire) {
+      if (skyTex) {
+        skyTex.wrapS = THREE.RepeatWrapping;
+        skyTex.needsUpdate = true;
+      }
+      const azimuth = { S1: -.10, S2: -.26, S3: -.02, S4: -.08, S5: -.19 };
+      frostspireSky.uniforms.panorama.value = skyTex;
+      frostspireSky.uniforms.panoramaReady.value = skyTex ? 1 : 0;
+      frostspireSky.uniforms.panoramaYaw.value = azimuth[sectionId] ?? azimuth.S1;
       scene.fog.color.setHex(0x465b7a);
       hemi.color.setHex(0xc5dbfa);
       hemi.groundColor.setHex(0x7791b0);

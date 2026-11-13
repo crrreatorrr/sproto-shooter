@@ -25,7 +25,7 @@ EMITTERS = {
     'void_deck': (ARC_LIGHT,), 'void_landing': (ARC_LIGHT,), 'void_bridge': (ARC_LIGHT,),
     'void_vault': (ARC_LIGHT, CORE_LIGHT), 'void_bulkhead': (ARC_LIGHT,), 'void_fuel': (ARC_LIGHT,),
     'void_relay': (ARC_LIGHT,), 'void_halo': (ARC_LIGHT, CORE_LIGHT), 'void_pylon': (ARC_LIGHT,),
-    'void_vortex': (ION_LIGHT,),
+    'void_vortex': (ION_LIGHT,), 'void_orbital_mast': (ARC_LIGHT,), 'void_gate_frame': (ARC_LIGHT,),
 }
 
 
@@ -98,23 +98,15 @@ class Void(Model):
 
 def deck():
     m = Void('deck')
-    # 2 x 2 footprint. The walking face remains at z=1.
-    m.box(INK, (2, 2, .82), (0, 0, .41), bevel=.07)
-    m.box(IRON, (1.98, 1.98, .15), (0, 0, .837), bevel=.035)
-    for i in range(2):
-        for j in range(2):
-            x, y = (i - .5) * .975, (j - .5) * .975
-            m.box((STEEL, IRON, 0x464D6B)[(i * 2 + j) % 3], (.959, .959, .09), (x, y, .955), bevel=.035)
+    # Top at z=1, preserving fit with the walkable surface.
+    m.box(INK, (2, 2, .76), (0, 0, .38))
+    m.box(IRON, (1.99, 1.99, .23), (0, 0, .885), bevel=.018)
     for side in (-1, 1):
-        for a in (-.69, .69):
-            m.box(AMBER[1], (.23, .19, .42), (a, side * .904, .761), bevel=.039)
-            m.box(AMBER[1], (.19, .23, .42), (side * .904, a, .761), bevel=.039)
-            m.box(LIP, (.036, .038, .018), (a, side * .97, .984), rot=(0, 0, 45))
-            m.box(LIP, (.038, .036, .018), (side * .97, a, .984), rot=(0, 0, 45))
-        m.box(ARC, (.92, .038, .071), (0, side * .986, .716), bevel=.011)
-        m.box(ARC, (.038, .92, .071), (side * .986, 0, .716), bevel=.011)
+        m.box(ARC, (1.49, .026, .044), (0, side * .986, .75))
+        m.box(ARC, (.026, 1.49, .044), (side * .986, 0, .75))
+        for x in (-.83, .83):
+            m.box(AMBER[1], (.17, .08, .17), (x, side * .96, .74))
     return m
-
 
 def bulkhead():
     m = Void('bulkhead')
@@ -153,15 +145,47 @@ def blast_shield():
 
 def apron():
     m = Void('apron')
-    m.box(IRON, (2, 2, 1), (0, 0, .5), bevel=.05)
-    for y in (-.8, .8):
-        m.box(CYAN[1], (1.94, .075, .015), (0, y, 1), bevel=.003)
-    for i in range(3):
-        x = (i - 1) * .62
-        for side in (-1, 1):
-            m.beam((x - .21, side * .29, 1.004), (x + .13, 0, 1.004), .05, AMBER[2], .013)
+    m.box(IRON, (2, 2, 1), (0, 0, .5))
+    for y in (-.86, .86):
+        m.box(CYAN[1], (2, .048, .012), (0, y, 1.006))
     return m
 
+def orbital_mast():
+    m = Void('orbital_mast')
+    m.cyl(IRON, 2.6, 14.7, (0, 0, 0), r2=1.5, seg=8, smooth=False)
+    m.cyl(AMBER[0], 1.76, .62, (0, 0, 14.15), seg=8, smooth=False)
+    m.ring(4.6, .36, 6.0, .42, (STEEL, PURPLE[2], CYAN[1]), sides=12)
+    m.ring(4.4, .12, 6.42, .13, (ARC,), sides=12)
+    for a in (0, pi * 2 / 3, pi * 4 / 3):
+        x, y = cos(a), sin(a)
+        m.beam((1.78*x, 1.78*y, 9.3), (4.56*x, 4.56*y, 6.2), .27, LIP)
+        m.beam((1.78*x, 1.78*y, 4), (4.56*x, 4.56*y, 6.2), .27, LIP)
+    m.jewel((0, 0, 14.75), .88, 3.7, (CYAN[1], ARC))
+    return m
+
+def debris_belt():
+    m = Void('debris_belt')
+    rng = Random(62)
+    for i in range(7):
+        x = (i - 3) * 3.35 + rng.uniform(-.62, .62)
+        y = rng.uniform(-3.2, 3.2)
+        z = rng.uniform(1.6, 5.5)
+        r = rng.uniform(.64, 2.25)
+        m.jewel((x, y, z), r, r * .93, (INK, PURPLE[1], STEEL, AMBER[0]), rng.random())
+    return m
+
+def gate_frame():
+    m = Void('gate_frame')
+    # Local X aperture 12 m. The piers sit outside the gate footprint.
+    for x in (-6.55, 6.55):
+        m.box(IRON, (1.05, .82, 6.18), (x, 0, 3.09), bevel=.11)
+        m.box(AMBER[1], (.18, .86, 5.24), (x + .23, 0, 3.07))
+        for y in (-.43, .43):
+            m.box(ARC, (.26, .036, 3.2), (x - .22, y, 3.75))
+    m.box(STEEL, (14.15, .86, .72), (0, 0, 6.36), bevel=.09)
+    for y in (-.45, .45):
+        m.box(ARC, (9.8, .035, .11), (0, y, 6.48))
+    return m
 
 def landing():
     m = Void('landing')
@@ -224,33 +248,26 @@ def crystal():
 
 def candle(name, palette):
     m = Void(name)
-    m.box(palette[0], (1.88, 1.88, 1), (0, 0, .5), bevel=.035)
+    m.box(palette[0], (1.92, 1.92, 1), (0, 0, .5), bevel=.035)
+    for z in (.055, .945):
+        m.box(IRON, (2, 2, .11), (0, 0, z), bevel=.024)
     for side in (-1, 1):
-        m.box(palette[1], (1.84, .035, .78), (0, side * .977, .52), bevel=.02)
-        m.box(palette[2], (.033, 1.83, .78), (side * .979, 0, .52), bevel=.02)
-        for offset in (-.78, .78):
-            m.box(palette[3], (.055, .019, .77), (offset, side * .999, .52), bevel=.007)
-            m.box(palette[1], (.019, .055, .77), (side * .999, offset, .52), bevel=.007)
-    for z in (.065, .91):
-        m.box(IRON, (2, 2, .1), (0, 0, z), bevel=.039)
-        for side in (-1, 1):
-            for x in (-.63, .63):
-                m.box(STEEL, (.14, .032, .058), (x, side * .982, z), bevel=.018)
-    m.box(palette[3], (1.68, 1.68, .043), (0, 0, .978), bevel=.02)
+        m.box(palette[1], (1.56, .029, .78), (0, side * .966, .50))
+        m.box(palette[2], (.029, 1.56, .78), (side * .966, 0, .50))
+        for z in (.24, .76):
+            m.box(palette[3], (1.19, .026, .027), (0, side * .978, z))
+            m.box(palette[3], (.026, 1.19, .027), (side * .978, 0, z))
     return m
 
 
 def bridge():
     m = Void('bridge')
-    m.box(CYAN[0], (2, 2, .94), (0, 0, .47), bevel=.072)
+    m.box(CYAN[0], (2, 2, .93), (0, 0, .465))
     for i in range(3):
         x = (i - 1) * .64
-        m.box(CYAN[(i % 2) + 1], (.606, 1.89, .15), (x, 0, .925), bevel=.044)
-        m.box(ARC, (.027, 1.71, .014), (x - .29, 0, .993), bevel=.005)
-    for y in (-.96, .96):
-        m.box(ARC, (1.91, .064, .12), (0, y, .853), bevel=.012)
-        for x in (-.69, .69):
-            m.box(STEEL, (.147, .107, .12), (x, y * .973, .937), bevel=.02)
+        m.box(CYAN[(i % 2) + 1], (.615, 1.89, .075), (x, 0, .963))
+    for y in (-.963, .963):
+        m.box(ARC, (1.93, .063, .045), (0, y, .98))
     return m
 
 
@@ -415,25 +432,21 @@ def rail():
 
 def vault():
     m = Void('vault')
-    # Keep every side fitting outside the six-metre opening.
-    for s in (-1, 1):
-        m.box(INK, (8.98, 1.0, 4.98), (s * 7.5, 0, 2.49), bevel=.14)
+    # 36 m bulkhead with 13 m wings and a clear 10 m doorway.
+    for side in (-1, 1):
+        m.box(INK, (13, 1, 5), (side * 11.5, 0, 2.5))
         for i in range(3):
-            x = s * (4.62 + i * 2.83)
-            m.box(STEEL, (2.69, .18, 4.3), (x, -.53, 2.53), bevel=.1)
-            m.box(IRON, (.44, .077, 2.58), (x, -.64, 2.52), bevel=.05)
-            m.box(ARC, (.19, .06, 2.25), (x, -.694, 2.52), bevel=.035)
+            x = side * (7.35 + i * 4.2)
+            m.box(STEEL, (3.82, .17, 4.22), (x, -.52, 2.53), bevel=.04)
+            m.box(ARC, (.20, .067, 2.25), (x, -.62, 2.53))
             for z in (.94, 4.19):
-                m.box(AMBER[1], (.32, .063, .14), (x, -.639, z), bevel=.022)
-        m.box(0xB2744D, (.52, .34, 4.22), (s * 3.33, -.572, 2.2), bevel=.069)
-        m.box(CORE, (.079, .063, 1.36), (s * 3.36, -.77, 2.64), bevel=.022)
-        m.beam((s * 3.3, -.59, 4.4), (s * 4.24, -.59, 5.12), .36, AMBER[1], .29, .06)
-        for z in (.72, 4.21):
-            m.cyl(INK, .083, .059, (s * 3.32, -.73, z), rot=(90, 0, 0), seg=8, smooth=False)
-    m.box(IRON, (24, .86, .89), (0, -.04, 5.1), bevel=.12)
-    m.box(STEEL, (8.7, .27, .76), (0, -.54, 5.11), bevel=.09)
+                m.box(AMBER[1], (.35, .07, .14), (x, -.63, z))
+        m.box(0xB2744D, (.62, .23, 4.20), (side * 5.32, -.52, 2.15))
+        m.box(CORE, (.09, .06, 1.39), (side * 5.39, -.65, 2.63))
+    m.box(IRON, (36, .92, .95), (0, 0, 5.48), bevel=.075)
+    m.box(STEEL, (13.2, .28, .70), (0, -.45, 5.46), bevel=.058)
     for i in range(3):
-        m.box(CORE, (1.26, .091, .235), ((i - 1) * 1.57, -.709, 5.13), bevel=.049)
+        m.box(CORE, (1.68, .081, .20), ((i - 1) * 2.1, -.6, 5.44))
     return m
 
 
@@ -540,12 +553,14 @@ def vortex():
 MAKERS = (
     deck, bulkhead, blast_shield, apron, landing, rockfall, asteroid, crystal, bridge, cargo,
     server, shelter, ticker, relay, pylon, terminal, sign, jetpack, fuel, vent, rail, vault, ledger,
-    gantry, beacon, supply, halo, vortex,
+    gantry, beacon, supply, halo, vortex, orbital_mast, debris_belt, gate_frame,
     lambda: candle('candle_up', GREEN), lambda: candle('candle_down', PINK),
 )
 
 
 def main():
+    expansion = {deck, apron, bridge, vault, orbital_mast, debris_belt, gate_frame}
+    expansion_only = '--expansion-only' in sys.argv
     clear_scene()
     MATERIALS.clear()
     bpy.context.preferences.filepaths.save_version = 0
@@ -558,7 +573,8 @@ def main():
         obj = bake(model, *EMITTERS.get(model.name, ()))
         objects = [obj, *motion]
         scene.frame_set(FRAMES[0])
-        export(objects, 'props', obj.name, animated=bool(motion), compressed=True)
+        if not expansion_only or make in expansion or obj.name.startswith('void_candle_'):
+            export(objects, 'props', obj.name, animated=bool(motion), compressed=True)
         collection = bpy.data.collections.new(obj.name)
         scene.collection.children.link(collection)
         root = bpy.data.objects.new(f'{obj.name} | Editable prop', None)

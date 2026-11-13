@@ -2,9 +2,12 @@ import { Color, Matrix4, PointLight, Vector3 } from 'three';
 
 // Lenses use local Three.js coordinates. The existing instance transform includes placement yaw and scale.
 const FIXTURES = {
+  bazaar2_lantern: { lens: [0, 2.53, .71], color: 0xffbd83, intensity: 29, range: 12 },
+  bazaar2_brazier: { lens: [0, 1.02, 0], color: 0xffa657, intensity: 48, range: 16 },
   street_lamp: { lens: [0, 5.30, 1.2], color: 0xffce87, intensity: 29, range: 12 },
   lantern_post: { lens: [.77, 2.81, 0], color: 0xffac62, intensity: 18, range: 8 },
   grove_lantern: { lens: [.72, 2.22, 0], color: 0xffb969, intensity: 15, range: 7 },
+  void_gate_frame: { lens: [0, 6.46, 0], color: 0x74e9f7, intensity: 35, range: 12 },
   void_beacon: { lens: [0, 1.27, 0], color: 0xffc562, intensity: 8, range: 5 },
   frost_floodlight: { lens: [0, 2.29, .53], color: 0xffd286, intensity: 23, range: 10 },
   skyline_lamp: { lens: [0, 5.66, 1.09], color: 0xffc783, intensity: 36, range: 15 },
@@ -25,6 +28,7 @@ const FIXTURES = {
   office_server: { lens: [0, 2.77, .95], color: 0x62d7ff, intensity: 34, range: 11 },
   office_fan: { lens: [0, 2.95, 1.42], color: 0xff6475, intensity: 20, range: 13 },
   office_parapet: { lens: [0, .77, 1.15], color: 0xff5d70, intensity: 6, range: 6 },
+  frost_portal_trim: { lens: [0, 6.14, .37], color: 0x9ee7ff, intensity: 24, range: 10 },
   frost_beacon: { lens: [0, 1.83, 0], color: 0xffc66c, intensity: 9, range: 6 },
 };
 

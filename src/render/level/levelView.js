@@ -4,6 +4,7 @@ import { getLevelRuntime } from '../../sim/level/runtime.js';
 import { solidTerrain } from '../../sim/campaign/terrain.js';
 import { DRESSING, HIDE_WHEN_GOT, MECHANISM_MODEL, STAGE_DRESSING } from './dressing.js';
 import { FROST_COLORS, frostspirePlacements } from './frostspireDressing.js';
+import { bazaarPaving, bazaarPlacements } from './bazaarDressing.js';
 import { calderaPlacements } from './calderaDressing.js';
 import { moonlitPlacements } from './moonlitDressing.js';
 import { officePlacements } from './officeDressing.js';
@@ -228,6 +229,9 @@ export function createLevelView() {
     const visible = (sec.geometry || []).filter((g) => !broken?.[g.id]);
     const prims = new Map(visible.map((g) => [g.id, g]));
     const replaced = new Set();
+    if (lv.id === 'L02') {
+      for (const mesh of decorMeshes(bazaarPlacements(sec, prims), [0, 0, 0], replaced, surfaceKit)) group.add(mesh);
+    }
     if (placements) for (const mesh of decorMeshes(placements(sec, prims, doors), [0, 0, 0], replaced, surfaceKit)) group.add(mesh);
     for (const [id, d] of Object.entries(dress.fit || {})) {
       const g = prims.get(id);
@@ -273,6 +277,10 @@ export function createLevelView() {
     const geometry = visible.filter((g) => !(field && g.tag === 'terrainStandIn') && !replaced.has(g.id) && !hidden(g));
     for (const door of doors) if (!replaced.has(door.id)) geometry.push(aabbBox(door));
     for (const mesh of buildSectionMeshes(grove ? geometry.map(groveGeometry) : geometry, mats, levelBase, surfacePrimitive)) group.add(mesh);
+    if (lv.id === 'L02') {
+      const sandstone = () => levelMaterial('bazaar-paving', mats, 0xbb976f);
+      for (const mesh of buildSectionMeshes(bazaarPaving(sec), mats, sandstone, surfacePrimitive)) group.add(mesh);
+    }
     if (field) group.add(terrainMesh(field, mats, levelBase, surfacePrimitive));
     // The L03 Crop Fields use the flat walkable slab. Its Blender crop rows
     // and path stones sit on that surface.
