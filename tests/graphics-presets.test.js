@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { graphicsPixelRatio, normalizeGraphicsPreset } from '../src/render/graphicsPresets.js';
-import { migrateProfile, cloudBody } from '../src/save/profile.js';
+import { normalizeSettings } from '../src/save/settings.js';
+import { progressCloudBody } from '../src/save/progress.js';
 
 const buffer = (preset, width, height, dpr = 1, cap = 1.5) => {
   const ratio = graphicsPixelRatio(preset, width, height, dpr, cap);
@@ -35,13 +36,14 @@ describe('graphics resolution budgets', () => {
     expect(Number.isFinite(graphicsPixelRatio('low', 0, 0, NaN))).toBe(true);
   });
 
-  it('normalizes older or hostile profile values and retains the setting in non-economic cloud saves', () => {
+  it('normalizes older or hostile saved values and keeps the setting on this device, out of the cloud save', () => {
     for (const value of [undefined, null, 'medium', '__proto__', 'constructor', {}, 1]) {
       expect(normalizeGraphicsPreset(value)).toBe('high');
-      expect(migrateProfile({ settings: { graphicsPreset: value } }).settings.graphicsPreset).toBe('high');
+      expect(normalizeSettings({ graphicsPreset: value }).graphicsPreset).toBe('high');
     }
     for (const graphicsPreset of ['low', 'mid', 'high']) {
-      expect(cloudBody({ settings: { graphicsPreset } }).settings.graphicsPreset).toBe(graphicsPreset);
+      expect(normalizeSettings({ graphicsPreset }).graphicsPreset).toBe(graphicsPreset);
+      expect(progressCloudBody({ settings: { graphicsPreset } }).settings).toBeUndefined();
     }
   });
 });

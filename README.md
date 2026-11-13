@@ -45,7 +45,7 @@ Hub (same shape as the other games):
 | Spells | Goo Bolt (Lv1), Chain Zap (Lv3), Sproto Swarm (Lv6), Mana Shield (Lv8), Meteor Bonk (Lv10, full mana). Right-click / LT casts the selected spell, Q / LB picks the next unlocked one; Y Z X T and the D-pad are quick casts |
 | Crafting | Resources drop from monsters: Scrap (all), Springs (Midgets), Goo (Bitcoin Obamas), Plating (Big Obamas), Boss Cores, Mana Crystals (Hex Sahil). Removed: guns are found, ammo and medkits are picked up or bought (`src/data/recipes.js` stays as an empty catalog) |
 | Difficulty | There is no tier to pick: everyone plays the same difficulty, and it rises as you go. Wave Mode steps up one difficulty level every round of three waves (waves 1–3 are level 1, 4–6 level 2, … level 10 from wave 28 on, `waveDifficulty`). Each campaign level has its own (L01 is 1, L10 is 10). Boss Fight, the Sandbox and the Test Range are fixed at level 5 (`FIXED_DIFFICULTY`). Guns that drop or are sold are at the current level. Level 1 is the waves as written. Above it every group gains an elite every two levels and more enemies are alive at once; enemy health in Wave Mode and Boss Fight grows 18% a level up to level 7 and 10% after it, and damage 15%. From level 7 the elite step reaches every other group first and the rest a level later. From level 4 Laser Bots and a Shooter Bot join the second and third arenas and the second arena's boss rotates (Car Part Monster, Mole Monster, Blue Monster); from level 7 the Sproto Beast follows the final pair at 70% health, arriving once one of the two is down (`tierWave` in `src/data/waves.js`) |
-| Wave Mode progress | Each cleared wave teaches the next spell (Chain Zap, then Sproto Swarm; Mana Shield and Meteor Bonk from wave 4). Skill levels, the guns you carry and the furthest wave you cleared are kept on this device (`src/save/loadout.js`) and come back when Wave Mode starts. They never go to the hub. Wave Mode progress is Wave Mode's alone: leaving it for the campaign, Boss Fight, the Sandbox or the Test Range puts you back to the starting gun and level-1 skills and clears the floor, and coming back restores the save. A session that used the debug panel or god mode does not save. Guns from the Sandbox stay in the Sandbox |
+| Wave Mode progress | Each cleared wave teaches the next spell (Chain Zap, then Sproto Swarm; Mana Shield and Meteor Bonk from wave 4). Skill levels and the guns you carry are kept in this browser (`src/save/loadout.js`), apart for each hub account and for play outside the hub, and come back when Wave Mode starts. They never go to the hub. The furthest wave you cleared is campaign progress (see Progress and saves). Wave Mode progress is Wave Mode's alone: leaving it for the campaign, Boss Fight, the Sandbox or the Test Range puts you back to the starting gun and level-1 skills and clears the floor, and coming back restores the save. A session that used the debug panel or god mode does not save. Guns from the Sandbox stay in the Sandbox |
 | Second Wind | Downed: get a kill before the timer ends. In Wave Mode and Boss Fight the timer is 10, 7, 4, then 3 seconds for each further down in the same wave or fight, Any kill counts, a boss's summoned helpers included. The campaign keeps a flat 10 seconds |
 | Boss weapons | In Wave Mode and Boss Fight, Ray Gun and Big Bullets drop from bosses some of the time (Jade Dragon 25%, the rest 50%), not every time. Everywhere else, the campaign's mini-bosses included, every boss still drops one |
 | Economy | Tickets from kills, wave clears and bosses. Between-wave shop: gun offers scaled to the current difficulty, gacha vending machine, ammo/shield/slot upgrades, sell guns |
@@ -65,8 +65,24 @@ Assets load per level, not all at once (`render/assets.js` priority queue + `lev
 
 Pause the game and choose **Graphics resolution**: **Low — up to 720p**,
 **Mid — up to 1080p**, or **High — up to 1440p**. High is the default for older
-profiles. The setting saves locally and follows the existing non-economic cloud
-profile sync; it applies to campaign, Wave Mode and arena views.
+saves. The setting is kept on this device only, like every other setting; it applies to
+campaign, Wave Mode and arena views.
+
+## Progress and saves
+
+Campaign progress is the levels you unlocked, the secret modifiers you found and the furthest Wave
+Mode wave you cleared (`src/save/progress.js`, hub-sdk `createProgressStore`). It belongs to whoever
+earned it:
+
+- In a hub visit it belongs to that hub account. It is kept in this browser under the account's own
+  key and in the account's cloud save, so it follows the account to any device. Another account on
+  the same browser starts from its own save.
+- Outside the hub it belongs to this browser. It never moves into a hub account. Progress from before
+  progress had owners (the old `sproto-campaign-profile`) is this browser's too.
+
+Progress only goes up: every copy (tabs, devices, the cloud) is combined by keeping every unlock and
+the best wave, so nothing earned is overwritten. Settings stay on this device
+(`src/save/settings.js`), and the Wave Mode loadout stays in this browser, kept apart per owner.
 
 These are drawing-buffer caps of 1280×720, 1920×1080 and 2560×1440 pixels.
 The game preserves your display's aspect ratio and never upscales above native
@@ -147,8 +163,8 @@ src/
     pvp/     Free 1v1 arena: sim, director, rules, practice bot, export (pinned; bundled as shooter-pvp-sim.js)
   server/    campaign run contract and verifier the hub runs (pinned; bundled as shooter-sim.js)
   net/       Free 1v1 client, input codec and wire protocol (inputCodec.js and protocol.js are pinned)
-  hub/       hub link: ticket redeem, balance chip, Return to Hub, cloud save
-  save/      campaign meta and local settings (game layer only)
+  hub/       hub link: ticket redeem, balance chip, Return to Hub
+  save/      campaign progress per owner (cloud-synced for hub accounts), device settings, Wave Mode loadout (game layer only)
   input/     keyboard/mouse + pointer lock and the gamepad (gamepad.js, padGameplay.js, padController.js, aimAssist.js) -> Command objects
   render/    Three.js views, viewmodel, VFX (reads state only); assets.js loads the Sproto Duel GLBs (meshopt) and stage textures;
              level/ draws campaign sections, pvp/ is the Free 1v1 lobby and arena view

@@ -2,10 +2,9 @@ import { createHubSdk, createNakamaClient } from '@metaverse/hub-sdk';
 import { HUB_GAME_ID } from './config.js';
 import { pageServerKey } from './serverKey.js';
 
-/** Identity for the cached Ticket balance and the non-economic cloud-save retry. */
+/** Identity for the cached Ticket balance. Campaign progress and its cloud save: src/save/progress.js. */
 const PLAYER_KEY = 'sproto-shooter:hub-player';
 const BALANCE_KEY = 'sproto-shooter:hub-balance';
-const OUTBOX_KEY = 'sproto-shooter:hub-cloud-outbox';
 
 const LOOPBACK_HOST = /^(localhost|[\w-]+\.localhost|127(?:\.\d{1,3}){3}|\[::1\]|::1)$/i;
 const TOKEN_QUERY = /(?:^|[?&])(?:t|token|ticket|access_token|refresh_token|refresh)=/i;
@@ -143,7 +142,7 @@ export function hubChipHtml(hub) {
   return `<div class="hub-chip offline" data-hub="offline">Offline</div>`;
 }
 
-/** Drop Run Cash and every other economic field before a cloud write. */
+/** Drop Run Cash and every other economic field before a cloud write (src/save/progress.js). */
 export function nonEconomicSave(data) {
   const src = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
   const out = {};
@@ -232,7 +231,7 @@ export class HubLink {
     this.error = err instanceof Error ? err.message : String(err);
   }
 
-  /** Keep the balance and the cloud retry only for this player. */
+  /** Keep the cached balance only for this player. */
   adopt(session, username) {
     const nextId = session.playerId;
     if (this.playerId && this.playerId !== nextId) this.notifyRewardIdentity();
@@ -262,7 +261,6 @@ export class HubLink {
     this.balanceJob = null;
     this.balanceAt = -Infinity;
     writeJson(BALANCE_KEY, null);
-    writeJson(OUTBOX_KEY, null);
   }
 
   rememberBalance(balance) {
@@ -302,42 +300,6 @@ export class HubLink {
     this.fail(err instanceof Error ? err : new Error(errorCode(err)));
     this.dropIdentity();
     return true;
-  }
-
-  async loadCloud() {
-    if (!this.bankable || typeof this.api.loadSave !== 'function') return null;
-    try {
-      return await this.api.loadSave();
-    } catch (err) {
-      this.noteSessionError(err);
-      return null;
-    }
-  }
-
-  async saveCloud(data) {
-    if (!this.bankable || typeof this.api.writeSave !== 'function') return { queued: false };
-    const body = nonEconomicSave(data);
-    const playerId = this.playerId;
-    try {
-      const result = await this.api.writeSave(body);
-      if (this.playerId === playerId) writeJson(OUTBOX_KEY, null);
-      return { queued: false, result };
-    } catch (err) {
-      if (this.noteSessionError(err)) return { queued: false };
-      writeJson(OUTBOX_KEY, { playerId, data: body });
-      return { queued: true };
-    }
-  }
-
-  /** Retry this player's cloud save. Another account's queued body is dropped. */
-  async flushCloud() {
-    const queued = readJson(OUTBOX_KEY);
-    if (!queued) return;
-    if (!this.bankable || queued.playerId !== this.playerId) {
-      writeJson(OUTBOX_KEY, null);
-      return;
-    }
-    await this.saveCloud(queued.data);
   }
 
   /**
@@ -407,7 +369,6 @@ export async function connectHub(api) {
       return link;
     }
     link.adopt(session, usernameFromToken(session.token));
-    await link.flushCloud();
   } catch (err) {
     link.fail(err);
   }

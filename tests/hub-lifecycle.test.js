@@ -6,14 +6,9 @@ import { HUB_GAME_ID } from '../src/hub/config.js';
 import {
   HubLink, connectHub, decideHubReturn, hubChipHtml, hubExitUrl, trustedHubUrl, watchProfileGet,
 } from '../src/hub/link.js';
-import {
-  cloudBody, loadProfile, migrateProfile, resolveCloudConflict, saveProfile,
-} from '../src/save/profile.js';
 
 const PLAYER_KEY = 'sproto-shooter:hub-player';
 const BALANCE_KEY = 'sproto-shooter:hub-balance';
-const OUTBOX_KEY = 'sproto-shooter:hub-cloud-outbox';
-const PROFILE_KEY = 'sproto-campaign-profile';
 
 afterEach(() => {
   delete globalThis.localStorage;
@@ -189,7 +184,7 @@ describe('session identity', () => {
     expect(calls.map((call) => call.id)).not.toContain('tickets.earn');
   });
 
-  it('dedups the balance read and drops another account\'s cache and cloud retry', async () => {
+  it('dedups the balance read and drops another account\'s balance cache', async () => {
     useLocalStorage();
     const balances = { 'user-a': 40, 'user-b': 5 };
     let reads = 0;
@@ -213,11 +208,6 @@ describe('session identity', () => {
     expect(await linkA.refreshBalance()).toBe(40);
     expect(await linkA.refreshBalance()).toBe(40);
     expect(reads).toBe(1);
-    await linkA.saveCloud({ v: 2, unlocked: ['L01'], settings: { sensitivity: 1 }, tickets: 99999, balance: 40 });
-    const queued = JSON.parse(localStorage.getItem(OUTBOX_KEY));
-    expect(queued.playerId).toBe('user-a');
-    expect(queued.data.tickets).toBeUndefined();
-    expect(queued.data.balance).toBeUndefined();
     expect(JSON.parse(localStorage.getItem(BALANCE_KEY)).balance).toBe(40);
 
     const sessionB = memoryKeyValue();
@@ -238,7 +228,6 @@ describe('session identity', () => {
     expect(linkB.status).toBe('guest');
     expect(linkB.playerId).toBe('user-b');
     expect(linkB.balance).toBeNull();
-    expect(localStorage.getItem(OUTBOX_KEY)).toBeNull();
     expect(writesB).toEqual([]);
     expect(localStorage.getItem(PLAYER_KEY)).toBe(JSON.stringify('user-b'));
     expect(JSON.parse(localStorage.getItem(BALANCE_KEY))).toBeNull();
@@ -317,44 +306,6 @@ describe('return and cloud save', () => {
     expect(gone).toEqual([hubExitUrl()]);
     expect(gone[0]).not.toMatch(/\?/);
   });
-
-  it('migrates an old profile without keeping Run Cash, and records a cloud lost update', () => {
-    const migrated = migrateProfile({ unlocked: ['L02'], tickets: 99999, runCash: 40, guns: [{ id: 'x' }], modifiers: ['hot'] });
-    expect(migrated.v).toBe(2);
-    expect(migrated.unlocked).toEqual(['L01', 'L02']);
-    expect(migrated.tickets).toBeUndefined();
-    expect(JSON.stringify(cloudBody(migrated))).not.toMatch(/ticket|runCash|guns/i);
-
-    const remote = resolveCloudConflict(
-      { ...migrated, updatedAt: 10, settings: { sensitivity: 2, hitstop: true, shake: 1 } },
-      { data: { unlocked: ['L01'], modifiers: [], settings: { sensitivity: 1, hitstop: false, shake: 0 }, updatedAt: 20, tickets: 50 }, updatedAt: 20 },
-    );
-    expect(remote.conflict).toBe('remote');
-    expect(remote.lostUpdate).toBe(true);
-    expect(remote.profile.settings.sensitivity).toBe(1);
-    expect(remote.profile.tickets).toBeUndefined();
-
-    const local = resolveCloudConflict(
-      { unlocked: ['L01', 'L03'], modifiers: [], settings: { sensitivity: 1.5, hitstop: true, shake: 1 }, updatedAt: 30 },
-      { data: { unlocked: ['L01'], modifiers: [], settings: { sensitivity: 1, hitstop: true, shake: 1 }, updatedAt: 20, balance: 80 }, updatedAt: 20 },
-    );
-    expect(local.conflict).toBe('local');
-    expect(local.profile.unlocked).toContain('L03');
-    expect(local.lostUpdate).toBe(false);
-  });
-
-  it('stores the migrated profile locally and does not upload Run Cash', () => {
-    useLocalStorage();
-    localStorage.setItem(PROFILE_KEY, JSON.stringify({ unlocked: ['L01', 'L04'], tickets: 99999 }));
-    const loaded = loadProfile();
-    expect(loaded.unlocked).toEqual(['L01', 'L04']);
-    expect(loaded.tickets).toBeUndefined();
-    saveProfile({ ...loaded, settings: { sensitivity: 2, hitstop: false, shake: 0.5 } });
-    const stored = JSON.parse(localStorage.getItem(PROFILE_KEY));
-    expect(stored.v).toBe(2);
-    expect(stored.tickets).toBeUndefined();
-    expect(stored.settings.sensitivity).toBe(2);
-  });
 });
 
 describe('provenance and ledger boundary', () => {
@@ -362,12 +313,12 @@ describe('provenance and ledger boundary', () => {
     const iife = readFileSync(new URL('../vendor/hub-sdk/dist/hub-sdk.iife.js', import.meta.url));
     const hash = createHash('sha256').update(iife).digest('hex');
     const pin = JSON.parse(readFileSync(new URL('../vendor/hub-sdk/SOURCE.pin.json', import.meta.url), 'utf8'));
-    expect(hash).toBe('770e8e1b41ad1abef33eb0d04ef9c7eec8fda723336e5149a7809d902042013c');
+    expect(hash).toBe('833ce281696f9769bd13d284b9d9262957838181cf1ac308358c6b602b21f309');
     expect(pin.iifeSha256).toBe(hash);
-    expect(pin.version).toBe('0.7.2');
+    expect(pin.version).toBe('0.8.0');
     expect(pin.global).toBe('HubSDK');
     const vendor = readFileSync(new URL('../vendor/hub-sdk/VENDOR.md', import.meta.url), 'utf8');
-    expect(vendor).toMatch(/bb0017c/);
+    expect(vendor).toMatch(/b7921f2/);
     expect(vendor).not.toMatch(/94f10af/);
     expect(vendor).not.toMatch(/metaverse-hub\.patch/);
     expect(existsSync(new URL('../vendor/hub-sdk/metaverse-hub.patch', import.meta.url))).toBe(false);
@@ -378,7 +329,7 @@ describe('provenance and ledger boundary', () => {
   it('does not call a hub ledger write from the game, and keeps one init before the title', () => {
     const hubFiles = readdirSync(new URL('../src/hub/', import.meta.url)).filter((f) => f.endsWith('.js')).map((f) => `src/hub/${f}`);
     expect(hubFiles).toEqual(expect.arrayContaining(['src/hub/config.js', 'src/hub/link.js', 'src/hub/serverKey.js', 'src/hub/waveRelic.js']));
-    const files = [...hubFiles, 'src/main.js', 'src/game/Game.js', 'src/ui/ui.js', 'src/save/profile.js'];
+    const files = [...hubFiles, 'src/main.js', 'src/game/Game.js', 'src/ui/ui.js', 'src/save/progress.js', 'src/save/settings.js'];
     const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
     const src = files.map(read).join('\n');
     expect(src).not.toMatch(/earnTickets|tickets\.earn|submitScore|spendTickets|tickets\.spend|tickets\.sell|tickets\.exchange|earnVerse|verse\.earn/i);

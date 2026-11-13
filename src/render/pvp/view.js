@@ -3,7 +3,7 @@
 // cosmetic muzzle flash, tracer and camera recoil at once (fx.shots). Damage is never drawn here.
 import * as THREE from 'three';
 import { graphicsPixelRatio } from '../graphicsPresets.js';
-import { loadProfile } from '../../save/profile.js';
+import { loadSettings } from '../../save/settings.js';
 import { TUNING } from '../../data/tuning.js';
 import { dirFromYawPitch } from '../../core/math.js';
 import { ARENA_SOLIDS, ARENA_WALL_H } from '../../sim/pvp/arena.js';
@@ -43,7 +43,7 @@ export function recoilAt(shots, now) {
 }
 
 export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
-  const initialPreset = loadProfile().settings.graphicsPreset;
+  const initialPreset = loadSettings().graphicsPreset;
   const readPreset = getGraphicsPreset || (() => initialPreset);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true, alpha: false });
   renderer.setClearColor(0x120a22, 1);
