@@ -1,7 +1,7 @@
 import { Color } from 'three';
 import { peekTexture } from '../assets.js';
 import {
-  ART_GLSL, CAMPAIGN_SURFACE_ART, ceilingSurface, GLASS_CEILING_SURFACE, kitCeilingSurface, OFFICE_SURFACE_ART, SKYLINE_SURFACE_ART, surfaceArtPath, surfaceArtTheme, UNDERWORKS_SURFACE_ART,
+  ART_GLSL, CAMPAIGN_SURFACE_ART, ceilingSurface, GLASS_CEILING_SURFACE, kitCeilingSurface, MOONLIT_SURFACE_ART, OFFICE_SURFACE_ART, SKYLINE_SURFACE_ART, surfaceArtPath, surfaceArtTheme, UNDERWORKS_SURFACE_ART,
 } from './campaignSurfaceArt.js';
 import { CAMPAIGN_SURFACE_PATTERNS, SURFACE_GLSL } from './campaignSurfacePatterns.js';
 
@@ -26,6 +26,9 @@ const KIT_SURFACES = {
   underworks_roof: PANEL_FLOOR, underworks_tunnel: PANEL_FLOOR,
   office_wall: HARD, office_facade: HARD, office_parapet: HARD,
   office_soffit: HARD, office_portal: HARD, office_pilaster: HARD, office_skirt: HARD,
+  moonlit_apron: HARD, moonlit_wall: HARD, moonlit_crypt_wall: HARD,
+  moonlit_vault: HARD, moonlit_column: HARD, moonlit_ruin_arch: HARD, moonlit_tomb: HARD,
+  moonlit_ridge: HARD,
 };
 
 const SURFACE_EXCLUSIONS = new Set(['energyBridge', 'fireRing', 'lockWall', 'mover', 'crackTiles']);
@@ -116,7 +119,7 @@ const SHADE_SURFACE = /* glsl */ `
 export function createCampaignSurfaceMaterials() {
   const materials = new WeakMap();
   const time = { value: 0 };
-  const atlases = new Map([CAMPAIGN_SURFACE_ART, SKYLINE_SURFACE_ART, UNDERWORKS_SURFACE_ART, OFFICE_SURFACE_ART].map(
+  const atlases = new Map([CAMPAIGN_SURFACE_ART, SKYLINE_SURFACE_ART, UNDERWORKS_SURFACE_ART, OFFICE_SURFACE_ART, MOONLIT_SURFACE_ART].map(
     (path) => [path, { texture: { value: null }, ready: { value: 0 } }],
   ));
   const themes = new Map();
@@ -161,7 +164,7 @@ export function createCampaignSurfaceMaterials() {
           ${level === 'L03' ? '#define CAMPAIGN_ART_GROVE' : ''}
           ${level === 'L05' ? '#define CAMPAIGN_ART_FROST' : ''}
           ${level === 'L06' ? '#define CAMPAIGN_ART_SKYLINE' : ''}
-          ${level === 'L07' || level === 'L08' ? '#define CAMPAIGN_ART_FOUNDRY_OR_OFFICE' : ''}
+          ${['L07', 'L08', 'L09'].includes(level) ? '#define CAMPAIGN_ART_ACCENT_FLOOR' : ''}
           ${glassRoof ? '#define CAMPAIGN_GLASS_ROOF' : ''}
           ${SURFACE_GLSL}
           ${ART_GLSL}
@@ -189,10 +192,11 @@ export function createCampaignSurfaceMaterials() {
     primitive(base, level, geometry) {
       if (!geometry) return base;
       const ceiling = ceilingSurface(level, geometry);
+      const accentFloor = ((level === 'L07' || level === 'L08') && /^S[34]-floor$/.test(geometry.id))
+        || (level === 'L09' && geometry.id === 'S3-floor');
       const kind = ceiling === GLASS_CEILING_SURFACE ? HARD
         : level === 'L06' && /^S[1-4]-floor$/.test(geometry.id) ? ROAD
-          : (level === 'L07' || level === 'L08') && /^S[34]-floor$/.test(geometry.id)
-            ? PANEL_FLOOR : primitiveSurfaceKind(geometry);
+          : accentFloor ? PANEL_FLOOR : primitiveSurfaceKind(geometry);
       return decorate(base, level, kind, ceiling);
     },
     kit(base, level, model) {

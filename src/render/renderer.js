@@ -69,8 +69,8 @@ export function createRenderer(container, bus, playerModel, graphicsPreset = 'hi
       const art = surfaceArtPath(state.level.id);
       demandNow.push(art);
       loadTexture(art, { color: false });
-      const panorama = panoramaPath(state.level.id);
-      if (panorama && (state.level.id !== 'L08' || state.level.section === 'S4')) {
+      const panorama = panoramaPath(state.level.id, state.level.section);
+      if (panorama) {
         demandNow.push(panorama);
         loadTexture(panorama);
       }

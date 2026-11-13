@@ -94,9 +94,10 @@ export function mountPresent(env) {
         } else {
           const underworks = state.level.id === 'L07';
           const office = state.level.id === 'L08';
-          const interior = office && state.level.section !== 'S4';
+          const moonlit = state.level.id === 'L09';
+          const interior = (office && state.level.section !== 'S4') || (moonlit && state.level.section === 'S2');
           scene.fog.near = dark ? 4 : state.level.id === 'L04' ? 90 : underworks ? 19 : interior ? 23 : 30;
-          scene.fog.far = dark ? 36 : skyline ? 134 : underworks ? 104 : interior ? 92 : office ? 152 : 420;
+          scene.fog.far = dark ? 36 : skyline ? 134 : underworks ? 104 : interior ? 92 : office || moonlit ? 152 : 420;
         }
       }
     } else if (scene.fog && scene.fog.far > 300) {

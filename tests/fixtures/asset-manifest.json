@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 302,
-    "runtimeBytes": 27132136,
-    "decodedBytes": 258175814,
-    "referenced": 302,
+    "runtimeFiles": 321,
+    "runtimeBytes": 27253180,
+    "decodedBytes": 258137926,
+    "referenced": 321,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -1240,6 +1240,125 @@
       ]
     },
     {
+      "path": "models/props/moonlit_apron.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_camp.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_column.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_crypt_wall.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_fragment.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_gate.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_lantern.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_medallion.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_obelisk.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_portal_frame.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_portal_light.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_ridge.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_ruin_arch.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_sconce.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_tomb.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_vault.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_wall.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
       "path": "models/props/office_clock.glb.gz",
       "kind": "static",
       "from": [
@@ -2021,6 +2140,20 @@
       "from": [
         "src/data/stages.js",
         "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "textures/campaign/moonlit-night.webp",
+      "kind": "static",
+      "from": [
+        "src/render/level/campaignSurfaceArt.js"
+      ]
+    },
+    {
+      "path": "textures/campaign/moonlit-surface.webp",
+      "kind": "static",
+      "from": [
+        "src/render/level/campaignSurfaceArt.js"
       ]
     },
     {
@@ -7869,6 +8002,517 @@
       }
     },
     {
+      "path": "models/props/moonlit_apron.glb.gz",
+      "bytes": 1056,
+      "sha256": "0887bb6f244cfec9e01013b0f6bdd26e794d176d27a9b3b5a4a14fc80aa87c83",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 44,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_camp.glb.gz",
+      "bytes": 6664,
+      "sha256": "3249a4c0e85eeecfe7eb2d982ba8b54e5bcbc71d9fa6eeb7510ee0cc8f1cc1d7",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 748,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_moonlit_aqua",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_column.glb.gz",
+      "bytes": 7482,
+      "sha256": "13342abbafdb7b487c7cd5627edb69117a8b4dd10fa14fa3ce81c26a30bfa097",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 608,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_crypt_wall.glb.gz",
+      "bytes": 3167,
+      "sha256": "42ec3c694a3bdca83ef8e869dbfc390670e043597a28ddcd6595257acc69cd40",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 308,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_fragment.glb.gz",
+      "bytes": 7996,
+      "sha256": "78bfe2494c65d89cadb64c83cdc4a10daa08f5f85a8d6502649077796f7c224a",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 516,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_gate.glb.gz",
+      "bytes": 26536,
+      "sha256": "b98229e7f088847f3ca36beabc797e48cded56c9f2d95ca0bac46839b7680fef",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1920,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "moonlit_gate_core",
+          "moonlit_gate_orbit"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 3,
+        "materials": [
+          "campaign_glow_moonlit_aqua",
+          "campaign_glow_moonlit_ice",
+          "campaign_glow_moonlit_violet",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_lantern.glb.gz",
+      "bytes": 8169,
+      "sha256": "80b617c6c9bd79594737817c603185053231ca75166487ed8784b47cb124463b",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 748,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_moonlit_aqua",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_medallion.glb.gz",
+      "bytes": 11588,
+      "sha256": "ecdf65e1d89664bac2952ee0b0a351555d1d226c9951f4194f1c39e63b1737cc",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1744,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_moonlit_aqua",
+          "campaign_glow_moonlit_violet",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_obelisk.glb.gz",
+      "bytes": 8345,
+      "sha256": "b76cd304188853140b3f634b4b7901dcaf7ac3479174e652d9b8e35a2a2ffb79",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 804,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_moonlit_aqua",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_portal_frame.glb.gz",
+      "bytes": 6530,
+      "sha256": "7092d29cc9360d1aed448e1b22f9547f2463ccfd0381b89b04c3777260b341ea",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 536,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_moonlit_aqua",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_portal_light.glb.gz",
+      "bytes": 10708,
+      "sha256": "edfc36944054a6b53a5a8e65a2f2a14f7c473033c8731a80dd2c276d46eb8402",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 692,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "moonlit_portal_light"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_moonlit_aqua",
+          "campaign_glow_moonlit_ice",
+          "campaign_glow_moonlit_violet"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_ridge.glb.gz",
+      "bytes": 4844,
+      "sha256": "35de91ab4102032f2e6e470815dc82e9239f46c33ffa27f893354d83723ee714",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 280,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_ruin_arch.glb.gz",
+      "bytes": 5128,
+      "sha256": "837dc528df71877bc2ad39488fc367e5ad75d6e255cd863caf3738fe06782770",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 456,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_sconce.glb.gz",
+      "bytes": 4488,
+      "sha256": "fb3dd21db3bd0a83ddddd410b29765fa1d80e296e9573d44626c8a3f6de92665",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 268,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_moonlit_ice",
+          "campaign_glow_moonlit_violet",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_tomb.glb.gz",
+      "bytes": 5611,
+      "sha256": "489b67f4e366d625ed8135f0d36709fbfc2b236bcd7e3842ed3a272172fd0889",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 508,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_vault.glb.gz",
+      "bytes": 6080,
+      "sha256": "ad0465f21ba1cbcaff00c6f365c5d21ba55bd5fdee23c41c3a450bbe418c3edb",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 576,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/moonlit_wall.glb.gz",
+      "bytes": 5520,
+      "sha256": "298acda49aa9a3ce07fd4f0e3aed2a12f50b431f3be070cca4397e04475e1266",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 616,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
       "path": "models/props/office_clock.glb.gz",
       "bytes": 13366,
       "sha256": "452848cc7184cdb46007fec7ae16765aa21e6ec8335b22d3aee6231e441730cc",
@@ -11311,6 +11955,36 @@
       }
     },
     {
+      "path": "textures/campaign/moonlit-night.webp",
+      "bytes": 16596,
+      "sha256": "0334de606eff8149e71b9daccc1b7cf4becdbb9ae3e0852f36218caabdd437e8",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/campaignSurfaceArt.js"
+      ],
+      "kind": "image",
+      "width": 736,
+      "height": 368,
+      "decodedBytes": 1083392,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/campaign/moonlit-surface.webp",
+      "bytes": 25388,
+      "sha256": "b15886da37ad2cbd1e10cd5b5d67e7055ef6e4676a7267908cfb1f017389f02f",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/campaignSurfaceArt.js"
+      ],
+      "kind": "image",
+      "width": 336,
+      "height": 336,
+      "decodedBytes": 451584,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
       "path": "textures/campaign/office-night.webp",
       "bytes": 16390,
       "sha256": "c0018054d5a8d6980c6041bf56d6d9857b046565cb05c0b64a79568ceddae8a7",
@@ -11657,17 +12331,17 @@
     },
     {
       "path": "textures/stages/void/sky.jpg",
-      "bytes": 91821,
-      "sha256": "504b2b17a01f4839d9465b536342f29cfacaced3ca1570c4a95d90ee48c47e20",
+      "bytes": 40969,
+      "sha256": "8b32f409a617273dbfe40d3c1cd659e1c71323d3d0331d50caeaae81824a9d74",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
         "src/data/stages.js"
       ],
       "kind": "image",
-      "width": 1024,
-      "height": 512,
-      "decodedBytes": 2097152,
+      "width": 512,
+      "height": 256,
+      "decodedBytes": 524288,
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     },
     {
@@ -11928,6 +12602,10 @@
       {
         "path": "art/blender/hellfire_underworks.blend",
         "bytes": 271028
+      },
+      {
+        "path": "art/blender/moonlit_ruins.blend",
+        "bytes": 204081
       },
       {
         "path": "art/blender/new_enemies.blend",
