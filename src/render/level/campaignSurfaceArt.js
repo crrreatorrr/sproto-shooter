@@ -13,6 +13,7 @@ export const MOONLIT_PANORAMA = 'textures/campaign/moonlit-night.webp';
 
 export const CALDERA_SURFACE_ART = 'textures/campaign/caldera-surface.webp';
 export const CALDERA_PANORAMA = 'textures/campaign/caldera-sky.webp';
+export const LANDING_PANORAMA = 'textures/campaign/landing-dusk.webp';
 export const BAZAAR_PANORAMA = 'textures/campaign/bazaar-sunset.webp';
 export const GROVE_PANORAMA = 'textures/campaign/grove-orchard.webp';
 export const VOID_PANORAMA = 'textures/campaign/void-nebula.webp';
@@ -20,7 +21,7 @@ export const FROSTSPIRE_PANORAMA = 'textures/campaign/frostspire-valley.webp';
 
 const LEVEL_ATLASES = { L06: SKYLINE_SURFACE_ART, L07: UNDERWORKS_SURFACE_ART, L08: OFFICE_SURFACE_ART, L09: MOONLIT_SURFACE_ART, L10: CALDERA_SURFACE_ART };
 const PANORAMAS = {
-  L02: BAZAAR_PANORAMA, L03: GROVE_PANORAMA, L04: VOID_PANORAMA, L05: FROSTSPIRE_PANORAMA,
+  L01: LANDING_PANORAMA, L02: BAZAAR_PANORAMA, L03: GROVE_PANORAMA, L04: VOID_PANORAMA, L05: FROSTSPIRE_PANORAMA,
   L06: SKYLINE_PANORAMA, L07: UNDERWORKS_PANORAMA, L08: OFFICE_PANORAMA, L09: MOONLIT_PANORAMA, L10: CALDERA_PANORAMA,
 };
 
@@ -36,7 +37,7 @@ export function surfaceArtPath(level) {
 // Floor, wall, ceiling, and accent tile numbers in each runtime atlas.
 // Repeat distances are world metres; each tile contains several painted shapes.
 const THEMES = {
-  L01: [[0, 1, 23, 23], [8.5, 3.5, 4.2, 4.2], [8.5, 2.8, 4.2, 4.2], [1.05, 1.18, 1.1, 1.0], 0xdee9ff],
+  L01: [[0, 1, 23, 2], [8.5, 3.5, 4.2, 5.1], [8.5, 2.8, 4.2, 4.6], [1.25, 1.35, 1.07, .62], 0xdee9ff],
   L02: [[2, 3, 22, 22], [8.6, 5.2, 5.1, 4.3], [8.1, 3.6, 4.6, 4.3], [1.19, 1.42, .60, 1.15], 0xffd4aa],
   L03: [[4, 5, 5, 5], [5.6, 3.5, 3.5, 3.5], [5.6, 2.4, 2.8, 2.4], [1.13, 1.17, 1.16, 1.23], 0xffd4aa],
   L04: [[6, 7, 11, 11], [5.1, 4.6, 5.1, 5.1], [5.1, 3.9, 4.2, 4.2], [1.00, 1.18, 1.32, 1.2], 0x53e5ff],
@@ -55,7 +56,7 @@ export function ceilingSurface(level, geometry) {
   if (geometry.kind !== 'box' || !geometry.id) return 0;
   const id = geometry.id;
   if (level === 'L03' && id === 'HH-ROOF') return GLASS_CEILING_SURFACE;
-  if ((level === 'L01' && /balc$/.test(id))
+  if ((level === 'L01' && /(?:balc|roof|canopy)$/.test(id))
     || (level === 'L02' && /canopy|roof/.test(id))
     || (level === 'L03' && /roof/i.test(id))
     || (level === 'L04' && /(?:-roof|vaultRoof)$/.test(id))
@@ -110,6 +111,12 @@ export const ART_GLSL = /* glsl */ `
   vec4 campaignArtSample(vec2 p, bool ground, bool ceiling, vec2 dx, vec2 dy, out float amount) {
     vec4 tiles = campaignArtTiles, x = campaignArtMetresX, y = campaignArtMetresY, a = campaignArtAmounts;
     if (ceiling) { amount = a.z; return sampleCampaignArt(p, tiles.z, vec2(x.z, y.z), dx, dy); }
+    #if defined(CAMPAIGN_ART_LANDING)
+      if (ground && campaignSurfaceKind == 7.) {
+        amount = a.w;
+        return sampleCampaignArt(p, tiles.w, vec2(x.w, y.w), dx, dy);
+      }
+    #endif
     #if defined(CAMPAIGN_ART_GROVE)
       if (campaignSurfaceKind == 2.) {
         amount = a.y;

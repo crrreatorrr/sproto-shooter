@@ -29,6 +29,9 @@ const KIT_SURFACES = {
   moonlit_apron: HARD, moonlit_wall: HARD, moonlit_crypt_wall: HARD,
   moonlit_vault: HARD, moonlit_column: HARD, moonlit_ruin_arch: HARD, moonlit_tomb: HARD,
   moonlit_ridge: HARD,
+  landing_facade_a: HARD, landing_facade_b: HARD, landing_facade_c: HARD,
+  landing_street_wall: HARD, landing_mall_wall: HARD, landing_garage_wall: HARD,
+  landing_upper_wall: HARD, landing_rail: HARD, landing_tower: HARD,
   caldera_apron: HARD, caldera_wall: HARD, caldera_spires: HARD, caldera_overhang: HARD,
   bazaar2_wall_panel: HARD, bazaar2_shop: HARD, bazaar2_tower: HARD,
   bazaar2_support: HARD, bazaar2_ridge: MASONRY, bazaar2_canopy: WOOD,
@@ -101,7 +104,12 @@ const SHADE_SURFACE = /* glsl */ `
       campaignTint += ink * amount * detail;
       if (!surfaceGround || surfaceCeiling) {
         float lamp = clamp((art.a - 128. / 255.) * 2., 0., 1.);
-        campaignGleam += campaignArtLight * lamp * detail * (surfaceCeiling ? .72 : .32);
+        #ifdef CAMPAIGN_ART_LANDING
+          // Leave the recessed ceiling panels visible while the actual fixtures supply the light.
+          campaignGleam += campaignArtLight * lamp * detail * (surfaceCeiling ? .24 : .32);
+        #else
+          campaignGleam += campaignArtLight * lamp * detail * (surfaceCeiling ? .72 : .32);
+        #endif
       }
     }
     #ifdef CAMPAIGN_ART_SKYLINE
@@ -161,6 +169,8 @@ export function createCampaignSurfaceMaterials() {
 
     const material = base.clone();
     material.name = `Campaign surface ${level}`;
+    if (level === 'L01' && !base.vertexColors && kind === ROAD) material.color.setHex(0x595d6c);
+    if (level === 'L01' && !base.vertexColors && kind === PANEL_FLOOR) material.color.setHex(0xb2a8ab);
     // Soften the Skyline's direct sun reflection so the wet streaks stay visible.
     if (level === 'L06') material.roughness = Math.max(.48, material.roughness);
     if (level === 'L08' && kind === PANEL_FLOOR && !base.vertexColors) material.color.setHex(0x62758b);
@@ -185,6 +195,7 @@ export function createCampaignSurfaceMaterials() {
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', `#include <common>
           ${kitGlow ? '#define CAMPAIGN_KIT_GLOW' : ''}
+          ${level === 'L01' ? '#define CAMPAIGN_ART_LANDING' : ''}
           ${level === 'L03' ? '#define CAMPAIGN_ART_GROVE' : ''}
           ${level === 'L05' ? '#define CAMPAIGN_ART_FROST' : ''}
           ${level === 'L06' ? '#define CAMPAIGN_ART_SKYLINE\nuniform vec4 campaignRoad;' : ''}
@@ -216,10 +227,12 @@ export function createCampaignSurfaceMaterials() {
     primitive(base, level, geometry) {
       if (!geometry) return base;
       const ceiling = ceilingSurface(level, geometry);
-      const accentFloor = ((level === 'L07' || level === 'L08') && /^S[34]-floor$/.test(geometry.id))
+      const mall = level === 'L01' && geometry.id === 'S3-floor';
+      const landingRoad = level === 'L01' && /^S[1245]-floor$/.test(geometry.id);
+      const accentFloor = mall || ((level === 'L07' || level === 'L08') && /^S[34]-floor$/.test(geometry.id))
         || ((level === 'L09' || level === 'L10') && geometry.id === 'S3-floor');
       const kind = ceiling === GLASS_CEILING_SURFACE ? HARD
-        : level === 'L06' && /^S[1-4]-floor$/.test(geometry.id) ? ROAD
+        : landingRoad || (level === 'L06' && /^S[1-4]-floor$/.test(geometry.id)) ? ROAD
           : level === 'L02' && geometry.mat === 'rock' ? MASONRY
           : accentFloor ? PANEL_FLOOR : primitiveSurfaceKind(geometry);
       const road = level === 'L06' && kind === ROAD
