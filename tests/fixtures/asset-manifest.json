@@ -543,1736 +543,1736 @@
       "path": "models/props/barrel_fire.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/barrel_shock.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/barricade.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar_tent.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar_wall.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar2_archway.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar2_beacon.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar2_brazier.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar2_canopy.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar2_city.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar2_lantern.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar2_ridge.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar2_ring_inlay.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar2_rug.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar2_shop.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar2_support.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar2_tower.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bazaar2_wall_panel.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/bench.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/billboard.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/building_a.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/building_b.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/building_c.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/caldera_apron.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/caldera_brazier.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/caldera_bridge.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/caldera_fuel.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/caldera_obelisk.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/caldera_overhang.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/caldera_scree.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/caldera_seal.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/caldera_shrine.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/caldera_spires.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/caldera_vent.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/caldera_wall.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/campaign_shrine.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/cart.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/chest.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/clay_pots.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/crosswalk.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/drying_rack.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/dune.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/dye_vat_gold.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/dye_vat_red.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/dye_vat_teal.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/far_bazaar.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/fountain.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_alarm.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_beacon.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_boulder.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_charge_ring.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_column.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_console.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_cover.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_crate.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_debris.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_deck.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_drift.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_drill.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_floodlight.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_gate.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_generator.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_glacier.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_ice_floor.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_pad.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_panel.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_pine.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_pod.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_portal_trim.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_rail.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_relay_outpost.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_ridge.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_roof.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_safe.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_searchlight.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_shelf.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_snowcat.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_spire.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_tank.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_tent.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/frost_wall.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_arch.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_barn_roof.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_beanstalk.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_bloom.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_boulder.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_bridge.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_cabbage.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_crate.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_crops.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_gazebo.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_greenhouse_frame.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_greenhouse_glass.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_greenhouse_roof.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_hay.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_hedge.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_lantern.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_leaf_step.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_nest.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_orchard_barn.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_orchard_rise.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_orchard_windmill.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_patch.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_pines.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_planter.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_pod.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_pumpkin.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_reeds.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_root_wall.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_scarecrow.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_shed.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_silo.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_stockade.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_stones.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_timber_ramp.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_topiary.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_totem.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_tower.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_tractor.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_tree.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_truck.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_water_tower.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/grove_wide_root_arch.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/guard_rail.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/hill_sign.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/hydrant.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/kiosk.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/lantern_post.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/low_wall.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/machine.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/mesa_a.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/mesa_b.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_apron.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_camp.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_column.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_crypt_wall.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_fragment.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_gate.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_lantern.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_medallion.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_obelisk.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_portal_frame.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_portal_light.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_ridge.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_ruin_arch.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_sconce.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_tomb.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_vault.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/moonlit_wall.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_clock.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_conduit.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_cubicle.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_dish.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_elevator.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_facade.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_fan.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_laser.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_pad.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_parapet.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_pilaster.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_planter.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_portal.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_reception.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_server.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_skirt.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_soffit.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_tower.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/office_wall.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/onion_dome.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/palm_tree.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/planter.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/road_dash.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/sandstone_house.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/secret.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/shrine.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/sidewalk.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_a.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_b.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_barrier.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_c.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_canopy.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_cladding.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_crane.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_depot.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_fan.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_lamp.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_masonry.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_shop.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_slab.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_tower.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/skyline_trailer.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/slide_truck.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/street_lamp.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/switch.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/toll_booth.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/traffic_cone.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_basalt_cluster.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_basalt_wall.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_cart.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_chimney.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_furnace.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_gantry.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_hoist.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_lavafall.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_magma.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_pipe.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_press.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_reactor.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_roof.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_steel_wall.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_track.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/underworks_tunnel.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_apron.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_asteroid.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_beacon.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_bridge.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_bulkhead.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_candle_down.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_candle_up.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_cargo.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_crystal.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_debris_belt.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_deck.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_fuel.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_gantry.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_gate_frame.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_halo.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_jetpack.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_landing.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_ledger.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_orbital_mast.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_pylon.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_rail.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_relay.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_rockfall.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_server.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_shelter.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_shield.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_sign.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_supply.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_terminal.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_ticker.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_vault.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_vent.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/void_vortex.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/water_tank.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/weapon_rack.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
       "path": "models/props/well.glb.gz",
       "kind": "static",
       "from": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ]
     },
     {
@@ -5331,7 +5331,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5360,7 +5360,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5389,7 +5389,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5420,7 +5420,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5449,7 +5449,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5478,7 +5478,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5507,7 +5507,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5536,7 +5536,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5566,7 +5566,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5595,7 +5595,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5624,7 +5624,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5654,7 +5654,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5683,7 +5683,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5712,7 +5712,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5741,7 +5741,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5770,7 +5770,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5799,7 +5799,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5828,7 +5828,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5857,7 +5857,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5886,7 +5886,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5916,7 +5916,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5947,7 +5947,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -5978,7 +5978,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6009,7 +6009,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6038,7 +6038,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6071,7 +6071,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6100,7 +6100,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6130,7 +6130,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6160,7 +6160,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6189,7 +6189,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6218,7 +6218,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6248,7 +6248,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6283,7 +6283,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6312,7 +6312,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6344,7 +6344,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6373,7 +6373,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6405,7 +6405,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6434,7 +6434,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6463,7 +6463,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6492,7 +6492,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6521,7 +6521,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6550,7 +6550,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6579,7 +6579,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6610,7 +6610,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6641,7 +6641,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6672,7 +6672,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6701,7 +6701,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6732,7 +6732,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6762,7 +6762,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6794,7 +6794,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6823,7 +6823,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6853,7 +6853,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6883,7 +6883,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6913,7 +6913,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6942,7 +6942,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -6972,7 +6972,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7001,7 +7001,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7031,7 +7031,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7060,7 +7060,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7092,7 +7092,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7122,7 +7122,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7152,7 +7152,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7182,7 +7182,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7211,7 +7211,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7240,7 +7240,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7270,7 +7270,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7300,7 +7300,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7329,7 +7329,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7359,7 +7359,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7389,7 +7389,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7418,7 +7418,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7449,7 +7449,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7478,7 +7478,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7508,7 +7508,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7538,7 +7538,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7570,7 +7570,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7599,7 +7599,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7629,7 +7629,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7658,7 +7658,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7690,7 +7690,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7720,7 +7720,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7750,7 +7750,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7779,7 +7779,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7808,7 +7808,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7837,7 +7837,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7869,7 +7869,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7898,7 +7898,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7927,7 +7927,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7956,7 +7956,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -7985,7 +7985,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8014,7 +8014,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8044,7 +8044,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8073,7 +8073,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8102,7 +8102,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8131,7 +8131,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8160,7 +8160,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8189,7 +8189,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8219,7 +8219,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8248,7 +8248,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8277,7 +8277,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8306,7 +8306,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8335,7 +8335,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8364,7 +8364,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8393,7 +8393,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8422,7 +8422,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8451,7 +8451,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8480,7 +8480,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8509,7 +8509,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8538,7 +8538,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8567,7 +8567,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8596,7 +8596,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8625,7 +8625,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8654,7 +8654,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8683,7 +8683,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8712,7 +8712,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8741,7 +8741,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8770,7 +8770,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8802,7 +8802,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8831,7 +8831,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8860,7 +8860,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8889,7 +8889,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8918,7 +8918,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8947,7 +8947,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -8976,7 +8976,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9005,7 +9005,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9034,7 +9034,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9063,7 +9063,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9094,7 +9094,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9124,7 +9124,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9153,7 +9153,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9186,7 +9186,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9215,7 +9215,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9244,7 +9244,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9273,7 +9273,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9303,7 +9303,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9332,7 +9332,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9361,7 +9361,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9390,7 +9390,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9425,7 +9425,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9455,7 +9455,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9486,7 +9486,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9516,7 +9516,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9546,7 +9546,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9579,7 +9579,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9608,7 +9608,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9637,7 +9637,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9668,7 +9668,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9697,7 +9697,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9726,7 +9726,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9755,7 +9755,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9787,7 +9787,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9816,7 +9816,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9846,7 +9846,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9879,7 +9879,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9910,7 +9910,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9939,7 +9939,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -9971,7 +9971,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10004,7 +10004,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10033,7 +10033,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10063,7 +10063,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10093,7 +10093,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10122,7 +10122,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10152,7 +10152,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10183,7 +10183,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10215,7 +10215,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10244,7 +10244,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10274,7 +10274,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10303,7 +10303,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10333,7 +10333,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10362,7 +10362,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10391,7 +10391,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10420,7 +10420,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10449,7 +10449,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10478,7 +10478,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10507,7 +10507,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10536,7 +10536,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10565,7 +10565,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10594,7 +10594,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10623,7 +10623,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10653,7 +10653,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10682,7 +10682,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10712,7 +10712,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10742,7 +10742,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10776,7 +10776,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10806,7 +10806,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10838,7 +10838,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10868,7 +10868,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10898,7 +10898,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10929,7 +10929,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10958,7 +10958,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -10988,7 +10988,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11019,7 +11019,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11049,7 +11049,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11079,7 +11079,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11108,7 +11108,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11139,7 +11139,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11168,7 +11168,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11197,7 +11197,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11226,7 +11226,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11255,7 +11255,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11286,7 +11286,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11320,7 +11320,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11351,7 +11351,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11382,7 +11382,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11411,7 +11411,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11440,7 +11440,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11469,7 +11469,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11501,7 +11501,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11535,7 +11535,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11566,7 +11566,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11596,7 +11596,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11625,7 +11625,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11656,7 +11656,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11685,7 +11685,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11714,7 +11714,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11743,7 +11743,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11773,7 +11773,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11803,7 +11803,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11832,7 +11832,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11861,7 +11861,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11890,7 +11890,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11919,7 +11919,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11948,7 +11948,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -11978,7 +11978,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12008,7 +12008,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12037,7 +12037,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12067,7 +12067,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12100,7 +12100,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12129,7 +12129,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12159,7 +12159,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12188,7 +12188,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12218,7 +12218,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12251,7 +12251,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12280,7 +12280,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12312,7 +12312,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12341,7 +12341,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12370,7 +12370,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12399,7 +12399,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12428,7 +12428,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12457,7 +12457,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12486,7 +12486,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12515,7 +12515,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12544,7 +12544,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12575,7 +12575,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12604,7 +12604,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12637,7 +12637,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12666,7 +12666,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
@@ -12695,7 +12695,7 @@
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
-        "src/render/level/kitModels.js"
+        "src/render/level/kitPropPaths.js"
       ],
       "kind": "glb",
       "width": null,
