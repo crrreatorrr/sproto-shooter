@@ -120,7 +120,15 @@ export const CAMPAIGN_SURFACE_PATTERNS = {
     float node = surfaceStamp(length(fract(cell) - vec2(.27, .22)) - .021, .008) * step(.62, chip);
     float pulse = .65 + .35 * sin(campaignSurfaceTime * 1.55 - p.x * .24 + p.y * .18);
     gleam = vec3(.03, .31, .46) * (trace * .28 + node * .37) * pulse;
-    return vec3(.97, 1.025, 1.09) * (metal + trace * .075);
+    vec3 finish = vec3(.97, 1.025, 1.09) * (metal + trace * .075);
+    if (ground && campaignSurfaceKind == 6.) {
+      // The Void's through routes share world z=60. Paint arrows across the stair treads.
+      float lateral = abs(p.y - 60.);
+      float arrow = surfaceLine(p.x + lateral * .65, 5.2, .095) * (1. - smoothstep(1.7, 1.88, lateral));
+      finish = mix(finish, vec3(1.82, 1.26, .48), arrow);
+      gleam += vec3(.42, .20, .048) * arrow;
+    }
+    return finish;
   `,
   L05: /* glsl */ `
     if (campaignSurfaceKind == 1.) {

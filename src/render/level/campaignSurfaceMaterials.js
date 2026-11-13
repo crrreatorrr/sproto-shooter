@@ -17,7 +17,7 @@ const KIT_SURFACES = {
   bazaar_wall: HARD, sandstone_house: HARD, low_wall: HARD,
   grove_shed: WOOD, grove_bridge: WOOD, grove_timber_ramp: WOOD, grove_root_wall: WOOD,
   grove_stockade: WOOD, grove_barn_roof: WOOD,
-  void_deck: HARD, void_bulkhead: HARD, void_vault: HARD, void_apron: HARD, void_shelter: HARD, void_landing: HARD,
+  void_deck: HARD, void_bulkhead: HARD, void_vault: HARD, void_apron: ROAD, void_shelter: HARD, void_landing: HARD,
   frost_wall: HARD, frost_panel: HARD, frost_deck: HARD, frost_ice_floor: ICE,
   frost_glacier: ICE, frost_drift: SOFT, frost_roof: HARD,
   skyline_barrier: MASONRY, skyline_cladding: MASONRY, skyline_masonry: MASONRY,

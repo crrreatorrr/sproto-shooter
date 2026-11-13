@@ -4,6 +4,7 @@ import { L04 } from '../src/data/levels/L04/index.js';
 import { EXPECTED_COUNTS } from '../src/data/levels/L04/encounters.js';
 import { createGameState } from '../src/sim/state.js';
 import { simulate } from '../src/sim/simulate.js';
+import { transitionDone } from '../src/sim/campaign/campaign.js';
 
 const cmd = (o = {}) => ({ yaw: 0, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [], ...o });
 
@@ -75,6 +76,50 @@ describe('L04 The Blockchain Void', () => {
       expect(solids.length, sec.id).toBeLessThanOrEqual(600);
     }
     for (const rack of L04.sections.flatMap((s) => s.weapons)) expect(rack.why).toBeTruthy();
+  });
+
+  it('keeps the full width of each exit over a receiving platform', () => {
+    const landingIds = ['s2.slide.lip', 's3.slide.lane', 's4.ent', 's5.ent', 'sb.vest'];
+    for (const [i, id] of landingIds.entries()) {
+      const exit = L04.sections[i].exit;
+      const deck = L04.sections[i + 1].geometry.find((g) => g.id === id);
+      for (const axis of [0, 2]) {
+        expect(deck.at[axis] - deck.size[axis] / 2, id).toBeLessThanOrEqual(exit.min[axis]);
+        expect(deck.at[axis] + deck.size[axis] / 2, id).toBeGreaterThanOrEqual(exit.max[axis]);
+      }
+    }
+  });
+
+  it('fits the Clearing House perimeter and doors to its wider lockdown room', () => {
+    const section = L04.sections.find((s) => s.id === 'S4');
+    const { room, threshold, entry, exit } = section.encounters.find((e) => e.id === 'S4-E7').lockdown;
+    expect(room.max[2] - room.min[2]).toBe(84);
+    for (const [i, id] of [entry, exit].entries()) {
+      const door = section.mechanisms.find((m) => m.id === id);
+      const side = i === 0 ? 'w' : 'e';
+      const walls = section.geometry.filter((g) => g.id.startsWith(`s4.chRoom-${side}-`) && g.at[1] === 15)
+        .sort((a, b) => a.at[2] - b.at[2]);
+      expect(door.at[2] - door.size[2] / 2).toBe(walls[0].at[2] + walls[0].size[2] / 2);
+      expect(door.at[2] + door.size[2] / 2).toBe(walls[1].at[2] - walls[1].size[2] / 2);
+      expect(threshold.max[2] - threshold.min[2]).toBe(door.size[2]);
+    }
+  });
+
+  it('keeps Mine Field flyers outside the Clearing House before the player enters', () => {
+    const state = createGameState({ seed: 4 });
+    const player = state.players[state.localPlayerId];
+    simulate(state, { [player.id]: cmd({ actions: [{ type: 'startMode', mode: 'campaign', level: 'L04' }] }) });
+    state.level.transition = { to: 'S4' };
+    transitionDone(state);
+    const section = L04.sections.find((s) => s.id === 'S4');
+    const [x, y, z] = section.start;
+    player.pos = { x, y, z };
+    player.prevPos = { ...player.pos };
+    for (let tick = 0; tick < 90; tick++) simulate(state, { [player.id]: cmd() });
+    const flyers = state.enemies.filter((enemy) => enemy.campaignEnc === 'S4-E6' && !enemy.dead);
+    const room = section.encounters.find((e) => e.id === 'S4-E7').lockdown.room;
+    expect(flyers).toHaveLength(3);
+    expect(flyers.every((enemy) => enemy.pos.x < room.min[0])).toBe(true);
   });
 
   it('loads on the Genesis Block under the opening card', () => {
