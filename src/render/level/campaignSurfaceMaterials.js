@@ -29,6 +29,8 @@ const KIT_SURFACES = {
   moonlit_apron: HARD, moonlit_wall: HARD, moonlit_crypt_wall: HARD,
   moonlit_vault: HARD, moonlit_column: HARD, moonlit_ruin_arch: HARD, moonlit_tomb: HARD,
   moonlit_ridge: HARD,
+  bazaar2_wall_panel: HARD, bazaar2_shop: HARD, bazaar2_tower: HARD,
+  bazaar2_support: HARD, bazaar2_ridge: MASONRY, bazaar2_canopy: WOOD,
 };
 
 const SURFACE_EXCLUSIONS = new Set(['energyBridge', 'fireRing', 'lockWall', 'mover', 'crackTiles']);
@@ -196,6 +198,7 @@ export function createCampaignSurfaceMaterials() {
         || (level === 'L09' && geometry.id === 'S3-floor');
       const kind = ceiling === GLASS_CEILING_SURFACE ? HARD
         : level === 'L06' && /^S[1-4]-floor$/.test(geometry.id) ? ROAD
+          : level === 'L02' && geometry.mat === 'rock' ? MASONRY
           : accentFloor ? PANEL_FLOOR : primitiveSurfaceKind(geometry);
       return decorate(base, level, kind, ceiling);
     },

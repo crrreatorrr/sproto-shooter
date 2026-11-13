@@ -62,9 +62,9 @@ describe('L02 Grand Bazaar data', () => {
     expect(locks.map((e) => e.id)).toEqual(['S1-E3', 'S2-E5', 'S4-E4']);
     const rooms = Object.assign({}, ...L02.sections.map((s) => s.rooms || {}));
     expect(rooms.L1.x1 - rooms.L1.x0).toBe(44);
-    expect(rooms.L1.z1 - rooms.L1.z0).toBe(44);
-    expect(rooms.L2.x1 - rooms.L2.x0).toBe(44);
-    expect(rooms.L2.z1 - rooms.L2.z0).toBe(44);
+    expect(rooms.L1.z1 - rooms.L1.z0).toBe(64);
+    expect(rooms.L2.x1 - rooms.L2.x0).toBe(56);
+    expect(rooms.L2.z1 - rooms.L2.z0).toBe(60);
     expect(rooms.L3.d).toBe(56);
     const mechs = L02.sections.flatMap((s) => s.mechanisms);
     expect(mechs.filter((m) => String(m.id).startsWith('ab')).map((m) => m.id).sort())
