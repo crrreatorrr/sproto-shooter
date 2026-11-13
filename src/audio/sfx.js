@@ -150,7 +150,7 @@ export function createAudio(bus) {
     bossTeleport() { tone({ freq: 1500, end: 200, dur: 0.3, type: 'sine', vol: 0.2 }); },
     bossTelegraph() { tone({ freq: 200, end: 400, dur: 0.6, type: 'sawtooth', vol: 0.2 }); },
     bossStunned() { [0, 0.1, 0.2].forEach((d) => tone({ freq: 1800, end: 1200, dur: 0.08, type: 'sine', vol: 0.15, delay: d })); noise({ dur: 0.5, vol: 0.5, freq: 400, end: 60 }); },
-    victory() { [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone({ freq: f, dur: 0.2, type: 'square', vol: 0.2, delay: i * 0.12 })); },
+    roundCleared() { [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone({ freq: f, dur: 0.2, type: 'square', vol: 0.2, delay: i * 0.12 })); },
     defeat() { [392, 330, 262, 196].forEach((f, i) => tone({ freq: f, dur: 0.35, type: 'triangle', vol: 0.25, delay: i * 0.25 })); },
     duckBounce() { if (throttle('quack', 2, 80)) { tone({ freq: j(700, 0.15), end: 500, dur: 0.08, type: 'square', vol: 0.12 }); } },
     allyShot() { if (throttle('ally', 2, 60)) tone({ freq: j(1200, 0.2), end: 1600, dur: 0.04, type: 'square', vol: 0.06 }); },

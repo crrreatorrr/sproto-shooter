@@ -3,7 +3,7 @@
 import { SKILLS, SKILL_IDS, PERKS, PERKS_BY_ID, SPELLS, SPELL_IDS, xpToNext } from '../data/skills.js';
 import { gunRange, hasInfiniteReserve, QUALITIES_BY_ID, ELEMENTS_BY_ID, GUN_TYPES_BY_ID, MANUFACTURERS_BY_ID, PARTS_BY_ID, SLOTS, WACKY_BY_ID, LEGENDARY_SLOT, slotUsable } from '../data/guns.js';
 import { SHOP } from '../data/shop.js';
-import { WAVES, tierWave } from '../data/waves.js';
+import { waveConfig } from '../data/waves.js';
 import { BOSSES } from '../data/enemies.js';
 import { compareGuns, sellValue, dpsOf } from '../sim/guns.js';
 import { PAD_BINDINGS } from '../input/padConfig.js';
@@ -179,9 +179,10 @@ export function createUI(root, { input, bus, project, game }) {
 
   bus.on('levelUp', (ev) => banner(`<small>LEVEL UP</small>${SKILLS[ev.skill].icon} ${SKILLS[ev.skill].name.toUpperCase()} LV ${ev.level}`, 'lvl'));
   bus.on('perkUnlocked', (ev) => { const pk = PERKS_BY_ID[ev.perkId]; setTimeout(() => banner(`<small>UNLOCKED</small>${pk.name}<em>${pk.desc}</em>`, 'perk', 2800), 600); });
-  bus.on('wavePre', (ev) => banner(`<small>GET READY</small>WAVE ${ev.waveIndex + 1}<em>${WAVES[ev.waveIndex].name.split(': ')[1]}</em>`, 'wave', 2600));
+  bus.on('wavePre', (ev) => banner(`<small>GET READY</small>WAVE ${ev.waveIndex + 1}<em>${(ev.name || '').split(': ')[1] || ''}</em>`, 'wave', 2600));
   bus.on('waveStart', () => banner('FIGHT!', 'fight', 900));
   bus.on('waveCleared', (ev) => banner(`<small>WAVE ${ev.waveIndex + 1}</small>CLEARED! <em>+${ev.tickets} Run Cash</em>`, 'cleared'));
+  bus.on('roundCleared', (ev) => banner(`<small>ROUND ${Math.round((ev.waveIndex + 1) / 3)} DONE</small>LEGENDARY DROP! <em>+${ev.tickets} Run Cash · grab it in the middle</em>`, 'cleared', 3600));
   bus.on('intermissionStart', () => {
     const msg = pad() ? `SHOP [${glyph(PAD_BINDINGS.panel)}]<em>READY is in the shop</em>` : `SHOP [${keyLabel('shop')}]<em>${keyLabel('skip').toUpperCase()} when ready</em>`;
     banner(`<small>INTERMISSION</small>${msg}`, 'inter', 3200);
@@ -264,7 +265,6 @@ export function createUI(root, { input, bus, project, game }) {
       a.el.style.transform = `rotate(${damageArcAngle(a.dir, yaw).toFixed(3)}rad)`;
     }
   }
-  bus.on('victory', () => game.showScreen('victory'));
   bus.on('bossFightOver', (ev) => setTimeout(() => game.showScreen(ev.won ? 'bossWon' : 'bossLost'), ev.won ? 1800 : 1200));
   bus.on('defeat', () => game.showScreen('defeat'));
 
@@ -546,14 +546,14 @@ export function createUI(root, { input, bus, project, game }) {
       const lv = s.level;
       const fuel = lv.fuel > 0 || (s.players[s.localPlayerId].jetpack) ? ` · fuel ${Math.ceil(lv.fuel)}` : '';
       wave = `<b>${lv.name}</b> · ${lv.objective || ''}${fuel}`;
-    } else if (s.mode === 'boss' && s.bossFight) wave = `<b>BOSS FIGHT</b> · ${BOSSES[s.bossFight.type].name} · Tier ${s.tier}`;
-    else if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> · Tier ${s.tier} <small>${pad() ? `[${glyph(PAD_BINDINGS.panel)}] shop` : `[\`] debug · [${keyLabel('shop')}] shop`}</small>`;
+    } else if (s.mode === 'boss' && s.bossFight) wave = `<b>BOSS FIGHT</b> · ${BOSSES[s.bossFight.type].name}`;
+    else if (s.mode === 'sandbox') wave = `<b>${s.testMode ? 'TEST RANGE' : 'SANDBOX'}</b> <small>${pad() ? `[${glyph(PAD_BINDINGS.panel)}] shop` : `[\`] debug · [${keyLabel('shop')}] shop`}</small>`;
     else if (s.wave) {
       const w = s.wave;
       const left = s.enemies.filter((e) => !e.dead && e.type !== 'dummy').length + w.spawnQueue.length;
-      const remainingGroups = tierWave(w.index, s.tier).groups.slice(w.groupIdx).reduce((n, gg) => n + gg.spawns.reduce((m, x) => m + x.count, 0), 0);
-      const phaseTxt = { pre: 'Get ready…', combat: `Enemies left: ${left + remainingGroups}`, bossIntro: 'BOSS INCOMING', boss: 'BOSS FIGHT', cleared: 'Cleared!', intermission: `Intermission ${Math.ceil(w.intermissionT)}s · ${pad() ? `[${glyph(PAD_BINDINGS.panel)}] Shop · Ready in the shop` : `[${keyLabel('shop')}] Shop · [${keyLabel('skip')}] Ready`}`, victory: 'VICTORY', defeat: 'DEFEAT' }[w.phase];
-      wave = `<b>WAVE ${w.index + 1}/3</b> · Tier ${s.tier} · ${phaseTxt}`;
+      const remainingGroups = waveConfig(w.index).groups.slice(w.groupIdx).reduce((n, gg) => n + gg.spawns.reduce((m, x) => m + x.count, 0), 0);
+      const phaseTxt = { pre: 'Get ready…', combat: `Enemies left: ${left + remainingGroups}`, bossIntro: 'BOSS INCOMING', boss: 'BOSS FIGHT', cleared: 'Cleared!', intermission: `Intermission ${Math.ceil(w.intermissionT)}s · ${pad() ? `[${glyph(PAD_BINDINGS.panel)}] Shop · Ready in the shop` : `[${keyLabel('shop')}] Shop · [${keyLabel('skip')}] Ready`}`, defeat: 'DEFEAT' }[w.phase];
+      wave = `<b>WAVE ${w.index + 1}</b> · ${phaseTxt}`;
     }
     if (s.tuning.godMode) wave += ' · <b class="god">GOD MODE</b>';
     const report = game.renderer && game.renderer.loadReport ? game.renderer.loadReport() : null;

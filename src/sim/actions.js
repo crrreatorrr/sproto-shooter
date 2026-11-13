@@ -9,14 +9,14 @@ import { spawnGunPickup, rollGunType, rollQuality } from './drops.js';
 import { addXp, applySkillPassives } from './progression.js';
 import { onEnemyKilled, GOD_HP } from './combat.js';
 import { respawn, godTopUp } from './player.js';
-import { startWaves } from './waves.js';
+import { startWaves, jumpToWave } from './waves.js';
 import { startCampaign, transitionDone } from './campaign/campaign.js';
 import { noteV2Section } from './campaign/v2.js';
 import { getLevelRuntime } from './level/runtime.js';
 import { TUNING } from '../data/tuning.js';
 import { BOSSES } from '../data/enemies.js';
 import { LEGENDARY_SLOT, GUN_TYPES_BY_ID, QUALITIES_BY_ID, MANUFACTURERS_BY_ID, ELEMENTS_BY_ID, WACKY_BY_ID, PARTS_BY_ID, SLOTS } from '../data/guns.js';
-import { MAX_TIER } from '../data/waves.js';
+import { MAX_TIER, FIXED_DIFFICULTY } from '../data/waves.js';
 import {
   startCraft, salvage, reroll, pickupGun, dropGun, buyOffer, rerollShop, sellGun, vend, buyUpgrade, buySupply, rollShopOffers,
 } from './economy.js';
@@ -50,7 +50,13 @@ function handle(state, p, a) {
   }
 }
 
-export function startMode(state, p, mode, tier = 1, opts = {}) {
+/**
+ * Start a mode. Nobody picks a tier: Wave Mode takes its difficulty from the wave number, the campaign
+ * from the level, and Boss Fight, the sandbox and the Test Range sit at FIXED_DIFFICULTY. The fourth
+ * argument (and a `tier` on the startMode action) is ignored; it stays so older callers keep working.
+ */
+export function startMode(state, p, mode, _tier = null, opts = {}) {
+  const tier = FIXED_DIFFICULTY;
   state.enemies.length = 0; state.projectiles.length = 0; state.hazards.length = 0; state.allies.length = 0;
   state.pickups = state.pickups.filter((k) => k.kind === 'gun');
   // Sandbox toys stay in the sandbox: the Duck Gun it places and anything the debug panel spawned
@@ -90,7 +96,7 @@ export function startMode(state, p, mode, tier = 1, opts = {}) {
   state.testMode = mode === 'test';
   state.bossFight = null;
   if (mode === 'waves') {
-    startWaves(state, tier);
+    startWaves(state);
   } else if (mode === 'campaign') {
     startCampaign(state, p, opts.level);
   } else if (mode === 'boss') {
@@ -309,13 +315,13 @@ export function debugOp(state, p, op, args) {
         const pos = aheadOf(p, 10 + i * 1.5);
         pos.x += (i % 3 - 1) * 2;
         const r = Math.hypot(pos.x, pos.z); if (r > 27) { pos.x *= 27 / r; pos.z *= 27 / r; }
-        createEnemy(state, args.type, { elite: !!args.elite, tier: args.tier || state.tier, pos });
+        createEnemy(state, args.type, { elite: !!args.elite, pos });
       }
       break;
     }
     case 'spawnBoss': {
       const pos = aheadOf(p, 14); const r = Math.hypot(pos.x, pos.z); if (r > 24) { pos.x *= 24 / r; pos.z *= 24 / r; }
-      const b = createBoss(state, args.type, { tier: args.tier || state.tier, pos });
+      const b = createBoss(state, args.type, { pos });
       emit(state, 'bossSpawn', { id: b.id, bossType: args.type });
       break;
     }
@@ -365,12 +371,12 @@ export function debugOp(state, p, op, args) {
       break;
     }
     case 'maxSkills': for (const sk of SKILL_IDS) for (let i = 0; i < 10; i++) debugOp(state, p, 'levelSkill', { skill: sk }); break;
-    case 'setTier': state.tier = Math.max(1, Math.min(10, args.tier | 0)); break;
     case 'refillAmmo': for (const k of Object.keys(p.ammo)) p.ammo[k] = p.ammoCap[k]; for (const g of p.guns) if (g) g.ammoInMag = g.stats.magSize; break;
     case 'heal': p.hp = p.maxHp; p.shield = p.maxShield; p.mana = p.maxMana; if (p.dead || p.downed) respawn(state, p); break;
     case 'setTuning': if (args.key === 'godMode') setGodMode(state, p, args.value); else state.tuning[args.key] = args.value; break;
     case 'toggleGod': setGodMode(state, p, !state.tuning.godMode); break;
     case 'setGunStat': { const g = p.guns[p.activeSlot]; if (g && args.key in g.stats) g.stats[args.key] = args.value; break; }
+    case 'jumpToWave': jumpToWave(state, (args.wave | 0) - 1); break;
     case 'skipWave': if (state.wave) { for (const e of state.enemies) if (!e.dead) { e.lastHit = { sourceId: p.id, sourceKind: 'gun' }; onEnemyKilled(state, e); } state.wave.spawnQueue = []; state.wave.groupIdx = 99; } break;
   }
   applySkillPassives(state, p);

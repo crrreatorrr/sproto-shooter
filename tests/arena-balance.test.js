@@ -3,7 +3,7 @@
 // None of them may change the campaign: its pins are checked elsewhere, and spot-checked here.
 import { describe, it, expect } from 'vitest';
 import { createGameState, run, cmd } from './helpers.js';
-import { WAVES, MAX_TIER, tierWave, tierExtraElites, tierExtraAlive, tierEnemyMult, tierArenaHpMult, ARENA_HP, secondWindTime, nextWaveSpell, WAVE_SPELLS } from '../src/data/waves.js';
+import { WAVES, MAX_TIER, FIXED_DIFFICULTY, tierWave, tierExtraElites, tierExtraAlive, tierEnemyMult, tierArenaHpMult, ARENA_HP, secondWindTime, nextWaveSpell, WAVE_SPELLS, waveConfig, waveDifficulty, waveLayout, waveEndsRound } from '../src/data/waves.js';
 import { ENEMIES, BOSSES } from '../src/data/enemies.js';
 import { levelAssets } from '../src/data/stages.js';
 import { xpToNext } from '../src/data/skills.js';
@@ -12,10 +12,18 @@ import { createEnemy, createBoss } from '../src/sim/state.js';
 import { damagePlayer, onEnemyKilled } from '../src/sim/combat.js';
 import { generateGun } from '../src/sim/guns.js';
 
-const start = (mode, tier = 1, extra = {}, seed = 3) => {
+const start = (mode, extra = {}, seed = 3) => {
   const s = createGameState({ seed });
-  run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode, tier, ...extra }] }));
+  run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode, ...extra }] }));
   return { s, p: s.players[s.localPlayerId] };
+};
+/** The first wave (0-based) of an endless run that plays at difficulty step `d`. */
+const firstWaveAt = (d) => (d - 1) * WAVES.length;
+/** A Wave Mode run moved on to wave `idx` (0-based). */
+const wavesAt = (idx, seed = 3) => {
+  const r = start('waves', {}, seed);
+  run(r.s, 1, () => cmd({ actions: [{ type: 'debug', op: 'jumpToWave', args: { wave: idx + 1 } }] }));
+  return r;
 };
 const count = (w, pick = (x) => x.count) => w.groups.reduce((n, g) => n + g.spawns.reduce((m, x) => m + pick(x), 0), 0);
 const types = (w) => new Set(w.groups.flatMap((g) => g.spawns.map((x) => x.type)));
@@ -68,10 +76,9 @@ describe('tier ladder: what a wave looks like at a tier', () => {
       expect(step).toBeLessThan(1.18);
     }
     expect(tierEnemyMult(10)).toBeCloseTo(Math.pow(1.15, 9), 10); // damage, and the campaign's curve, untouched
-    const hi = start('boss', 10, { boss: 'dragon' });
-    expect(hi.s.enemies.find((x) => x.boss).maxHp).toBe(Math.round(BOSSES.dragon.hp * tierArenaHpMult(10)));
-    const sb = start('sandbox', 10);
-    expect(createEnemy(sb.s, 'obama', { pos: { x: 5, z: 5 } }).maxHp).toBe(Math.round(ENEMIES.obama.hp * tierEnemyMult(10)));
+    const hi = wavesAt(firstWaveAt(10));
+    expect(hi.s.tier).toBe(10);
+    expect(createBoss(hi.s, 'dragon', {}).maxHp).toBe(Math.round(BOSSES.dragon.hp * tierArenaHpMult(10)));
   });
 
   it('brings in the robots at tier 4, rotates the wave-2 boss and adds the Sproto Beast at tier 7', () => {
@@ -92,41 +99,46 @@ describe('tier ladder: what a wave looks like at a tier', () => {
     for (let tier = 1; tier <= MAX_TIER; tier++) for (let i = 0; i < 3; i++) for (const b of [...tierWave(i, tier).boss.types, ...(tierWave(i, tier).boss.late || [])]) expect(BOSSES[b], b).toBeTruthy();
   });
 
-  it('preloads the models a tier needs', () => {
+  it('preloads the models a wave needs at its difficulty', () => {
     const models = (a) => new Set([...a.characters, ...a.bosses].map((x) => x.model));
-    expect(models(levelAssets(1, 1)).has('robotLaser')).toBe(false);
-    const t4 = models(levelAssets(1, 4));
+    expect(models(levelAssets(1)).has('robotLaser')).toBe(false);
+    const t4 = models(levelAssets(firstWaveAt(4) + 1));
     for (const m of ['robotLaser', 'robotShooter', 'carMonster']) expect(t4.has(m), m).toBe(true);
-    expect(models(levelAssets(2, 7)).has('sprotoBeast')).toBe(true);
+    expect(models(levelAssets(firstWaveAt(7) + 2)).has('sprotoBeast')).toBe(true);
+    expect(levelAssets(firstWaveAt(7) + 2).stage).toBe('void');
   });
 
   it('scales arena health faster than damage, and leaves campaign enemies on the old curve', () => {
     expect(tierArenaHpMult(1)).toBe(1);
-    const a = start('waves', 5);
+    const a = wavesAt(firstWaveAt(5));
+    expect(a.s.tier).toBe(5);
     const e = createEnemy(a.s, 'obama', { pos: { x: 5, z: 5 } });
     expect(e.maxHp).toBe(Math.round(ENEMIES.obama.hp * tierArenaHpMult(5)));
     expect(e.dmgMult).toBeCloseTo(tierEnemyMult(5));
     expect(createBoss(a.s, 'monster', {}).maxHp).toBe(Math.round(BOSSES.monster.hp * tierArenaHpMult(5)));
-    const b = start('boss', 5, { boss: 'dragon' });
-    expect(b.s.enemies.find((x) => x.boss).maxHp).toBe(Math.round(BOSSES.dragon.hp * tierArenaHpMult(5)));
-    const sb = start('sandbox', 5);
-    expect(createEnemy(sb.s, 'obama', { pos: { x: 5, z: 5 } }).maxHp).toBe(Math.round(ENEMIES.obama.hp * tierEnemyMult(5)));
-    const c = start('campaign', 1, { level: 'L05' });
+    const b = start('boss', { boss: 'dragon' });
+    expect(b.s.enemies.find((x) => x.boss).maxHp).toBe(Math.round(BOSSES.dragon.hp * tierArenaHpMult(FIXED_DIFFICULTY)));
+    const sb = start('sandbox');
+    expect(createEnemy(sb.s, 'obama', { pos: { x: 5, z: 5 } }).maxHp).toBe(Math.round(ENEMIES.obama.hp * tierEnemyMult(FIXED_DIFFICULTY)));
+    const c = start('campaign', { level: 'L05' });
     expect(c.s.tier).toBeGreaterThan(1);
     const ce = createEnemy(c.s, 'obama', { pos: { x: 5, z: 5 } });
     expect(ce.maxHp).toBe(Math.round(ENEMIES.obama.hp * tierEnemyMult(c.s.tier)));
   });
 
-  it('plays tiers 4, 7 and 10 through to victory with every boss of that tier', () => {
+  it('plays the rounds at difficulty 4, 7 and 10 through with every boss of that round', () => {
     for (const tier of [4, 7, 10]) {
+      const from = firstWaveAt(tier);
       const s = createGameState({ seed: 11 });
       const p = s.players[s.localPlayerId];
       const g = generateGun({ seed: 5, level: 10, forced: { type: 'mg', quality: 'legendary', wacky: 'tenthMega' } }); g.id = 999;
       p.guns[0] = g;
-      run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier }, { type: 'debug', op: 'setTuning', args: { key: 'godMode', value: true } }, { type: 'debug', op: 'setTuning', args: { key: 'infiniteAmmo', value: true } }, { type: 'debug', op: 'setTuning', args: { key: 'enemyHpMult', value: 0.25 } }] }));
+      run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves' }, { type: 'debug', op: 'jumpToWave', args: { wave: from + 1 } }, { type: 'debug', op: 'setTuning', args: { key: 'godMode', value: true } }, { type: 'debug', op: 'setTuning', args: { key: 'infiniteAmmo', value: true } }, { type: 'debug', op: 'setTuning', args: { key: 'enemyHpMult', value: 0.25 } }] }));
       const seen = new Set();
       let mostBosses = 0;
-      for (let i = 0; i < 60 * 60 * 10 && s.wave.phase !== 'victory'; i++) {
+      let roundPaid = 0;
+      for (let i = 0; i < 60 * 60 * 10 && s.wave.index < from + WAVES.length; i++) {
+        if (s.wave.index < from + WAVES.length - 1 || s.wave.phase !== 'intermission') expect(s.tier).toBe(tier);
         mostBosses = Math.max(mostBosses, s.enemies.filter((e) => e.boss && !e.dead).length);
         let best = null, bd = 1e9;
         for (const e of s.enemies) { if (e.dead || e.state === 'spawning') continue; seen.add(e.type); const d = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z); if (d < bd) { bd = d; best = e; } }
@@ -135,9 +147,11 @@ describe('tier ladder: what a wave looks like at a tier', () => {
           const ty = best.type === 'hexAuditor' ? best.pos.y : best.pos.y + best.height * best.scale * 0.5;
           c = cmd({ yaw: Math.atan2(-(best.pos.x - p.pos.x), -(best.pos.z - p.pos.z)), pitch: Math.atan2(ty - (p.pos.y + 1.6), bd) - p.recoil.pitch, held: { fire: true } });
         }
-        run(s, 1, () => c);
+        roundPaid += run(s, 1, () => c).filter((e) => e.type === 'roundCleared').length;
       }
-      expect(s.wave.phase, `tier ${tier}`).toBe('victory');
+      expect(s.wave.index, `tier ${tier}`).toBe(from + WAVES.length);
+      expect(roundPaid, `tier ${tier}`).toBe(1);
+      expect(s.tier).toBe(Math.min(MAX_TIER, tier + 1));
       expect(mostBosses, `tier ${tier}`).toBeLessThanOrEqual(2); // the Sproto Beast waits for one of the pair to fall
       const bosses = [0, 1, 2].flatMap((i) => [...tierWave(i, tier).boss.types, ...(tierWave(i, tier).boss.late || [])]);
       expect(s.run.bossKills, `tier ${tier}`).toBe(bosses.length);
@@ -146,6 +160,52 @@ describe('tier ladder: what a wave looks like at a tier', () => {
       expect(seen.has('robotShooter')).toBe(true);
     }
   }, 240000);
+});
+
+describe('endless Wave Mode: one difficulty for everyone, rising with the waves', () => {
+  it('cycles the three arenas and steps the difficulty up once a round, to MAX_TIER', () => {
+    expect([0, 1, 2, 3, 4, 5, 6].map(waveLayout)).toEqual([0, 1, 2, 0, 1, 2, 0]);
+    expect([0, 2, 3, 5, 6, 26, 27, 60, 500].map(waveDifficulty)).toEqual([1, 1, 2, 2, 3, 9, 10, 10, 10]);
+    expect([0, 1, 2, 3, 5, 8].map(waveEndsRound)).toEqual([false, false, true, false, true, true]);
+    for (let i = 0; i < 3; i++) expect(waveConfig(i).groups).toBe(WAVES[i].groups); // the first round is the waves as written
+    expect(waveConfig(3).name).toBe('Wave 4: Midget Rush');
+    expect(waveConfig(10)).toMatchObject({ maxAlive: tierWave(1, 4).maxAlive, boss: tierWave(1, 4).boss });
+    expect(waveConfig(10)).toBe(waveConfig(10));
+  });
+
+  it('ignores a tier on startMode: Boss Fight, sandbox and Test Range use the fixed difficulty, Wave Mode starts at 1', () => {
+    for (const tier of [1, 10]) {
+      expect(start('boss', { boss: 'monster', tier }).s.tier).toBe(FIXED_DIFFICULTY);
+      expect(start('sandbox', { tier }).s.tier).toBe(FIXED_DIFFICULTY);
+      expect(start('test', { tier }).s.tier).toBe(FIXED_DIFFICULTY);
+      expect(start('waves', { tier }).s.tier).toBe(1);
+      expect(start('campaign', { level: 'L07', tier }).s.tier).toBe(7);
+    }
+  });
+
+  it('never ends in a win: a round clear pays Run Cash and a Legendary, then wave 4 starts one step harder', () => {
+    const { s, p } = start('waves');
+    const seen = [];
+    let tickets = 0;
+    for (let n = 0; n < 3; n++) {
+      const from = s.wave.index;
+      run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'skipWave' }] }));
+      for (let i = 0; i < 60 * 40 && s.wave.index === from; i++) {
+        for (const e of s.enemies) if (!e.dead) { e.lastHit = { sourceId: p.id, sourceKind: 'gun' }; onEnemyKilled(s, e); }
+        for (const ev of run(s, 1, () => cmd({ pressed: { skip: true } }))) {
+          seen.push(ev.type);
+          if (ev.type === 'roundCleared') { tickets = ev.tickets; expect(ev.waveIndex).toBe(2); }
+        }
+      }
+    }
+    expect(seen).not.toContain('victory');
+    expect(seen.filter((t) => t === 'roundCleared')).toHaveLength(1);
+    expect(tickets).toBe(150);
+    expect(s.pickups.some((k) => k.gun && k.gun.quality === 'legendary' && k.gun.level === 1)).toBe(true);
+    expect(s.wave.index).toBe(3);
+    expect(s.tier).toBe(2);
+    expect(s.wave.phase).toBe('pre');
+  });
 });
 
 describe('Second Wind', () => {
@@ -179,14 +239,14 @@ describe('Second Wind', () => {
 
   it("comes from a boss's summoned helpers too, on the same shrinking timer", () => {
     // In a Boss Fight the helpers are the only thing to kill besides the boss, so they have to count.
-    const { s, p } = start('boss', 1, { boss: 'megaSproto' });
+    const { s, p } = start('boss', { boss: 'megaSproto' });
     const got = [];
     for (let i = 0; i < 4; i++) { got.push(down(s, p)); kill(s, true); expect(p.downed).toBe(false); }
     expect(got).toEqual([10, 7, 4, 3]);
   });
 
   it('runs out when nothing is killed in time', () => {
-    const { s, p } = start('boss', 1, { boss: 'megaSproto' });
+    const { s, p } = start('boss', { boss: 'megaSproto' });
     run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'setTuning', args: { key: 'freezeEnemies', value: true } }] }));
     down(s, p); kill(s, true); down(s, p); kill(s, true); down(s, p); // third down: 4 seconds
     run(s, 60 * 4 + 30, () => cmd());
@@ -194,7 +254,7 @@ describe('Second Wind', () => {
   });
 
   it('is unchanged in the campaign: always the full timer, any kill counts, nothing new on the player', () => {
-    const { s, p } = start('campaign', 1, { level: 'L06' });
+    const { s, p } = start('campaign', { level: 'L06' });
     for (let i = 0; i < 4; i++) { expect(down(s, p)).toBe(TUNING.secondWindTime); kill(s, i % 2 === 0); expect(p.downed).toBe(false); }
     expect('downCount' in p).toBe(false);
   });
@@ -209,14 +269,14 @@ describe('Wave Mode spell unlocks', () => {
     expect(nextWaveSpell(Object.fromEntries(WAVE_SPELLS.map((id) => [id, true])), 9)).toBeNull();
   });
 
-  it('teaches one spell per cleared wave and keeps them into the next tier', () => {
+  it('teaches one spell per cleared wave, two in the first round and the rest from the second', () => {
     const { s, p } = start('waves');
     expect(p.perks.gooBolt).toBe(true);
     expect(p.perks.chainZap).toBeFalsy();
     const clearWave = () => {
       const from = s.wave.index, events = [];
       run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'skipWave' }] }));
-      for (let i = 0; i < 60 * 40 && s.wave.index === from && s.wave.phase !== 'victory'; i++) {
+      for (let i = 0; i < 60 * 40 && s.wave.index === from; i++) {
         for (const e of s.enemies) if (!e.dead) { e.lastHit = { sourceId: p.id, sourceKind: 'gun' }; onEnemyKilled(s, e); }
         events.push(...run(s, 1, () => cmd({ pressed: { skip: true } })));
       }
@@ -225,9 +285,9 @@ describe('Wave Mode spell unlocks', () => {
     expect(clearWave()).toEqual(['chainZap']);
     expect(p.perks.chainZap).toBe(true);
     expect(clearWave()).toEqual(['swarm']);
-    expect(clearWave()).toEqual([]); // tier 1 stops at two
-    expect(s.wave.phase).toBe('victory');
-    run(s, 1, () => cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 2 }] }));
+    expect(clearWave()).toEqual([]); // the first round stops at two
+    expect(s.wave.index).toBe(3);
+    expect(s.tier).toBe(2);
     expect(p.perks.swarm).toBe(true);
     expect(clearWave()).toEqual(['manaShield']);
     expect(clearWave()).toEqual(['meteor']);
@@ -250,7 +310,7 @@ describe('Wave Mode skill pacing', () => {
 
 describe('The Floor Is Lava secret', () => {
   const lava = (level) => {
-    const { s, p } = start('campaign', 1, { level });
+    const { s, p } = start('campaign', { level });
     run(s, 1, () => cmd({ actions: [{ type: 'debug', op: 'setTuning', args: { key: 'freezeEnemies', value: true } }] }));
     run(s, 30, () => cmd()); // settle on the ground
     s.level.modifiers.floorIsLava = true;

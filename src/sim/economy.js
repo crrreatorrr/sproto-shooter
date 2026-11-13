@@ -99,7 +99,7 @@ export function rollShopOffers(state) {
   }
 }
 
-const shopOpen = (state) => state.mode === 'sandbox' || (state.wave && (state.wave.phase === 'intermission' || state.wave.phase === 'victory'));
+const shopOpen = (state) => state.mode === 'sandbox' || (state.wave && state.wave.phase === 'intermission');
 
 export function buyOffer(state, p, offerId) {
   if (!shopOpen(state)) return fail(state, p, 'Shop is closed during combat');

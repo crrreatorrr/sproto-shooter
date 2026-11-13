@@ -175,15 +175,15 @@ describe('flying midgets', () => {
 describe('level-scoped loading', () => {
   it('level 1 needs only its stage and the models its wave spawns', async () => {
     const { levelAssets } = await import('../src/data/stages.js');
-    const l1 = levelAssets(0, 1);
+    const l1 = levelAssets(0);
     expect(l1.stage).toBe('city');
     expect(l1.characters).toEqual([{ model: 'midget', stage: 1 }, { model: 'obama', stage: 1 }]);
     expect(l1.bosses.map((b) => b.model)).toEqual(['dragon', 'dragon', 'dragon']); // Jade Dragon, one model for all phases
-    const l2 = levelAssets(1, 1);
+    const l2 = levelAssets(1);
     expect(l2.stage).toBe('volcano');
     expect(l2.characters).toContainEqual({ model: 'midget', stage: 3 }); // flying midgets
     expect(l2.bosses.map((b) => b.model)).toEqual(['monster', 'monster', 'monster']);
-    expect(levelAssets(2, 1).bosses.map((b) => b.model)).toContain('sahil');
+    expect(levelAssets(2).bosses.map((b) => b.model)).toContain('sahil');
   });
 });
 

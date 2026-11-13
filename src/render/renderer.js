@@ -80,7 +80,7 @@ export function createRenderer(container, bus, playerModel, graphicsPreset = 'hi
       return;
     }
     const w = state.wave;
-    const lvl = levelAssets(w.index, state.tier);
+    const lvl = levelAssets(w.index);
     for (const c of lvl.characters) {
       ensureCharacter(c.model, c.stage, NOW);
       const path = characterPath(c.model, c.stage);
@@ -94,7 +94,7 @@ export function createRenderer(container, bus, playerModel, graphicsPreset = 'hi
       if (path) (prio === NOW ? demandNow : demandLater).push(path);
     }
     const between = w.phase === 'cleared' || w.phase === 'intermission';
-    const next = between ? levelAssets(w.index + 1, state.tier) : null;
+    const next = between ? levelAssets(w.index + 1) : null;
     if (next) {
       ensureStage(next.stage, LATER);
       demandLater.push(...stagePaths(next.stage));

@@ -39,13 +39,14 @@ export function defeatRun(game) {
   return { downed, phase: s.wave.phase, dead: p.dead };
 }
 
-export async function waveRun(game, tier) {
+/** Plays the first round of an endless Wave Mode run (waves 1 to 3) and stops once wave 4 starts. */
+export async function waveRun(game) {
   // Stop automatic frames while this harness advances the same state and presentation explicitly.
   game.frame = () => {};
   game.hideScreen();
   game.audio.toggleMute(); // accelerated events must not schedule minutes of audio at once
   const s = game.state, p = s.players[s.localPlayerId];
-  const gun = generateGun({ seed: 5, level: tier + 3, forced: { type: 'mg', quality: 'legendary', wacky: 'tenthMega' } });
+  const gun = generateGun({ seed: 5, level: 4, forced: { type: 'mg', quality: 'legendary', wacky: 'tenthMega' } });
   gun.id = s.nextId++;
   p.guns[0] = gun;
   const phases = [], events = {};
@@ -65,7 +66,7 @@ export async function waveRun(game, tier) {
   }
   try {
     step(cmd({ actions: [
-      { type: 'startMode', mode: 'waves', tier },
+      { type: 'startMode', mode: 'waves' },
       { type: 'debug', op: 'setTuning', args: { key: 'godMode', value: true } },
       { type: 'debug', op: 'setTuning', args: { key: 'infiniteAmmo', value: true } },
     ] }));
@@ -74,7 +75,7 @@ export async function waveRun(game, tier) {
       if (phases.at(-1) !== phase) {
         phases.push(phase);
         draw(); // loading placeholders are exercised too
-        const assets = levelAssets(s.wave.index, tier);
+        const assets = levelAssets(s.wave.index);
         await Promise.all([
           ensureStage(assets.stage),
           ...[...assets.characters, ...assets.bosses].map(({ model, stage }) => ensureCharacter(model, stage)),
@@ -105,10 +106,10 @@ export async function waveRun(game, tier) {
       }
       if (i % 30 === 0) game.ui.update(s);
       if (i % 600 === 0) { draw(); await new Promise((resolve) => setTimeout(resolve, 0)); }
-      if (s.wave.phase === 'victory') break;
+      if (s.wave.index >= 3) break;
     }
     draw();
-    return { phase: s.wave.phase, bosses: s.run.bossKills, kills: s.run.kills, frames, phases, events };
+    return { phase: s.wave.phase, wave: s.wave.index, bosses: s.run.bossKills, kills: s.run.kills, frames, phases, events };
   } finally {
     freezeAt(null);
   }
@@ -136,7 +137,7 @@ export async function weaponsAndSpells(game) {
     game.renderer.render(s, 1, { yaw: p.yaw, pitch: p.pitch });
   }
   try {
-    step(cmd({ actions: [{ type: 'startMode', mode: 'waves', tier: 1 }, { type: 'debug', op: 'toggleGod' }] }));
+    step(cmd({ actions: [{ type: 'startMode', mode: 'waves' }, { type: 'debug', op: 'toggleGod' }] }));
     await Promise.all(guns.map((type) => ensureGunModel(type)));
     for (const type of guns) {
       const shots = events.shot || 0, reloads = events.reloadStart || 0;
