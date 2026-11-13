@@ -27,8 +27,6 @@ function blocked(solids, x, z) {
   return false;
 }
 
-function key(ix, iz) { return `${ix},${iz}`; }
-
 function zoneCostAt(zones, x, z) {
   let cost = 1;
   for (let i = 0; i < zones.length; i++) {
@@ -39,37 +37,42 @@ function zoneCostAt(zones, x, z) {
   return cost;
 }
 
+// Cells are numbered iz * nx + ix. `open` is 1 where an enemy can stand, `cost` is the slow-zone cost
+// (0 means 1). A link end outside the grid is left out; no level has one.
 export function bakeNav(solids, bounds, links = [], cell = CELL, zones = []) {
   const x0 = bounds.min[0], z0 = bounds.min[1];
   const nx = Math.max(1, Math.ceil((bounds.max[0] - x0) / cell));
   const nz = Math.max(1, Math.ceil((bounds.max[1] - z0) / cell));
-  const open = new Set();
+  const open = new Uint8Array(nx * nz);
   for (let iz = 0; iz < nz; iz++) {
     for (let ix = 0; ix < nx; ix++) {
       const x = x0 + (ix + 0.5) * cell, z = z0 + (iz + 0.5) * cell;
-      if (!blocked(solids, x, z)) open.add(key(ix, iz));
+      if (!blocked(solids, x, z)) open[iz * nx + ix] = 1;
     }
   }
+  const inside = (c) => c.ix >= 0 && c.ix < nx && c.iz >= 0 && c.iz < nz;
   const extra = [];
   for (let i = 0; i < links.length; i++) {
     const a = cellAt(bounds, links[i].from, cell);
     const b = cellAt(bounds, links[i].to, cell);
-    if (!a || !b) continue;
-    extra.push({ a: key(a.ix, a.iz), b: key(b.ix, b.iz), to: links[i].to, kind: links[i].kind || 'link' });
-    open.add(key(a.ix, a.iz));
-    open.add(key(b.ix, b.iz));
+    if (!inside(a) || !inside(b)) continue;
+    const ka = a.iz * nx + a.ix, kb = b.iz * nx + b.ix;
+    extra.push({ a: ka, b: kb, to: links[i].to, kind: links[i].kind || 'link' });
+    open[ka] = 1;
+    open[kb] = 1;
   }
-  const cost = new Map();
+  let cost = null;
   if (zones.length) {
+    cost = new Float64Array(nx * nz);
     for (let iz = 0; iz < nz; iz++) {
       for (let ix = 0; ix < nx; ix++) {
         const x = x0 + (ix + 0.5) * cell, z = z0 + (iz + 0.5) * cell;
         const c = zoneCostAt(zones, x, z);
-        if (c > 1) cost.set(key(ix, iz), c);
+        if (c > 1) cost[iz * nx + ix] = c;
       }
     }
   }
-  return { bounds, cell, nx, nz, open, extra, cost };
+  return { bounds, cell, nx, nz, open, extra, cost, scratch: null };
 }
 
 function cellAt(bounds, pos, cell = CELL) {
@@ -85,26 +88,49 @@ function center(grid, ix, iz) {
   };
 }
 
+// What a baked grid depends on, by value. Closed doors and slow zones are rebuilt as new arrays every
+// tick and a level with no links reads as a fresh `[]`, so keying on the arrays themselves missed on
+// every call: each enemy re-baked the whole grid each tick.
+const EMPTY = [];
+function boxesKey(list) {
+  let s = '';
+  for (let i = 0; i < list.length; i++) {
+    const b = list[i];
+    s += `${b.kind}/${b.yaw || 0}/${b.min[0]},${b.min[1]},${b.min[2]}/${b.max[0]},${b.max[1]},${b.max[2]}/${b.cost ?? ''};`;
+  }
+  return s;
+}
+
+const GRID_CACHE = 8; // door states per section: a few encounters, each locked and opened
 export function navGridFor(state) {
   const solids = activeSolids(state);
-  const bounds = state.level && state.level.navBounds;
+  const lv = state.level;
+  const bounds = lv && lv.navBounds;
   if (!solids || !bounds) return null;
-  const links = state.level.navLinks || [];
-  const zones = state.level.slowZones || [];
-  const cached = grids.get(solids);
-  if (cached && cached.bounds === bounds && cached.links === links && cached.zones === zones) return cached.grid;
+  const links = lv.navLinks || EMPTY;
+  const zones = lv.slowZones || EMPTY;
+  const base = lv.solids || EMPTY;
+  const sig = `${boxesKey(lv.closedDoors || EMPTY)}#${boxesKey(zones)}`;
+  let byBase = grids.get(base);
+  if (!byBase) { byBase = []; grids.set(base, byBase); }
+  for (let i = 0; i < byBase.length; i++) {
+    const c = byBase[i];
+    if (c.bounds === bounds && c.links === links && c.sig === sig) return c.grid;
+  }
   const grid = bakeNav(solids, bounds, links, CELL, zones);
-  grids.set(solids, { bounds, links, zones, grid });
+  byBase.unshift({ bounds, links, sig, grid });
+  if (byBase.length > GRID_CACHE) byBase.pop();
   return grid;
 }
 
 function nearestOpen(grid, pos) {
   const c = cellAt(grid.bounds, pos, grid.cell);
-  if (grid.open.has(key(c.ix, c.iz))) return c;
+  const { nx, nz, open } = grid;
+  if (c.ix >= 0 && c.ix < nx && c.iz >= 0 && c.iz < nz && open[c.iz * nx + c.ix]) return c;
   let best = null, bd = 1e9;
-  for (let iz = 0; iz < grid.nz; iz++) {
-    for (let ix = 0; ix < grid.nx; ix++) {
-      if (!grid.open.has(key(ix, iz))) continue;
+  for (let iz = 0; iz < nz; iz++) {
+    for (let ix = 0; ix < nx; ix++) {
+      if (!open[iz * nx + ix]) continue;
       const p = center(grid, ix, iz);
       const d = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2;
       if (d < bd) { bd = d; best = { ix, iz }; }
@@ -113,55 +139,74 @@ function nearestOpen(grid, pos) {
   return best;
 }
 
+/** Per-grid search buffers, reused across calls. A cell's entry counts only when its stamp is this search's. */
+function scratchFor(grid) {
+  const n = grid.nx * grid.nz;
+  if (!grid.scratch) {
+    grid.scratch = { gen: 0, g: new Float64Array(n), gAt: new Uint32Array(n), came: new Int32Array(n), cameAt: new Uint32Array(n), seenAt: new Uint32Array(n) };
+  }
+  const s = grid.scratch;
+  if (++s.gen === 0xffffffff) { s.gAt.fill(0); s.cameAt.fill(0); s.seenAt.fill(0); s.gen = 1; }
+  return s;
+}
+
+const NEIGH_X = [1, -1, 0, 0];
+const NEIGH_Z = [0, 0, 1, -1];
+
+// The search order is the original string-keyed one, step for step, so enemies walk the same paths
+// and replays and goldens hold: the head of the open list is weighed by g alone, the rest by g + h,
+// the first lowest wins, and a cell can sit in the list more than once.
 export function findPath(grid, from, to) {
   if (!grid) return null;
   const a = nearestOpen(grid, from);
   const b = nearestOpen(grid, to);
   if (!a || !b) return null;
-  const start = key(a.ix, a.iz), goal = key(b.ix, b.iz);
+  const { nx, nz, open: walk, cost, extra } = grid;
+  const start = a.iz * nx + a.ix, goal = b.iz * nx + b.ix;
   if (start === goal) return [center(grid, a.ix, a.iz)];
+  const { gen, g, gAt, came, cameAt, seenAt } = scratchFor(grid);
+  const bx = b.ix, bz = b.iz;
   const open = [start];
-  const came = new Map();
-  const g = new Map([[start, 0]]);
-  const seen = new Set();
-  const neigh = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  g[start] = 0; gAt[start] = gen;
   while (open.length) {
-    let bi = 0, bg = g.get(open[0]) + 0;
+    let bi = 0, bg = g[open[0]] + 0;
     for (let i = 1; i < open.length; i++) {
       const k = open[i];
-      const [ix, iz] = k.split(',').map(Number);
-      const h = Math.abs(ix - b.ix) + Math.abs(iz - b.iz);
-      const f = g.get(k) + h;
+      const ix = k % nx, iz = (k - ix) / nx;
+      const f = g[k] + (Math.abs(ix - bx) + Math.abs(iz - bz));
       if (f < bg) { bg = f; bi = i; }
     }
-    const cur = open.splice(bi, 1)[0];
+    const cur = open[bi];
+    open.splice(bi, 1);
     if (cur === goal) break;
-    if (seen.has(cur)) continue;
-    seen.add(cur);
-    const [ix, iz] = cur.split(',').map(Number);
-    for (let n = 0; n < neigh.length; n++) {
-      const jx = ix + neigh[n][0], jz = iz + neigh[n][1];
-      const nk = key(jx, jz);
-      if (!grid.open.has(nk)) continue;
-      const ng = g.get(cur) + ((grid.cost && grid.cost.get(nk)) || 1);
-      if (ng < (g.get(nk) ?? 1e9)) { g.set(nk, ng); came.set(nk, cur); open.push(nk); }
+    if (seenAt[cur] === gen) continue;
+    seenAt[cur] = gen;
+    const ix = cur % nx, iz = (cur - ix) / nx;
+    const gc = g[cur];
+    for (let n = 0; n < 4; n++) {
+      const jx = ix + NEIGH_X[n], jz = iz + NEIGH_Z[n];
+      if (jx < 0 || jx >= nx || jz < 0 || jz >= nz) continue;
+      const nk = jz * nx + jx;
+      if (!walk[nk]) continue;
+      const ng = gc + ((cost && cost[nk]) || 1);
+      if (ng < (gAt[nk] === gen ? g[nk] : 1e9)) { g[nk] = ng; gAt[nk] = gen; came[nk] = cur; cameAt[nk] = gen; open.push(nk); }
     }
-    for (let n = 0; n < grid.extra.length; n++) {
-      const link = grid.extra[n];
-      const nk = link.a === cur ? link.b : link.b === cur ? link.a : null;
-      if (!nk) continue;
-      const ng = g.get(cur) + 2;
-      if (ng < (g.get(nk) ?? 1e9)) { g.set(nk, ng); came.set(nk, cur); open.push(nk); }
+    for (let n = 0; n < extra.length; n++) {
+      const link = extra[n];
+      const nk = link.a === cur ? link.b : link.b === cur ? link.a : -1;
+      if (nk < 0) continue;
+      const ng = gc + 2;
+      if (ng < (gAt[nk] === gen ? g[nk] : 1e9)) { g[nk] = ng; gAt[nk] = gen; came[nk] = cur; cameAt[nk] = gen; open.push(nk); }
     }
   }
-  if (!came.has(goal) && start !== goal) return null;
+  if (cameAt[goal] !== gen) return null;
   const cells = [goal];
-  let walk = goal;
-  while (came.has(walk)) { walk = came.get(walk); cells.push(walk); }
+  let at = goal;
+  while (cameAt[at] === gen) { at = came[at]; cells.push(at); }
   cells.reverse();
   return cells.map((k) => {
-    const [ix, iz] = k.split(',').map(Number);
-    return center(grid, ix, iz);
+    const ix = k % nx;
+    return center(grid, ix, (k - ix) / nx);
   });
 }
 
