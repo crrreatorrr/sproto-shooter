@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 380,
-    "runtimeBytes": 27119172,
-    "decodedBytes": 257492806,
-    "referenced": 380,
+    "runtimeFiles": 394,
+    "runtimeBytes": 26959949,
+    "decodedBytes": 257493830,
+    "referenced": 394,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -695,6 +695,90 @@
     },
     {
       "path": "models/props/building_c.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/caldera_apron.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/caldera_brazier.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/caldera_bridge.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/caldera_fuel.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/caldera_obelisk.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/caldera_overhang.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/caldera_scree.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/caldera_seal.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/caldera_shrine.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/caldera_spires.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/caldera_vent.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/caldera_wall.glb.gz",
       "kind": "static",
       "from": [
         "src/render/level/kitPropPaths.js"
@@ -2522,6 +2606,20 @@
     },
     {
       "path": "textures/campaign/bazaar-sunset.webp",
+      "kind": "static",
+      "from": [
+        "src/render/level/campaignSurfaceArt.js"
+      ]
+    },
+    {
+      "path": "textures/campaign/caldera-sky.webp",
+      "kind": "static",
+      "from": [
+        "src/render/level/campaignSurfaceArt.js"
+      ]
+    },
+    {
+      "path": "textures/campaign/caldera-surface.webp",
       "kind": "static",
       "from": [
         "src/render/level/campaignSurfaceArt.js"
@@ -6124,6 +6222,370 @@
         "materials": [
           "campaign_glow_store_building_c",
           "campaign_glow_warm",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/caldera_apron.glb.gz",
+      "bytes": 1054,
+      "sha256": "40a6b194e536ce6ee8de7452b87df855b590db386b7c51bb91d60ddcaeb9cb15",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 44,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/caldera_brazier.glb.gz",
+      "bytes": 10133,
+      "sha256": "efdb57c8c9532334aacb218cbb9aa0e66f6314a8e0731186c816140faae405b6",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 516,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "caldera_brazier_flame"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 2,
+        "materials": [
+          "campaign_glow_caldera_ember",
+          "campaign_glow_caldera_hot",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/caldera_bridge.glb.gz",
+      "bytes": 41230,
+      "sha256": "2e8ba2d2e67d3e61a59f4b975b8ed67e7b2188dab5b51e4da0891f2cab18e8f0",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 4620,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/caldera_fuel.glb.gz",
+      "bytes": 6578,
+      "sha256": "5dc5949069e612d8b132cd449bd4eff96d896fa1acd8e4fe949a08998c82cc4e",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 572,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_caldera_vent_glow",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/caldera_obelisk.glb.gz",
+      "bytes": 10566,
+      "sha256": "afa1b1dd7b8b59c30503f0f7d8ad7630b3f7729e1d6b4771f6d403020e666a8c",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 832,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_caldera_gold",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/caldera_overhang.glb.gz",
+      "bytes": 16202,
+      "sha256": "45eff4e1619b4c4579255c0cd94d4d8c725aa089bce765f8a6be13ed987dea36",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1216,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/caldera_scree.glb.gz",
+      "bytes": 6724,
+      "sha256": "d5d0e07b1e2be15d430a9addbea4b4a8bed532de427591594a89cd3dc0316e8b",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 520,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/caldera_seal.glb.gz",
+      "bytes": 24284,
+      "sha256": "22eb8035b53dc36cd8bf7bf2c32694ba23bbc82bbb31548894933bdd9988884a",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 2880,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_caldera_gold",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/caldera_shrine.glb.gz",
+      "bytes": 51410,
+      "sha256": "23f88c193ebb109500a9c932efb324dd117c230832ae15d6a1ff7233ccb8c28a",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 3924,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "caldera_shrine_core",
+          "caldera_shrine_orbit"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 3,
+        "materials": [
+          "campaign_glow_caldera_ember",
+          "campaign_glow_caldera_gold",
+          "campaign_glow_caldera_hot",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/caldera_spires.glb.gz",
+      "bytes": 7515,
+      "sha256": "c8e9a9e28a78a93b2aae88d62d57761001606188ef8f7482a0e7d4c2acd04cad",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 520,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/caldera_vent.glb.gz",
+      "bytes": 19250,
+      "sha256": "b81550952e41441076210b405c92a904ccd7c1950d1953d51e97068b72b93c41",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1564,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "caldera_vent_plume"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 2,
+        "materials": [
+          "campaign_glow_caldera_vent_glow",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/caldera_wall.glb.gz",
+      "bytes": 4479,
+      "sha256": "c1a13bbd15c1bda784bf9d1fd55563734812e7860506f64e4f6cfe4c58ea3088",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 328,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
           "cartoon_kit"
         ]
       }
@@ -13983,6 +14445,36 @@
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     },
     {
+      "path": "textures/campaign/caldera-sky.webp",
+      "bytes": 21226,
+      "sha256": "904423850e60176858b24cb7a41f279643872b185a601cb2e093cef67bdc84f4",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/campaignSurfaceArt.js"
+      ],
+      "kind": "image",
+      "width": 832,
+      "height": 416,
+      "decodedBytes": 1384448,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/campaign/caldera-surface.webp",
+      "bytes": 17064,
+      "sha256": "d4e2a969d62af2f07b9f6e419a5b47f3e7ad14c3b49317a84ecbbb9ce1827726",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/campaignSurfaceArt.js"
+      ],
+      "kind": "image",
+      "width": 336,
+      "height": 336,
+      "decodedBytes": 451584,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
       "path": "textures/campaign/frostspire-valley.webp",
       "bytes": 22896,
       "sha256": "c740a988bcbeba52c3419767af3b7c2d9d212dc473500cf9a1de295b52375a1d",
@@ -14449,17 +14941,17 @@
     },
     {
       "path": "textures/stages/volcano/floor.jpg",
-      "bytes": 577258,
-      "sha256": "81eb302d927bd216dd911e8cadbc33786c55b1dfd7ddcb37e39fa8632e688530",
+      "bytes": 180320,
+      "sha256": "504dd469b5a75eb190174a183cd927dd11bb980e69e2089c4ba03b60c0403f8f",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
         "src/data/stages.js"
       ],
       "kind": "image",
-      "width": 1024,
-      "height": 1024,
-      "decodedBytes": 4194304,
+      "width": 768,
+      "height": 768,
+      "decodedBytes": 2359296,
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     },
     {
@@ -14690,6 +15182,10 @@
       {
         "path": "art/blender/grappler.blend",
         "bytes": 2609596
+      },
+      {
+        "path": "art/blender/hellfire_caldera.blend",
+        "bytes": 349887
       },
       {
         "path": "art/blender/hellfire_underworks.blend",

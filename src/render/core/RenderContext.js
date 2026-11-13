@@ -2,10 +2,24 @@ import * as THREE from 'three';
 import { TUNING } from '../../data/tuning.js';
 import { graphicsPixelRatio, normalizeGraphicsPreset } from '../graphicsPresets.js';
 
+function softwareWebGL() {
+  if (typeof document === 'undefined') return false;
+  const canvas = document.createElement('canvas');
+  const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+  if (!gl) return false;
+  const info = gl.getExtension('WEBGL_debug_renderer_info');
+  const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : '';
+  const lose = gl.getExtension('WEBGL_lose_context');
+  if (lose) lose.loseContext();
+  return /swiftshader|llvmpipe|softpipe/i.test(name);
+}
+
 export function createRenderContext(container, initialPreset = 'high') {
   let preset = normalizeGraphicsPreset(initialPreset);
   const initialWidth = Math.max(1, container.clientWidth), initialHeight = Math.max(1, container.clientHeight);
-  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  // Multisampling on SwiftShader is what pushes the Sahil showroom trace past its 90s deadline.
+  // Hardware GPUs keep antialiasing.
+  const renderer = new THREE.WebGLRenderer({ antialias: !softwareWebGL(), powerPreference: 'high-performance' });
   renderer.info.autoReset = false;
   renderer.setPixelRatio(graphicsPixelRatio(preset, initialWidth, initialHeight, window.devicePixelRatio));
   renderer.setSize(initialWidth, initialHeight);

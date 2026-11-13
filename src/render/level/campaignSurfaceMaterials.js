@@ -1,7 +1,7 @@
 import { Color, Vector4 } from 'three';
 import { peekTexture } from '../assets.js';
 import {
-  ART_GLSL, CAMPAIGN_SURFACE_ART, ceilingSurface, GLASS_CEILING_SURFACE, kitCeilingSurface, MOONLIT_SURFACE_ART, OFFICE_SURFACE_ART, SKYLINE_SURFACE_ART, surfaceArtPath, surfaceArtTheme, UNDERWORKS_SURFACE_ART,
+  ART_GLSL, CALDERA_SURFACE_ART, CAMPAIGN_SURFACE_ART, ceilingSurface, GLASS_CEILING_SURFACE, kitCeilingSurface, MOONLIT_SURFACE_ART, OFFICE_SURFACE_ART, SKYLINE_SURFACE_ART, surfaceArtPath, surfaceArtTheme, UNDERWORKS_SURFACE_ART,
 } from './campaignSurfaceArt.js';
 import { CAMPAIGN_SURFACE_PATTERNS, SURFACE_GLSL } from './campaignSurfacePatterns.js';
 
@@ -29,6 +29,7 @@ const KIT_SURFACES = {
   moonlit_apron: HARD, moonlit_wall: HARD, moonlit_crypt_wall: HARD,
   moonlit_vault: HARD, moonlit_column: HARD, moonlit_ruin_arch: HARD, moonlit_tomb: HARD,
   moonlit_ridge: HARD,
+  caldera_apron: HARD, caldera_wall: HARD, caldera_spires: HARD, caldera_overhang: HARD,
   bazaar2_wall_panel: HARD, bazaar2_shop: HARD, bazaar2_tower: HARD,
   bazaar2_support: HARD, bazaar2_ridge: MASONRY, bazaar2_canopy: WOOD,
   landing_facade_a: HARD, landing_facade_b: HARD, landing_facade_c: HARD,
@@ -191,7 +192,7 @@ const SHADE_SURFACE = /* glsl */ `
 export function createCampaignSurfaceMaterials() {
   const materials = new WeakMap();
   const time = { value: 0 };
-  const atlases = new Map([CAMPAIGN_SURFACE_ART, SKYLINE_SURFACE_ART, UNDERWORKS_SURFACE_ART, OFFICE_SURFACE_ART, MOONLIT_SURFACE_ART].map(
+  const atlases = new Map([CAMPAIGN_SURFACE_ART, SKYLINE_SURFACE_ART, UNDERWORKS_SURFACE_ART, OFFICE_SURFACE_ART, MOONLIT_SURFACE_ART, CALDERA_SURFACE_ART].map(
     (path) => [path, { texture: { value: null }, ready: { value: 0 } }],
   ));
   const themes = new Map();
@@ -244,7 +245,7 @@ export function createCampaignSurfaceMaterials() {
           ${level === 'L06' ? '#define CAMPAIGN_ART_SKYLINE\nuniform vec4 campaignRoad;' : ''}
           ${level === 'L07' ? '#define CAMPAIGN_ART_UNDERWORKS' : ''}
           ${level === 'L08' ? '#define CAMPAIGN_ART_OFFICE\nuniform float campaignOfficeFloor;' : ''}
-          ${['L07', 'L08', 'L09'].includes(level) ? '#define CAMPAIGN_ART_ACCENT_FLOOR' : ''}
+          ${['L07', 'L08', 'L09', 'L10'].includes(level) ? '#define CAMPAIGN_ART_ACCENT_FLOOR' : ''}
           ${glassRoof ? '#define CAMPAIGN_GLASS_ROOF' : ''}
           ${SURFACE_GLSL}
           ${ART_GLSL}
@@ -275,9 +276,9 @@ export function createCampaignSurfaceMaterials() {
       const mall = level === 'L01' && geometry.id === 'S3-floor';
       const landingRoad = level === 'L01' && /^S[1245]-floor$/.test(geometry.id);
       const accentFloor = mall || ((level === 'L07' || level === 'L08') && /^S[34]-floor$/.test(geometry.id))
-        || (level === 'L09' && geometry.id === 'S3-floor');
+        || ((level === 'L09' || level === 'L10') && geometry.id === 'S3-floor');
       const kind = ceiling === GLASS_CEILING_SURFACE ? HARD
-        : landingRoad || level === 'L06' && /^S[1-4]-floor$/.test(geometry.id) ? ROAD
+        : landingRoad || (level === 'L06' && /^S[1-4]-floor$/.test(geometry.id)) ? ROAD
           : level === 'L02' && geometry.mat === 'rock' ? MASONRY
           : level === 'L09' && geometry.id === 'S2-floor' ? CRYPT_FLOOR
             : accentFloor ? PANEL_FLOOR : primitiveSurfaceKind(geometry);

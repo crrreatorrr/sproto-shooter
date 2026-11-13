@@ -2,6 +2,9 @@ import { Color, Matrix4, PointLight, Vector3 } from 'three';
 
 // Lenses use local Three.js coordinates. The existing instance transform includes placement yaw and scale.
 const FIXTURES = {
+  landing_lamp: { lens: [0, 5.37, 1.04], color: 0xffc486, intensity: 43, range: 18 },
+  landing_roof_light: { lens: [0, .04, 0], color: 0xbde5fa, intensity: 88, range: 19 },
+  landing_wall_light: { lens: [0, .87, .27], color: 0x9fedeb, intensity: 32, range: 12 },
   bazaar2_lantern: { lens: [0, 2.53, .71], color: 0xffbd83, intensity: 29, range: 12 },
   bazaar2_brazier: { lens: [0, 1.02, 0], color: 0xffa657, intensity: 48, range: 16 },
   landing_lamp: { lens: [0, 5.37, 1.04], color: 0xffc486, intensity: 43, range: 18 },
@@ -19,6 +22,10 @@ const FIXTURES = {
   underworks_roof: { lens: [1.1, .09, 6], color: 0xffb471, intensity: 58, range: 15 },
   underworks_furnace: { lens: [0, 2.10, 2.22], color: 0xff9b53, intensity: 64, range: 15 },
   underworks_reactor: { lens: [0, 4.10, 2.15], color: 0xff9660, intensity: 155, range: 21 },
+  caldera_brazier: { lens: [0, 1.40, 0], color: 0xffa65a, intensity: 39, range: 12 },
+  caldera_obelisk: { lens: [0, 1.85, .58], color: 0xff964b, intensity: 22, range: 9 },
+  caldera_shrine: { lens: [0, 4.39, .28], color: 0xff9749, intensity: 138, range: 23 },
+  caldera_vent: { lens: [0, .91, 0], color: 0x80ffe8, intensity: 24, range: 9 },
   moonlit_lantern: { lens: [-.035, 2.39, .18], color: 0x83ffee, intensity: 24, range: 12 },
   moonlit_sconce: { lens: [0, 1.19, .72], color: 0xca9aff, intensity: 32, range: 13 },
   moonlit_gate: { lens: [0, 5.64, .55], color: 0x7cf5ff, intensity: 132, range: 22 },

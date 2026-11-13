@@ -5,6 +5,7 @@ import { solidTerrain } from '../../sim/campaign/terrain.js';
 import { DRESSING, HIDE_WHEN_GOT, MECHANISM_MODEL, STAGE_DRESSING } from './dressing.js';
 import { FROST_COLORS, frostspirePlacements } from './frostspireDressing.js';
 import { bazaarPaving, bazaarPlacements } from './bazaarDressing.js';
+import { calderaPlacements } from './calderaDressing.js';
 import { landingPlacements } from './landingDressing.js';
 import { moonlitPlacements } from './moonlitDressing.js';
 import { officePlacements } from './officeDressing.js';
@@ -26,7 +27,7 @@ import { KIT, duelInstance, kitGeometry, kitMaterial, kitVersion } from './kitMo
 
 export { buildLookGroup, buildSectionMeshes, LEVEL_COLOR, levelMaterial } from './levelGeometry.js';
 
-const CAMPAIGN_KITS = { L03: grovePlacements, L04: voidPlacements, L05: frostspirePlacements, L06: skylinePlacements, L07: underworksPlacements, L08: officePlacements, L09: moonlitPlacements };
+const CAMPAIGN_KITS = { L03: grovePlacements, L04: voidPlacements, L05: frostspirePlacements, L06: skylinePlacements, L07: underworksPlacements, L08: officePlacements, L09: moonlitPlacements, L10: calderaPlacements };
 const groveLevelMaterial = (name, cache) => groveMaterial(name, cache, levelMaterial);
 
 function aabbBox(s) {
@@ -176,6 +177,7 @@ export function createLevelView() {
   const underworksMats = new Map();
   const officeMats = new Map();
   const moonlitMats = new Map();
+  const calderaMats = new Map();
   const frostMaterial = (name) => levelMaterial(name, frostMats, FROST_COLORS[name]);
   const underworksMaterial = (name) => levelMaterial(name, underworksMats,
     name === 'rock' ? 0x786577 : name === 'stone' ? 0x69566e : null);
@@ -183,6 +185,8 @@ export function createLevelView() {
     name === 'metal' ? 0xb9b1a2 : name === 'stone' ? 0x67778c : null);
   const moonlitMaterial = (name) => levelMaterial(name, moonlitMats,
     name === 'rock' ? 0x8996af : name === 'stone' ? 0x7781a2 : null);
+  const calderaMaterial = (name) => levelMaterial(name, calderaMats,
+    name === 'rock' ? 0x766274 : name === 'stone' ? 0x66566d : null);
   let key = '';
   let gotViews = [];
   function syncGot(state) {
@@ -214,8 +218,9 @@ export function createLevelView() {
     const grove = lv.id === 'L03';
     const surfaceKit = (base, model) => surfaces.kit(base, lv.id, model);
     const moonlit = lv.id === 'L09';
+    const caldera = lv.id === 'L10';
     const levelBase = grove ? groveLevelMaterial : frost ? frostMaterial
-      : lv.id === 'L07' ? underworksMaterial : lv.id === 'L08' ? officeMaterial : moonlit ? moonlitMaterial : levelMaterial;
+      : lv.id === 'L07' ? underworksMaterial : lv.id === 'L08' ? officeMaterial : moonlit ? moonlitMaterial : caldera ? calderaMaterial : levelMaterial;
     const surfacePrimitive = (base, g) => surfaces.primitive(base, lv.id, g);
     const voidLevel = lv.id === 'L04';
     const office = lv.id === 'L08';
@@ -225,6 +230,9 @@ export function createLevelView() {
     const visible = (sec.geometry || []).filter((g) => !broken?.[g.id]);
     const prims = new Map(visible.map((g) => [g.id, g]));
     const replaced = new Set();
+    if (lv.id === 'L01') {
+      for (const mesh of decorMeshes(landingPlacements(sec, prims), [0, 0, 0], replaced, surfaceKit)) group.add(mesh);
+    }
     if (lv.id === 'L02') {
       for (const mesh of decorMeshes(bazaarPlacements(sec, prims), [0, 0, 0], replaced, surfaceKit)) group.add(mesh);
     }
@@ -288,7 +296,9 @@ export function createLevelView() {
     for (const m of sec.mechanisms || []) {
       if (grove && m.kind === 'manaBloom' && replaced.has(m.id.replace(/-use$/, '-flower'))) continue;
       if (replaced.has(`marker:${m.id}`)) continue;
-      const special = (voidLevel || moonlit) && m.kind === 'jetpack' ? 'void_jetpack'
+      const special = caldera && m.kind === 'fuel' ? 'caldera_fuel'
+        : caldera && m.kind === 'jumpPad' ? 'caldera_vent'
+        : (voidLevel || moonlit) && m.kind === 'jetpack' ? 'void_jetpack'
         : polished && m.kind === 'shrine' ? 'campaign_shrine'
           : office && m.kind === 'laser' ? 'office_laser'
             : moonlit && m.kind === 'portal' ? 'moonlit_portal_light' : null;
@@ -315,7 +325,8 @@ export function createLevelView() {
       // Its keyed mesh starts above the floor and shares the portal frame's transform.
       mesh.position.set(at[0], 0, at[2]);
       mesh.rotation.y = -Math.PI / 2;
-    } else if (special === 'office_laser') mesh.position.set(at[0], at[1] - 1.2 - kit.minY, at[2]);
+    } else if (special === 'caldera_vent' || special === 'caldera_fuel') mesh.position.set(at[0], -kit.minY, at[2]);
+    else if (special === 'office_laser') mesh.position.set(at[0], at[1] - 1.2 - kit.minY, at[2]);
     else mesh.position.set(at[0] - kit.center.x * k, (at[1] || 0.6) - (jetpack ? kit.minY : kit.center.y) * k, at[2] - kit.center.z * k);
     mesh.castShadow = true;
     mesh.userData.kit = true;
@@ -327,20 +338,23 @@ export function createLevelView() {
     if (!at) return;
     const laser = special === 'office_laser';
     const portal = special === 'moonlit_portal_light';
+    const vent = special === 'caldera_vent';
+    const fuel = special === 'caldera_fuel';
     const model = kitMarker(m, at, special);
     if (model) {
       group.add(model);
-      if (jetpack || laser || portal || (HIDE_WHEN_GOT.has(m.kind) && m.id)) {
+      if (jetpack || laser || portal || fuel || (HIDE_WHEN_GOT.has(m.kind) && m.id)) {
         gotViews.push({ id: m.id, mesh: model, skipIfOwned: jetpack && m.skipIfOwned });
       }
       return;
     }
-    const color = m.kind === 'secret' ? 0xffd166 : m.kind === 'rack' ? 0x7fd34e : m.kind === 'hazard' ? 0xff5a1a : laser ? 0xff5061 : portal ? 0xc09bff : LEVEL_COLOR.trim;
+    const color = m.kind === 'secret' ? 0xffd166 : m.kind === 'rack' ? 0x7fd34e : m.kind === 'hazard' ? 0xff5a1a : laser ? 0xff5061 : portal ? 0xc09bff : vent || fuel ? 0x80ffe8 : LEVEL_COLOR.trim;
     const geometry = laser ? new THREE.RingGeometry(1.15, 1.28, 24).rotateX(-Math.PI / 2)
-      : new THREE.BoxGeometry(0.45, 0.45, 0.45);
+      : vent ? new THREE.RingGeometry(m.r * .72, m.r, 32).rotateX(-Math.PI / 2)
+        : new THREE.BoxGeometry(0.45, 0.45, 0.45);
     const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35, roughness: 0.4 }));
-    mesh.position.set(at[0], laser ? .024 : at[1] || .6, at[2]);
-    if (jetpack || laser || portal) gotViews.push({ id: m.id, mesh, skipIfOwned: m.skipIfOwned });
+    mesh.position.set(at[0], laser || vent ? .024 : at[1] || .6, at[2]);
+    if (jetpack || laser || portal || fuel) gotViews.push({ id: m.id, mesh, skipIfOwned: m.skipIfOwned });
     group.add(mesh);
   }
   return {
@@ -349,7 +363,7 @@ export function createLevelView() {
       rebuild(state);
       const seconds = state.tick * DT;
       surfaces.update(seconds);
-      if (state.level?.id === 'L07') updateUnderworksMagma(seconds);
+      if (state.level?.id === 'L07' || state.level?.id === 'L10') updateUnderworksMagma(seconds);
       fixtures.sync(state.players?.[state.localPlayerId]?.pos, seconds);
       const drilling = state.level?.v2?.enc?.['S5-F2']?.hold || 0;
       for (const child of group.children) {
