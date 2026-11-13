@@ -1,5 +1,5 @@
 // The Great Sproto Audit. Ten levels, one section chain each.
-// L01–L07 register themselves from their own folders. Later levels
+// L01–L08 register themselves from their own folders. Later levels
 // still live here until each one moves into src/data/levels/LNN/.
 import { makeLevel } from './assemble.js';
 import { L01 } from './L01/index.js';
@@ -9,44 +9,11 @@ import { L04 } from './L04/index.js';
 import { L05 } from './L05/index.js';
 import { L06 } from './L06/index.js';
 import { L07 } from './L07/index.js';
+import { L08 } from './L08/index.js';
 
-export { L01, L02, L03, L04, L05, L06, L07 };
+export { L01, L02, L03, L04, L05, L06, L07, L08 };
 
 const card = (title, lines) => ({ title, lines });
-
-export const L08 = makeLevel({
-  id: 'L08', name: 'Government Office', stage: 'office', tier: 8, parTime: 18 * 60,
-  sections: [
-    {
-      id: 'S1', name: 'Lobby', length: 48, floor: 'metal',
-      encounters: [{ id: 'E1', x: 16, space: 'interior', units: [['glowieAgent', 4]] }],
-      weapons: [{ id: 'mg-lobby', x: 28, gun: 'mg', why: 'the lobby' }],
-      mechanisms: [
-        { kind: 'laser', id: 'lobby-laser', x: 22 },
-        { kind: 'door', id: 'turnstile', x: 34, opens: 'E1.cleared' },
-      ],
-      secret: { x: 8, modifier: 'redTape' },
-    },
-    {
-      id: 'S2', name: 'Cubicle Farm', length: 48, floor: 'metal',
-      encounters: [{ id: 'E2', x: 16, space: 'corridor', units: [['riotMidget', 2], ['glowieAgent', 2]] }],
-      weapons: [{ id: 'sg-cubes', x: 28, gun: 'shotgun', why: 'cubicle farm' }],
-      mechanisms: [{ kind: 'elevator', id: 'lift-2', x: 34, y: 0.4 }],
-    },
-    {
-      id: 'S3', name: 'Server Floor', length: 48, floor: 'metal',
-      encounters: [{ id: 'E3', x: 16, space: 'interior', units: [['auditSniper', 2], ['hexAcolyte', 2]] }],
-      weapons: [{ id: 'sn-atrium', x: 28, gun: 'sniper', why: 'the atrium sightline' }],
-      mechanisms: [{ kind: 'laser', id: 'server-grid', x: 22, dps: 8 }],
-    },
-    {
-      id: 'S4', name: 'The Roof', length: 48,
-      intro: card('Government Office', ['Glowie has a badge and a flashbang.', 'Look away.']),
-      encounters: [{ id: 'E4', x: 16, space: 'arena', objective: 'boss', units: [['glowie', 1]] }],
-      weapons: [{ id: 'bz-glowie', x: 10, gun: 'bazooka', why: 'Glowie on the roof' }],
-    },
-  ],
-});
 
 export const L09 = makeLevel({
   id: 'L09', name: 'Moonlit Ruins', stage: 'moonlit', tier: 9, parTime: 28 * 60, jetpack: 'pickup',

@@ -160,6 +160,8 @@ export const PROPS = {
   moonlit_tomb: 'models/props/moonlit_tomb.glb.gz',
   moonlit_vault: 'models/props/moonlit_vault.glb.gz',
   moonlit_wall: 'models/props/moonlit_wall.glb.gz',
+  office_annex: 'models/props/office_annex.glb.gz',
+  office_atrium_sign: 'models/props/office_atrium_sign.glb.gz',
   office_clock: 'models/props/office_clock.glb.gz',
   office_conduit: 'models/props/office_conduit.glb.gz',
   office_cubicle: 'models/props/office_cubicle.glb.gz',
