@@ -332,6 +332,21 @@ def apron():
     return m
 
 
+def viaduct():
+    """A distant aqueduct silhouette with three ruined arches and lit recesses."""
+    m = model('viaduct')
+    for x in (-7.8, 0, 7.8):
+        arc(m, [DARK, SLATE, STONE], 3.91, 3.04, 0, pi, 6, 2.0, (x, 5.6))
+    for x in (-11.65, -3.9, 3.9, 11.65):
+        m.box(DARK, (1.64, 2.0, 5.9), (x, 0, 2.95))
+        m.box(SLATE, (1.84, 2.22, .52), (x, 0, 5.4))
+        m.box(CYAN, (.24, .038, .63), (x, -1.022, 4.12))
+    m.box(SLATE, (24.8, 2.0, .47), (0, 0, 9.55))
+    for x, height in ((-10, 2.06), (-4.7, 1.36), (2.1, .62), (7.6, 1.15)):
+        m.box(INK, (1.20, 1.75, height), (x, 0, 9.78 + height / 2))
+    return m
+
+
 def main():
     clear_scene()
     MATERIALS.clear()
@@ -340,7 +355,9 @@ def main():
     scene.render.fps = 24
     scene.frame_start, scene.frame_end = FRAMES[0], FRAMES[-1]
     makers = (wall, crypt_wall, column, fragment, ruin_arch, ridge, vault, tomb,
-              sconce, lantern, obelisk, camp, portal_frame, gate, medallion, apron)
+              sconce, lantern, obelisk, camp, portal_frame, gate, medallion, apron, viaduct)
+    args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+    expansion_only = '--expansion-only' in args
     results = []
     for make in makers:
         result = make()
@@ -349,7 +366,8 @@ def main():
     results.append(('moonlit_portal_light', portal_light(), True))
     for i, (name, parts, animated) in enumerate(results):
         scene.frame_set(scene.frame_start)
-        export(parts, 'props', name, animated=animated, compressed=True)
+        if not expansion_only or name == 'moonlit_viaduct':
+            export(parts, 'props', name, animated=animated, compressed=True)
         collection = bpy.data.collections.new(name)
         scene.collection.children.link(collection)
         root = bpy.data.objects.new(f'{name} | Editable prop', None)

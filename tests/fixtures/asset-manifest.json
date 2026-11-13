@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 351,
-    "runtimeBytes": 27364834,
+    "runtimeFiles": 352,
+    "runtimeBytes": 27363565,
     "decodedBytes": 258148166,
-    "referenced": 351,
+    "referenced": 352,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -1486,6 +1486,13 @@
     },
     {
       "path": "models/props/moonlit_vault.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/moonlit_viaduct.glb.gz",
       "kind": "static",
       "from": [
         "src/render/level/kitModels.js"
@@ -9279,6 +9286,36 @@
       }
     },
     {
+      "path": "models/props/moonlit_viaduct.glb.gz",
+      "bytes": 4369,
+      "sha256": "6141ffce5605b3e6428a73a2ceebc62e075bb7f05123b633b6f3a92b0cc79020",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 420,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_moonlit_aqua",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
       "path": "models/props/moonlit_wall.glb.gz",
       "bytes": 5520,
       "sha256": "298acda49aa9a3ce07fd4f0e3aed2a12f50b431f3be070cca4397e04475e1266",
@@ -12978,8 +13015,8 @@
     },
     {
       "path": "textures/campaign/moonlit-night.webp",
-      "bytes": 16596,
-      "sha256": "0334de606eff8149e71b9daccc1b7cf4becdbb9ae3e0852f36218caabdd437e8",
+      "bytes": 10958,
+      "sha256": "ededcb99c3b0f20b8cfbdc7c7e58481b624e3c04d893e45301531f9f736bcd59",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -13646,7 +13683,7 @@
       },
       {
         "path": "art/blender/moonlit_ruins.blend",
-        "bytes": 204081
+        "bytes": 207040
       },
       {
         "path": "art/blender/new_enemies.blend",
