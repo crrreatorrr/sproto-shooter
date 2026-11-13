@@ -9,6 +9,10 @@ const FIXTURES = {
   frost_floodlight: { lens: [0, 2.29, .53], color: 0xffd286, intensity: 23, range: 10 },
   skyline_lamp: { lens: [0, 5.66, 1.09], color: 0xffc783, intensity: 36, range: 15 },
   skyline_canopy: { lens: [0, .02, 1.56], color: 0x62deff, intensity: 16, range: 9 },
+  underworks_gantry: { lens: [0, 7.13, 0], color: 0xffb367, intensity: 65, range: 17 },
+  underworks_roof: { lens: [1.1, .09, 6], color: 0xffb471, intensity: 58, range: 15 },
+  underworks_furnace: { lens: [0, 2.10, 2.22], color: 0xff9b53, intensity: 64, range: 15 },
+  underworks_reactor: { lens: [0, 4.10, 2.15], color: 0xff9660, intensity: 155, range: 21 },
   frost_beacon: { lens: [0, 1.83, 0], color: 0xffc66c, intensity: 9, range: 6 },
 };
 

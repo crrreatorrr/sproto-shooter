@@ -1,11 +1,11 @@
 import { Color } from 'three';
 import { peekTexture } from '../assets.js';
 import {
-  ART_GLSL, CAMPAIGN_SURFACE_ART, ceilingSurface, GLASS_CEILING_SURFACE, kitCeilingSurface, SKYLINE_SURFACE_ART, surfaceArtPath, surfaceArtTheme,
+  ART_GLSL, CAMPAIGN_SURFACE_ART, ceilingSurface, GLASS_CEILING_SURFACE, kitCeilingSurface, SKYLINE_SURFACE_ART, surfaceArtPath, surfaceArtTheme, UNDERWORKS_SURFACE_ART,
 } from './campaignSurfaceArt.js';
 import { CAMPAIGN_SURFACE_PATTERNS, SURFACE_GLSL } from './campaignSurfacePatterns.js';
 
-const HARD = 0, SOFT = 1, WOOD = 2, ICE = 3, GRASS = 4, MASONRY = 5, ROAD = 6;
+const HARD = 0, SOFT = 1, WOOD = 2, ICE = 3, GRASS = 4, MASONRY = 5, ROAD = 6, FOUNDRY_STEEL = 7;
 const SUBSTRATE = {
   stone: HARD, rock: HARD, concrete: HARD, metal: HARD, pillar: HARD,
   grass: GRASS, dirt: SOFT, sand: SOFT, snow: SOFT, creekBed: SOFT, wood: WOOD, ice: ICE,
@@ -22,6 +22,8 @@ const KIT_SURFACES = {
   frost_glacier: ICE, frost_drift: SOFT, frost_roof: HARD,
   skyline_barrier: MASONRY, skyline_cladding: MASONRY, skyline_masonry: MASONRY,
   skyline_shop: MASONRY, skyline_depot: MASONRY, skyline_canopy: HARD, skyline_tower: HARD, skyline_slab: HARD,
+  underworks_basalt_wall: HARD, underworks_basalt_cluster: HARD, underworks_steel_wall: FOUNDRY_STEEL,
+  underworks_roof: FOUNDRY_STEEL, underworks_tunnel: FOUNDRY_STEEL,
 };
 
 const SURFACE_EXCLUSIONS = new Set(['energyBridge', 'fireRing', 'lockWall', 'mover', 'crackTiles']);
@@ -112,7 +114,7 @@ const SHADE_SURFACE = /* glsl */ `
 export function createCampaignSurfaceMaterials() {
   const materials = new WeakMap();
   const time = { value: 0 };
-  const atlases = new Map([CAMPAIGN_SURFACE_ART, SKYLINE_SURFACE_ART].map(
+  const atlases = new Map([CAMPAIGN_SURFACE_ART, SKYLINE_SURFACE_ART, UNDERWORKS_SURFACE_ART].map(
     (path) => [path, { texture: { value: null }, ready: { value: 0 } }],
   ));
   const themes = new Map();
@@ -156,6 +158,7 @@ export function createCampaignSurfaceMaterials() {
           ${level === 'L03' ? '#define CAMPAIGN_ART_GROVE' : ''}
           ${level === 'L05' ? '#define CAMPAIGN_ART_FROST' : ''}
           ${level === 'L06' ? '#define CAMPAIGN_ART_SKYLINE' : ''}
+          ${level === 'L07' ? '#define CAMPAIGN_ART_UNDERWORKS' : ''}
           ${glassRoof ? '#define CAMPAIGN_GLASS_ROOF' : ''}
           ${SURFACE_GLSL}
           ${ART_GLSL}
@@ -184,7 +187,8 @@ export function createCampaignSurfaceMaterials() {
       if (!geometry) return base;
       const ceiling = ceilingSurface(level, geometry);
       const kind = ceiling === GLASS_CEILING_SURFACE ? HARD
-        : level === 'L06' && /^S[1-4]-floor$/.test(geometry.id) ? ROAD : primitiveSurfaceKind(geometry);
+        : level === 'L06' && /^S[1-4]-floor$/.test(geometry.id) ? ROAD
+          : level === 'L07' && /^S[34]-floor$/.test(geometry.id) ? FOUNDRY_STEEL : primitiveSurfaceKind(geometry);
       return decorate(base, level, kind, ceiling);
     },
     kit(base, level, model) {

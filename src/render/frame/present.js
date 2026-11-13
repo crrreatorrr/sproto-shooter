@@ -92,8 +92,9 @@ export function mountPresent(env) {
           scene.fog.near = Math.min(14, cap * 0.35);
           scene.fog.far = cap;
         } else {
-          scene.fog.near = dark ? 4 : state.level.id === 'L04' ? 90 : 30;
-          scene.fog.far = dark ? 36 : skyline ? 134 : 420;
+          const underworks = state.level.id === 'L07';
+          scene.fog.near = dark ? 4 : state.level.id === 'L04' ? 90 : underworks ? 19 : 30;
+          scene.fog.far = dark ? 36 : skyline ? 134 : underworks ? 104 : 420;
         }
       }
     } else if (scene.fog && scene.fog.far > 300) {
