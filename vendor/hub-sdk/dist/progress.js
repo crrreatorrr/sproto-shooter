@@ -258,6 +258,8 @@ export function createProgressStore(options) {
             await push();
         },
         release() {
+            if (owner.kind === 'device')
+                return;
             const earned = owner.kind === 'pending' ? value : null;
             moveTo({ kind: 'device' });
             cloud = null;
