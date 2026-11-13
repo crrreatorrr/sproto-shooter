@@ -9,7 +9,8 @@ import { createAudio } from '../audio/sfx.js';
 import { createUI } from '../ui/ui.js';
 import { ENEMIES, BOSSES } from '../data/enemies.js';
 import { CAMPAIGN, getLevelData } from '../data/levels/index.js';
-import { unlockLevel, loadProfile, rememberModifier, saveProfile, syncNonEconomicProfile, cloudBody } from '../save/profile.js';
+import { loadSettings, saveSettings } from '../save/settings.js';
+import { campaignProgress } from '../save/progress.js';
 import { decideHubReturn, hubChipHtml, WAGER_RPC } from '../hub/link.js';
 import {
   bindWagerScreen, browserReceiptStore, createWagerFlow, labelIsWager, reconnectNotice, renderWagerScreen,
@@ -28,7 +29,7 @@ import { createPerfCounters } from '../render/debug/perfCounters.js';
 import { createStatsOverlay } from '../render/debug/StatsOverlay.js';
 import { createFeel, wireHitstop } from './feel.js';
 import { createCampaignFlow, campaignFlowStep } from './campaignFlow.js';
-import { debugTaints, loadoutAction, loadoutEmpty, loadoutFromState, readLoadout, writeLoadout } from '../save/loadout.js';
+import { debugTaints, loadoutAction, loadoutEmpty, loadoutFromState, loadoutKeyFor, readLoadout, writeLoadout } from '../save/loadout.js';
 import { crashGuard } from '../core/crashGuard.js';
 import { createPadController } from '../input/padController.js';
 import { BIND, NAV_KEYS } from '../input/input.js';
@@ -57,7 +58,8 @@ export class Game {
     // True while the feedback window is open over a mode that can pause (src/hub/feedback.js).
     this.feedbackHold = false;
     this.timeScale = 1;
-    this.settings = { hitstop: true, shake: 1, sensitivity: 1, ...loadProfile().settings };
+    // Settings are this device's (src/save/settings.js). Campaign progress belongs to its owner (src/save/progress.js).
+    this.settings = { hitstop: true, shake: 1, sensitivity: 1, ...loadSettings() };
     this.feel = createFeel();
     this.campaignFlow = createCampaignFlow();
     // Optional observer for a server-issued run log. Null leaves gameplay unchanged.
@@ -93,7 +95,8 @@ export class Game {
     this.waveRelic = createWaveRelicReporter({ hub: this.hub, onGranted: (id) => this.ui.toast(`Relic: ${relicName(id)}`, 'good') });
     this.bus.on('modeStart', (ev) => this.waveRelic.modeStart(ev));
     this.bus.on('waveCleared', (ev) => this.waveRelic.waveCleared(ev, this.state));
-    // Wave Mode progress (skills, carried guns, furthest wave cleared) is kept on this device: src/save/loadout.js.
+    // Wave Mode skills and carried guns are kept in this browser per owner (src/save/loadout.js); the
+    // furthest wave cleared is campaign progress (src/save/progress.js).
     for (const type of ['waveCleared', 'defeat']) this.bus.on(type, (ev) => this.saveWaveLoadout(ev));
     // Menu focus for keyboard and gamepad, and the gamepad itself (polled every frame).
     this.nav = createMenuNav();
@@ -104,13 +107,16 @@ export class Game {
 
     this.input.sensitivity = 0.0022 * this.settings.sensitivity;
     this.input.setLook(this.state.players[this.state.localPlayerId].yaw, 0);
-    syncNonEconomicProfile(this.hub).then((decision) => {
-      if (!decision?.profile?.settings) return;
-      Object.assign(this.settings, decision.profile.settings);
-      this.renderer.setGraphicsPreset(this.settings.graphicsPreset);
-      this.input.sensitivity = 0.0022 * this.settings.sensitivity;
-      this.audio.setVolumes(this.settings.volumes);
-    }).catch(() => {});
+    // Campaign progress follows this visit: the hub account's own (synced with its cloud save) or this
+    // browser's. The level list and the best wave redraw when the account's cloud copy arrives.
+    let shown = progressShown();
+    campaignProgress.subscribe(() => {
+      const next = progressShown();
+      if (next === shown) return;
+      shown = next;
+      if (!this.screen.hidden && (this.screenKind === 'title' || this.screenKind === 'campaignSelect') && !this.pvpActive && !this._wagerScreen) this.showScreen(this.screenKind);
+    });
+    campaignProgress.followHub(this.hub);
     this.gui = null;
     this.debugOpen = false;
     wireHitstop(this);
@@ -232,8 +238,14 @@ export class Game {
   saveWaveLoadout(ev) {
     const s = this.state;
     if (s.mode !== 'waves' || this.rewardedCampaign?.active || s.tuning.godMode || this.debugSession) return;
-    const best = readLoadout().bestWave;
-    writeLoadout(loadoutFromState(s, ev.type === 'waveCleared' ? Math.max(best, ev.waveIndex + 1) : best));
+    const key = this.loadoutKey();
+    // `bestWave` in the loadout is left as it was: older saves keep it there as device progress.
+    writeLoadout(loadoutFromState(s, readLoadout(key).bestWave), key);
+    if (ev.type === 'waveCleared') campaignProgress.waveCleared(ev.waveIndex + 1);
+  }
+  /** Where this visit's Wave Mode loadout is kept: this browser's, or the hub account's. */
+  loadoutKey() {
+    return loadoutKeyFor(campaignProgress.owner());
   }
   findGun(id) {
     const p = this.state.players[this.state.localPlayerId];
@@ -293,7 +305,7 @@ export class Game {
     // Coming into Wave Mode from anywhere else picks the saved Wave Mode loadout back up. A new run
     // started from inside Wave Mode (Play again after a defeat) keeps what you are carrying.
     if (mode === 'waves' && s.mode !== 'waves') {
-      const saved = readLoadout();
+      const saved = readLoadout(this.loadoutKey());
       if (!loadoutEmpty(saved)) this.queue(loadoutAction(saved));
     } else if (mode === 'waves') this.saveWaveLoadout({ type: 'restart' });
     this.hideScreen();
@@ -365,10 +377,9 @@ export class Game {
           <button class="btn" data-go="bossSelect">👑 Pick another boss</button>
         </div>${std}</div>`;
     } else if (kind === 'campaignSelect') {
-      const prof = loadProfile();
       const cards = CAMPAIGN.map((id, i) => {
         const lv = getLevelData(id);
-        const open = prof.unlocked.includes(id);
+        const open = campaignProgress.isUnlocked(id);
         return `<button class="btn boss-card" data-go="campaign" data-level="${id}" ${open ? '' : 'disabled'}><b>${i + 1}. ${lv.name}</b><small>${open ? lv.stage : 'locked'}</small></button>`;
       }).join('');
       body = `<div class="title boss-select"><h1>THE GREAT <span>SPROTO AUDIT</span></h1>
@@ -390,7 +401,7 @@ export class Game {
           <button class="btn alt" data-go="campaignSelect">Level select</button>
         </div>${std}</div>`;
     } else if (kind === 'defeat') {
-      const r = s.run, reached = s.wave ? s.wave.index + 1 : 1, best = readLoadout().bestWave;
+      const r = s.run, reached = s.wave ? s.wave.index + 1 : 1, best = campaignProgress.bestWave();
       body = `<div class="end defeat"><h1>DEFEATED</h1>
         <p>You fell on wave ${reached}${best > 0 ? ` · best cleared: wave ${best}` : ''}. You lost half the Run Cash you earned this run.</p>
         <div class="stats">
@@ -537,8 +548,7 @@ export class Game {
     });
   }
   persistSettings() {
-    const profile = saveProfile({ ...loadProfile(), settings: { ...this.settings } });
-    if (this.hub.bankable && this.hub.saveCloud) this.hub.saveCloud(cloudBody(profile));
+    saveSettings(this.settings);
   }
   showPause() {
     if (this.rewardedCampaign?.blocksTicks) { this.rewardedCampaign.open(); return; }
@@ -808,7 +818,7 @@ export class Game {
       this.queue({ type: 'transitionDone' });
     }
     if (!this.rewardedCampaign?.active && this.state.mode === 'campaign' && lv && !this._campaignShown && this.screen.hidden) {
-      if (lv.won) { this._campaignShown = true; const i = CAMPAIGN.indexOf(lv.id); if (CAMPAIGN[i + 1]) unlockLevel(CAMPAIGN[i + 1]); for (const id of Object.keys(lv.modifiers)) rememberModifier(id); this.showScreen('levelClear'); }
+      if (lv.won) { this._campaignShown = true; const i = CAMPAIGN.indexOf(lv.id); campaignProgress.levelWon({ next: CAMPAIGN[i + 1] || null, modifiers: Object.keys(lv.modifiers) }); this.showScreen('levelClear'); }
       else if (lv.lost) { this._campaignShown = true; this.showScreen('levelLost'); }
     }
     const alpha = this.acc / DT;
@@ -1271,9 +1281,15 @@ export class Game {
   }
 }
 
-/** "Best: wave 12" under the mode buttons once a Wave Mode wave has been cleared on this device. */
+/** What the title and level list show from campaign progress, to redraw them only when it changes. */
+function progressShown() {
+  const p = campaignProgress.get();
+  return `${p.unlocked.join(',')}|${p.bestWave}`;
+}
+
+/** "Best: wave 12" under the mode buttons once this player (or this browser, outside the hub) cleared a wave. */
 function bestWaveHtml() {
-  const best = readLoadout().bestWave;
+  const best = campaignProgress.bestWave();
   return best > 0 ? `<small class="best-wave">Wave Mode best: wave ${best}</small>` : '';
 }
 

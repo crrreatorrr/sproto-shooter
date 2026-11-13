@@ -60,7 +60,7 @@ describe('local Wave Mode in Chromium', () => {
         }
         expect(await page.evaluate(() => ({ sensitivity: window.__game.settings.sensitivity, fxQuality: window.__game.settings.fxQuality })))
           .toEqual({ sensitivity: 1.5, fxQuality: 'low' });
-        expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sproto-campaign-profile')).settings))
+        expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sproto-shooter-settings'))))
           .toMatchObject({ sensitivity: 1.5, fxQuality: 'low', graphicsPreset: 'low' });
         await page.waitForTimeout(100);
         expect(await page.evaluate(() => window.__game.state.tick)).toBe(tick);

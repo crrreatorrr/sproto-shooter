@@ -1,7 +1,7 @@
 // Keyboard layout (shared Sproto convention) and the saved controller settings.
 import { describe, expect, it } from 'vitest';
 import { BIND, LATCHED, NAV_KEYS, keyLabel } from '../src/input/input.js';
-import { migrateProfile } from '../src/save/profile.js';
+import { normalizeSettings } from '../src/save/settings.js';
 
 describe('keyboard layout', () => {
   it('moves with WASD and the arrows, uses E (or G) and keeps R reload / Space jump / Shift run', () => {
@@ -44,11 +44,11 @@ describe('keyboard layout', () => {
 
 describe('controller settings', () => {
   it('saves look speed and aim assist strength, clamped', () => {
-    const p = migrateProfile({ settings: { padSensitivity: 9, aimAssist: -1 } });
-    expect(p.settings.padSensitivity).toBe(3);
-    expect(p.settings.aimAssist).toBe(0);
-    const d = migrateProfile({});
-    expect(d.settings.padSensitivity).toBe(1);
-    expect(d.settings.aimAssist).toBe(1);
+    const p = normalizeSettings({ padSensitivity: 9, aimAssist: -1 });
+    expect(p.padSensitivity).toBe(3);
+    expect(p.aimAssist).toBe(0);
+    const d = normalizeSettings({});
+    expect(d.padSensitivity).toBe(1);
+    expect(d.aimAssist).toBe(1);
   });
 });

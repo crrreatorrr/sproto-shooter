@@ -6,7 +6,7 @@ import { stateHash } from '../src/sim/hash.js';
 import { buildIssuedState, canonicalLoadoutOk } from '../src/server/runContract.js';
 import { CANONICAL_BOSSES } from '../src/data/serverManifest.js';
 import { quantizeCommand } from '../src/server/protocol.js';
-import { cloudBody } from '../src/save/profile.js';
+import { progressCloudBody } from '../src/save/progress.js';
 import { PERKS, SKILL_IDS } from '../src/data/skills.js';
 import { onEnemyKilled } from '../src/sim/combat.js';
 import { createBoss } from '../src/sim/state.js';
@@ -153,8 +153,8 @@ describe('saved Wave Mode loadout', () => {
       expect([...mem.keys()]).toEqual([LOADOUT_KEY]);
       expect(readLoadout().guns.length).toBe(3);
       expect(readLoadout().bestWave).toBe(3);
-      // the campaign profile's cloud body has no room for it, and the hub filter strips `guns` anyway
-      expect(Object.keys(cloudBody({ ...readLoadout(), unlocked: ['L01'] })).sort()).toEqual(['modifiers', 'settings', 'unlocked', 'updatedAt', 'v']);
+      // the campaign progress cloud body has no room for it, and the hub filter strips `guns` anyway
+      expect(Object.keys(progressCloudBody({ ...readLoadout(), unlocked: ['L01'] })).sort()).toEqual(['bestWave', 'modifiers', 'unlocked', 'v']);
       expect(nonEconomicSave({ guns: readLoadout().guns, unlocked: ['L01'] }).guns).toBeUndefined();
       mem.set(LOADOUT_KEY, '{not json');
       expect(loadoutEmpty(readLoadout())).toBe(true);

@@ -1,8 +1,10 @@
-// Wave Mode progress kept on this device: skill levels, the guns you carry and the furthest wave you cleared.
+// Wave Mode loadout kept in this browser: skill levels and the guns you carry, per owner (loadoutKeyFor).
+// The furthest wave you cleared is campaign progress now (src/save/progress.js). `bestWave` stays in this
+// shape only so a save from before keeps it: the progress store reads it as this device's progress.
 // Game layer only. The sim never reads this file; a save reaches it as one `loadLoadout` action at the
 // start of a Wave Mode run (src/sim/actions.js), which the sim checks and applies itself.
 //
-// This is not part of the campaign profile and is never sent to the hub: the hub save strips economic
+// This is not part of campaign progress and is never sent to the hub: the hub save strips economic
 // keys such as `guns` (ECONOMIC_KEY in src/hub/link.js), and nothing here has value outside this device.
 // It cannot reach a rewarded run or a wager: a rewarded run is built from the server's issuance by
 // buildIssuedState and accepts no action but transitionDone, the sim ignores `loadLoadout` outside
@@ -104,15 +106,28 @@ function store() {
   try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch { return null; }
 }
 
-export function readLoadout() {
-  const ls = store();
-  if (!ls) return normalizeLoadout(null);
-  try { return normalizeLoadout(JSON.parse(ls.getItem(LOADOUT_KEY) || 'null')); } catch { return normalizeLoadout(null); }
+/**
+ * Where an owner's loadout is kept in this browser (owners from src/save/progress.js). Carried guns can
+ * be dropped, so the loadout is not account progress and never goes to the hub, but it is still kept
+ * apart per owner: a hub account does not pick up this browser's guns or another account's. The device
+ * keeps the original key, so loadouts saved before this keep working outside the hub. A visit whose
+ * account is not known yet keeps nothing.
+ */
+export function loadoutKeyFor(owner) {
+  if (!owner || owner.kind === 'device') return LOADOUT_KEY;
+  if (owner.kind === 'account' && owner.playerId) return `${LOADOUT_KEY}@${owner.playerId}`;
+  return null;
 }
 
-export function writeLoadout(loadout) {
+export function readLoadout(key = LOADOUT_KEY) {
+  const ls = store();
+  if (!ls || !key) return normalizeLoadout(null);
+  try { return normalizeLoadout(JSON.parse(ls.getItem(key) || 'null')); } catch { return normalizeLoadout(null); }
+}
+
+export function writeLoadout(loadout, key = LOADOUT_KEY) {
   const next = normalizeLoadout(loadout);
   const ls = store();
-  if (ls) { try { ls.setItem(LOADOUT_KEY, JSON.stringify(next)); } catch { /* storage full or blocked: play on, unsaved */ } }
+  if (ls && key) { try { ls.setItem(key, JSON.stringify(next)); } catch { /* storage full or blocked: play on, unsaved */ } }
   return next;
 }
