@@ -1,11 +1,11 @@
 import { Color } from 'three';
 import { peekTexture } from '../assets.js';
 import {
-  ART_GLSL, CAMPAIGN_SURFACE_ART, ceilingSurface, GLASS_CEILING_SURFACE, kitCeilingSurface, SKYLINE_SURFACE_ART, surfaceArtPath, surfaceArtTheme, UNDERWORKS_SURFACE_ART,
+  ART_GLSL, CAMPAIGN_SURFACE_ART, ceilingSurface, GLASS_CEILING_SURFACE, kitCeilingSurface, OFFICE_SURFACE_ART, SKYLINE_SURFACE_ART, surfaceArtPath, surfaceArtTheme, UNDERWORKS_SURFACE_ART,
 } from './campaignSurfaceArt.js';
 import { CAMPAIGN_SURFACE_PATTERNS, SURFACE_GLSL } from './campaignSurfacePatterns.js';
 
-const HARD = 0, SOFT = 1, WOOD = 2, ICE = 3, GRASS = 4, MASONRY = 5, ROAD = 6, FOUNDRY_STEEL = 7;
+const HARD = 0, SOFT = 1, WOOD = 2, ICE = 3, GRASS = 4, MASONRY = 5, ROAD = 6, PANEL_FLOOR = 7;
 const SUBSTRATE = {
   stone: HARD, rock: HARD, concrete: HARD, metal: HARD, pillar: HARD,
   grass: GRASS, dirt: SOFT, sand: SOFT, snow: SOFT, creekBed: SOFT, wood: WOOD, ice: ICE,
@@ -22,8 +22,10 @@ const KIT_SURFACES = {
   frost_glacier: ICE, frost_drift: SOFT, frost_roof: HARD,
   skyline_barrier: MASONRY, skyline_cladding: MASONRY, skyline_masonry: MASONRY,
   skyline_shop: MASONRY, skyline_depot: MASONRY, skyline_canopy: HARD, skyline_tower: HARD, skyline_slab: HARD,
-  underworks_basalt_wall: HARD, underworks_basalt_cluster: HARD, underworks_steel_wall: FOUNDRY_STEEL,
-  underworks_roof: FOUNDRY_STEEL, underworks_tunnel: FOUNDRY_STEEL,
+  underworks_basalt_wall: HARD, underworks_basalt_cluster: HARD, underworks_steel_wall: PANEL_FLOOR,
+  underworks_roof: PANEL_FLOOR, underworks_tunnel: PANEL_FLOOR,
+  office_wall: HARD, office_facade: HARD, office_parapet: HARD,
+  office_soffit: HARD, office_portal: HARD, office_pilaster: HARD, office_skirt: HARD,
 };
 
 const SURFACE_EXCLUSIONS = new Set(['energyBridge', 'fireRing', 'lockWall', 'mover', 'crackTiles']);
@@ -114,7 +116,7 @@ const SHADE_SURFACE = /* glsl */ `
 export function createCampaignSurfaceMaterials() {
   const materials = new WeakMap();
   const time = { value: 0 };
-  const atlases = new Map([CAMPAIGN_SURFACE_ART, SKYLINE_SURFACE_ART, UNDERWORKS_SURFACE_ART].map(
+  const atlases = new Map([CAMPAIGN_SURFACE_ART, SKYLINE_SURFACE_ART, UNDERWORKS_SURFACE_ART, OFFICE_SURFACE_ART].map(
     (path) => [path, { texture: { value: null }, ready: { value: 0 } }],
   ));
   const themes = new Map();
@@ -135,6 +137,7 @@ export function createCampaignSurfaceMaterials() {
     material.name = `Campaign surface ${level}`;
     // Soften the Skyline's direct sun reflection so the wet streaks stay visible.
     if (level === 'L06') material.roughness = Math.max(.48, material.roughness);
+    if (level === 'L08' && kind === PANEL_FLOOR && !base.vertexColors) material.color.setHex(0x62758b);
     material.onBeforeCompile = function (shader, renderer) {
       base.onBeforeCompile.call(this, shader, renderer);
       const kitGlow = shader.vertexShader.includes('attribute float kitGlow;');
@@ -158,7 +161,7 @@ export function createCampaignSurfaceMaterials() {
           ${level === 'L03' ? '#define CAMPAIGN_ART_GROVE' : ''}
           ${level === 'L05' ? '#define CAMPAIGN_ART_FROST' : ''}
           ${level === 'L06' ? '#define CAMPAIGN_ART_SKYLINE' : ''}
-          ${level === 'L07' ? '#define CAMPAIGN_ART_UNDERWORKS' : ''}
+          ${level === 'L07' || level === 'L08' ? '#define CAMPAIGN_ART_FOUNDRY_OR_OFFICE' : ''}
           ${glassRoof ? '#define CAMPAIGN_GLASS_ROOF' : ''}
           ${SURFACE_GLSL}
           ${ART_GLSL}
@@ -188,7 +191,8 @@ export function createCampaignSurfaceMaterials() {
       const ceiling = ceilingSurface(level, geometry);
       const kind = ceiling === GLASS_CEILING_SURFACE ? HARD
         : level === 'L06' && /^S[1-4]-floor$/.test(geometry.id) ? ROAD
-          : level === 'L07' && /^S[34]-floor$/.test(geometry.id) ? FOUNDRY_STEEL : primitiveSurfaceKind(geometry);
+          : (level === 'L07' || level === 'L08') && /^S[34]-floor$/.test(geometry.id)
+            ? PANEL_FLOOR : primitiveSurfaceKind(geometry);
       return decorate(base, level, kind, ceiling);
     },
     kit(base, level, model) {

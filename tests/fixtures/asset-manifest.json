@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 281,
-    "runtimeBytes": 26985333,
-    "decodedBytes": 257789766,
-    "referenced": 281,
+    "runtimeFiles": 302,
+    "runtimeBytes": 27132136,
+    "decodedBytes": 258175814,
+    "referenced": 302,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -1240,6 +1240,139 @@
       ]
     },
     {
+      "path": "models/props/office_clock.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_conduit.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_cubicle.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_dish.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_elevator.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_facade.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_fan.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_laser.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_pad.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_parapet.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_pilaster.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_planter.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_portal.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_reception.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_server.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_skirt.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_soffit.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_tower.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/office_wall.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
       "path": "models/props/onion_dome.glb.gz",
       "kind": "static",
       "from": [
@@ -1888,6 +2021,20 @@
       "from": [
         "src/data/stages.js",
         "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "textures/campaign/office-night.webp",
+      "kind": "static",
+      "from": [
+        "src/render/level/campaignSurfaceArt.js"
+      ]
+    },
+    {
+      "path": "textures/campaign/office-surface.webp",
+      "kind": "static",
+      "from": [
+        "src/render/level/campaignSurfaceArt.js"
       ]
     },
     {
@@ -7722,6 +7869,584 @@
       }
     },
     {
+      "path": "models/props/office_clock.glb.gz",
+      "bytes": 13366,
+      "sha256": "452848cc7184cdb46007fec7ae16765aa21e6ec8335b22d3aee6231e441730cc",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1212,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "office_clock_hands"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 2,
+        "materials": [
+          "campaign_glow_office_cyan",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_conduit.glb.gz",
+      "bytes": 5408,
+      "sha256": "3e1ea068e91f62b6086976b4d675ae4b4de11379495ce0b9d1541858ad93577b",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 616,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_cubicle.glb.gz",
+      "bytes": 16808,
+      "sha256": "f36095b8221674d55a8ad710c265234c7f7b698ac6e15e1ea35725a893f9639e",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1708,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_office_mint",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_dish.glb.gz",
+      "bytes": 12731,
+      "sha256": "92dbd65388c7a02945ecb2841f77acff5e0e1b63ab3d6a2d4c6db5d73c884068",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1008,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "office_dish_mount"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 3,
+        "materials": [
+          "campaign_glow_office_amber",
+          "campaign_glow_office_red",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_elevator.glb.gz",
+      "bytes": 4734,
+      "sha256": "e8c46c640bac28ad1a237fab7a165d3496e67f5bb375df7f46b824f15e96f913",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 440,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_office_amber",
+          "campaign_glow_office_cyan",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_facade.glb.gz",
+      "bytes": 2815,
+      "sha256": "ecae84e6e0a7e65a3002e862e196af77fa33881faa77001fdce5e1ca4e01ba36",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 264,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_fan.glb.gz",
+      "bytes": 15693,
+      "sha256": "073b45dc02ec34936a2bddebc9522d3584b76a0199ceef8cab1622ae39e406c0",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1344,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "office_fan_rotor"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 3,
+        "materials": [
+          "campaign_glow_office_red",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_laser.glb.gz",
+      "bytes": 13110,
+      "sha256": "64ad49c608a8ca81a89f7d3dad5f361bc6e827c2f74e79186089493aabe694c5",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1144,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "office_laser_scan"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 2,
+        "materials": [
+          "campaign_glow_office_amber",
+          "campaign_glow_office_red",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_pad.glb.gz",
+      "bytes": 1678,
+      "sha256": "d467cf324a1467e53d26a223495f62f6274db02d73f58d0855d9f74644180d84",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 132,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_parapet.glb.gz",
+      "bytes": 3303,
+      "sha256": "75ff093e0dba349278e05a843ae0c7dcdc1f1440caa4eee93ab099073c3d4144",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 308,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_office_red",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_pilaster.glb.gz",
+      "bytes": 3949,
+      "sha256": "0038aaa6dd75766c82172984b445edad0d102c4b8aa365d769fc89b8230972b1",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 396,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_office_amber",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_planter.glb.gz",
+      "bytes": 10530,
+      "sha256": "a2dca597e4a2b5b4835e50718e6490f04720db4402c4f90838d73050e0f48bc6",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 728,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_portal.glb.gz",
+      "bytes": 9290,
+      "sha256": "ddcd2f9c6c926c5a4277f1481b2a932e7b060cf1a6d6c36d3f4d561986c7e84f",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1136,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_office_cyan",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_reception.glb.gz",
+      "bytes": 26127,
+      "sha256": "212d6616508ba8591eb7a1427f3e239a424761b1c72f711f88bae295287f4c63",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 2680,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_office_amber",
+          "campaign_glow_office_mint",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_server.glb.gz",
+      "bytes": 8916,
+      "sha256": "72d51aad0a2b321ade97760589c0518f74b749de9a7768006c002bafaeace622",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 1020,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_office_amber",
+          "campaign_glow_office_cyan",
+          "campaign_glow_office_mint",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_skirt.glb.gz",
+      "bytes": 1061,
+      "sha256": "e66edced3a511e13564d823f1718f0bae3f4705d38034951ccce8159b8bb369c",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 44,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_soffit.glb.gz",
+      "bytes": 5877,
+      "sha256": "e5fe0ab57261c01dfce54914a1bcd46d219eb17a941b2763d363913a405e873b",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 748,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_office_cyan",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_tower.glb.gz",
+      "bytes": 4759,
+      "sha256": "a8246ec58373314352cf8d989211731a2d481f03de6611b6065735cc3e6fb8ba",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 516,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_wall.glb.gz",
+      "bytes": 3273,
+      "sha256": "44fb4ff0aa7a504efaed99891ba45435e43789b323b45b2f23565c076cf4341a",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 308,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_office_cyan",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
       "path": "models/props/onion_dome.glb.gz",
       "bytes": 5417,
       "sha256": "5341de30c62e7d1840fed5671f0cbdd6520dc2c17da5011d936bbcc33e064fc1",
@@ -10586,6 +11311,36 @@
       }
     },
     {
+      "path": "textures/campaign/office-night.webp",
+      "bytes": 16390,
+      "sha256": "c0018054d5a8d6980c6041bf56d6d9857b046565cb05c0b64a79568ceddae8a7",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/campaignSurfaceArt.js"
+      ],
+      "kind": "image",
+      "width": 768,
+      "height": 384,
+      "decodedBytes": 1179648,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
+      "path": "textures/campaign/office-surface.webp",
+      "bytes": 11806,
+      "sha256": "467ef4218bf6ae5c5526dfc9a2b497a47248b40bf1b65ebdf063f0fe3267b438",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/campaignSurfaceArt.js"
+      ],
+      "kind": "image",
+      "width": 336,
+      "height": 336,
+      "decodedBytes": 451584,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
       "path": "textures/campaign/skyline-night.webp",
       "bytes": 12632,
       "sha256": "eb050b1cea33d8a27a0bfaacb8d600913ede641a17c5c287732c89cab3162b71",
@@ -10842,17 +11597,17 @@
     },
     {
       "path": "textures/stages/office/floor.jpg",
-      "bytes": 57333,
-      "sha256": "24842e577009611aa3adeb895465691c8d1332e42a3ae2f9c0e74a6ce1c01430",
+      "bytes": 33120,
+      "sha256": "b13ab4b027506d4aa5cd5eacbbccc23e35b93d800d869b6f50829f939581dbb1",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
         "src/data/stages.js"
       ],
       "kind": "image",
-      "width": 512,
-      "height": 512,
-      "decodedBytes": 1048576,
+      "width": 384,
+      "height": 384,
+      "decodedBytes": 589824,
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     },
     {
@@ -10872,17 +11627,17 @@
     },
     {
       "path": "textures/stages/office/stone.jpg",
-      "bytes": 26751,
-      "sha256": "cde905581ebc044870ebe26b0a4a53a5e1021a2c2aa6bddf619dd995b60adced",
+      "bytes": 6143,
+      "sha256": "3252361f3f4d04bc3a3bc1af55888ff3f756e0d0c5ad2ecff345360c311839dc",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
         "src/data/stages.js"
       ],
       "kind": "image",
-      "width": 512,
-      "height": 512,
-      "decodedBytes": 1048576,
+      "width": 256,
+      "height": 256,
+      "decodedBytes": 262144,
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     },
     {
@@ -11161,6 +11916,10 @@
       {
         "path": "art/blender/fx_poof.blend",
         "bytes": 94744
+      },
+      {
+        "path": "art/blender/government_office.blend",
+        "bytes": 244328
       },
       {
         "path": "art/blender/grappler.blend",

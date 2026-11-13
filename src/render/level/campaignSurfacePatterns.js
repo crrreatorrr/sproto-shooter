@@ -157,15 +157,11 @@ export const CAMPAIGN_SURFACE_PATTERNS = {
     return vec3(1.04, 1.01, 1.16) * blocks * soot;
   `,
   L08: /* glsl */ `
-    vec2 tile = ground ? vec2(1.6) : vec2(2.4, 1.14);
-    float panels = surfaceBlocks(p, tile, 0., .38);
-    vec2 room = floor(p / tile);
-    float checker = mod(room.x + room.y, 2.);
-    float flake = step(.84, surfaceHash(floor(p * 7.6)))
-      * (1. - smoothstep(.04, .20, surfacePixel));
-    float trim = surfaceLine(p.y - .26, 2.28, .062);
-    vec3 color = mix(vec3(.84, .96, 1.11), vec3(1.12, 1.105, 1.04), checker);
-    return color * (panels + flake * .11 + (ground ? 0. : trim * .14));
+    vec2 tile = ground ? vec2(2.23, 2.23) : vec2(3.05, 1.49);
+    float panels = surfaceBlocks(p, tile, 0., .15);
+    float speckle = surfaceGrain(p, vec2(.24, .21));
+    float trim = surfaceLine(p.y - .22, 2.85, .037);
+    return vec3(.94, 1.01, 1.07) * (panels * speckle + (ground ? 0. : trim * .055));
   `,
   L09: /* glsl */ `
     vec2 worn = p + .095 * vec2(surfaceNoise(p * .62), surfaceNoise(p * .69 + 9.));

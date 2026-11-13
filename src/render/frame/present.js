@@ -68,7 +68,7 @@ export function mountPresent(env) {
 
     // enemies
     needsT -= fdt;
-    applyStage(stageFor(state, env.stageOverride), state.mode === 'campaign' ? state.level?.id : null);
+    applyStage(stageFor(state, env.stageOverride), state.mode === 'campaign' ? state.level?.id : null, state.level?.section);
     if (needsT <= 0) { needsT = 0.25; requestNeeds(state); }
     const campaign = state.mode === 'campaign' && state.level;
     for (const mesh of arenaBits) mesh.visible = !campaign;
@@ -93,8 +93,10 @@ export function mountPresent(env) {
           scene.fog.far = cap;
         } else {
           const underworks = state.level.id === 'L07';
-          scene.fog.near = dark ? 4 : state.level.id === 'L04' ? 90 : underworks ? 19 : 30;
-          scene.fog.far = dark ? 36 : skyline ? 134 : underworks ? 104 : 420;
+          const office = state.level.id === 'L08';
+          const interior = office && state.level.section !== 'S4';
+          scene.fog.near = dark ? 4 : state.level.id === 'L04' ? 90 : underworks ? 19 : interior ? 23 : 30;
+          scene.fog.far = dark ? 36 : skyline ? 134 : underworks ? 104 : interior ? 92 : office ? 152 : 420;
         }
       }
     } else if (scene.fog && scene.fog.far > 300) {

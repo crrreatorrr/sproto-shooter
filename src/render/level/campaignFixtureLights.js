@@ -13,6 +13,11 @@ const FIXTURES = {
   underworks_roof: { lens: [1.1, .09, 6], color: 0xffb471, intensity: 58, range: 15 },
   underworks_furnace: { lens: [0, 2.10, 2.22], color: 0xff9b53, intensity: 64, range: 15 },
   underworks_reactor: { lens: [0, 4.10, 2.15], color: 0xff9660, intensity: 155, range: 21 },
+  office_soffit: { lens: [1.78, .09, 2.9], color: 0xb2ecff, intensity: 48, range: 16 },
+  office_pilaster: { lens: [0, 2.95, .69], color: 0xffcc8d, intensity: 15, range: 10 },
+  office_server: { lens: [0, 2.77, .95], color: 0x62d7ff, intensity: 34, range: 11 },
+  office_fan: { lens: [0, 2.95, 1.42], color: 0xff6475, intensity: 20, range: 13 },
+  office_parapet: { lens: [0, .77, 1.15], color: 0xff5d70, intensity: 6, range: 6 },
   frost_beacon: { lens: [0, 1.83, 0], color: 0xffc66c, intensity: 9, range: 6 },
 };
 
