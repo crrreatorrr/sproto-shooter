@@ -1,5 +1,5 @@
 // The Great Sproto Audit. Ten levels, one section chain each.
-// L01, L02, L03, L04, L05 and L06 register themselves from their own folders. Later levels
+// L01–L06 and L09 register themselves from their own folders. Later levels
 // still live here until each one moves into src/data/levels/LNN/.
 import { makeLevel } from './assemble.js';
 import { L01 } from './L01/index.js';
@@ -8,8 +8,9 @@ import { L03 } from './L03/index.js';
 import { L04 } from './L04/index.js';
 import { L05 } from './L05/index.js';
 import { L06 } from './L06/index.js';
+import { L09 } from './L09/index.js';
 
-export { L01, L02, L03, L04, L05, L06 };
+export { L01, L02, L03, L04, L05, L06, L09 };
 
 const card = (title, lines) => ({ title, lines });
 
@@ -73,41 +74,6 @@ export const L08 = makeLevel({
       intro: card('Government Office', ['Glowie has a badge and a flashbang.', 'Look away.']),
       encounters: [{ id: 'E4', x: 16, space: 'arena', objective: 'boss', units: [['glowie', 1]] }],
       weapons: [{ id: 'bz-glowie', x: 10, gun: 'bazooka', why: 'Glowie on the roof' }],
-    },
-  ],
-});
-
-export const L09 = makeLevel({
-  id: 'L09', name: 'Moonlit Ruins', stage: 'moonlit', tier: 9, parTime: 28 * 60, jetpack: 'pickup',
-  sections: [
-    {
-      id: 'S1', name: 'Ruin Plains', length: 56, floor: 'rock',
-      encounters: [{ id: 'E1', x: 18, space: 'field', units: [['glowieAgent', 2], ['obama', 2], ['midget', 2]] }],
-      weapons: [
-        { id: 'mg-camp', x: 10, gun: 'mg', why: 'camp cache' },
-        { id: 'sn-camp', x: 14, gun: 'sniper', why: 'camp cache' },
-        { id: 'bz-camp', x: 18, gun: 'bazooka', why: 'camp cache' },
-      ],
-      mechanisms: [
-        { kind: 'portal', id: 'moon-gate', x: 30, dx: 8 },
-        { kind: 'jetpack', id: 'moon-pack', x: 36 },
-        { kind: 'hazard', id: 'low-g', x: 24, slow: 0, dps: 0 },
-      ],
-      secret: { x: 8, modifier: 'swarmSurge' },
-    },
-    {
-      id: 'S2', name: 'Catacombs', length: 50, floor: 'rock',
-      intro: card('Descent', ['The plains were the map.', 'The dead keep the other one.']),
-      encounters: [{ id: 'E2', x: 16, space: 'interior', units: [['hexAcolyte', 3], ['sewerMidget', 3]] }],
-      weapons: [{ id: 'sg-cata', x: 28, gun: 'shotgun', why: 'catacomb standee' }],
-    },
-    {
-      id: 'S3', name: 'Moon Gate', length: 50,
-      intro: card('The Moon Gate', ['Two Big Obamas. One key.', 'Something older is waking up.']),
-      encounters: [
-        { id: 'E3', x: 14, space: 'arena', units: [['bigObama', 2]] },
-        { id: 'E4', x: 28, space: 'arena', objective: 'boss', fleeAt: 0.7, units: [['tinubu', 1]] },
-      ],
     },
   ],
 });

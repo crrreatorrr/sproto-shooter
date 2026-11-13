@@ -5,7 +5,7 @@ import {
 } from './campaignSurfaceArt.js';
 import { CAMPAIGN_SURFACE_PATTERNS, SURFACE_GLSL } from './campaignSurfacePatterns.js';
 
-const HARD = 0, SOFT = 1, WOOD = 2, ICE = 3, GRASS = 4, MASONRY = 5, ROAD = 6, PANEL_FLOOR = 7;
+const HARD = 0, SOFT = 1, WOOD = 2, ICE = 3, GRASS = 4, MASONRY = 5, ROAD = 6, PANEL_FLOOR = 7, CRYPT_FLOOR = 8;
 const SUBSTRATE = {
   stone: HARD, rock: HARD, concrete: HARD, metal: HARD, pillar: HARD,
   grass: GRASS, dirt: SOFT, sand: SOFT, snow: SOFT, creekBed: SOFT, wood: WOOD, ice: ICE,
@@ -134,6 +134,17 @@ const SHADE_SURFACE = /* glsl */ `
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.37, .42, .47), crossing * flecks * .66);
       }
     #endif
+    #ifdef CAMPAIGN_ART_MOONLIT
+      if (surfaceNormal.y > .57 && campaignSurfaceKind == 8.) {
+        float centre = abs(surfaceUV.y - 11.);
+        float aisle = 1. - smoothstep(3.7, 3.95, centre);
+        float rim = surfaceStamp(centre - 3.71, .06);
+        vec2 stone = abs(fract(vec2(surfaceUV.x / 3.8, surfaceUV.y / 2.5)) - .5);
+        float carving = surfaceStamp(stone.x + stone.y - .28, .021) * aisle;
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(.57, .65, .86), aisle * .62);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.23, .26, .42), max(rim, carving * .64) * .55);
+      }
+    #endif
     diffuseColor.rgb *= mix(vec3(1.), max(campaignTint, vec3(.39)), campaignWeight);
   #endif
 `;
@@ -186,6 +197,7 @@ export function createCampaignSurfaceMaterials() {
           ${kitGlow ? '#define CAMPAIGN_KIT_GLOW' : ''}
           ${level === 'L03' ? '#define CAMPAIGN_ART_GROVE' : ''}
           ${level === 'L05' ? '#define CAMPAIGN_ART_FROST' : ''}
+          ${level === 'L09' ? '#define CAMPAIGN_ART_MOONLIT' : ''}
           ${level === 'L06' ? '#define CAMPAIGN_ART_SKYLINE\nuniform vec4 campaignRoad;' : ''}
           ${['L07', 'L08', 'L09'].includes(level) ? '#define CAMPAIGN_ART_ACCENT_FLOOR' : ''}
           ${glassRoof ? '#define CAMPAIGN_GLASS_ROOF' : ''}
@@ -220,7 +232,8 @@ export function createCampaignSurfaceMaterials() {
       const kind = ceiling === GLASS_CEILING_SURFACE ? HARD
         : level === 'L06' && /^S[1-4]-floor$/.test(geometry.id) ? ROAD
           : level === 'L02' && geometry.mat === 'rock' ? MASONRY
-          : accentFloor ? PANEL_FLOOR : primitiveSurfaceKind(geometry);
+          : level === 'L09' && geometry.id === 'S2-floor' ? CRYPT_FLOOR
+            : accentFloor ? PANEL_FLOOR : primitiveSurfaceKind(geometry);
       const road = level === 'L06' && kind === ROAD
         ? new Vector4(geometry.size[2] / 2, geometry.at[2], geometry.at[0], Number(geometry.id[1])) : null;
       return decorate(base, level, kind, ceiling, road);

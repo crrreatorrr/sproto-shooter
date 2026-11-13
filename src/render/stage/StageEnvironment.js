@@ -67,7 +67,7 @@ export function mountStage(env) {
     const crypt = moonlit && sectionId === 'S2';
     const st = STAGES[id], a = stageAssets(id);
     const variant = office ? (roof ? 'L08-roof' : 'L08-interior')
-      : moonlit ? (crypt ? 'L09-crypt' : 'L09-exterior')
+      : moonlit ? `L09-${sectionId || 'S1'}`
       : frostspire || blockchain || skyline ? `${levelId}-${sectionId || 'S1'}`
       : bazaar ? (showroom ? 'L02-showroom' : 'L02-exterior')
         : grove || underworks ? levelId : '';
@@ -113,13 +113,13 @@ export function mountStage(env) {
       bounce.color.setHex(0xbbd7e1);
     }
     if (skyTex && (bazaar || skyline || underworks || roof || moonlit)) {
-      skyTex.offset.y = bazaar ? -.018 : skyline ? -.088 : underworks ? .035 : moonlit ? -.036 : -.098;
+      skyTex.offset.y = bazaar ? -.018 : skyline ? -.088 : underworks ? .035 : moonlit ? -.078 : -.098;
       if (bazaar || skyline || roof || moonlit) {
         // Frame a different part of the painted skyline along each approach.
         skyTex.wrapS = THREE.RepeatWrapping;
         const skylineOffset = { S1: .09, S2: .195, S3: -.17, S4: .275 };
         skyTex.offset.x = skyline ? (skylineOffset[sectionId] ?? skylineOffset.S1)
-          : bazaar ? (showroom ? -.13 : .04) : moonlit ? .208 : .185;
+          : bazaar ? (showroom ? -.13 : .04) : moonlit ? (sectionId === 'S3' ? .190 : .067) : .185;
         skyTex.needsUpdate = true;
       }
     }
@@ -203,7 +203,7 @@ export function mountStage(env) {
       bounce.intensity = roof ? .55 : .44;
     }
     if (moonlit) {
-      scene.fog.color.setHex(crypt ? 0x322c51 : 0x30456e);
+      scene.fog.color.setHex(crypt ? 0x282b47 : 0x384d72);
       hemi.color.setHex(crypt ? 0xc2b2ed : 0xc1d8fc);
       hemi.groundColor.setHex(crypt ? 0x857aa4 : 0x7a86aa);
       hemi.intensity = crypt ? 1.26 : 1.20;

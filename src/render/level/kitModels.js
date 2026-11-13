@@ -142,6 +142,7 @@ const PROPS = {
   moonlit_sconce: 'models/props/moonlit_sconce.glb.gz',
   moonlit_tomb: 'models/props/moonlit_tomb.glb.gz',
   moonlit_vault: 'models/props/moonlit_vault.glb.gz',
+  moonlit_viaduct: 'models/props/moonlit_viaduct.glb.gz',
   moonlit_wall: 'models/props/moonlit_wall.glb.gz',
   office_clock: 'models/props/office_clock.glb.gz',
   office_conduit: 'models/props/office_conduit.glb.gz',
@@ -263,7 +264,6 @@ export const KIT = {
   fx: (name) => FX[name],
   bomb: 'models/projectiles/bomb.glb.gz',
 };
-
 let version = 0;
 /** Goes up when a kit model finishes loading. Views that fell back to primitives rebuild on it. */
 export const kitVersion = () => version;
