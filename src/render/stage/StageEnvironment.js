@@ -60,8 +60,11 @@ export function mountStage(env) {
     const underworks = id === 'volcano' && levelId === 'L07';
     const office = id === 'office' && levelId === 'L08';
     const roof = office && sectionId === 'S4';
+    const moonlit = id === 'moonlit' && levelId === 'L09';
+    const crypt = moonlit && sectionId === 'S2';
     const st = STAGES[id], a = stageAssets(id);
     const variant = office ? (roof ? 'L08-roof' : 'L08-interior')
+      : moonlit ? (crypt ? 'L09-crypt' : 'L09-exterior')
       : blockchain || frostspire || skyline || underworks ? levelId : '';
     const key = id + ':' + variant + ':' + assetsVersion();
     if (key === stageKey) return;
@@ -83,13 +86,14 @@ export function mountStage(env) {
       bounce.intensity = .45;
     }
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
-    const skyTex = office && !roof ? null : peekTexture(skyline || underworks || roof ? panoramaPath(levelId) : a.sky);
-    if (skyTex && (skyline || underworks || roof)) {
-      skyTex.offset.y = skyline ? -.16 : underworks ? .035 : -.098;
-      if (roof) {
-        // Place the rift above the eastward approach and wrap the panorama at its padded seam.
+    const panorama = skyline || underworks || office || moonlit ? panoramaPath(levelId, sectionId) : a.sky;
+    const skyTex = panorama ? peekTexture(panorama) : null;
+    if (skyTex && (skyline || underworks || roof || moonlit)) {
+      skyTex.offset.y = skyline ? -.16 : underworks ? .035 : moonlit ? -.036 : -.098;
+      if (roof || moonlit) {
+        // Orient the painted landmark above the eastward approach.
         skyTex.wrapS = THREE.RepeatWrapping;
-        skyTex.offset.x = .185;
+        skyTex.offset.x = moonlit ? .208 : .185;
         skyTex.needsUpdate = true;
       }
     }
@@ -152,6 +156,17 @@ export function mountStage(env) {
       sun.intensity = roof ? .94 : .86;
       bounce.color.setHex(roof ? 0x8e93f3 : 0x82d8ed);
       bounce.intensity = roof ? .55 : .44;
+    }
+    if (moonlit) {
+      scene.fog.color.setHex(crypt ? 0x322c51 : 0x30456e);
+      hemi.color.setHex(crypt ? 0xc2b2ed : 0xc1d8fc);
+      hemi.groundColor.setHex(crypt ? 0x857aa4 : 0x7a86aa);
+      hemi.intensity = crypt ? 1.26 : 1.20;
+      sun.color.setHex(crypt ? 0xa69fe8 : 0xd7e7ff);
+      sun.position.set(19, 26, -13);
+      sun.intensity = crypt ? .58 : 1.46;
+      bounce.color.setHex(crypt ? 0x9e70f5 : 0x6e9bec);
+      bounce.intensity = crypt ? .55 : .44;
     }
     const floor = peekTexture(a.floor);
     setStageMap(groundMat, floor, st.floorRepeat, st.floorRepeat);

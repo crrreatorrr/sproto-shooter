@@ -164,17 +164,10 @@ export const CAMPAIGN_SURFACE_PATTERNS = {
     return vec3(.94, 1.01, 1.07) * (panels * speckle + (ground ? 0. : trim * .055));
   `,
   L09: /* glsl */ `
-    vec2 worn = p + .095 * vec2(surfaceNoise(p * .62), surfaceNoise(p * .69 + 9.));
-    float stone = surfaceBlocks(worn, ground ? vec2(4.1, 3.2) : vec2(2.9, 1.43), .5, .43);
-    vec2 cell = p / (ground ? 5. : 4.3);
-    vec2 uv = (fract(cell) - .5) * (ground ? 5. : 4.3);
-    float mark = surfaceStamp(length(uv) - .70, .023);
-    mark = max(mark, surfaceStamp(abs(uv.x) + abs(uv.y) - .54, .031));
-    mark *= step(.76, surfaceHash(floor(cell)));
-    float pulse = .70 + .30 * sin(campaignSurfaceTime * .77 + floor(cell.x) * 2.8);
-    gleam = vec3(.23, .19, .41) * mark * pulse * .68;
-    return mix(vec3(.91, .985, 1.14) * stone * surfaceGrain(p, vec2(.35, .48)),
-      vec3(.58, .69, .89), mark * .39);
+    float stone = surfaceBlocks(p, ground ? vec2(3.8, 3.2) : vec2(3.45, 1.45), .5, .18);
+    float grain = surfaceGrain(p, vec2(.26, .29));
+    float mineral = surfaceNoise(p * vec2(.53, .83));
+    return vec3(.96, 1.01, 1.075) * stone * grain + vec3(.013, .022, .012) * mineral;
   `,
   L10: /* glsl */ `
     vec2 shift = vec2(surfaceFacets(p * .59), surfaceFacets(p * .53 + 9.)) - .5;

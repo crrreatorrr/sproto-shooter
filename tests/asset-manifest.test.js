@@ -59,6 +59,7 @@ describe('asset manifest', () => {
       'art/blender/government_office.blend',
       'art/blender/grappler.blend',
       'art/blender/hellfire_underworks.blend',
+      'art/blender/moonlit_ruins.blend',
       'art/blender/new_enemies.blend',
       'art/blender/vape_cabal_skyline.blend',
       'art/blender/vegetable_grove.blend',
