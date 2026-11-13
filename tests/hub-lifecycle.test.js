@@ -318,7 +318,7 @@ describe('provenance and ledger boundary', () => {
     expect(pin.version).toBe('0.8.0');
     expect(pin.global).toBe('HubSDK');
     const vendor = readFileSync(new URL('../vendor/hub-sdk/VENDOR.md', import.meta.url), 'utf8');
-    expect(vendor).toMatch(/c9d01b3/);
+    expect(vendor).toMatch(/b7921f2/);
     expect(vendor).not.toMatch(/94f10af/);
     expect(vendor).not.toMatch(/metaverse-hub\.patch/);
     expect(existsSync(new URL('../vendor/hub-sdk/metaverse-hub.patch', import.meta.url))).toBe(false);
