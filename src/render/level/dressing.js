@@ -69,8 +69,7 @@ export const DRESSING = {
   },
 };
 
-// L02, The Grand Bazaar. The layout is authored piece by piece, so it is dressed by rule: what each
-// primitive is decides what stands in for it. Sproto Duel's desert props are used where they fit.
+// Fit cover and building faces to their existing collision volumes.
 const stoneBox = (g) => g.kind === 'box' && g.mat === 'stone' && g.size;
 DRESSING.L02 = {
   rules: [
@@ -80,40 +79,17 @@ DRESSING.L02 = {
     { match: /-vat-[14]$/, model: 'dye_vat_red' },
     { match: /-vat-[25]$/, model: 'dye_vat_teal' },
     { match: /-vat-[36]$/, model: 'dye_vat_gold' },
-    { match: /(minaret-cap|balcony-roof)$/, model: 'onion_dome' },
     { match: /-rack-\d$/, model: 'drying_rack' },
-    { match: /-pile-\d$/, duel: 'rug_pile' },
-    { match: /-spire$/, duel: 'rock_outcrop' },
+    { match: /-pile-\d$/, model: 'bazaar2_support' },
+    { match: /-spire$/, model: 'bazaar2_ridge' },
     { match: /-tank$/, model: 'water_tank' },
-    { match: /-fac-\w+$/, duel: 'desert_pillar' },
-    // Souk walls: tall and thin. Houses: anything with a real footprint.
-    { when: (g) => stoneBox(g) && g.size[1] >= 4 && Math.min(g.size[0], g.size[2]) <= 4, model: 'bazaar_wall' },
-    { when: (g) => stoneBox(g) && g.size[1] >= 3 && Math.min(g.size[0], g.size[2]) >= 5, model: 'sandstone_house' },
+    { match: /-fac-\w+$/, model: 'bazaar2_tower' },
+    { match: /^s1-lintel$/, model: 'bazaar2_wall_panel' },
+    { match: /^s2-well$/, model: 'well', keepHeight: true },
+    { match: /^sm-fountain$/, model: 'fountain' },
+    { when: (g) => stoneBox(g) && g.size[1] >= 4 && Math.min(g.size[0], g.size[2]) <= 4, model: 'bazaar2_wall_panel' },
+    { when: (g) => stoneBox(g) && g.size[1] >= 3 && Math.min(g.size[0], g.size[2]) >= 5, model: 'bazaar2_shop' },
   ],
-  decor: {
-    S1: [
-      { model: 'lantern_post', at: [73, 0, 116], yaw: 180 },
-      { model: 'lantern_post', at: [85, 0, 142], yaw: 90 },
-      { model: 'lantern_post', at: [129, 0, 113], yaw: 180 },
-      { model: 'lantern_post', at: [165, 0, 18], yaw: 270 },
-      { model: 'lantern_post', at: [181, 0, 31] },
-      { model: 'clay_pots', at: [77, 0, 115], yaw: 30 },
-      { model: 'clay_pots', at: [86, 0, 140.9], yaw: 155 },
-    ],
-    S2: [
-      // The authored well collision sits inside the south shelf. Show the well on its rooftop.
-      { model: 'well', at: [226, 6, 110] },
-      { model: 'lantern_post', at: [223, 6, 106] },
-      { model: 'lantern_post', at: [229, 6, 114], yaw: 180 },
-      { model: 'clay_pots', at: [226.8, 6, 113.6], yaw: 60 },
-    ],
-    S3: [{ model: 'lantern_post', at: [165, 1, 123], yaw: 90 }],
-    SM: [
-      { model: 'lantern_post', at: [63, 0, 177], yaw: 270 },
-      { model: 'lantern_post', at: [117, 0, 177], yaw: 180 },
-    ],
-  },
-  backdrop: { ring: ['mesa_a', 'dune', 'far_bazaar', 'mesa_b', 'dune', 'far_bazaar'], distance: 70, every: 60 },
 };
 
 /**

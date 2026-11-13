@@ -18,13 +18,13 @@ function atFor(n, x, z, along) {
 }
 
 const S1_ROUTE = [
-  { x0: 96, x1: 104, z0: 18, z1: 150 },
-  { x0: 96, x1: 200, z0: 19, z1: 29 },
+  { x0: 93, x1: 107, z0: 18, z1: 150 },
+  { x0: 96, x1: 202, z0: 16, z1: 32 },
 ];
 
 function s1() {
   const geometry = [
-    floor('s1-ground', -20, 220, -20, 170),
+    floor('s1-ground', -35, 233, -33, 188),
     wall('s1-berm-w', 58, 60, 100, 148, 6, 'sand'),
     wall('s1-berm-e', 140, 142, 100, 148, 6, 'sand'),
     wall('s1-berm-s', 60, 140, 148, 150, 6, 'sand'),
@@ -35,31 +35,31 @@ function s1() {
     box('s1-cart', [3, 1.4, 1.6], [112, 0.7, 122], 'wood'),
     box('s1-low-a', [6, 1.2, 1], [88, 0.6, 108], 'stone'),
     box('s1-low-b', [6, 1.2, 1], [112, 0.6, 108], 'stone'),
-    wall('s1-souk-w', 60, 96, 98, 100, 7),
-    wall('s1-souk-e', 104, 140, 98, 100, 7),
-    box('s1-lintel', [8, 2, 2], [100, 6, 99], 'trim'),
-    wall('s1-block-a', 83, 97, 67, 93, 4),
-    wall('s1-block-b', 103, 117, 67, 93, 4),
-    wall('s1-block-w', 60, 80, 44, 98, 8),
-    wall('s1-block-e', 120, 140, 44, 98, 8),
+    wall('s1-souk-w', 60, 93, 98, 100, 7),
+    wall('s1-souk-e', 107, 140, 98, 100, 7),
+    box('s1-lintel', [14, 2, 2], [100, 6, 99], 'trim'),
+    wall('s1-block-a', 79, 93, 67, 93, 4),
+    wall('s1-block-b', 107, 121, 67, 93, 4),
+    wall('s1-block-w', 55, 75, 44, 98, 8),
+    wall('s1-block-e', 125, 145, 44, 98, 8),
     cylinder('s1-well', 1.5, 1.2, [100, 0, 53], 'stone'),
-    wall('s1-sq-n-w', 80, 96, 42, 44, 7),
-    wall('s1-sq-n-e', 104, 120, 42, 44, 7),
+    wall('s1-sq-n-w', 75, 93, 42, 44, 7),
+    wall('s1-sq-n-e', 107, 125, 42, 44, 7),
     box('s1-shrine', [2, 2.2, 2], [100, 1.1, 14], 'neon'),
     wall('s1-shrine-n', 88, 112, 12, 14, 7),
     wall('s1-shrine-s-w', 88, 96, 30, 32, 7),
     wall('s1-shrine-s-e', 104, 112, 30, 32, 7),
-    wall('s1-pass-n', 114, 149, 17, 19, 7),
-    wall('s1-pass-s', 114, 149, 29, 31, 7),
-    box('s1-canopy', [35, 0.5, 8], [131.5, 7.25, 22], 'wood'),
+    wall('s1-pass-n', 114, 150, 14, 16, 7),
+    wall('s1-pass-s', 114, 150, 32, 34, 7),
+    box('s1-canopy', [35, 0.5, 18], [131.5, 7.25, 24], 'wood'),
     disc('s1-line', 2, [120, 0.05, 22]),
-    // Dyers' Court, 44 × 44 (x 151–195, z 2–46).
-    wall('s1-dye-w-n', 150, 152, 2, 18, 7),
-    wall('s1-dye-w-s', 150, 152, 30, 46, 7),
-    wall('s1-dye-e-n', 194, 196, 2, 18, 7),
-    wall('s1-dye-e-s', 194, 196, 30, 46, 7),
-    wall('s1-dye-n', 152, 194, 2, 4, 7),
-    wall('s1-dye-s', 152, 194, 44, 46, 7),
+    // Dyers' Court spans 44 × 64 metres, with a 16-metre gate lane.
+    wall('s1-dye-w-n', 150, 152, -8, 16, 7),
+    wall('s1-dye-w-s', 150, 152, 32, 56, 7),
+    wall('s1-dye-e-n', 194, 196, -8, 16, 7),
+    wall('s1-dye-e-s', 194, 196, 32, 56, 7),
+    wall('s1-dye-n', 152, 194, -8, -6, 7),
+    wall('s1-dye-s', 152, 194, 54, 56, 7),
     box('s1-dye-plat', [6, 2, 10], [181, 1, 24], 'wood'),
     cylinder('s1-vat-1', 2, 1.2, [162, 0, 12], 'stone'),
     cylinder('s1-vat-2', 2, 1.2, [173, 0, 12], 'stone'),
@@ -69,7 +69,6 @@ function s1() {
     cylinder('s1-vat-6', 2, 1.2, [184, 0, 36], 'stone'),
     box('s1-rack-1', [6, 2, 0.6], [158, 1, 30], 'wood'),
     box('s1-rack-2', [6, 2, 0.6], [188, 1, 16], 'wood'),
-    cone('s1-palm', 1.2, 4, [66, 4, 104], 'hedge'),
     sphere('s1-bonk-roll', 0.8, [118.5, 6, 80], 'gold'),
   ];
   const e1 = units([['midget', 3], ['obama', 1], ['midget', 1], ['boomMidget', 1], ['midget', 2], ['boomMidget', 1]]);
@@ -80,14 +79,14 @@ function s1() {
     origin: [-614.5, 0, -181],
     start: [100, 0, 144], yaw: 0,
     intro: card(CARDS.start.title, CARDS.start.lines),
-    flyerVolume: { min: [151, 0, 2], max: [195, 7, 46] },
-    exit: zone(190, 202, 18, 30),
+    flyerVolume: { min: [151, 0, -8], max: [195, 7, 56] },
+    exit: zone(192, 202, 16, 32),
     grappleAnchors: [
       { id: 's1-arch', at: [100, 5.2, 96], r: 1.6 },
       { id: 's1-roll', at: [118.5, 6.3, 80], r: 1.8 },
       { id: 's1-roof', at: [100, 5.2, 74], r: 1.4 },
     ],
-    rooms: { L1: { x0: 151, x1: 195, z0: 2, z1: 46 } },
+    rooms: { L1: { x0: 151, x1: 195, z0: -8, z1: 56 } },
     geometry: cutRoute(geometry, S1_ROUTE),
     weapons: [
       { id: 'rack-sg-arch', at: [104, 0, 96], gun: 'shotgun', why: 'E2 Shield Wall and L1 Dyers Court, 4 to 5 m alleys' },
@@ -99,9 +98,9 @@ function s1() {
     ],
     mechanisms: [
       { kind: 'shrine', id: 'shrine-chainzap', at: [100, 0, 14], spell: 'chainZap' },
-      { kind: 'switch', id: 'C1', at: [100, 0, 24], opens: 'dyersGate', needsHold: false, designAt: [111.5, 0, 17] },
-      door('dyersGate', [113, 3.5, 24], [0.8, 7, 8]),
-      door('caravanGate', [196, 3.5, 24], [0.8, 7, 10]),
+      { kind: 'switch', id: 'C1', at: [100, 0, 24], opens: 'dyersGate', needsHold: false, touchRadius: 8, designAt: [111.5, 0, 17] },
+      door('dyersGate', [113.6, 3.5, 24], [0.8, 7, 16]),
+      door('caravanGate', [196, 3.5, 24], [0.8, 7, 16]),
       { kind: 'barrel', id: 'pot1', at: [92, 0, 110], element: 'fire', hp: 30 },
       { kind: 'barrel', id: 'pot4', at: [134, 0, 20], element: 'shock', hp: 30 },
       { kind: 'barrel', id: 'pot5', at: [142, 0, 28], element: 'shock', hp: 30 },
@@ -138,11 +137,11 @@ function s1() {
       {
         id: 'S1-E3', name: 'Dyers Court', maxAlive: 10,
         objective: { kind: 'clearAll' },
-        activate: zone(96, 110, 18, 32),
+        activate: zone(93, 107, 15, 33),
         lockdown: {
           entry: 'dyersGate', exit: 'caravanGate',
-          threshold: zone(116, 124, 19, 29),
-          room: { min: [112, -1, 2], max: [198, 8, 48] },
+          threshold: zone(116, 124, 16, 32),
+          room: { min: [112, -1, -8], max: [198, 8, 56] },
           waves: 4, waveSec: 25, stallSec: 12,
         },
         squads: [
@@ -157,27 +156,27 @@ function s1() {
   };
 }
 
-const S2_ROUTE = [{ x0: 6, x1: 292, z0: 94, z1: 102 }];
+const S2_ROUTE = [{ x0: 6, x1: 298, z0: 88, z1: 108 }];
 
 function s2() {
   const geometry = [
-    floor('s2-ground', -20, 310, -20, 220),
+    floor('s2-ground', -40, 336, -35, 235),
     wall('s2-cliff-n', 0, 290, 0, 4, 8, 'rock'),
     wall('s2-cliff-s', 0, 290, 196, 200, 8, 'rock'),
-    // Shelf split around the road slot z 94–102. The room itself is at y 0.
-    wall('s2-shelf-n', 198, 290, 64, 93, 6, 'rock'),
-    wall('s2-shelf-s', 198, 290, 103, 132, 6, 'rock'),
+    // The rock shelves flank the wider floor of the Caravanserai.
+    wall('s2-shelf-n', 198, 290, 49, 68, 6, 'rock'),
+    wall('s2-shelf-s', 198, 290, 128, 147, 6, 'rock'),
     disc('s2-road', 1.2, [16, 0.05, 98], 'stone'),
     disc('s2-road-b', 1.2, [80, 0.05, 98], 'stone'),
     disc('s2-road-c', 1.2, [140, 0.05, 98], 'stone'),
-    // High Caravanserai 44 × 44, floor x 204–248, z 76–120.
-    wall('s2-serai-w-n', 203, 205, 76, 94, 6),
-    wall('s2-serai-w-s', 203, 205, 102, 120, 6),
-    wall('s2-serai-e-n', 247, 249, 76, 94, 6),
-    wall('s2-serai-e-s', 247, 249, 102, 120, 6),
-    wall('s2-serai-n', 205, 247, 76, 78, 6),
-    wall('s2-serai-s', 205, 247, 118, 120, 6),
-    box('s2-gallery', [30, 3, 5], [226, 1.5, 82], 'stone'),
+    // High Caravanserai, 56 × 60 metres with two 20-metre gates.
+    wall('s2-serai-w-n', 203, 205, 68, 88, 6),
+    wall('s2-serai-w-s', 203, 205, 108, 128, 6),
+    wall('s2-serai-e-n', 259, 261, 68, 88, 6),
+    wall('s2-serai-e-s', 259, 261, 108, 128, 6),
+    wall('s2-serai-n', 205, 259, 68, 70, 6),
+    wall('s2-serai-s', 205, 259, 126, 128, 6),
+    box('s2-gallery', [30, 3, 5], [232, 1.5, 77], 'stone'),
     cylinder('s2-well', 1.5, 1.2, [226, 0, 110], 'stone'),
     cylinder('s2-stub-1', 0.6, 1.2, [214, 0, 90], 'pillar'),
     cylinder('s2-stub-2', 0.6, 1.2, [238, 0, 90], 'pillar'),
@@ -194,13 +193,13 @@ function s2() {
     origin: [-430.5, 0, -257],
     start: [12, 0, 98], yaw: 0,
     intro: card(CARDS.dunes.title, CARDS.dunes.lines),
-    flyerVolume: { min: [204, 0, 76], max: [248, 8, 120] },
-    exit: zone(280, 292, 92, 104),
+    flyerVolume: { min: [204, 0, 68], max: [260, 8, 128] },
+    exit: zone(280, 296, 87, 109),
     grappleAnchors: [
       { id: 's2-arch', at: [143, 7.5, 92], r: 2 },
       { id: 's2-shelf', at: [201, 8, 98], r: 2.2 },
     ],
-    rooms: { L2: { x0: 204, x1: 248, z0: 76, z1: 120 } },
+    rooms: { L2: { x0: 204, x1: 260, z0: 68, z1: 128 } },
     hazards: [
       { id: 'Q1', kind: 'slow', min: [60, -1, 86], max: [90, 3, 116], speed: 0.5, dps: 0, navCost: 4 },
       { id: 'Q2', kind: 'slow', min: [108, -1, 86], max: [122, 3, 112], speed: 0.5, dps: 0, navCost: 4 },
@@ -215,19 +214,19 @@ function s2() {
     ],
     geometry: cutRoute(geometry, S2_ROUTE),
     weapons: [
-      { id: 'standee-sg-2', at: [254, 0, 104], gun: 'shotgun', why: 'second shotgun past L2' },
+      { id: 'standee-sg-2', at: [264, 0, 104], gun: 'shotgun', why: 'second shotgun past L2' },
     ],
     checkpoints: [
       { id: 'cp4', at: [200, 0, 98] },
-      { id: 'cp5', at: [252, 0, 98], when: 'S2-E5.cleared' },
+      { id: 'cp5', at: [266, 0, 98], when: 'S2-E5.cleared' },
     ],
     mechanisms: [
-      door('seraiGateW', [204, 3, 98], [0.8, 6, 8]),
-      door('seraiGateE', [248, 3, 98], [0.8, 6, 8]),
+      door('seraiGateW', [204, 3, 98], [0.8, 6, 20]),
+      door('seraiGateE', [260, 3, 98], [0.8, 6, 20]),
       { kind: 'chest', id: 'chest-L2', at: [242, 0, 98], gun: 'shotgun', opens: 'S2-E5.cleared' },
       { kind: 'chest', id: 'cache-secret', at: [136, 0, 172], gun: 'shotgun', tier: 'rare', opens: null },
       { kind: 'secret', id: 'af2', at: [143, 0, 92], tickets: 5, text: 'Shipping manifest: 400 rugs, 0 rugs delivered' },
-      { kind: 'depot', id: 'depot-1', at: [262, 0, 92] },
+      { kind: 'depot', id: 'depot-1', at: [273, 0, 92] },
       ...placeAmmo('S2'),
       ...placeCrates('S2'),
     ],
@@ -235,7 +234,7 @@ function s2() {
       {
         id: 'S2-E4', name: 'Boom Dunes', maxAlive: 10,
         objective: { kind: 'clearAll' },
-        activate: zone(16, 170, 88, 108),
+        activate: zone(16, 170, 73, 123),
         squads: [
           squad('4a', { type: 'onEnter' }, 'hidden', [['boomMidget', 3]], atFor(3, 40, 98), [[50, 0, 100]]),
           squad('4b', { type: 'onKills', n: 2 }, 'hidden', [['boomMidget', 1], ['midget', 2]], atFor(3, 70, 98), [[88, 0, 62]]),
@@ -246,11 +245,11 @@ function s2() {
       {
         id: 'S2-E5', name: 'High Caravanserai', maxAlive: 10,
         objective: { kind: 'clearAll' },
-        activate: zone(200, 250, 80, 116),
+        activate: zone(200, 260, 69, 127),
         lockdown: {
           entry: 'seraiGateW', exit: 'seraiGateE',
-          threshold: zone(206, 214, 94, 102),
-          room: { min: [204, -1, 76], max: [248, 8, 120] },
+          threshold: zone(206, 214, 88, 108),
+          room: { min: [204, -1, 68], max: [260, 8, 128] },
           waves: 4, waveSec: 25, stallSec: 12,
         },
         squads: [
@@ -264,11 +263,11 @@ function s2() {
   };
 }
 
-const S3_ROUTE = [{ x0: 0, x1: 220, z0: 74, z1: 86 }];
+const S3_ROUTE = [{ x0: 0, x1: 225, z0: 66, z1: 94 }];
 
 function s3() {
   const geometry = [
-    floor('s3-ground', -40, 250, -30, 180),
+    floor('s3-ground', -65, 280, -54, 209),
     wall('s3-mass-n', 10, 90, 0, 40, 8, 'rock'),
     wall('s3-mass-s', 10, 86, 110, 160, 8, 'rock'),
     box('s3-tower', [8, 6, 8], [40, 3, 40], 'stone'),
@@ -280,13 +279,13 @@ function s3() {
     cone('s3-spire', 3, 8, [100, 0, 20], 'rock'),
     // Walkable span where the canyon would be a hole. The kill plane is data
     // until void rescue copies onto the sim.
-    box('s3-canyon-span', [70, 0.5, 20], [120, -0.25, 80], 'sand', { keep: true }),
+    box('s3-canyon-span', [70, 0.5, 36], [120, -0.25, 80], 'sand', { keep: true }),
   ];
   return {
     id: 'S3', name: 'Canyon Rim', designId: 'S3',
     origin: [-146.5, 0, -239],
     start: [4, 0, 80], yaw: 0,
-    exit: zone(206, 220, 74, 86),
+    exit: zone(206, 225, 67, 93),
     grappleAnchors: [
       { id: 's3-tower', at: [40, 7, 40], r: 2 },
       { id: 's3-ledge', at: [115, 4.5, 45], r: 2 },
@@ -312,7 +311,7 @@ function s3() {
       {
         id: 'S3-E6', name: 'Far Ledge', maxAlive: 7,
         objective: { kind: 'clearAll' },
-        activate: zone(8, 100, 70, 90),
+        activate: zone(8, 100, 66, 94),
         squads: [
           squad('6a', { type: 'onEnter' }, 'placed', [['obama', 2]], atFor(2, 55, 80), [[112, 3, 45]]),
           squad('6b', { type: 'onKills', n: 1 }, 'door', [['obama', 1], ['hexAcolyte', 1]], atFor(2, 62, 80), [[119, 3, 45]]),
@@ -323,7 +322,7 @@ function s3() {
       {
         id: 'S3-E7', name: 'Narrows and Carpets', maxAlive: 8,
         objective: { kind: 'clearAll' },
-        activate: zone(100, 210, 70, 90),
+        activate: zone(100, 210, 66, 94),
         squads: [
           squad('7a', { type: 'onEnter' }, 'door', [['midget', 2], ['boomMidget', 2]], atFor(4, 130, 80), [[88, 0, 118]]),
           squad('7b', { type: 'onKills', n: 2 }, 'air', [['flyingMidget', 2]], atFor(2, 145, 80), [[100, 3, 150]]),
@@ -336,13 +335,13 @@ function s3() {
 }
 
 const SM_ROUTE = [
-  { x0: 2, x1: 100, z0: 54, z1: 66 },
-  { x0: 84, x1: 96, z0: 54, z1: 236 },
+  { x0: 2, x1: 102, z0: 50, z1: 70 },
+  { x0: 81, x1: 99, z0: 54, z1: 236 },
 ];
 
 function sm() {
   const geometry = [
-    floor('sm-ground', -40, 160, -20, 260),
+    floor('sm-ground', -53, 185, -42, 277),
     box('sm-r1', [24, 0.5, 20], [14, 4.2, 16], 'stone'),
     box('sm-r2', [26, 0.5, 22], [47, 4.2, 15], 'stone'),
     box('sm-r3', [22, 0.5, 24], [47, 4.2, 44], 'stone'),
@@ -351,13 +350,13 @@ function sm() {
     box('sm-h1', [24, 0.5, 26], [112, 10.2, 87], 'stone'),
     cylinder('sm-minaret', 3, 12, [118, 10, 80], 'stone'),
     cone('sm-minaret-cap', 3.5, 5, [118, 22, 80], 'gold'),
-    wall('sm-sq-w', 58, 60, 162, 212, 8),
-    wall('sm-sq-e', 120, 122, 162, 212, 8),
-    wall('sm-sq-n-w', 60, 86, 160, 162, 8),
-    wall('sm-sq-n-e', 94, 120, 160, 162, 8),
-    wall('sm-gate-w', 60, 86, 212, 216, 8),
-    wall('sm-gate-e', 94, 120, 212, 216, 8),
-    cylinder('sm-fountain', 3, 1.2, [90, 0, 200], 'stone'),
+    wall('sm-sq-w', 44, 46, 162, 212, 8),
+    wall('sm-sq-e', 134, 136, 162, 212, 8),
+    wall('sm-sq-n-w', 46, 81, 160, 162, 8),
+    wall('sm-sq-n-e', 99, 134, 160, 162, 8),
+    wall('sm-gate-w', 46, 81, 212, 216, 8),
+    wall('sm-gate-e', 99, 134, 212, 216, 8),
+    cylinder('sm-fountain', 3, 1.2, [119, 0, 199], 'stone'),
     box('sm-guard-w', [10, 5, 14], [66, 2.5, 187], 'stone'),
     box('sm-guard-e', [10, 5, 14], [114, 2.5, 187], 'stone'),
     cylinder('sm-tank', 1.5, 2, [14, 5, 50], 'metal'),
@@ -369,7 +368,7 @@ function sm() {
     id: 'SM', name: 'Rooftop Market and Bazaar Gate', designId: 'S4',
     origin: [59.5, 0, -219],
     start: [8, 0, 60], yaw: 0,
-    exit: zone(84, 96, 222, 236),
+    exit: zone(81, 99, 222, 236),
     grappleAnchors: [
       { id: 'sm-minaret', at: [118, 18, 80], r: 2.2 },
       { id: 'sm-crane', at: [80, 13, 88], r: 1.8 },
@@ -398,8 +397,8 @@ function sm() {
       { kind: 'barrel', id: 'pot9', at: [40, 0, 70], element: 'goo', hp: 30 },
       { kind: 'barrel', id: 'pot15', at: [80, 0, 190], element: 'fire', hp: 30 },
       { kind: 'depot', id: 'depot-2', at: [80, 0, 226] },
-      door('bazaarGate', [90, 3.5, 214], [8, 7, 1.2]),
-      door('vaultDoor', [90, 3, 234], [8, 6, 1.2]),
+      door('bazaarGate', [90, 3.5, 214], [18, 7, 1.2]),
+      door('vaultDoor', [90, 3, 234], [18, 6, 1.2]),
       ...placeAmmo('SM'),
       ...placeCrates('SM'),
     ],
@@ -407,7 +406,7 @@ function sm() {
       {
         id: 'SM-E8', name: 'Rooftop Market', maxAlive: 10,
         objective: { kind: 'clearAll' },
-        activate: zone(10, 100, 50, 70),
+        activate: zone(10, 100, 47, 73),
         squads: [
           squad('8a', { type: 'onEnter' }, 'door', [['midget', 5]], atFor(5, 40, 60), [[47, 4, 15], [47, 4, 44]]),
           squad('8b', { type: 'time', t: 8 }, 'hidden', [['boomMidget', 2]], atFor(2, 55, 60), [[44, 4, 16]]),
@@ -419,7 +418,7 @@ function sm() {
         id: 'SM-E9', name: 'Bazaar Gate', maxAlive: 10,
         objective: { kind: 'clearAll' },
         destroy: ['loom-1', 'loom-2'],
-        activate: zone(70, 110, 165, 210),
+        activate: zone(46, 134, 162, 210),
         squads: [
           squad('9a', { type: 'onEnter' }, 'drop', [['midget', 4]], atFor(4, 90, 180), [[78, 0, 212], [102, 0, 212]]),
           squad('9b', { type: 'onRemain', n: 1 }, 'door', [['riotMidget', 2]], atFor(2, 90, 190), [[66, 0, 187]]),

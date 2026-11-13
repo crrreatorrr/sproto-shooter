@@ -9,7 +9,7 @@ const rings = [
   ...hedgeRing('S2-H2', { a: 14, b: 17, h: 3.5, west: [{ at: -70, width: 4 }, { at: -60, width: 5 }], north: { at: 50, width: 4 }, east: { at: -60, width: 5 } }),
   ...hedgeRing('S2-H3', { a: 21, b: 24, h: 3.5, west: [{ at: -50, width: 4 }, { at: -60, width: 5 }], north: { at: 64, width: 4 }, east: { at: -60, width: 5 } }),
   ...hedgeRing('S2-H4', { a: 28, b: 31, h: 3.5, west: [{ at: -66, width: 4 }, { at: -60, width: 5 }], north: { at: 56, width: 4 }, east: { at: -60, width: 5 } }),
-  ...hedgeRing('S2-H5', { a: 35, b: 38, h: 9, west: { at: -60, width: 4 }, north: { at: 60, width: 4 }, east: { at: -60, width: 4 }, south: { at: 60, width: 4 } }),
+  ...hedgeRing('S2-H5', { a: 35, b: 38, h: 9, extraDepth: 4, west: { at: -60, width: 10 }, east: { at: -60, width: 10 } }),
 ];
 
 const mounds = [[4.5, -50], [4.5, -40], [4.5, -74], [12, -38], [19, -62], [26, -58], [43, -43], [77, -43], [43, -77], [77, -77]];
@@ -32,7 +32,7 @@ export const S2 = {
     box({ id: 'S2-BLKB', at: [12, 1.75, -98], size: [4, 3.5, 1], mat: 'hedge' }),
     box({ id: 'S2-BLKD', at: [26, 1.75, -36], size: [4, 3.5, 1], mat: 'hedge' }),
     ...mounds.flatMap(([x, z], i) => place(mound(), { at: [x, 0, z], id: `S2-BM${i + 1}` })),
-    box({ id: 'S2-LID', at: [60, 9.25, -60], size: [50, 0.5, 50], mat: 'glass' }),
+    box({ id: 'S2-LID', at: [60, 9.25, -60], size: [50, 0.5, 54], mat: 'glass' }),
     ...place(gazebo(), { at: [60, 0, -60], id: 'S2-GZ' }),
     box({ id: 'S2-BN1', at: [50, 0.6, -50], size: [3, 1.2, 1], mat: 'stone' }),
     box({ id: 'S2-BN2', at: [70, 0.6, -50], size: [3, 1.2, 1], mat: 'stone' }),
@@ -64,8 +64,8 @@ export const S2 = {
     { id: 'CP5', at: [86, 0, -60], when: 'S2-E4.cleared' },
   ],
   mechanisms: [
-    door('LD1-IN', [37.7, 4.5, -60], [0.6, 9, 4]),
-    door('LD1-OUT', [82.3, 4.5, -60], [0.6, 9, 4]),
+    door('LD1-IN', [37.7, 4.5, -60], [0.6, 9, 10]),
+    door('LD1-OUT', [82.3, 4.5, -60], [0.6, 9, 10]),
     door('S2-XD', [110, 1.75, -60], [1, 3.5, 5], { opens: 'S2-CD2' }),
     door('HD1', [12, 1.75, -98], [4, 3.5, 1]),
     door('HD2', [26, 1.75, -36], [4, 3.5, 1]),

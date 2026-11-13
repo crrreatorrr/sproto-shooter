@@ -1,16 +1,17 @@
-// Art follows the four playable Skyline sections and the generated slab's world coordinates.
+// Positive Z feature coordinates are measured from the original south edge at 22 m.
+// North features keep their offsets from the north edge.
 const FEATURES = {
   S1: [
     ['trailer', 17, .5, -2.1, 6], ['trailer', 35, .15, 24.4, 173],
     ['lamp', 6, 0, -.65], ['lamp', 21, 0, 22.55, 180],
     ['lamp', 37, 0, -.65], ['lamp', 51, 0, 22.55, 180],
-    ['depot', 49, .18, -3.4],
+    ['depot', 49, .18, -3.4], ['lamp', 49, 0, -.65],
   ],
   S2: [
     ['crane', 18, -.22, -4.7, -6], ['depot', 7, 0, 25, 180],
     ['depot', 15, 0, 25, 180], ['fan', 15, 3.54, 24.4, 180],
     ['trailer', 27, 0, 25.2, 176], ['depot', 45, .16, -3.15],
-    ['lamp', 35, 0, -.65], ['lamp', 36, 0, 22.6, 180],
+    ['lamp', 12, 0, -.65], ['lamp', 35, 0, -.65], ['lamp', 36, 0, 22.6, 180],
   ],
   S3: [
     ['slab', 7, -.4, -4.3, 0, [1.10, 1.24, 1.10]],
@@ -33,6 +34,7 @@ const FEATURES = {
     ['slab', 37, -.3, 28.2, 180, [1.27, .84, 1.04]],
     ['lamp', 3, 0, 22.6, 180], ['lamp', 15, 0, -.65],
     ['lamp', 32, 0, -.65], ['lamp', 44, 0, 22.6, 180],
+    ['depot', 54, 0, 25.4, 180], ['lamp', 57, 0, -.65], ['lamp', 61, 0, 22.6, 180],
   ],
 };
 
@@ -41,7 +43,9 @@ const WALLS = { S1: 'barrier', S2: 'cladding', S3: 'cladding', S4: 'masonry' };
 export function skylinePlacements(sec, prims) {
   const floor = prims.get(`${sec.id}-floor`);
   if (!floor || !FEATURES[sec.id]) return [];
-  const start = floor.at[0] - (floor.size[0] - 1) / 2;
+  const north = floor.at[2] - floor.size[2] / 2;
+  const south = floor.at[2] + floor.size[2] / 2;
+  const start = sec.start[0] - 3.5;
   const out = [];
   const add = (name, x, y, z, yaw = 0, scale = 1, replace) =>
     out.push({ model: `skyline_${name}`, at: [start + x, y, z], yaw, scale, replace });
@@ -53,25 +57,35 @@ export function skylinePlacements(sec, prims) {
     const bays = Math.ceil(length / 5.6);
     const span = length / bays;
     for (let i = 0; i < bays; i++) {
-      add(WALLS[sec.id], -.5 + span * (i + .5), wall.at[1] - height / 2, wall.at[2],
+      add(WALLS[sec.id], wall.at[0] - start - length / 2 + span * (i + .5), wall.at[1] - height / 2, wall.at[2],
         side === 'N' ? 0 : 180, [span / 2, height, depth / 2], [wall.id]);
     }
   }
-  for (const feature of FEATURES[sec.id]) add(...feature);
+  for (const [name, x, y, z, yaw, scale] of FEATURES[sec.id]) {
+    const edgeZ = z >= 22 ? south + z - 22 : north + z;
+    add(name, x, y, edgeZ, yaw, scale);
+  }
 
-  // A second layer of buildings gives parallax against the painted panorama.
+  // Use compact silhouettes for the buildings behind the original close-up props.
   const variant = Number(sec.id.slice(1));
-  for (const [side, z] of [[0, -14], [1, 36]]) {
-    for (let i = 0; i < 7; i++) {
+  for (const [side, z] of [[0, north - 18], [1, south + 18]]) {
+    const direction = side === 0 ? -1 : 1;
+    for (let i = 0; i < 6; i++) {
       const pattern = i * 7 + side * 5 + variant * 3;
-      const height = 1.2 + (pattern % 5) * .25;
-      add(i % 3 === side ? 'slab' : 'tower', i * 12 - 12 + (pattern % 3) * 1.25,
-        -1.5, z + (side ? 1 : -1) * (pattern % 4) * 2.4, side * 180 + (pattern % 3 - 1) * 8,
-        [1.05 + (pattern % 4) * .17, height, 1.2 + (pattern % 3) * .18]);
+      const low = (i + variant + side) % 3 === 0;
+      add(low ? 'midrise' : 'spire', i * 16 - 14 + (pattern % 3) * 1.25,
+        -8, z + direction * (pattern % 4) * 4.2, side * 180 + (pattern % 3 - 1) * 12,
+        [1.05 + (pattern % 4) * .17, .92 + (pattern % 5) * .19, 1.08 + (pattern % 3) * .18]);
     }
   }
-  for (const [x, z, scale] of [[-17, 8, 1.36], [-24, 20, 1.73], [floor.size[0] + 19, 5, 1.6], [floor.size[0] + 23, 19, 1.81]]) {
-    add('tower', x, -4.5, z, 90, scale);
-  }
+  // Industrial links on the skyline, separated from the playable deck by open air.
+  const end = floor.at[0] - start + floor.size[0] / 2;
+  const linkZ = variant % 2 ? south + 32 : north - 32;
+  const linkX = [23, 41, 18, 47][variant - 1];
+  add('spire', linkX - 12, -8, linkZ, 0, [1, 1.20, 1]);
+  add('spire', linkX + 12, -8, linkZ, 0, [1.1, 1.32, 1.08]);
+  add('skybridge', linkX, 5.5, linkZ, 0, [1.6, 1, 1]);
+  add('midrise', end + 23, -6.8, north - 8.2, 90, 1.42);
+  add('spire', end + 31, -8.2, south + 6.8, 90, 1.35);
   return out;
 }

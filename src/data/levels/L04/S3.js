@@ -6,8 +6,8 @@ import { ENCOUNTERS } from './encounters.js';
 const wallX = [95, 120, 145, 170, 195, 220, 245];
 const walls = [];
 wallX.forEach((x, i) => {
-  walls.push(...candle(`s3.wallN${i + 1}`, [10, 60, 10], [x, 10, 30], 'down'));
-  walls.push(...candle(`s3.wallS${i + 1}`, [10, 60, 10], [x, 10, 90], 'down'));
+  walls.push(...candle(`s3.wallN${i + 1}`, [10, 60, 10], [x, 10, 20], 'down'));
+  walls.push(...candle(`s3.wallS${i + 1}`, [10, 60, 10], [x, 10, 100], 'down'));
 });
 
 export const S3 = {
@@ -21,7 +21,7 @@ export const S3 = {
   navBounds: { min: [0, 20], max: [270, 110] },
   flyerVolume: { min: [0, -40, 20], max: [270, 80, 110] },
   voids: [{ id: 's3.void', min: [-20, -200, 0], max: [290, -40, 130], penalty: 0.25, invuln: 1, mode: 'lastSafe', to: [14, 0, 60] }],
-  exit: { min: [262, -6, 54], max: [270, 6, 66] },
+  exit: { min: [262, -6, 51], max: [270, 6, 69] },
   intro: {
     title: 'Liquidity',
     lines: ['Bitcoin Obama pumps the price. The Midget dumps it.', 'You ride the chart.'],
@@ -45,7 +45,7 @@ export const S3 = {
     ...sign('s3.sign', [30, 3, 56], 'FLAK HITS FLYERS. WALK, SHIELD OR SNIPE.'),
     ...chain('s3.chainA', [34, 0, 60], [54, 0, 60]),
     ...island('s3.isl1', 7, 3, [61, -3, 60]),
-    box({ id: 's3.slide.lane', at: [140, -0.25, 60], size: [280, 0.5, 36], mat: 'metal', tag: 'slide' }),
+    box({ id: 's3.slide.lane', at: [140, -0.25, 60], size: [280, 0.5, 52], mat: 'metal', tag: 'slide' }),
     crate('s3.isl1Cr1', [56, 0.6, 57.5]),
     crate('s3.isl1Cr2', [56, 0.6, 62.5]),
     ...walls,
@@ -65,14 +65,14 @@ export const S3 = {
     cylinder({ id: 's3.c3post', at: [184, -2, 70], r: 0.5, h: 2, mat: 'metal' }),
     ...podIsle('s3.p4', [208, 7, 48]),
     ...island('s3.r4', 6, 3, [230, -5, 58]),
-    box({ id: 's3.mouth', at: [258, -4, 60], size: [24, 4, 28], mat: 'metal' }),
+    box({ id: 's3.mouth', at: [258, -4, 60], size: [24, 4, 40], mat: 'metal' }),
     ticker('s3.mouthWall', [250, -1, 60], 6),
     ...pylon('s3.pylon', [252, -2, 52]),
     ...deck('eb2', [106, 8, 68], [136, 8, 54], 4, 8),
     ...deck('eb3', [192, 8, 65], [224, 8, 59], 4, 8),
-    box({ id: 's3.tun-roof', at: [264, 2.5, 60], size: [12, 1, 8], mat: 'metal' }),
-    box({ id: 's3.tun-n', at: [264, 1, 56.5], size: [12, 6, 1], mat: 'metal' }),
-    box({ id: 's3.tun-s', at: [264, 1, 63.5], size: [12, 6, 1], mat: 'metal' }),
+    box({ id: 's3.tun-roof', at: [264, 2.5, 60], size: [12, 1, 14], mat: 'metal' }),
+    box({ id: 's3.tun-n', at: [264, 1, 53.5], size: [12, 6, 1], mat: 'metal' }),
+    box({ id: 's3.tun-s', at: [264, 1, 66.5], size: [12, 6, 1], mat: 'metal' }),
     ...island('s3.fileIsl', 3, 2, [158, -3, 104]),
     disc({ id: 'crit-CP5', at: [14, 0.08, 60], r: 1.2, mat: 'neon' }),
   ],
@@ -86,7 +86,7 @@ export const S3 = {
     { kind: 'depotCrate', id: 'depot-crate-a', at: [8, 0, 60] },
     { kind: 'shrine', id: 's3.shrine-use', at: [22, 0.5, 50], spell: 'manaShield' },
     { kind: 'manaBloom', id: 's3.bloom-use', at: [22, 0, 70], amount: 50, regrow: 20 },
-    { kind: 'hazardZone', id: 's3.wind', hazard: 'wind', min: [80, -8, 44], max: [250, 34, 76], force: [6, 0, 0] },
+    { kind: 'hazardZone', id: 's3.wind', hazard: 'wind', min: [80, -8, 38], max: [250, 34, 82], force: [6, 0, 0] },
     { kind: 'mover', id: 's3.slA', mode: 'pingpong', speed: 8, pause: 1, from: [90, 12, 53], to: [150, 12, 53], size: [10, 8, 1.5] },
     { kind: 'mover', id: 's3.slB', mode: 'pingpong', speed: 8, pause: 1, from: [150, 6, 68], to: [214, 6, 68], size: [10, 8, 1.5] },
     { kind: 'conduit', id: 'c2', at: [98, 4.5, 74], spell: 'chainZap', powers: 'eb2' },
@@ -94,7 +94,7 @@ export const S3 = {
     { kind: 'conduit', id: 'c3', at: [184, 0.5, 70], spell: 'chainZap', powers: 'eb3' },
     { kind: 'energyBridge', id: 'eb3', from: [192, -2, 65], to: [224, -2, 59], width: 4, when: 'c3' },
     { kind: 'target', id: 's3.gatePylon', at: [252, -2, 52], hp: 228, def: 'pylon', weak: 2 },
-    door('s3.mouthGate', [258.3, 0, 60], [0.6, 4, 6], { opens: 's3.gatePylon.destroyed' }),
+    door('s3.mouthGate', [258.3, 0, 60], [0.6, 4, 12], { opens: 's3.gatePylon.destroyed' }),
     { kind: 'fuelPad', id: 's3.pad.r1', at: [100, 2.2, 70], safe: true },
     { kind: 'fuelPad', id: 's3.pad.r2', at: [142, 2.2, 52], safe: true },
     { kind: 'fuelPad', id: 's3.pad.r3', at: [186, -1.8, 66], safe: true },

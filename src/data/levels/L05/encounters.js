@@ -190,7 +190,7 @@ export const F1 = {
   name: 'The Abominable Auditor',
   maxAlive: 8,
   objective: { kind: 'clearAll', text: 'Drop the Abominable Auditor' },
-  activate: zone(15, 85, 24, 94, -6, 14),
+  activate: zone(9, 91, 24, 94, -6, 14),
   arena: { x: 50, z: -59, radius: 35 },
   lockdown: {
     id: 'L1',
@@ -199,7 +199,7 @@ export const F1 = {
     threshold: zone(42, 58, 28, 32, -2, 8),
     delaySec: 1,
     stallSec: 12,
-    room: zone(15, 85, 24, 94, -6, 12),
+    room: zone(9, 91, 24, 94, -6, 12),
   },
   squads: [
     squad('auditor', { type: 'onEnter' }, [
@@ -258,7 +258,7 @@ export const F2 = {
     also: { kind: 'hold', seconds: 90 },
     text: 'Hold the drill and clear the vault',
   },
-  activate: zone(18, 62, 40, 84, -2, 14),
+  activate: zone(12, 68, 40, 84, -2, 14),
   hold: zone(31, 49, 53, 71, -1, 4),
   lockdown: {
     id: 'L3',
@@ -267,7 +267,7 @@ export const F2 = {
     threshold: zone(34, 46, 44, 48, -2, 8),
     delaySec: 1,
     stallSec: 12,
-    room: zone(18, 62, 40, 84, -2, 13),
+    room: zone(12, 68, 40, 84, -2, 13),
   },
   squads: [
     squad('W1', { type: 'onEnter' }, [u('midget', 6)], [[26, 12, 50]], 'drop'),
@@ -277,12 +277,12 @@ export const F2 = {
     squad('W2b', { type: 'with', after: 'W2', delay: 0 }, [u('boomMidget', 2)], [[26, 12, 74]], 'drop'),
     squad('W3', { type: 'time', t: 50 }, [u('spotterDrone', 1)], [[40, 12, 62]], 'air'),
     squad('W3b', { type: 'with', after: 'W3', delay: 0 }, [u('midget', 4)], [[54, 12, 74]], 'drop'),
-    squad('W3c', { type: 'with', after: 'W3', delay: 0 }, [u('frostHound', 2)], [[17, 0, 62]], 'door'),
+    squad('W3c', { type: 'with', after: 'W3', delay: 0 }, [u('frostHound', 2)], [[12, 0, 62]], 'door'),
     squad('W4', { type: 'time', t: 75 }, [u('midget', 4)], [[26, 12, 50]], 'drop'),
     squad('W4b', { type: 'with', after: 'W4', delay: 0 }, [u('boomMidget', 2)], [[26, 12, 74]], 'drop'),
     squad('W5', { type: 'time', t: 100 }, [
       u('riotMidget', 1, { elite: true, name: 'the Vault Warden' }),
-    ], [[17, 0, 62]], 'door'),
+    ], [[12, 0, 62]], 'door'),
   ],
   strikes: [8, 22, 36, 50, 64, 78, 92],
   strikeEvery: 14,

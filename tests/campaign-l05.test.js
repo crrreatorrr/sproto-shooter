@@ -124,6 +124,22 @@ describe('L05 Frostspire Black Site', () => {
     expect(mechs.find((m) => m.id === 'S5-hold')).toMatchObject({ r: 9, seconds: 90 });
   });
 
+  it('connects the wider exits to receiving floors and keeps the courtyard ice basin', () => {
+    const landings = ['S2-passApron', 'S3-floorS', 'S4-floor', 'S5-floor'];
+    for (const [i, id] of landings.entries()) {
+      const exit = L05.sections[i].exit;
+      const floor = L05.sections[i + 1].geometry.find((g) => g.id === id);
+      for (const axis of [0, 2]) {
+        expect(floor.at[axis] - floor.size[axis] / 2, id).toBeLessThanOrEqual(exit.min[axis]);
+        expect(floor.at[axis] + floor.size[axis] / 2, id).toBeGreaterThanOrEqual(exit.max[axis]);
+      }
+    }
+    const courtyard = L05.sections[2];
+    const { room } = courtyard.encounters[0].lockdown;
+    expect(room.max[0] - room.min[0]).toBe(82);
+    expect(courtyard.geometry.find((g) => g.id === 'S3-iceFloor').size).toEqual([26, 0.5, 26]);
+  });
+
   it('passes the level validator and stays under 600 solids a section', () => {
     const v = validateLevel(L05);
     expect(v.errors).toEqual([]);
