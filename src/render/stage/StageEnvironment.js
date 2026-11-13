@@ -68,10 +68,9 @@ export function mountStage(env) {
     const st = STAGES[id], a = stageAssets(id);
     const variant = office ? (roof ? 'L08-roof' : 'L08-interior')
       : moonlit ? (crypt ? 'L09-crypt' : 'L09-exterior')
-      : frostspire ? `L05-${sectionId || 'S1'}`
-      : blockchain ? `L04-${sectionId || 'S1'}`
+      : frostspire || blockchain || skyline ? `${levelId}-${sectionId || 'S1'}`
       : bazaar ? (showroom ? 'L02-showroom' : 'L02-exterior')
-        : grove || skyline || underworks ? levelId : '';
+        : grove || underworks ? levelId : '';
     const key = id + ':' + variant + ':' + assetsVersion();
     if (key === stageKey) return;
     stageKey = key;
@@ -114,11 +113,13 @@ export function mountStage(env) {
       bounce.color.setHex(0xbbd7e1);
     }
     if (skyTex && (bazaar || skyline || underworks || roof || moonlit)) {
-      skyTex.offset.y = bazaar ? -.018 : skyline ? -.16 : underworks ? .035 : moonlit ? -.036 : -.098;
-      if (bazaar || roof || moonlit) {
-        // Orient the painted landmark above the eastward approach.
+      skyTex.offset.y = bazaar ? -.018 : skyline ? -.088 : underworks ? .035 : moonlit ? -.036 : -.098;
+      if (bazaar || skyline || roof || moonlit) {
+        // Frame a different part of the painted skyline along each approach.
         skyTex.wrapS = THREE.RepeatWrapping;
-        skyTex.offset.x = bazaar ? (showroom ? -.13 : .04) : moonlit ? .208 : .185;
+        const skylineOffset = { S1: .09, S2: .195, S3: -.17, S4: .275 };
+        skyTex.offset.x = skyline ? (skylineOffset[sectionId] ?? skylineOffset.S1)
+          : bazaar ? (showroom ? -.13 : .04) : moonlit ? .208 : .185;
         skyTex.needsUpdate = true;
       }
     }
@@ -169,7 +170,7 @@ export function mountStage(env) {
       bounce.intensity = .45;
     }
     if (skyline) {
-      scene.fog.color.setHex(0x373b61);
+      scene.fog.color.setHex(0x343b63);
       hemi.color.setHex(0xbfcfff);
       hemi.groundColor.setHex(0x797289);
       hemi.intensity = 1.42;

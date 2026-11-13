@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 348,
-    "runtimeBytes": 27339311,
+    "runtimeFiles": 351,
+    "runtimeBytes": 27364834,
     "decodedBytes": 258148166,
-    "referenced": 348,
+    "referenced": 351,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -1765,6 +1765,13 @@
       ]
     },
     {
+      "path": "models/props/skyline_midrise.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
       "path": "models/props/skyline_shop.glb.gz",
       "kind": "static",
       "from": [
@@ -1772,7 +1779,21 @@
       ]
     },
     {
+      "path": "models/props/skyline_skybridge.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
       "path": "models/props/skyline_slab.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/skyline_spire.glb.gz",
       "kind": "static",
       "from": [
         "src/render/level/kitModels.js"
@@ -10430,6 +10451,37 @@
       }
     },
     {
+      "path": "models/props/skyline_midrise.glb.gz",
+      "bytes": 1969,
+      "sha256": "cdce8b08a8ddb31d93daef2f1106eacecf64a3a3ae174231defd12d9a8f5ce8d",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 144,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_skyline_amber",
+          "campaign_glow_skyline_cyan",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
       "path": "models/props/skyline_shop.glb.gz",
       "bytes": 6364,
       "sha256": "6b925c3c6b69e69bc453ca766da3cf8d4ee4532e68706d347df59d73e8fbaba1",
@@ -10461,6 +10513,36 @@
       }
     },
     {
+      "path": "models/props/skyline_skybridge.glb.gz",
+      "bytes": 1756,
+      "sha256": "760f7ccc51e0cc79aca238cee0d441a8e857b1aa40dcfdcf1f30fe83e55e3e2d",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 132,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_skyline_cyan",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
       "path": "models/props/skyline_slab.glb.gz",
       "bytes": 5101,
       "sha256": "bde3f9e7d50abbe256d0998e8a464545716cdd33a566f66fb685ac903f8a06eb",
@@ -10485,6 +10567,38 @@
         "joints": 0,
         "nodes": 1,
         "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/skyline_spire.glb.gz",
+      "bytes": 2374,
+      "sha256": "c8f8d3d0a66758648d9e47d312b099befb27d3d61b932ae35afbc400348809bd",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 180,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_skyline_amber",
+          "campaign_glow_skyline_coral",
+          "campaign_glow_skyline_cyan",
           "cartoon_kit"
         ]
       }
@@ -12924,8 +13038,8 @@
     },
     {
       "path": "textures/campaign/skyline-night.webp",
-      "bytes": 12632,
-      "sha256": "eb050b1cea33d8a27a0bfaacb8d600913ede641a17c5c287732c89cab3162b71",
+      "bytes": 32056,
+      "sha256": "0beedc3b933d83f323c9f5ae4ef5928ed5bd8721e9d61159fb1227568c132c6f",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -13540,7 +13654,7 @@
       },
       {
         "path": "art/blender/vape_cabal_skyline.blend",
-        "bytes": 223117
+        "bytes": 226887
       },
       {
         "path": "art/blender/vegetable_grove.blend",
