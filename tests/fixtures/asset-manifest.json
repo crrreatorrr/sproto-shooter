@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 375,
-    "runtimeBytes": 27086765,
+    "runtimeFiles": 377,
+    "runtimeBytes": 27097346,
     "decodedBytes": 257492806,
-    "referenced": 375,
+    "referenced": 377,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -2031,7 +2031,21 @@
       ]
     },
     {
+      "path": "models/props/underworks_cavern_rib.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
       "path": "models/props/underworks_chimney.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/underworks_distant_smelter.glb.gz",
       "kind": "static",
       "from": [
         "src/render/level/kitPropPaths.js"
@@ -11751,6 +11765,35 @@
       }
     },
     {
+      "path": "models/props/underworks_cavern_rib.glb.gz",
+      "bytes": 1998,
+      "sha256": "8d2ed99c2377ba2dbbf69fd1c0b8f311930395310e1ece714f4cfa67a2ae14ba",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 80,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
       "path": "models/props/underworks_chimney.glb.gz",
       "bytes": 6577,
       "sha256": "a20eba9d12ad21d99d2db857b347363f167318d49d90cdaa5d27f9833f9bdc73",
@@ -11764,6 +11807,37 @@
       "height": null,
       "meshopt": false,
       "triangles": 684,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_underworks_heat",
+          "campaign_glow_underworks_lamp",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/underworks_distant_smelter.glb.gz",
+      "bytes": 3301,
+      "sha256": "579f3e801e8a27ae3c1082d38334513d06c4806c2d704b16d111731a0cddf3e2",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 252,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -13948,8 +14022,8 @@
     },
     {
       "path": "textures/campaign/underworks-cavern.webp",
-      "bytes": 21954,
-      "sha256": "1a6932f2a9009abea9a4291582de1ceb2481953719d1990c6c8b621a793e448e",
+      "bytes": 27236,
+      "sha256": "8498d2702c232c1adf7ede4787058dc311d48d023bcfeae17bc1814e74687546",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -14507,7 +14581,7 @@
       },
       {
         "path": "art/blender/hellfire_underworks.blend",
-        "bytes": 271028
+        "bytes": 275371
       },
       {
         "path": "art/blender/moonlit_ruins.blend",

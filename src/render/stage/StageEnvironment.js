@@ -69,9 +69,9 @@ export function mountStage(env) {
     const st = STAGES[id], a = stageAssets(id);
     const variant = office ? (roof ? 'L08-roof' : 'L08-interior')
       : moonlit ? (crypt ? 'L09-crypt' : 'L09-exterior')
-      : frostspire || blockchain || skyline ? `${levelId}-${sectionId || 'S1'}`
+      : frostspire || blockchain || skyline || underworks ? `${levelId}-${sectionId || 'S1'}`
       : bazaar ? (showroom ? 'L02-showroom' : 'L02-exterior')
-        : grove || landing || underworks ? levelId : '';
+        : grove || landing ? levelId : '';
     const key = id + ':' + variant + ':' + assetsVersion();
     if (key === stageKey) return;
     stageKey = key;
@@ -114,13 +114,14 @@ export function mountStage(env) {
       bounce.color.setHex(0xbbd7e1);
     }
     if (skyTex && (landing || bazaar || skyline || underworks || roof || moonlit)) {
-      skyTex.offset.y = landing ? -.106 : bazaar ? -.018 : skyline ? -.088 : underworks ? .035 : moonlit ? -.036 : -.098;
-      if (landing || bazaar || skyline || roof || moonlit) {
+      skyTex.offset.y = landing ? -.106 : bazaar ? -.018 : skyline ? -.088 : underworks ? -.045 : moonlit ? -.036 : -.098;
+      if (landing || bazaar || skyline || underworks || roof || moonlit) {
         // Frame a different part of the painted skyline along each approach.
         skyTex.wrapS = THREE.RepeatWrapping;
         const skylineOffset = { S1: .09, S2: .195, S3: -.17, S4: .275 };
+        const cavernOffset = { S1: .04, S2: -.095, S3: .19, S4: .32 };
         skyTex.offset.x = skyline ? (skylineOffset[sectionId] ?? skylineOffset.S1)
-          : landing ? .10 : bazaar ? (showroom ? -.13 : .04) : moonlit ? .208 : .185;
+          : underworks ? (cavernOffset[sectionId] ?? cavernOffset.S1) : landing ? .10 : bazaar ? (showroom ? -.13 : .04) : moonlit ? .208 : .185;
         skyTex.needsUpdate = true;
       }
     }
@@ -193,7 +194,7 @@ export function mountStage(env) {
       bounce.intensity = .44;
     }
     if (underworks) {
-      scene.fog.color.setHex(0x503147);
+      scene.fog.color.setHex(0x4a3046);
       hemi.color.setHex(0xd4b9f2);
       hemi.groundColor.setHex(0xb78386);
       hemi.intensity = 1.29;
