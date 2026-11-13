@@ -6,11 +6,12 @@ const LEVEL_ART = {
   '--skyline': ['skyline-surface.webp', 'skyline-night.webp', 896],
   '--underworks': ['underworks-surface.webp', 'underworks-cavern.webp', 768],
   '--office': ['office-surface.webp', 'office-night.webp', 768],
+  '--caldera': ['caldera-surface.webp', 'caldera-sky.webp', 832],
   '--moonlit': ['moonlit-surface.webp', 'moonlit-night.webp', 736],
 };
 const levelAtlas = LEVEL_ART[first];
 if (!first || !second || (levelAtlas && !third)) {
-  throw new Error('Supply both campaign surface sheets, or a level flag (--skyline, --underworks, --office or --moonlit) with <2 × 2 surface sheet> <panorama>');
+  throw new Error('Supply both campaign surface sheets, or a level flag (--skyline, --underworks, --office, --moonlit or --caldera) with <2 × 2 surface sheet> <panorama>');
 }
 
 const size = 160, gutter = 4, cell = size + 2 * gutter;
@@ -39,6 +40,7 @@ function lampMask(tile, r, g, b) {
     if (tile === 2) return smooth(151, 221, luma) * smooth(6, 25, b - r);
     return 0;
   }
+  if (first === '--caldera') return 0;
   if (first === '--moonlit') {
     if (tile === 2) return smooth(89, 174, r) * smooth(25, 68, r - g) * smooth(145, 222, b);
     return 0;
