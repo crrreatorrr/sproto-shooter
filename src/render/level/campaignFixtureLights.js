@@ -2,6 +2,8 @@ import { Color, Matrix4, PointLight, Vector3 } from 'three';
 
 // Lenses use local Three.js coordinates. The existing instance transform includes placement yaw and scale.
 const FIXTURES = {
+  bazaar2_lantern: { lens: [0, 2.53, .71], color: 0xffbd83, intensity: 29, range: 12 },
+  bazaar2_brazier: { lens: [0, 1.02, 0], color: 0xffa657, intensity: 48, range: 16 },
   street_lamp: { lens: [0, 5.30, 1.2], color: 0xffce87, intensity: 29, range: 12 },
   lantern_post: { lens: [.77, 2.81, 0], color: 0xffac62, intensity: 18, range: 8 },
   grove_lantern: { lens: [.72, 2.22, 0], color: 0xffb969, intensity: 15, range: 7 },

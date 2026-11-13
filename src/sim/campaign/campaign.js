@@ -260,7 +260,7 @@ function flagOn(lv, when) {
 
 function touchMechanism(state, p, lv, sec, m, dt) {
   const x = p.pos.x, y = p.pos.y, z = p.pos.z;
-  if (m.kind === 'switch' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, 1.5)) tickSwitch(state, p, m, dt);
+  if (m.kind === 'switch' && !lv.got[m.id] && nearPoint(m.at, x, y + 1, z, m.touchRadius ?? 1.5)) tickSwitch(state, p, m, dt);
   if (m.kind === 'depot' && m.at && nearPoint(m.at, x, y + 1, z, 2.4)) {
     if (p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + 30 * dt);
     for (const type of Object.keys(p.ammo)) {

@@ -71,6 +71,12 @@ export const CAMPAIGN_SURFACE_PATTERNS = {
   `,
   L02: /* glsl */ `
     float grain = surfaceGrain(p, vec2(.23, .19));
+    if (campaignSurfaceKind == 5.) {
+      float layers = p.y + .38 * surfaceFacets(p * vec2(.18, .35));
+      float seam = surfaceLine(layers, 1.1, .045);
+      float mineral = sin(layers * 3.8) * .5 + .5;
+      return mix(vec3(1.24, 1.06, .94), vec3(1.74, 1.45, 1.14), mineral) * (grain - seam * .17);
+    }
     if (campaignSurfaceKind == 1.) {
       float wind = p.y + .72 * sin(p.x * .37) + .40 * surfaceNoise(p * .24);
       float drift = ground ? .10 * sin(wind * 8.) : .052 * sin(wind * 3.6);
