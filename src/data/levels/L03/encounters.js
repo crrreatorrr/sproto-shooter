@@ -26,7 +26,7 @@ const E1 = {
   maxAlive: 10,
   intensity: 0.4,
   objective: { kind: 'clearAll' },
-  activate: { min: [20, -2, -110], max: [150, 8, -50] },
+  activate: { min: [20, -2, -156], max: [150, 8, -4] },
   squads: [
     squad('E1-a', { type: 'onEnter' }, [u('floretSprout', 2)], [[90, 0, -80], [94, 0, -80]], 'placed', 'onEnter x>66, behind CB3 (99,-84) and CB4 (107,-116)'),
     squad('E1-b', { type: 'time', t: 6 }, [u('midget', 4)], line([110, 0, -80], 4, 1.4, 0), 'door', 'onAlert or t+6, shed SD1, 0.4s apart'),
@@ -41,7 +41,7 @@ const E2 = {
   maxAlive: 10,
   intensity: 0.5,
   objective: { kind: 'clearAll' },
-  activate: { min: [168, -2, -90], max: [255, 8, -70] },
+  activate: { min: [168, -2, -176], max: [255, 8, 16] },
   squads: [
     squad('E2-a', { type: 'onEnter' }, [u('hexWisp', 2)], [[190, 1.2, -80], [194, 1.2, -80]], 'hidden', 'rise out of PK2 and PK5'),
     squad('E2-b', { type: 'onKills', n: 2 }, [u('flyingMidget', 3)], line([200, 4, -80], 3, 2, 0), 'air', 'over the barn roof from the south'),
@@ -72,12 +72,12 @@ const E4 = {
   maxAlive: 10,
   intensity: 0.8,
   objective: { kind: 'clearAll' },
-  activate: { min: [38, -2, -82], max: [82, 10, -38] },
+  activate: { min: [38, -2, -84], max: [82, 10, -36] },
   lockdown: {
     entry: 'LD1-IN',
     exit: 'LD1-OUT',
-    threshold: { min: [42, -1, -64], max: [46, 3, -56] },
-    room: { min: [38, 0, -82], max: [82, 9, -38] },
+    threshold: { min: [42, -1, -65], max: [46, 3, -55] },
+    room: { min: [38, 0, -84], max: [82, 9, -36] },
     waves: 4,
     fallbackSec: 25,
   },
@@ -130,12 +130,12 @@ const E7 = {
   maxAlive: 10,
   intensity: 0.85,
   objective: { kind: 'clearAll' },
-  activate: { min: [34, -2, -67], max: [98, 9, -23] },
+  activate: { min: [34, -2, -73], max: [98, 9, -17] },
   lockdown: {
     entry: 'LD2-IN',
     exit: 'LD2-OUT',
-    threshold: { min: [38, -1, -48], max: [42, 3, -42] },
-    room: { min: [34, 0, -67], max: [98, 8, -23] },
+    threshold: { min: [38, -1, -56], max: [42, 3, -34] },
+    room: { min: [34, 0, -73], max: [98, 8, -17] },
     waves: 4,
     fallbackSec: 25,
   },
@@ -147,7 +147,7 @@ const E7 = {
     squad('E7-w3a', { type: 'onRemain', n: 2 }, [u('daycare', 1, { spawnBudget: 5 }), u('midget', 5)], [[74, 0, -45], ...line([78, 0, -45], 5, 1.2, 0)], 'drop', 'HH-ROOF nest B'),
     squad('E7-w3b', { type: 'with', after: 'E7-w3a', delay: 0 }, [u('manaLeech', 1)], [[84, 0, -45]], 'door', 'HH-S'),
     squad('E7-w3c', { type: 'with', after: 'E7-w3a', delay: 0 }, [u('hexWisp', 2)], [[86, 1.2, -45], [88, 1.2, -45]], 'hidden', 'HH-N through the glass'),
-    squad('E7-w4', { type: 'onRemain', n: 2 }, [u('barkBrute', 1), u('midget', 4)], [[66, 0, -66], ...line([70, 0, -45], 4, 1.3, 0)], 'door', 'HH-N brute in the north runoff, midgets on the lane'),
+    squad('E7-w4', { type: 'onRemain', n: 2 }, [u('barkBrute', 1), u('midget', 4)], [[66, 0, -72], ...line([70, 0, -45], 4, 1.3, 0)], 'door', 'HH-N brute in the north runoff, midgets on the lane'),
   ],
 };
 
@@ -157,7 +157,7 @@ const E8 = {
   maxAlive: 10,
   intensity: 0.5,
   objective: { kind: 'clearAll' },
-  activate: { min: [106, -2, -80], max: [168, 6, -20] },
+  activate: { min: [106, -2, -102], max: [168, 6, 12] },
   squads: [
     squad('E8-a', { type: 'onEnter' }, [u('gooGlob', 1)], [[134, 0, -45]], 'placed', 'in pool RP5'),
     squad('E8-b', { type: 'time', t: 2 }, [u('boomMidget', 3)], line([140, 0, -45], 3, 1.4, 0), 'door', 'onAlert, shed S4-CSH, 0.6s apart'),

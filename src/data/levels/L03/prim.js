@@ -38,16 +38,16 @@ function span(a, b) {
 
 /**
  * One hedge ring inside a 120 m square whose local south-west corner is (0, 0)
- * and whose north edge is z = -120. A gap is { at, width } on that side.
+ * and whose north edge is z = -120. extraDepth extends the ring along z. A gap is { at, width } on that side.
  * West/east gaps are z values. North/south gaps are x values.
  */
-export function hedgeRing(id, { a, b, h, west, north, east, south }) {
+export function hedgeRing(id, { a, b, h, west, north, east, south, extraDepth = 0 }) {
   const thick = b - a;
   const westX = (a + b) / 2;
   const eastX = 120 - westX;
-  const southZ = -westX;
-  const northZ = -(120 - westX);
-  const alongZ = span(a, 120 - a).length;
+  const southZ = -westX + extraDepth / 2;
+  const northZ = westX - 120 - extraDepth / 2;
+  const alongZ = 120 - 2 * a + extraDepth;
   const z0 = -60 - alongZ / 2;
   const z1 = -60 + alongZ / 2;
   const alongX = 120 - 2 * b;

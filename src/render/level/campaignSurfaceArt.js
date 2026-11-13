@@ -13,7 +13,8 @@ export const MOONLIT_PANORAMA = 'textures/campaign/moonlit-night.webp';
 
 const LEVEL_ATLASES = { L06: SKYLINE_SURFACE_ART, L07: UNDERWORKS_SURFACE_ART, L08: OFFICE_SURFACE_ART, L09: MOONLIT_SURFACE_ART };
 export const BAZAAR_PANORAMA = 'textures/campaign/bazaar-sunset.webp';
-const PANORAMAS = { L02: BAZAAR_PANORAMA, L06: SKYLINE_PANORAMA, L07: UNDERWORKS_PANORAMA, L08: OFFICE_PANORAMA, L09: MOONLIT_PANORAMA };
+export const GROVE_PANORAMA = 'textures/campaign/grove-orchard.webp';
+const PANORAMAS = { L02: BAZAAR_PANORAMA, L03: GROVE_PANORAMA, L06: SKYLINE_PANORAMA, L07: UNDERWORKS_PANORAMA, L08: OFFICE_PANORAMA, L09: MOONLIT_PANORAMA };
 
 export function panoramaPath(level, section) {
   if ((level === 'L08' && section && section !== 'S4') || (level === 'L09' && section === 'S2')) return;

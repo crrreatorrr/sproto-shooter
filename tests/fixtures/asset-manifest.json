@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 335,
-    "runtimeBytes": 27329891,
-    "decodedBytes": 258154310,
-    "referenced": 335,
+    "runtimeFiles": 340,
+    "runtimeBytes": 27329246,
+    "decodedBytes": 258139974,
+    "referenced": 340,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -1128,6 +1128,27 @@
       ]
     },
     {
+      "path": "models/props/grove_orchard_barn.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/grove_orchard_rise.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/grove_orchard_windmill.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
       "path": "models/props/grove_patch.glb.gz",
       "kind": "static",
       "from": [
@@ -1262,6 +1283,13 @@
     },
     {
       "path": "models/props/grove_water_tower.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/grove_wide_root_arch.glb.gz",
       "kind": "static",
       "from": [
         "src/render/level/kitModels.js"
@@ -2235,6 +2263,13 @@
     },
     {
       "path": "textures/campaign/bazaar-sunset.webp",
+      "kind": "static",
+      "from": [
+        "src/render/level/campaignSurfaceArt.js"
+      ]
+    },
+    {
+      "path": "textures/campaign/grove-orchard.webp",
       "kind": "static",
       "from": [
         "src/render/level/campaignSurfaceArt.js"
@@ -7396,8 +7431,8 @@
     },
     {
       "path": "models/props/grove_greenhouse_frame.glb.gz",
-      "bytes": 14141,
-      "sha256": "297fb8ba7ee0730de5f4de54dc65b171b24ee8979b4537a6b3164e8142a17dad",
+      "bytes": 1798,
+      "sha256": "d59daee741b6a9d52eb4ee8c0eff12314d71ec2ab801c4c29761a321bda78480",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -7407,7 +7442,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 1716,
+      "triangles": 144,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -7512,8 +7547,8 @@
     },
     {
       "path": "models/props/grove_hedge.glb.gz",
-      "bytes": 13379,
-      "sha256": "8f608591cb179c3ffaa36f4a65ad89890ef6a5a96927e423ea515bad9cad68f3",
+      "bytes": 2530,
+      "sha256": "e97018648fe9842b378bbf962db446c0b78eec5f36879c9df534c240ec0bbfed",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -7523,7 +7558,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 644,
+      "triangles": 112,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -7612,6 +7647,93 @@
       "height": null,
       "meshopt": false,
       "triangles": 623,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/grove_orchard_barn.glb.gz",
+      "bytes": 2340,
+      "sha256": "f018e8f277cedaf8e94436a20f72cb8b454b88acabbad43139fd328ee46e9ea6",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 188,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/grove_orchard_rise.glb.gz",
+      "bytes": 11245,
+      "sha256": "f2d4d574d37055dce17324e6a5a40140e9cab179d9e7cf78d5b11d74201a9f16",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 672,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/grove_orchard_windmill.glb.gz",
+      "bytes": 2777,
+      "sha256": "6690b0062f3cb49f41efefd57ecc690180ee73284f147abeb1bfd5d874e3fe20",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 180,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -7803,8 +7925,8 @@
     },
     {
       "path": "models/props/grove_root_wall.glb.gz",
-      "bytes": 6085,
-      "sha256": "0a6ee82bb5c5322ca96047b19fe1e12c488d3b2b2dfcf978e328cebd568f1877",
+      "bytes": 2700,
+      "sha256": "f74b28eafe73104629c9523efd8f42ee90264a936aef0af3018964a37dae052b",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -7814,7 +7936,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 544,
+      "triangles": 176,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -8125,8 +8247,8 @@
     },
     {
       "path": "models/props/grove_tree.glb.gz",
-      "bytes": 35409,
-      "sha256": "b0ea18089894b18e109f98da5eac7b00b3ea6994468cb5ffaa57907ea7f94c3e",
+      "bytes": 13313,
+      "sha256": "76b7e6696679f040c1d362ad560bccfe7924d0a6ea77ccc1d6c1d916c7b2879f",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -8136,7 +8258,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 1788,
+      "triangles": 662,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -8195,6 +8317,35 @@
       "height": null,
       "meshopt": false,
       "triangles": 2052,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/grove_wide_root_arch.glb.gz",
+      "bytes": 6917,
+      "sha256": "ebe7e2a77da5a91aa84c8a10aa15b67fe262a820a671ff9f7a2f237ec0af09ab",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 434,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -12447,6 +12598,21 @@
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     },
     {
+      "path": "textures/campaign/grove-orchard.webp",
+      "bytes": 14134,
+      "sha256": "7e2a9e5a17c1a13c8a5c87acedc22756821247cf42d02ef625c8afa8e4f5651e",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/campaignSurfaceArt.js"
+      ],
+      "kind": "image",
+      "width": 672,
+      "height": 336,
+      "decodedBytes": 903168,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
       "path": "textures/campaign/moonlit-night.webp",
       "bytes": 16596,
       "sha256": "0334de606eff8149e71b9daccc1b7cf4becdbb9ae3e0852f36218caabdd437e8",
@@ -12733,17 +12899,17 @@
     },
     {
       "path": "textures/stages/grove/sky.jpg",
-      "bytes": 69572,
-      "sha256": "e8b45830035e64867a4f0950b1a47b25006a5d2a19f2a416076dba8a293b2a29",
+      "bytes": 80187,
+      "sha256": "63db200628ab6366c34d4717547f904c278bd4125285b1abfa06df1f25edacf1",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
         "src/data/stages.js"
       ],
       "kind": "image",
-      "width": 1024,
-      "height": 512,
-      "decodedBytes": 2097152,
+      "width": 768,
+      "height": 384,
+      "decodedBytes": 1179648,
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     },
     {
@@ -13113,7 +13279,7 @@
       },
       {
         "path": "art/blender/vegetable_grove.blend",
-        "bytes": 430847
+        "bytes": 410303
       },
       {
         "path": "art/blender/weapon_animations.blend",
