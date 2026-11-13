@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 389,
-    "runtimeBytes": 26927542,
+    "runtimeFiles": 394,
+    "runtimeBytes": 26959949,
     "decodedBytes": 257493830,
-    "referenced": 389,
+    "referenced": 394,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -1737,7 +1737,28 @@
       ]
     },
     {
+      "path": "models/props/moonlit_viaduct.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
       "path": "models/props/moonlit_wall.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/office_annex.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/office_atrium_sign.glb.gz",
       "kind": "static",
       "from": [
         "src/render/level/kitPropPaths.js"
@@ -2115,7 +2136,21 @@
       ]
     },
     {
+      "path": "models/props/underworks_cavern_rib.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
       "path": "models/props/underworks_chimney.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitPropPaths.js"
+      ]
+    },
+    {
+      "path": "models/props/underworks_distant_smelter.glb.gz",
       "kind": "static",
       "from": [
         "src/render/level/kitPropPaths.js"
@@ -10591,6 +10626,36 @@
       }
     },
     {
+      "path": "models/props/moonlit_viaduct.glb.gz",
+      "bytes": 4369,
+      "sha256": "6141ffce5605b3e6428a73a2ceebc62e075bb7f05123b633b6f3a92b0cc79020",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 420,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_moonlit_aqua",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
       "path": "models/props/moonlit_wall.glb.gz",
       "bytes": 5520,
       "sha256": "298acda49aa9a3ce07fd4f0e3aed2a12f50b431f3be070cca4397e04475e1266",
@@ -10615,6 +10680,67 @@
         "joints": 0,
         "nodes": 1,
         "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_annex.glb.gz",
+      "bytes": 3147,
+      "sha256": "9ed9eb9075e95b553b6dfe40cf89bf4a206fc8cd096c018b7e59fe344316e3c4",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 360,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_office_amber",
+          "campaign_glow_office_red",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/office_atrium_sign.glb.gz",
+      "bytes": 6158,
+      "sha256": "8927f3db889b647b154027bcbf8395f1734476babfc6eeb51f2ca1c9b3202ac0",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 616,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_office_cyan",
           "cartoon_kit"
         ]
       }
@@ -12213,6 +12339,35 @@
       }
     },
     {
+      "path": "models/props/underworks_cavern_rib.glb.gz",
+      "bytes": 1998,
+      "sha256": "8d2ed99c2377ba2dbbf69fd1c0b8f311930395310e1ece714f4cfa67a2ae14ba",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 80,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
       "path": "models/props/underworks_chimney.glb.gz",
       "bytes": 6577,
       "sha256": "a20eba9d12ad21d99d2db857b347363f167318d49d90cdaa5d27f9833f9bdc73",
@@ -12226,6 +12381,37 @@
       "height": null,
       "meshopt": false,
       "triangles": 684,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_underworks_heat",
+          "campaign_glow_underworks_lamp",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/underworks_distant_smelter.glb.gz",
+      "bytes": 3301,
+      "sha256": "579f3e801e8a27ae3c1082d38334513d06c4806c2d704b16d111731a0cddf3e2",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitPropPaths.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 252,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -14335,8 +14521,8 @@
     },
     {
       "path": "textures/campaign/moonlit-night.webp",
-      "bytes": 16596,
-      "sha256": "0334de606eff8149e71b9daccc1b7cf4becdbb9ae3e0852f36218caabdd437e8",
+      "bytes": 10958,
+      "sha256": "ededcb99c3b0f20b8cfbdc7c7e58481b624e3c04d893e45301531f9f736bcd59",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -14365,8 +14551,8 @@
     },
     {
       "path": "textures/campaign/office-night.webp",
-      "bytes": 16390,
-      "sha256": "c0018054d5a8d6980c6041bf56d6d9857b046565cb05c0b64a79568ceddae8a7",
+      "bytes": 30180,
+      "sha256": "19380a558596ffbcf973c0f5e311b0c415f3fe007b08510ca4a3e54942ef2057",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -14440,8 +14626,8 @@
     },
     {
       "path": "textures/campaign/underworks-cavern.webp",
-      "bytes": 21954,
-      "sha256": "1a6932f2a9009abea9a4291582de1ceb2481953719d1990c6c8b621a793e448e",
+      "bytes": 27236,
+      "sha256": "8498d2702c232c1adf7ede4787058dc311d48d023bcfeae17bc1814e74687546",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -14987,7 +15173,7 @@
       },
       {
         "path": "art/blender/government_office.blend",
-        "bytes": 244328
+        "bytes": 254984
       },
       {
         "path": "art/blender/grand_bazaar.blend",
@@ -15003,11 +15189,11 @@
       },
       {
         "path": "art/blender/hellfire_underworks.blend",
-        "bytes": 271028
+        "bytes": 275371
       },
       {
         "path": "art/blender/moonlit_ruins.blend",
-        "bytes": 204081
+        "bytes": 207040
       },
       {
         "path": "art/blender/new_enemies.blend",

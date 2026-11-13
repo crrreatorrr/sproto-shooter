@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { expect, it } from 'vitest';
 import { L09 } from '../../src/data/levels/campaign.js';
+import { campaignPre, campaignPost, startCampaign, transitionDone } from '../../src/sim/campaign/campaign.js';
+import { createGameState } from '../../src/sim/state.js';
 import { KIT } from '../../src/render/level/kitModels.js';
 import { moonlitPlacements } from '../../src/render/level/moonlitDressing.js';
 import { kitCeilingSurface, panoramaPath, surfaceArtPath, surfaceArtTheme } from '../../src/render/level/campaignSurfaceArt.js';
@@ -24,7 +26,10 @@ function dressing(sec) {
   return moonlitPlacements(sec, new Map(sec.geometry.map(g => [g.id, g])));
 }
 
-it.each(L09.sections)('fits the $name and stays under 50,000 art triangles', (sec) => {
+const originalKitTriangles = { S1: 36496, S2: 30792, S3: 35748 };
+const expanded = { S1: [72, 46], S2: [64, 54], S3: [76, 66] };
+
+it.each(L09.sections)('fits the $name below its original art triangle count', (sec) => {
   const props = dressing(sec);
   for (const side of ['N', 'S']) {
     const id = `${sec.id}-wall${side}`;
@@ -44,8 +49,46 @@ it.each(L09.sections)('fits the $name and stays under 50,000 art triangles', (se
   const triangles = props.reduce((sum, p) => sum + triangleCount(p.model), 0)
     + portalCount * triangleCount('moonlit_portal_light');
   expect(triangles).toBeGreaterThan(20_000);
-  expect(triangles).toBeLessThanOrEqual(50_000);
+  expect(triangles).toBeLessThan(originalKitTriangles[sec.id]);
   expect(props.some(p => p.model === 'moonlit_vault')).toBe(sec.id === 'S2');
+});
+
+it.each(['north', 'south'])('keeps the %s approach playable through the widened handoffs', (side) => {
+  const state = createGameState({ seed: 9 });
+  const player = state.players[state.localPlayerId];
+  startCampaign(state, player, 'L09');
+  for (const sec of L09.sections) {
+    expect(state.level.section).toBe(sec.id);
+    const floor = sec.geometry.find(g => g.id === `${sec.id}-floor`);
+    const [length, width] = expanded[sec.id];
+    expect(floor.size[2]).toBe(width);
+    expect(floor.at[0] + floor.size[0] / 2 - .5 - (sec.start[0] - 3.5)).toBe(length);
+    for (const encounter of sec.encounters) {
+      const z = side === 'north' ? encounter.activate.min[2] + .8 : encounter.activate.max[2] - .8;
+      player.pos = { x: encounter.activate.min[0] + .6, y: 0, z };
+      campaignPre(state, 0);
+      expect(state.level.spawned[encounter.id]).toBe(true);
+      state.enemies.length = 0;
+      state.level.cleared[encounter.id] = true;
+    }
+    if (!sec.exit) break;
+    player.pos.x = sec.exit.min[0] + .01;
+    campaignPost(state, 0);
+    expect(state.level.transition?.to).toBe(sec.exit.to);
+    transitionDone(state);
+    const incoming = L09.sections.find(s => s.id === sec.exit.to).geometry[0];
+    expect(incoming.at[0] - incoming.size[0] / 2).toBeLessThan(player.pos.x);
+    expect(incoming.at[2] - incoming.size[2] / 2).toBeLessThan(player.pos.z);
+    expect(incoming.at[2] + incoming.size[2] / 2).toBeGreaterThan(player.pos.z);
+  }
+});
+
+it('keeps the original portal landing, jetpack and escape threshold in the redesigned route', () => {
+  const [plains, , gate] = L09.sections;
+  const portal = plains.mechanisms.find(m => m.kind === 'portal');
+  expect(portal.to).toEqual([38, 0, 11]);
+  expect(plains.mechanisms.find(m => m.kind === 'jetpack').at).toEqual([36, 1, 8.8]);
+  expect(gate.encounters.find(e => e.id === 'S3-E4').fleeAt).toBe(.7);
 });
 
 it('centres the ruin portal on the existing teleport and puts the grand gate beyond the combat floor', () => {
