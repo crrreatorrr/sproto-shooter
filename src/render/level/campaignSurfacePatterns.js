@@ -176,8 +176,6 @@ export const CAMPAIGN_SURFACE_PATTERNS = {
     vec2 size = vec2(3.85, ground ? 2.54 : 1.22);
     float split = max(surfaceLine(joints.x, size.x, .024), surfaceLine(joints.y, size.y, .020));
     float heat = surfaceNoise(p * .27);
-    float pulse = .70 + .30 * sin(campaignSurfaceTime * 1.13 + p.x * .7 - p.y * .46);
-    gleam = vec3(.42, .095, .014) * split * smoothstep(.39, .84, heat) * pulse;
     float plate = surfaceHash(floor(joints / size));
     float charcoal = surfaceGrain(p, vec2(.31, .51)) - split * .31 + (plate - .5) * .15;
     return mix(vec3(.96, 1.04, 1.06), vec3(1.18, .90, .77), heat) * charcoal;

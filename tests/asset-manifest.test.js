@@ -58,6 +58,7 @@ describe('asset manifest', () => {
       'art/blender/fx_poof.blend',
       'art/blender/government_office.blend',
       'art/blender/grappler.blend',
+      'art/blender/hellfire_caldera.blend',
       'art/blender/hellfire_underworks.blend',
       'art/blender/moonlit_ruins.blend',
       'art/blender/new_enemies.blend',

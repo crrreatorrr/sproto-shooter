@@ -3,6 +3,7 @@ import { STAGES, stageAssets } from '../../data/stages.js';
 import { peekTexture, instantiateStatic, assetsVersion } from '../assets.js';
 import { createAuroraSky } from './auroraSky.js';
 import { panoramaPath } from '../level/campaignSurfaceArt.js';
+import { createCalderaEmbers } from './calderaEmbers.js';
 import { createSkylineRain } from './skylineRain.js';
 import { createLevelView } from '../level/levelView.js';
 
@@ -13,7 +14,8 @@ export function mountStage(env) {
   let blockchainSky, frostspireSky;
   sky.renderOrder = -1;
   const skylineRain = createSkylineRain();
-  scene.add(sky, skylineRain);
+  const calderaEmbers = createCalderaEmbers();
+  scene.add(sky, skylineRain, calderaEmbers);
   const groundMat = M(0xffffff, { roughness: 0.92 });
   const ground = new THREE.Mesh(new THREE.CircleGeometry(ARENA_R, 128), groundMat);
   ground.rotation.x = -Math.PI / 2;
@@ -58,6 +60,8 @@ export function mountStage(env) {
     const frostspire = id === 'glacier' && levelId === 'L05';
     const skyline = id === 'city' && levelId === 'L06';
     const underworks = id === 'volcano' && levelId === 'L07';
+    const caldera = id === 'volcano' && levelId === 'L10';
+    const eruption = caldera && sectionId === 'S4';
     const office = id === 'office' && levelId === 'L08';
     const roof = office && sectionId === 'S4';
     const moonlit = id === 'moonlit' && levelId === 'L09';
@@ -65,7 +69,8 @@ export function mountStage(env) {
     const st = STAGES[id], a = stageAssets(id);
     const variant = office ? (roof ? 'L08-roof' : 'L08-interior')
       : moonlit ? (crypt ? 'L09-crypt' : 'L09-exterior')
-      : blockchain || frostspire || skyline || underworks ? levelId : '';
+      : caldera ? (eruption ? 'L10-eruption' : 'L10-ridge')
+        : blockchain || frostspire || skyline || underworks ? levelId : '';
     const key = id + ':' + variant + ':' + assetsVersion();
     if (key === stageKey) return;
     stageKey = key;
@@ -86,21 +91,21 @@ export function mountStage(env) {
       bounce.intensity = .45;
     }
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
-    const panorama = skyline || underworks || office || moonlit ? panoramaPath(levelId, sectionId) : a.sky;
+    const panorama = skyline || underworks || office || moonlit || caldera ? panoramaPath(levelId, sectionId) : a.sky;
     const skyTex = panorama ? peekTexture(panorama) : null;
-    if (skyTex && (skyline || underworks || roof || moonlit)) {
-      skyTex.offset.y = skyline ? -.16 : underworks ? .035 : moonlit ? -.036 : -.098;
-      if (roof || moonlit) {
+    if (skyTex && (skyline || underworks || roof || moonlit || caldera)) {
+      skyTex.offset.y = skyline ? -.16 : underworks ? .035 : moonlit ? -.036 : caldera ? .057 : -.098;
+      if (roof || moonlit || caldera) {
         // Orient the painted landmark above the eastward approach.
         skyTex.wrapS = THREE.RepeatWrapping;
-        skyTex.offset.x = moonlit ? .208 : .185;
+        skyTex.offset.x = moonlit ? .208 : caldera ? .204 : .185;
         skyTex.needsUpdate = true;
       }
     }
     sky.material = blockchain ? (blockchainSky ||= createAuroraSky())
       : frostspire ? (frostspireSky ||= createAuroraSky(true)) : standardSky;
     standardSky.map = skyTex;
-    standardSky.color.setHex(skyTex ? 0xffffff : skyline ? 0x242d54 : underworks ? 0x472840 : st.background);
+    standardSky.color.setHex(skyTex ? 0xffffff : skyline ? 0x242d54 : underworks || caldera ? 0x472840 : st.background);
     standardSky.needsUpdate = true;
     if (blockchain) {
       scene.fog.color.setHex(0x312445);
@@ -168,6 +173,17 @@ export function mountStage(env) {
       bounce.color.setHex(crypt ? 0x9e70f5 : 0x6e9bec);
       bounce.intensity = crypt ? .55 : .44;
     }
+    if (caldera) {
+      scene.fog.color.setHex(eruption ? 0x713e4e : 0x623947);
+      hemi.color.setHex(0xe8c7d8);
+      hemi.groundColor.setHex(0xac7b7c);
+      hemi.intensity = eruption ? 1.28 : 1.42;
+      sun.color.setHex(0xffd3b0);
+      sun.position.set(-13, 26, -14);
+      sun.intensity = eruption ? 1.42 : 1.57;
+      bounce.color.setHex(0xff945d);
+      bounce.intensity = eruption ? .72 : .52;
+    }
     const floor = peekTexture(a.floor);
     setStageMap(groundMat, floor, st.floorRepeat, st.floorRepeat);
     groundMat.color.setHex(floor ? 0xffffff : 0x4a3a66);
@@ -199,5 +215,5 @@ export function mountStage(env) {
       decor.add(pr);
     }
   }
-  Object.assign(env, { sky, skylineRain, groundMat, ground, outerMat, outer, rimMat, rim, edgeRing, wall, decor, levelView, arenaBits, setStageMap, applyStage });
+  Object.assign(env, { sky, skylineRain, calderaEmbers, groundMat, ground, outerMat, outer, rimMat, rim, edgeRing, wall, decor, levelView, arenaBits, setStageMap, applyStage });
 }
