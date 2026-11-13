@@ -54,6 +54,7 @@ export function moonlitPlacements(sec, prims) {
         add('column', x, 0, edge - sign * .85, yaw, [.87, .89, .87]);
       }
       add('obelisk', 57, 0, center + sign * 9.8, yaw, .87);
+      add('sconce', 57, 1.9, center + sign * 9.28, yaw, .96);
       continue;
     }
 
@@ -84,16 +85,18 @@ export function moonlitPlacements(sec, prims) {
     add('crypt_wall', first - .36, 0, center, 90, [width / 2, 11.3, .52]);
     // The far end contains a deep niche and an arch marking the handoff.
     for (const side of [-1, 1]) {
-      add('crypt_wall', end + .9, 0, center + side * (width / 4 + 2), -90, [width / 4 - 2, 12, .55]);
+      add('crypt_wall', end + .43, 0, center + side * (width / 4 + 2), -90, [width / 4 - 2, 12, .55]);
       add('sconce', end - .3, 2.7, center + side * 5.7, -90, 1.18);
     }
-    add('crypt_wall', end + .9, 7.4, center, -90, [4.05, 4.65, .52]);
+    add('crypt_wall', end + .43, 7.4, center, -90, [4.05, 4.65, .52]);
     add('crypt_wall', end + 2.3, 0, center, -90, [4.3, 8.1, .42]);
     add('apron', end + 1.1, -.31, center, 0, [1.8, 1, width / 2]);
     add('ruin_arch', end - 2.3, .02, center, -90, 1.19);
   } else {
     if (arena) {
       add('medallion', 38, .008, center, 0, [2.15, 1, 2.15]);
+      add('lantern', 23, .01, center - 10.6, 0, .91);
+      add('lantern', 23, .01, center + 10.6, 180, .91);
       add('apron', end + 4.7, -.32, center, 0, [5.4, 1, 12.2]);
       add('gate', end + 4.25, -.04, center, -90, 1.28);
     } else {
@@ -103,6 +106,7 @@ export function moonlitPlacements(sec, prims) {
       add('apron', 14.3, -.286, center + 2.64, 0, [7.5, 1, 2.9]);
       add('camp', 10.7, .018, center + 6.3, 180);
       add('camp', 17.8, .018, center + 6.3, 180);
+      add('lantern', 8.5, .018, center + 4.9, 180, .86);
       add('column', 45, .02, center + 12.8, 0, 1.08);
       add('fragment', 51, .02, center + 13.9, 17, 1.12);
     }
