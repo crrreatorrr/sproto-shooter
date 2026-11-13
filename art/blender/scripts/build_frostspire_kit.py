@@ -117,16 +117,74 @@ def drift():
 
 def glacier():
     m = model('glacier')
-    m.box(ICE[0], (2, 1.95, .88), (0, 0, .44), bevel=.095)
-    m.box(ICE[2], (2, 1.94, .17), (0, 0, .914), bevel=.076)
+    m.box(ICE[0], (2, 1.96, .87), (0, 0, .435), bevel=.06)
+    m.box(ICE[3], (2, 1.89, .15), (0, 0, .925), bevel=.04)
     for side in (-1, 1):
-        for i in range(4):
-            x = (i - 1.5) * .49
-            h = (.68, .88, .78, .91)[i]
-            m.cyl(ICE[1 + i % 2], .23, h, (x, side * .80, .02), r2=.20, seg=5, smooth=False)
-            m.cyl(SNOW if i % 3 else ICE[3], .20, .069, (x, side * .80, h), r2=.157, seg=5, smooth=False)
+        for i in range(3):
+            x = (i - 1) * .6
+            h = (.68, .90, .81)[i]
+            m.cyl(ICE[1 + i % 2], .23, h, (x, side * .79, .04), r2=.11, seg=5, smooth=False)
     return m
 
+
+def ridge():
+    m = model('ridge')
+    # These slabs form irregular slopes behind the collision scenery.
+    for i, (x, y, h, w) in enumerate(((-21, 1, 12, 15), (-8, 7, 23, 19), (9, 2, 30, 22), (26, 5, 17, 18))):
+        rng = Random(73 + i)
+        n = 8
+        rings = []
+        for k, (z, radius) in enumerate(((0, 1), (.34, .83), (.65, .55), (.84, .29), (1, .06))):
+            row = []
+            for j in range(n):
+                theta = j * 2 * pi / n
+                r = radius * rng.uniform(.84, 1.06)
+                row.append((x + w * r * cos(theta) + k * .48,
+                            y + w * .60 * r * sin(theta) + k * .20,
+                            z * h + (0 if k == 0 else rng.uniform(-1.0, .9))))
+            rings.append(row)
+        start = len(m.verts)
+        m.verts.extend(v for row in rings for v in row)
+        for k in range(len(rings) - 1):
+            for j in range(n):
+                a = start + k*n + j
+                b = start + k*n + (j + 1) % n
+                for face in ((a,b,a+n),(b,b+n,a+n)):
+                    palette = (0x324C71, 0x47648B, 0x5879A1) if k == 0 else (0x607CA5, 0x91ACCC, 0xC6D9EE)
+                    m.faces.append(face)
+                    m.colors.append(srgb(rng.choice(palette)))
+                    m.smooth.append(False)
+        m.faces.append(tuple(start + (len(rings)-1)*n + j for j in range(n)))
+        m.colors.append(srgb(SNOW))
+        m.smooth.append(False)
+    return m
+
+
+def relay_outpost():
+    m = model('relay_outpost')
+    m.box(STEEL, (8, 6.4, 4.5), (0, 0, 2.25), bevel=.16)
+    m.box(SNOW, (8.4, 6.8, .38), (0, 0, 4.58), bevel=.13)
+    for side in (-1, 1):
+        for x in (-2.67, -1.35, 0, 1.35, 2.67):
+            m.box(AMBER, (.63, .09, .50), (x, side * 3.23, 2.96))
+    m.cyl(RIM, .19, 7.1, (2, 0, 4.56), r2=.12, seg=6, smooth=False)
+    m.cyl(RED, .29, .39, (2, 0, 11.65), r2=.16, seg=6, smooth=False)
+    m.cyl(INK, .65, 2.45, (-1.75, -.1, 4.6), r2=.40, seg=8, smooth=False)
+    m.cyl(RIM, 2.3, .69, (-1.75, -.34, 6.85), r2=.75, rot=(61, -13, 0), seg=12, smooth=False)
+    return m
+
+
+def portal_trim():
+    m = model('portal_trim')
+    for x in (-7.35, 7.35):
+        m.box(STEEL, (.58, .42, 6), (x, 0, 3), bevel=.06)
+        for y in (-.24, .24):
+            m.box(ORANGE, (.34, .075, 1.73), (x, y, 1.04))
+            m.box(LAMP, (.18, .095, 1.69), (x, y, 4.56))
+    for y in (-.24, .24):
+        m.box(RIM, (15.3, .21, .36), (0, y, 6.15))
+        m.box(LAMP, (4.32, .04, .12), (0, y * 1.55, 6.14))
+    return m
 
 def ice_floor():
     m = model('ice_floor')
@@ -184,17 +242,15 @@ def snowcat():
 
 def panel(name='panel', snow=False):
     m = model(name)
-    m.box(INK, (2, 1.69, .96), (0, 0, .48), bevel=.036)
-    for s in (-1, 1):
-        m.box(CONCRETE, (1.9, .1, .88), (0, s * .9, .49), bevel=.045)
-        for x in (-.93, .93):
-            m.box(RIM, (.14, .10, .82), (x, s * .944, .49), bevel=.031)
-            m.box(ORANGE, (.095, .062, .16), (x, s * .966, .74), bevel=.015)
-        m.box(STEEL, (1.67, .074, .14), (0, s * .955, .31), bevel=.025)
-        m.box(LAMP, (1.43, .043, .04), (0, s * .977, .31), bevel=.011)
-    m.box(SNOW if snow else RIM, (1.99, 1.97, .11), (0, 0, .945), bevel=.036)
+    m.box(INK, (2, 1.82, .91), (0, 0, .455))
+    for side in (-1, 1):
+        m.box(CONCRETE, (1.96, .082, .86), (0, side * .934, .47))
+        m.box(STEEL, (1.83, .048, .11), (0, side * .981, .28))
+        m.box(LAMP, (1.38, .026, .041), (0, side * .985, .285))
+        for x in (-.89, .89):
+            m.box(ORANGE, (.094, .048, .13), (x, side * .981, .73))
+    m.box(SNOW if snow else RIM, (2, 1.94, .11), (0, 0, .945))
     return m
-
 
 def wall():
     return panel('wall', snow=True)
@@ -377,19 +433,19 @@ def generator():
 
 def shelf():
     m = model('shelf')
-    m.box(STEEL, (1.97, .25, .98), (0, 0, .49), bevel=.035)
+    m.box(STEEL, (1.94, .25, .98), (0, 0, .49))
     for x in (-.94, .94):
-        m.box(INK, (.12, 2, 1), (x, 0, .5), bevel=.026)
+        m.box(INK, (.12, 2, 1), (x, 0, .5))
     for z in (.065, .29, .53, .77, .96):
-        m.box(RIM, (2, 2, .081), (0, 0, z), bevel=.029)
+        m.box(RIM, (2, 2, .081), (0, 0, z))
     for row in range(4):
-        for j in range(7):
-            x = (j - 3) * .246
-            z = .142 + .226 * row
+        for j in range(6):
+            x = (j - 2.5) * .28
+            z = .131 + .229 * row
             color = (RIM, 0x476C7F, 0xA28A62, ORANGE)[(j * 7 + row) % 4]
-            m.box(color, (.18, 1.48, .148), (x, 0, z), bevel=.023)
+            m.box(color, (.217, 1.56, .119 + (j % 3)*.023), (x, 0, z))
+            m.box(0xBACADB, (.093, 1.566, .025), (x, 0, z + .02))
     return m
-
 
 def console():
     m = model('console')
@@ -468,17 +524,19 @@ def pad():
 
 
 MAKERS = (
-    pod, debris, boulder, spire, drift, glacier, ice_floor, pine, tent, snowcat, wall, panel, gate, cover, crate,
+    pod, debris, boulder, spire, drift, glacier, ridge, relay_outpost, portal_trim, ice_floor, pine, tent, snowcat, wall, panel, gate, cover, crate,
     rail, deck, roof, floodlight, searchlight, beacon, alarm, column, tank, generator, shelf,
     console, safe, drill, charge_ring, pad,
 )
 EMISSIVE = {
     'pod', 'tent', 'snowcat', 'wall', 'panel', 'gate', 'crate', 'deck', 'roof', 'floodlight',
-    'alarm', 'column', 'tank', 'generator', 'console', 'safe', 'charge_ring', 'pad',
+    'relay_outpost', 'portal_trim', 'alarm', 'column', 'tank', 'generator', 'console', 'safe', 'charge_ring', 'pad',
 }
 
 
 def main():
+    expansion = {wall, panel, glacier, ridge, relay_outpost, portal_trim, shelf}
+    expansion_only = '--expansion-only' in sys.argv
     clear_scene()
     MATERIALS.clear()
     bpy.context.preferences.filepaths.save_version = 0
@@ -491,7 +549,8 @@ def main():
         obj = bake(mesh, *(GLOW if mesh.name.removeprefix('frost_') in EMISSIVE else ()))
         scene.frame_set(scene.frame_start)
         objects = [obj, *motion]
-        export(objects, 'props', mesh.name, animated=bool(motion), compressed=True)
+        if not expansion_only or make in expansion:
+            export(objects, 'props', mesh.name, animated=bool(motion), compressed=True)
         collection = bpy.data.collections.new(mesh.name)
         scene.collection.children.link(collection)
         root = bpy.data.objects.new(f'{mesh.name} | Editable prop', None)

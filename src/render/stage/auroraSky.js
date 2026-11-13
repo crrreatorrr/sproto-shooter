@@ -2,19 +2,28 @@ import * as THREE from 'three';
 
 export function createAuroraSky(polar = false) {
   return new THREE.ShaderMaterial({
-    uniforms: { polar: { value: polar ? 1 : 0 }, whiteout: { value: 0 } },
+    uniforms: {
+      polar: { value: polar ? 1 : 0 }, whiteout: { value: 0 },
+      panorama: { value: null }, panoramaReady: { value: 0 }, panoramaYaw: { value: 0 },
+    },
     side: THREE.BackSide, depthWrite: false, toneMapped: false,
     vertexShader: `
       varying vec3 skyDirection;
+      varying vec2 skyUV;
       void main() {
         skyDirection = position;
+        skyUV = uv;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.);
       }
     `,
     fragmentShader: `
       uniform float polar;
       uniform float whiteout;
+      uniform sampler2D panorama;
+      uniform float panoramaReady;
+      uniform float panoramaYaw;
       varying vec3 skyDirection;
+      varying vec2 skyUV;
 
       float hash(vec2 p) {
         p = fract(p * vec2(123.34, 456.21));
@@ -55,6 +64,11 @@ export function createAuroraSky(polar = false) {
         col += mix(vec3(.74, .095, .55), vec3(.10, .27, .41), polar) * curtain(az, el, .21, .2) * .83;
         float moon = 1. - smoothstep(.00030, .00047, 1. - dot(d, normalize(vec3(-.38, .44, -.80))));
         col += vec3(.70, .82, .96) * polar * moon;
+        if (panoramaReady > .5) {
+          vec3 mountainSky = texture2D(panorama, vec2(skyUV.x + panoramaYaw, skyUV.y - .045)).rgb;
+          col = sRGBTransferOETF(vec4(mountainSky, 1.)).rgb;
+          col += vec3(.04, .14, .11) * curtain(az, el, .42, .9) * .36;
+        }
         vec3 storm = mix(vec3(.58, .65, .72), vec3(.76, .81, .86), smoothstep(-.6, .8, d.y));
         gl_FragColor = vec4(mix(col, storm, whiteout), 1.);
       }

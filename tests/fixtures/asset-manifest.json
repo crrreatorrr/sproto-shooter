@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 344,
-    "runtimeBytes": 27321572,
-    "decodedBytes": 258162502,
-    "referenced": 344,
+    "runtimeFiles": 348,
+    "runtimeBytes": 27339311,
+    "decodedBytes": 258148166,
+    "referenced": 348,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -932,7 +932,28 @@
       ]
     },
     {
+      "path": "models/props/frost_portal_trim.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
       "path": "models/props/frost_rail.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/frost_relay_outpost.glb.gz",
+      "kind": "static",
+      "from": [
+        "src/render/level/kitModels.js"
+      ]
+    },
+    {
+      "path": "models/props/frost_ridge.glb.gz",
       "kind": "static",
       "from": [
         "src/render/level/kitModels.js"
@@ -2284,6 +2305,13 @@
     },
     {
       "path": "textures/campaign/bazaar-sunset.webp",
+      "kind": "static",
+      "from": [
+        "src/render/level/campaignSurfaceArt.js"
+      ]
+    },
+    {
+      "path": "textures/campaign/frostspire-valley.webp",
       "kind": "static",
       "from": [
         "src/render/level/campaignSurfaceArt.js"
@@ -6687,8 +6715,8 @@
     },
     {
       "path": "models/props/frost_glacier.glb.gz",
-      "bytes": 3910,
-      "sha256": "27d727588018a8455bc6b74dd88f58d64b6a70bd150b1d1e25eb896b41279c12",
+      "bytes": 2445,
+      "sha256": "90313a7b9cde661e6773af71784a22a7a44f717c3493bb4daefd2bf9e6ab6b86",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -6698,7 +6726,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 344,
+      "triangles": 184,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -6775,8 +6803,8 @@
     },
     {
       "path": "models/props/frost_panel.glb.gz",
-      "bytes": 6021,
-      "sha256": "a83952ebc8404648cbc9e12a584f0acaf247d5613812c78620e1f20b10ee3952",
+      "bytes": 1937,
+      "sha256": "7c52539ba790bf27c11468fb4c29be2d233db9a5c907653465ecc46697323afa",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -6786,7 +6814,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 704,
+      "triangles": 144,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -6863,6 +6891,36 @@
       }
     },
     {
+      "path": "models/props/frost_portal_trim.glb.gz",
+      "bytes": 2786,
+      "sha256": "1272ce1cde79a48d5cca4b327c346d099d3a1c62c3d4356ba9e703b30f777617",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 232,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_frost_cyan",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
       "path": "models/props/frost_rail.glb.gz",
       "bytes": 2400,
       "sha256": "f85b92e36cc27b646de6e5392d8e47d2c6fa2a6fa7e9776809c56d8ca4cbd899",
@@ -6876,6 +6934,66 @@
       "height": null,
       "meshopt": false,
       "triangles": 220,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/frost_relay_outpost.glb.gz",
+      "bytes": 4167,
+      "sha256": "98667aaac1a2623f6dba397c793ec159639ebdd8eb841c35706ed76c78ace2c6",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 320,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": [
+          "campaign_glow_frost_amber",
+          "campaign_glow_frost_red",
+          "cartoon_kit"
+        ]
+      }
+    },
+    {
+      "path": "models/props/frost_ridge.glb.gz",
+      "bytes": 6138,
+      "sha256": "0ab232bb1776e6e48c38c7317613c145118c3d744eb4ac204977bb48e48af801",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/kitModels.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 280,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -6985,8 +7103,8 @@
     },
     {
       "path": "models/props/frost_shelf.glb.gz",
-      "bytes": 12937,
-      "sha256": "6695c09849508a5ee186a483bf324c1e743bcc47daef2b3856ab37cb9a29824e",
+      "bytes": 5836,
+      "sha256": "7c6b223387ae3b75f0de5f9a2c5f2acba97da6e05ed1ffa21f75f4a9c7eae7e1",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -6996,7 +7114,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 1584,
+      "triangles": 672,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -7135,8 +7253,8 @@
     },
     {
       "path": "models/props/frost_wall.glb.gz",
-      "bytes": 6019,
-      "sha256": "27f2c34dcc7827d4bf28e8bedcd79fd21953b95766f04c797f6625f5f5596cda",
+      "bytes": 1940,
+      "sha256": "b92095f5f9e3782ac1e636e930d1ca615b28dd5320a4cba1dae7311249f10e3f",
       "referenced": true,
       "referenceKind": "static",
       "referencedFrom": [
@@ -7146,7 +7264,7 @@
       "width": null,
       "height": null,
       "meshopt": false,
-      "triangles": 704,
+      "triangles": 144,
       "meshoptDecodedBytes": 0,
       "imageDecodedBytes": 0,
       "decodedBytes": 0,
@@ -12715,6 +12833,21 @@
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     },
     {
+      "path": "textures/campaign/frostspire-valley.webp",
+      "bytes": 22896,
+      "sha256": "c740a988bcbeba52c3419767af3b7c2d9d212dc473500cf9a1de295b52375a1d",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/level/campaignSurfaceArt.js"
+      ],
+      "kind": "image",
+      "width": 672,
+      "height": 336,
+      "decodedBytes": 903168,
+      "decodedNote": "RGBA8 upload estimate, width * height * 4"
+    },
+    {
       "path": "textures/campaign/grove-orchard.webp",
       "bytes": 14134,
       "sha256": "7e2a9e5a17c1a13c8a5c87acedc22756821247cf42d02ef625c8afa8e4f5651e",
@@ -12986,17 +13119,17 @@
     },
     {
       "path": "textures/stages/glacier/sky.jpg",
-      "bytes": 88890,
-      "sha256": "09a5c51ad03ff3b5d3fe9ce189302b6c477ff27f4591825ead99f803a3b3a164",
+      "bytes": 87371,
+      "sha256": "a5a3a3775327f4254b37ec0ee3606ab5c2bcdb0e0ed1c9abcbf5db85c0ab0ef5",
       "referenced": true,
       "referenceKind": "dynamic",
       "referencedFrom": [
         "src/data/stages.js"
       ],
       "kind": "image",
-      "width": 1024,
-      "height": 512,
-      "decodedBytes": 2097152,
+      "width": 768,
+      "height": 384,
+      "decodedBytes": 1179648,
       "decodedNote": "RGBA8 upload estimate, width * height * 4"
     },
     {
@@ -13371,7 +13504,7 @@
       },
       {
         "path": "art/blender/frostspire_black_site.blend",
-        "bytes": 215661
+        "bytes": 225041
       },
       {
         "path": "art/blender/fx_explosion.blend",

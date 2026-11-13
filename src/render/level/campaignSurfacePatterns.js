@@ -141,7 +141,10 @@ export const CAMPAIGN_SURFACE_PATTERNS = {
       vec2 cut = p + .38 * vec2(surfaceNoise(p * .7), surfaceNoise(p * .8 + 5.));
       float fault = max(surfaceLine(cut.x + cut.y * .34, 2.2, .013),
         surfaceLine(cut.y - cut.x * .27, 2.85, .017));
-      return vec3(.92, 1.045, 1.11) * (surfaceGrain(p, vec2(.38, .61)) + fault * .15);
+      float facets = surfaceFacets(p * .25);
+      float frost = smoothstep(.52, .78, surfaceNoise(p * .74));
+      return mix(vec3(.78, .96, 1.10), vec3(1.04, 1.12, 1.20), facets)
+        * (surfaceGrain(p, vec2(.38, .61)) + fault * .24 + frost * .10);
     }
     if (campaignSurfaceKind == 2.) {
       return vec3(1.03, 1.01, .98) * surfaceBlocks(p, vec2(.51, 2.8), .5, .28)
@@ -149,7 +152,14 @@ export const CAMPAIGN_SURFACE_PATTERNS = {
     }
     float panels = surfaceBlocks(p, ground ? vec2(3.25, 2.4) : vec2(2.75, 1.45), 0., .30);
     float rib = surfaceLine(p.y - .18, 1.45, .047);
-    return vec3(.97, 1.035, 1.08) * (panels * surfaceGrain(p, vec2(.37, .22)) + rib * .07);
+    vec3 finish = vec3(.97, 1.035, 1.08) * (panels * surfaceGrain(p, vec2(.37, .22)) + rib * .07);
+    if (upward && campaignSurfaceKind == 0. && p.y < -853. && p.y > -900.) {
+      float stripe = surfaceStamp(abs(p.x - 150.) - 3.4, .065);
+      float dash = surfaceLine(p.y, 4.8, 1.22);
+      finish = mix(finish, vec3(1.86, 1.24, .57), stripe * dash * .72);
+      gleam += vec3(.17, .075, .027) * stripe * dash;
+    }
+    return finish;
   `,
   L06: /* glsl */ `
     float panels = surfaceBlocks(p, ground ? vec2(4.3, 2.85) : vec2(2.55, 2.8), .5, .36);
