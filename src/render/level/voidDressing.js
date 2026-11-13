@@ -1,5 +1,5 @@
 // Re-skin the authored L04 solids. The model transforms never enter campaign state.
-const BOX_PLATFORMS = /^(?:s1\.(?:gen|blk1|launch|mem|file1)|s2\.(?:ent|porch[WE]|pit)|s3\.mouth|s4\.(?:ent|porchW|chFloor[NSEW]|b[1-9]|hb[1-5]|exit)|s5\.(?:ent|step[ABC]|vaultFloor|batLedge)|sb\.(?:vest|cause|t[0-4][0-4]))$/i;
+const BOX_PLATFORMS = /^(?:s1\.(?:gen|blk1|launch|mem|file1)|s2\.(?:ent|porch[WE]|pit)|s3\.mouth|s4\.(?:ent|porchW|chFloor[NSEW]|b[1-9]|hb[1-5]|exit)|s5\.(?:ent|step[ABC]|vaultFloor|batLedge|wing[NSEW])|sb\.(?:vest|cause|t[0-4][0-4]))$/i;
 const COVERS = /wall|roofp|stub|gatep/i;
 const RELAYS = { 's1.c1post': 'c1', 's3.c2post': 'c2', 's3.c3post': 'c3', 's4.c4post': 'c4' };
 const ISLAND_ROCKS = new Set(['s3.head', 's3.isl1', 's3.r1', 's3.r2', 's3.r3', 's3.r4', 's5.isl']);
@@ -49,7 +49,7 @@ function boxPlacements(g, prims) {
       raise: .012 + (Number(id.slice(split + 1)) % 3) * .007, ids: [id, `marker:${id.slice(0, split)}`],
     })];
   }
-  if (tag === 'slide') return tiled(g, 'apron', 10, .018, true);
+  if (tag === 'slide') return tiled(g, 'apron', 22, .012, true);
   if (tag === 'mover') return [boxFit('deck', g, { ids: [id, `marker:${id.replace(/-deck$/, '')}`] })];
   if (/\.chain.*-\d+$/.test(id)) return [boxFit('deck', g)];
   if (mat === 'candleUp' || mat === 'candleDown') {
@@ -58,11 +58,12 @@ function boxPlacements(g, prims) {
   }
   if (id.includes('-wick-') || /\.rail[12AB]$/.test(id)) return [boxFit('rail', g, { longSide: true })];
   if (id === 's5.vaultW1') {
-    return [placement('vault', [g.at[0], g.at[1] - g.size[1] / 2, g.at[2] + 7.5], {
-      yaw: 270, replace: [id, 's5.vaultW2'],
+    const other = prims.get('s5.vaultW2');
+    if (other) return [placement('vault', [g.at[0], g.at[1] - g.size[1] / 2, (g.at[2] + other.at[2]) / 2], {
+      yaw: 270, replace: [id, other.id],
     })];
   }
-  if (id === 's5.vaultW2') return [];
+  if (id === 's5.vaultW2' && prims.has('s5.vaultW1')) return [];
   if (id === 's1.mono') return [boxFit('candle_up', g)];
   if (RELAYS[id]) return [boxFit('relay', g, { ids: [id, `marker:${RELAYS[id]}`] })];
   if (/^n[123]-body$/.test(id)) {
@@ -78,7 +79,7 @@ function boxPlacements(g, prims) {
   if (mat === 'concrete') return [boxFit('shelter', g)];
   if (/\.sign\w*$/i.test(id)) return [boxFit('sign', g)];
   if (mat === 'neon' && /\.(?:tick|pitT|athT|chT)/.test(id)) return [boxFit('ticker', g)];
-  if (BOX_PLATFORMS.test(id)) return tiled(g, 'deck', 12);
+  if (BOX_PLATFORMS.test(id)) return tiled(g, 'deck', id.startsWith('sb.') ? 12 : 16);
   if (COVERS.test(id)) return [boxFit('shield', g, { longSide: true })];
   if (/^s5\.vault[NSE][12]?$|\.(?:tun|vaultRoof)/.test(id)) return [boxFit('bulkhead', g, { longSide: true })];
   return [];
@@ -130,6 +131,7 @@ const SCENERY = {
     ...points('terminal', [[16, 0, 52, 1, 270], [84, 0, 67, 1.2, 270], [206, 8, 64]]),
   ],
   S2: [
+    ...points('gate_frame', [[40.3, 0, 100, [14 / 12, 1, 1], 90], [91.7, 0, 100, [14 / 12, 1, 1], 90]]),
     ...points('crystal', [[5, 0, 91, 1.55], [12, 0, 108, 2.1, 23], [26, 0, 76, 2.4],
       [27, 0, 126, 1.65], [52, 0, 76, 1.4], [79, 0, 127, 1.8], [94, 0, 77, 2.4],
       [94, 0, 123, 2.15]]),
@@ -149,6 +151,7 @@ const SCENERY = {
     ...points('supply', [[9, 2.5, 65, 1.05]]),
   ],
   S4: [
+    ...points('gate_frame', [[146.3, 0, 100, 1, 90], [207.7, 0, 100, 1, 90]]),
     ...points('crystal', [[4, 0, 91, 2.25], [9, 0, 110, 2.1], [19, 0, 90, 1.4],
       [160, 0, 72, 2.05], [193, 0, 70, 1.8], [157, 0, 126, 1.7], [197, 0, 126, 2.2], [222, 0, 106, 1.55]]),
     ...points('beacon', [[20, 0, 94], [20, 0, 106], [69, 8, 95], [132, 6, 96], [143, 0, 96],
@@ -159,6 +162,7 @@ const SCENERY = {
     ...points('terminal', [[149, 0, 107, 1.15, 270], [205, 0, 104, 1.15, 90]]),
   ],
   S5: [
+    ...points('gate_frame', [[133.5, 0, 80, [10 / 12, .75, 1], 90]]),
     ...points('crystal', [[25, 0, 65, 2.3], [28, 0, 93, 2.1], [53, 0, 48, 2.85], [71, 0, 47, 2.3],
       [66, 0, 118, 2.6], [89, 0, 57, 2.1], [93, 0, 103, 2.4], [119, 0, 89, 1.15]]),
     ...points('beacon', [[16, 0, 76], [16, 0, 84], [27, 0, 76], [27, 0, 84], [97, 0, 76], [97, 0, 84],
@@ -181,11 +185,24 @@ const SCENERY = {
 function distantScenery(sec) {
   const [width, depth] = sec.footprint;
   const out = [];
-  for (let i = 0; i < 16; i++) {
-    const x = (i % 8 + .5) * width / 8 + ((i * 23) % 17 - 8);
-    const z = i < 8 ? -17 - ((i * 9) % 28) : depth + 14 + ((i * 9) % 24);
+  for (let i = 0; i < 8; i++) {
+    const side = i < 4 ? -1 : 1;
+    const x = (i % 4 + .5) * width / 4;
+    const z = depth / 2 + side * (depth / 2 + 35 + (i % 3) * 14);
+    const y = -38 + (i * 19 % 29);
+    out.push(placement('debris_belt', [x, y, z], {
+      scale: [2.1 + i % 4 * .31, 2.5, 2.2], yaw: 8 + i * 13 % 59,
+    }));
+  }
+  for (let i = 0; i < 4; i++) {
+    const x = (i % 2 + .5) * width / 2 + ((i * 23) % 17 - 8);
+    const z = i < 2 ? -25 - ((i * 9) % 28) : depth + 26 + ((i * 9) % 24);
     const scale = 3.9 + ((i * 19) % 12) * .51;
     out.push(placement('asteroid', [x, -23 + ((i * 13) % 23), z], { scale, yaw: i * 69 % 360 }));
+  }
+  for (const [x, y, z, scale] of [[width * .34, -19, -34, 1.15], [width * .78, -18, depth + 35, 1.44],
+    [width + 31, -21, depth * .3, 1.78]]) {
+    out.push(placement('orbital_mast', [x, y, z], { scale, yaw: 20 }));
   }
   return out;
 }

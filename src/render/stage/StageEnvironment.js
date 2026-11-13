@@ -68,8 +68,9 @@ export function mountStage(env) {
     const st = STAGES[id], a = stageAssets(id);
     const variant = office ? (roof ? 'L08-roof' : 'L08-interior')
       : moonlit ? (crypt ? 'L09-crypt' : 'L09-exterior')
+      : blockchain ? `L04-${sectionId || 'S1'}`
       : bazaar ? (showroom ? 'L02-showroom' : 'L02-exterior')
-        : grove || blockchain || frostspire || skyline || underworks ? levelId : '';
+        : grove || frostspire || skyline || underworks ? levelId : '';
     const key = id + ':' + variant + ':' + assetsVersion();
     if (key === stageKey) return;
     stageKey = key;
@@ -90,8 +91,14 @@ export function mountStage(env) {
       bounce.intensity = .45;
     }
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
-    const panorama = grove || bazaar || skyline || underworks || office || moonlit ? panoramaPath(levelId, sectionId) : a.sky;
+    const panorama = blockchain || grove || bazaar || skyline || underworks || office || moonlit ? panoramaPath(levelId, sectionId) : a.sky;
     const skyTex = panorama ? peekTexture(panorama) || (grove ? peekTexture(a.sky) : null) : null;
+    if (blockchain && skyTex) {
+      skyTex.wrapS = THREE.RepeatWrapping;
+      const offset = { S1: -.18, S2: -.15, S3: -.25, S4: -.31, S5: -.125, SB: -.02 };
+      skyTex.offset.set(offset[sectionId] ?? offset.S1, -.027);
+      skyTex.needsUpdate = true;
+    }
     const orchardSky = grove && skyTex && skyTex === peekTexture(panorama);
     if (orchardSky) {
       skyTex.wrapS = THREE.RepeatWrapping;
@@ -114,7 +121,7 @@ export function mountStage(env) {
         skyTex.needsUpdate = true;
       }
     }
-    sky.material = blockchain ? (blockchainSky ||= createAuroraSky())
+    sky.material = blockchain && !skyTex ? (blockchainSky ||= createAuroraSky())
       : frostspire ? (frostspireSky ||= createAuroraSky(true)) : standardSky;
     standardSky.map = skyTex;
     standardSky.color.setHex(skyTex ? 0xffffff : skyline ? 0x242d54 : underworks ? 0x472840 : st.background);

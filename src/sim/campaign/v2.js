@@ -181,6 +181,7 @@ function spawnOne(state, enc, squad, at) {
     : createEnemy(state, type, { elite: !!at.elite, pos: { x: pos[0], z: pos[2] } });
   e.pos.y = pos[1] || 0;
   e.campaignEnc = enc.id;
+  if (enc.useSectionFlyerVolume) e.useSectionFlyerVolume = true;
   e.spawnMethod = squad.method || 'placed';
   if (enc.noAmmoDrop) e.noAmmoDrop = true;
   if (at.partId) e.partId = at.partId;
