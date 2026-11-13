@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createGameState } from '../src/sim/state.js';
 import { simulate } from '../src/sim/simulate.js';
 import { solidFromPrimitive } from '../src/sim/campaign/solids.js';
-import { bakeNav, findPath } from '../src/sim/campaign/nav.js';
+import { bakeNav, findPath, navGridFor } from '../src/sim/campaign/nav.js';
 import { contentFingerprint } from '../src/data/serverManifest.js';
 import { CONTENT_FINGERPRINT } from '../src/sim/pvp/rules.js';
 
@@ -49,6 +49,26 @@ describe('campaign nav', () => {
     }
     expect(swung).toBe(true);
     expect(e.pos.x).toBeGreaterThan(8);
+  });
+
+  it('bakes the grid once per door state, not once per call', () => {
+    const floor = solidFromPrimitive({ kind: 'box', id: 'floor', at: [10, -0.25, 6], size: [20, 0.5, 12] });
+    const level = { useSolids: true, useNav: true, solids: [floor], navBounds: { min: [0, 0], max: [20, 12] } };
+    const s = { mode: 'campaign', level };
+    // No links, no zones: each read is a fresh `[]`, as in the sim.
+    const open = navGridFor(s);
+    expect(navGridFor(s)).toBe(open);
+    // The sim rebuilds closedDoors and slowZones as new arrays every tick.
+    const door = () => solidFromPrimitive({ kind: 'box', id: 'door', at: [10, 1.6, 6], size: [2, 3.2, 12] });
+    level.closedDoors = [door()];
+    const shut = navGridFor(s);
+    expect(shut).not.toBe(open);
+    level.closedDoors = [door()];
+    level.slowZones = [];
+    expect(navGridFor(s)).toBe(shut);
+    expect(findPath(shut, { x: 4, z: 6 }, { x: 16, z: 6 })).toBeNull();
+    level.closedDoors = [];
+    expect(navGridFor(s)).toBe(open);
   });
 
   it('keeps a flyer under the lid', () => {

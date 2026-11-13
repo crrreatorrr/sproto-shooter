@@ -56,6 +56,7 @@ describe('asset manifest', () => {
       'art/blender/frostspire_black_site.blend',
       'art/blender/fx_explosion.blend',
       'art/blender/fx_poof.blend',
+      'art/blender/government_office.blend',
       'art/blender/grappler.blend',
       'art/blender/hellfire_underworks.blend',
       'art/blender/new_enemies.blend',
