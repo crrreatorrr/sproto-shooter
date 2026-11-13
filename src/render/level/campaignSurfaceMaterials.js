@@ -29,7 +29,7 @@ const KIT_SURFACES = {
   moonlit_apron: HARD, moonlit_wall: HARD, moonlit_crypt_wall: HARD,
   moonlit_vault: HARD, moonlit_column: HARD, moonlit_ruin_arch: HARD, moonlit_tomb: HARD,
   moonlit_ridge: HARD,
-  caldera_apron: HARD, caldera_wall: HARD, caldera_spires: HARD, caldera_overhang: HARD,
+  caldera_apron: HARD, caldera_wall: HARD, caldera_spires: HARD, caldera_overhang: HARD, caldera_escarpment: HARD,
   bazaar2_wall_panel: HARD, bazaar2_shop: HARD, bazaar2_tower: HARD,
   bazaar2_support: HARD, bazaar2_ridge: MASONRY, bazaar2_canopy: WOOD,
   landing_facade_a: HARD, landing_facade_b: HARD, landing_facade_c: HARD,

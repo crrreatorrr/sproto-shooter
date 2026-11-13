@@ -24,6 +24,8 @@ function dressing(section) {
   return calderaPlacements(section, new Map(section.geometry.map(g => [g.id, g])));
 }
 
+const originalKitTriangles = { S1: 28_196, S2: 21_572, S3: 27_536, S4: 23_696 };
+
 it.each(L10.sections)('tiles the walls of $name and stays within the art budget', (section) => {
   const props = dressing(section);
   for (const side of ['N', 'S']) {
@@ -43,8 +45,31 @@ it.each(L10.sections)('tiles the walls of $name and stays within the art budget'
   const tanks = section.mechanisms.filter(m => m.kind === 'fuel').length;
   const tris = props.reduce((total, p) => total + triangleCount(p.model), 0)
     + pads * triangleCount('caldera_vent') + tanks * triangleCount('caldera_fuel');
-  expect(tris).toBeLessThanOrEqual(50_000);
+  expect(tris).toBeLessThan(originalKitTriangles[section.id]);
   expect(props.some(p => p.model === 'caldera_overhang')).toBe(section.id === 'S1');
+});
+
+it('extends all four decks and keeps ground under every section handoff', () => {
+  const expected = [[69, 38], [70, 48], [80, 62], [76, 66]];
+  const covers = (floor, x, z) =>
+    Math.abs(x - floor.at[0]) <= floor.size[0] / 2 && Math.abs(z - floor.at[2]) <= floor.size[2] / 2;
+  const floors = L10.sections.map(sec => sec.geometry.find(g => g.id === `${sec.id}-floor`));
+  for (const [i, section] of L10.sections.entries()) {
+    const floor = floors[i];
+    expect([floor.size[0], floor.size[2]]).toEqual(expected[i]);
+    const encounter = section.encounters[0];
+    expect(encounter.activate.min[2]).toBeGreaterThan(floor.at[2] - floor.size[2] / 2);
+    expect(encounter.activate.max[2]).toBeLessThan(floor.at[2] + floor.size[2] / 2);
+    for (const [x, , z] of encounter.squads[0].at) expect(covers(floor, x, z)).toBe(true);
+    if (!section.exit) continue;
+    for (const x of [section.exit.min[0], section.exit.max[0]]) {
+      for (const z of [section.exit.min[2], section.exit.max[2]]) {
+        expect(covers(floor, x, z)).toBe(true);
+        expect(covers(floors[i + 1], x, z)).toBe(true);
+      }
+    }
+  }
+  expect(L10.sections[2].start).toEqual([105.5, 0, 11]);
 });
 
 it('matches the rope deck and lava visual to the authored mechanisms', () => {

@@ -84,8 +84,12 @@ export function mountPresent(env) {
     env.calderaEmbers.visible = !!eruption;
     if (eruption) {
       const section = getLevelRuntime(state.level.id).sectionById[state.level.section];
-      env.calderaEmbers.material.uniforms.start.value = section.start[0];
-      env.calderaEmbers.material.uniforms.time.value = t % 120;
+      const floor = section.geometry[0];
+      const { uniforms } = env.calderaEmbers.material;
+      uniforms.start.value = floor.at[0] - floor.size[0] / 2;
+      uniforms.span.value = floor.size[0];
+      uniforms.width.value = floor.size[2];
+      uniforms.time.value = t % 120;
     }
     if (campaign) {
       levelView.sync(state);
@@ -110,8 +114,8 @@ export function mountPresent(env) {
           const caldera = state.level.id === 'L10';
           const crypt = moonlit && state.level.section === 'S2';
           const interior = (office && state.level.section !== 'S4') || crypt;
-          scene.fog.near = dark ? 4 : blockchain ? 105 : underworks ? 27 : caldera ? 19 : crypt ? 28 : interior ? 23 : bazaar ? 74 : grove ? 82 : skyline ? 43 : landing ? 49 : 30;
-          scene.fog.far = dark ? 36 : skyline ? 168 : underworks ? 136 : interior ? 92 : caldera ? (eruption ? 105 : 142) : moonlit ? 210 : office ? 152 : bazaar ? 262 : grove ? 300 : blockchain || landing ? 290 : 420;
+          scene.fog.near = dark ? 4 : blockchain ? 105 : underworks ? 27 : caldera ? 31 : crypt ? 28 : interior ? 23 : bazaar ? 74 : grove ? 82 : skyline ? 43 : landing ? 49 : 30;
+          scene.fog.far = dark ? 36 : skyline ? 168 : underworks ? 136 : interior ? 92 : caldera ? (eruption ? 144 : 191) : moonlit ? 210 : office ? 152 : bazaar ? 262 : grove ? 300 : blockchain || landing ? 290 : 420;
         }
       }
     } else if (scene.fog && scene.fog.far > 300) {
