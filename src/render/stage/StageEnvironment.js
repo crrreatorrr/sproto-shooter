@@ -68,9 +68,10 @@ export function mountStage(env) {
     const st = STAGES[id], a = stageAssets(id);
     const variant = office ? (roof ? 'L08-roof' : 'L08-interior')
       : moonlit ? (crypt ? 'L09-crypt' : 'L09-exterior')
+      : frostspire ? `L05-${sectionId || 'S1'}`
       : blockchain ? `L04-${sectionId || 'S1'}`
       : bazaar ? (showroom ? 'L02-showroom' : 'L02-exterior')
-        : grove || frostspire || skyline || underworks ? levelId : '';
+        : grove || skyline || underworks ? levelId : '';
     const key = id + ':' + variant + ':' + assetsVersion();
     if (key === stageKey) return;
     stageKey = key;
@@ -91,7 +92,7 @@ export function mountStage(env) {
       bounce.intensity = .45;
     }
     edgeRing.material.color.setHex(st.ring); wall.material.color.setHex(st.ring);
-    const panorama = blockchain || grove || bazaar || skyline || underworks || office || moonlit ? panoramaPath(levelId, sectionId) : a.sky;
+    const panorama = frostspire || blockchain || grove || bazaar || skyline || underworks || office || moonlit ? panoramaPath(levelId, sectionId) : a.sky;
     const skyTex = panorama ? peekTexture(panorama) || (grove ? peekTexture(a.sky) : null) : null;
     if (blockchain && skyTex) {
       skyTex.wrapS = THREE.RepeatWrapping;
@@ -149,6 +150,14 @@ export function mountStage(env) {
       bounce.intensity = .42;
     }
     if (frostspire) {
+      if (skyTex) {
+        skyTex.wrapS = THREE.RepeatWrapping;
+        skyTex.needsUpdate = true;
+      }
+      const azimuth = { S1: -.10, S2: -.26, S3: -.02, S4: -.08, S5: -.19 };
+      frostspireSky.uniforms.panorama.value = skyTex;
+      frostspireSky.uniforms.panoramaReady.value = skyTex ? 1 : 0;
+      frostspireSky.uniforms.panoramaYaw.value = azimuth[sectionId] ?? azimuth.S1;
       scene.fog.color.setHex(0x465b7a);
       hemi.color.setHex(0xc5dbfa);
       hemi.groundColor.setHex(0x7791b0);

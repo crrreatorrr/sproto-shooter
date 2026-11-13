@@ -69,9 +69,9 @@ function dressPrimitive(g, out, prims) {
 function dressBox(g, out) {
   const { id, mat, size: [w, h, d] } = g;
   if (/^S1-debris/.test(id)) boxRun(out, 'debris', g);
-  else if (/^S[12]-cliff/.test(id)) boxRun(out, 'glacier', g, 25);
+  else if (/^S[12]-cliff/.test(id)) boxRun(out, 'glacier', g, 32);
   else if (mat === 'rock' && /^S1-(?:rowC|passSlab)|^S2-(?:rock|centreSlab)/.test(id)) boxRun(out, 'glacier', g);
-  else if (mat === 'snow' && /^S1-(?:ridgeLip|berm|rowE|flankWall)|^S2-(?:tr[WE]|jog|last)/.test(id)) boxRun(out, 'drift', g, 9);
+  else if (mat === 'snow' && /^S1-(?:ridgeLip|berm|rowE|flankWall)|^S2-(?:tr[WE]|jog|last)/.test(id)) boxRun(out, 'drift', g, 13);
   else if (/^S1-creekIce$|^S2-ice[1-4]$/.test(id)) boxRun(out, 'ice_floor', g, 14);
   else if (/^S4-shelf-/.test(id)) boxRun(out, 'shelf', g);
   else if (/^S5-console/.test(id)) boxRun(out, 'console', g);
@@ -84,7 +84,7 @@ function dressBox(g, out) {
   else if (/^S2-tower[WE]-roof$/.test(id)) boxRun(out, 'roof', g);
   else if (/^S3-bar|^S5-block|^S2-apron|^S1-rigBag/.test(id)) boxRun(out, 'cover', g);
   else if ((mat === 'concrete' || /^S5-vault/.test(id)) && h >= 1 && h > Math.min(w, d) * .7) {
-    boxRun(out, OUTER_WALLS.test(id) ? 'wall' : 'panel', g, 9);
+    boxRun(out, OUTER_WALLS.test(id) ? 'wall' : 'panel', g, 12);
   }
 }
 
@@ -114,6 +114,8 @@ function mechanismProps(sec, out, prims) {
 const LANDMARKS = {
   S1: [
     ['beacon', 144, 0, 19], ['beacon', 158, 0, 52], ['beacon', 153, 1.8, 261, .54],
+    ['beacon', 144, 0, 241, .55], ['beacon', 159.2, 0, 241, .55],
+    ['beacon', 144, 0, 271, .55], ['beacon', 159.2, 0, 271, .55],
     ['beacon', 142.6, 0, 304, .7], ['beacon', 156.8, 0, 506, .72],
     ['spire', 111, 0, 21, [6, 13, 5], 28], ['spire', 186, 0, 46, [8, 16, 6], 81],
     ['boulder', 127, 0, 40, [4, 2.6, 3], 29], ['boulder', 169, 0, 39, [4, 2.8, 3], 107],
@@ -123,6 +125,7 @@ const LANDMARKS = {
     ['boulder', 24, 0, 245, [7, 5, 5], 60], ['boulder', 271, 0, 266, [8, 5, 5], 100],
   ],
   S2: [
+    ['portal_trim', 130, 0, 199.8],
     ['beacon', 112.2, 0, 194, .75], ['beacon', 147.8, 0, 194, .75],
     ['beacon', 121, 8, 203.3, .8], ['beacon', 139, 8, 203.3, .8],
     ['spire', 20, 0, 37, [8, 14, 7], 31], ['spire', 237, 0, 39, [7, 13, 6], 95],
@@ -130,19 +133,23 @@ const LANDMARKS = {
     ['boulder', 247, 0, 192, [4, 2.9, 4], 129],
   ],
   S3: [
-    ['beacon', 45, 0, 25, .8], ['beacon', 55, 0, 25, .8],
+    ['portal_trim', 50, 0, 22, 1],
+    ['beacon', 41.8, 0, 25, .8], ['beacon', 58.2, 0, 25, .8],
     ['beacon', 46, 0, 94, .8], ['beacon', 54, 0, 94, .8],
-    ['floodlight', 32, 12, 23, .84, 180], ['floodlight', 68, 12, 23, .84, 180],
+    ['floodlight', 28, 12, 23, .84, 180], ['floodlight', 72, 12, 23, .84, 180],
     ['floodlight', 32, 12, 95, .84], ['floodlight', 68, 12, 95, .84],
   ],
   S4: [
     ['beacon', 38.4, 0, 3, .63], ['beacon', 41.6, 0, 3, .63],
     ['beacon', 37.5, 0, 61.7, .82], ['beacon', 42.5, 0, 61.7, .82],
+    ['portal_trim', 40, 0, 12, [8 / 14, .44, 1.7]],
+    ['portal_trim', 40, 0, 56, [8 / 14, .44, 1.7]],
     ['console', 14.3, 7, 33.5, [1.08, 1.2, .44], 90],
     ['console', 65.7, 7, 38, [1.08, 1.2, .44], 270],
     ['beacon', 36.5, 14, 63.2, .7], ['beacon', 43.5, 14, 63.2, .7],
   ],
   S5: [
+    ['portal_trim', 40, 0, 84, [10 / 14, 4 / 6, 1]],
     ['beacon', 36.9, 0, 38.4, .78], ['beacon', 43.1, 0, 38.4, .78],
     ['beacon', 37.5, 0, 87, .68], ['beacon', 42.5, 0, 87, .68],
     ['console', 28.9, 0, 17, [.88, 1.18, .45], 90],
@@ -158,12 +165,22 @@ function scenery(sec, out) {
   }
   if (sec.id === 'S4') return;
   const [w, depth] = sec.footprint;
-  // Distant peaks sit beyond the level's playable footprint.
-  for (let i = 0; i < 11; i++) {
-    const x = i < 7 ? (i - .5) * w / 5 : i % 2 ? -43 : w + 48;
-    const z = i < 7 ? -depth - 38 - (i * 23 % 59) : -depth * ((i - 6) / 5);
-    const h = 23 + i * 17 % 37;
-    out.push(prop('spire', [ox + x, oy - 13, oz + z], [h * .65, h, h * .55], i * 43));
+  // Layer foothills, inhabited relay stations, and the painted far mountains.
+  for (const [x, n, scale, yaw] of [
+    [w * .12, depth + 42, [1.23, 1.55, 1.2], 9], [w * .54, depth + 96, [1.72, 2.42, 1.8], 14],
+    [w * .89, depth + 53, [1.43, 1.8, 1.38], -11], [-57, depth * .64, [1.16, 1.73, 1.37], 83],
+    [w + 67, depth * .75, [1.28, 1.84, 1.43], -72], [-74, depth * .24, [1.41, 1.93, 1.52], 90],
+    [w + 60, depth * .34, [1.36, 1.67, 1.35], -75],
+  ]) {
+    const nearExtraction = sec.id === 'S5' && n > depth;
+    out.push(prop('ridge', [ox + x, oy - (nearExtraction ? 20 : 11), oz - n - (nearExtraction ? 30 : 0)], scale, yaw));
+  }
+  for (const [x, n, scale, yaw] of [[w * .8, depth + 52, 1.55, -15], [-31, depth * .41, 1.36, 67],
+    [w + 34, depth * .57, 1.24, -60]]) {
+    const y = oy - 3;
+    const z = oz - n - (sec.id === 'S5' && n > depth ? 21 : 0);
+    out.push(prop('relay_outpost', [ox + x, y, z], scale, yaw));
+    out.push(prop('boulder', [ox + x, y - 9, z], [13 * scale, 10, 11 * scale], yaw));
   }
 }
 

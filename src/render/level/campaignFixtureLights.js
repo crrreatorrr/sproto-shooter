@@ -24,6 +24,7 @@ const FIXTURES = {
   office_server: { lens: [0, 2.77, .95], color: 0x62d7ff, intensity: 34, range: 11 },
   office_fan: { lens: [0, 2.95, 1.42], color: 0xff6475, intensity: 20, range: 13 },
   office_parapet: { lens: [0, .77, 1.15], color: 0xff5d70, intensity: 6, range: 6 },
+  frost_portal_trim: { lens: [0, 6.14, .37], color: 0x9ee7ff, intensity: 24, range: 10 },
   frost_beacon: { lens: [0, 1.83, 0], color: 0xffc66c, intensity: 9, range: 6 },
 };
 

@@ -15,7 +15,8 @@ const LEVEL_ATLASES = { L06: SKYLINE_SURFACE_ART, L07: UNDERWORKS_SURFACE_ART, L
 export const BAZAAR_PANORAMA = 'textures/campaign/bazaar-sunset.webp';
 export const GROVE_PANORAMA = 'textures/campaign/grove-orchard.webp';
 export const VOID_PANORAMA = 'textures/campaign/void-nebula.webp';
-const PANORAMAS = { L02: BAZAAR_PANORAMA, L03: GROVE_PANORAMA, L04: VOID_PANORAMA, L06: SKYLINE_PANORAMA, L07: UNDERWORKS_PANORAMA, L08: OFFICE_PANORAMA, L09: MOONLIT_PANORAMA };
+export const FROSTSPIRE_PANORAMA = 'textures/campaign/frostspire-valley.webp';
+const PANORAMAS = { L02: BAZAAR_PANORAMA, L03: GROVE_PANORAMA, L04: VOID_PANORAMA, L05: FROSTSPIRE_PANORAMA, L06: SKYLINE_PANORAMA, L07: UNDERWORKS_PANORAMA, L08: OFFICE_PANORAMA, L09: MOONLIT_PANORAMA };
 
 export function panoramaPath(level, section) {
   if ((level === 'L08' && section && section !== 'S4') || (level === 'L09' && section === 'S2')) return;

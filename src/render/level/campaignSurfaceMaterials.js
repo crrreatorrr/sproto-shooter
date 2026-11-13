@@ -72,7 +72,7 @@ const SHADE_SURFACE = /* glsl */ `
     : vec2(dot(vCampaignSurface.xz, vec2(surfaceNormal.z, -surfaceNormal.x)), -vCampaignSurface.y);
   vec3 campaignGleam = vec3(0.);
   #ifndef CAMPAIGN_GLASS_ROOF
-    vec3 campaignTint = shadeCampaignSurface(surfaceUV, surfaceGround, campaignGleam);
+    vec3 campaignTint = shadeCampaignSurface(surfaceUV, surfaceGround, surfaceNormal.y > .57, campaignGleam);
   #endif
   #ifdef CAMPAIGN_KIT_GLOW
     float campaignWeight = 1. - smoothstep(.025, .14, vKitGlow);
@@ -170,7 +170,7 @@ export function createCampaignSurfaceMaterials() {
           ${glassRoof ? '#define CAMPAIGN_GLASS_ROOF' : ''}
           ${SURFACE_GLSL}
           ${ART_GLSL}
-          vec3 shadeCampaignSurface(vec2 p, bool ground, out vec3 gleam) {
+          vec3 shadeCampaignSurface(vec2 p, bool ground, bool upward, out vec3 gleam) {
             gleam = vec3(0.);
             ${pattern}
           }`)
