@@ -24,7 +24,11 @@ function dressing(sec) {
   return underworksPlacements(sec, new Map(sec.geometry.map(g => [g.id, g])));
 }
 
-it.each(L07.sections)('keeps $name walls aligned and under 50,000 art triangles', (sec) => {
+const originalKitTriangles = { S1: 39088, S2: 38412, S3: 35012, S4: 35740 };
+const expandedWidths = { S1: 34, S2: 40, S3: 46, S4: 48 };
+const expandedLengths = { S1: 60, S2: 64, S3: 64, S4: 64 };
+
+it.each(L07.sections)('keeps $name walls aligned and art below the original triangle count', (sec) => {
   const props = dressing(sec);
   for (const side of ['N', 'S']) {
     const id = `${sec.id}-wall${side}`;
@@ -42,7 +46,29 @@ it.each(L07.sections)('keeps $name walls aligned and under 50,000 art triangles'
   }
   const count = props.reduce((sum, p) => sum + triangleCount(p.model), 0);
   expect(count).toBeGreaterThan(20_000);
-  expect(count).toBeLessThanOrEqual(50_000);
+  expect(count).toBeLessThan(originalKitTriangles[sec.id]);
+});
+
+it('keeps the widened shoulders playable across encounter and exit handoffs', () => {
+  for (const sec of L07.sections) {
+    const floor = sec.geometry.find(g => g.id === `${sec.id}-floor`);
+    const z0 = floor.at[2] - floor.size[2] / 2;
+    const z1 = floor.at[2] + floor.size[2] / 2;
+    const startX = sec.start[0] - 3.5;
+    expect(floor.size[2]).toBe(expandedWidths[sec.id]);
+    expect(floor.at[0] + floor.size[0] / 2 - .5 - startX).toBe(expandedLengths[sec.id]);
+    expect(sec.encounters[0].activate.min[2]).toBeCloseTo(z0 + 1.2);
+    expect(sec.encounters[0].activate.max[2]).toBeCloseTo(z1 - 1.2);
+    if (!sec.exit) continue;
+
+    const next = L07.sections.find(s => s.id === sec.exit.to);
+    const incoming = next.geometry.find(g => g.id === `${next.id}-floor`);
+    expect(sec.exit.min[0]).toBeGreaterThan(incoming.at[0] - incoming.size[0] / 2);
+    expect(sec.exit.min[2]).toBeCloseTo(z0 + 2);
+    expect(sec.exit.max[2]).toBeCloseTo(z1 - 2);
+    expect(incoming.at[2] - incoming.size[2] / 2).toBeLessThan(sec.exit.min[2]);
+    expect(incoming.at[2] + incoming.size[2] / 2).toBeGreaterThan(sec.exit.max[2]);
+  }
 });
 
 it('fits the glowing lava hazard and inset rails to their authored bounds', () => {
@@ -62,7 +88,8 @@ it('fits the glowing lava hazard and inset rails to their authored bounds', () =
   const press = dressing(gallery).find(p => p.model === 'underworks_press');
   expect(press.replace).toEqual([`marker:${crusher.id}`]);
   expect(press.at[0]).toBe(crusher.at[0]);
-  expect(press.at[2] + 3.77 / 2).toBeLessThan(0);
+  const floor = gallery.geometry.find(g => g.id === 'S3-floor');
+  expect(press.at[2] + 3.77 / 2).toBeLessThan(floor.at[2] - floor.size[2] / 2);
 });
 
 it.each([
