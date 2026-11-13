@@ -143,6 +143,17 @@ const SHADE_SURFACE = /* glsl */ `
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.37, .42, .47), crossing * flecks * .66);
       }
     #endif
+    #ifdef CAMPAIGN_ART_UNDERWORKS
+      if (surfaceNormal.y > .57 && abs(vCampaignSurface.y) < .045 && campaignSurfaceKind == 7.) {
+        float lane = abs(surfaceUV.y - 11.);
+        float warning = surfaceStamp(lane - 6.6, .14) * surfaceLine(surfaceUV.x, 7.2, 1.05);
+        float diagonal = surfaceLine(surfaceUV.x + surfaceUV.y, .50, .125);
+        float panel = surfaceStamp(lane - 8.5, .62) * surfaceLine(surfaceUV.x, 9.1, .75);
+        float slots = surfaceLine(surfaceUV.x, .18, .026);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.46, .225, .061), warning * diagonal * .81);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.049, .032, .044), panel * (.25 + .45 * slots));
+      }
+    #endif
     diffuseColor.rgb *= mix(vec3(1.), max(campaignTint, vec3(.39)), campaignWeight);
   #endif
 `;
@@ -199,6 +210,7 @@ export function createCampaignSurfaceMaterials() {
           ${level === 'L03' ? '#define CAMPAIGN_ART_GROVE' : ''}
           ${level === 'L05' ? '#define CAMPAIGN_ART_FROST' : ''}
           ${level === 'L06' ? '#define CAMPAIGN_ART_SKYLINE\nuniform vec4 campaignRoad;' : ''}
+          ${level === 'L07' ? '#define CAMPAIGN_ART_UNDERWORKS' : ''}
           ${['L07', 'L08', 'L09', 'L10'].includes(level) ? '#define CAMPAIGN_ART_ACCENT_FLOOR' : ''}
           ${glassRoof ? '#define CAMPAIGN_GLASS_ROOF' : ''}
           ${SURFACE_GLSL}
