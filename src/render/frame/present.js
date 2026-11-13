@@ -92,12 +92,13 @@ export function mountPresent(env) {
           scene.fog.near = Math.min(14, cap * 0.35);
           scene.fog.far = cap;
         } else {
+          const landing = state.level.id === 'L01';
           const underworks = state.level.id === 'L07';
           const office = state.level.id === 'L08';
           const moonlit = state.level.id === 'L09';
           const interior = (office && state.level.section !== 'S4') || (moonlit && state.level.section === 'S2');
-          scene.fog.near = dark ? 4 : state.level.id === 'L04' ? 90 : underworks ? 19 : interior ? 23 : 30;
-          scene.fog.far = dark ? 36 : skyline ? 134 : underworks ? 104 : interior ? 92 : office || moonlit ? 152 : 420;
+          scene.fog.near = dark ? 4 : state.level.id === 'L04' ? 90 : underworks ? 19 : interior ? 23 : landing ? 49 : 30;
+          scene.fog.far = dark ? 36 : skyline ? 134 : underworks ? 104 : interior ? 92 : office || moonlit ? 152 : landing ? 290 : 420;
         }
       }
     } else if (scene.fog && scene.fog.far > 300) {
