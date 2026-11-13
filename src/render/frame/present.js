@@ -108,8 +108,8 @@ export function mountPresent(env) {
           const moonlit = state.level.id === 'L09';
           const caldera = state.level.id === 'L10';
           const interior = (office && state.level.section !== 'S4') || (moonlit && state.level.section === 'S2');
-          scene.fog.near = dark ? 4 : blockchain ? 105 : underworks || caldera ? 19 : interior ? 23 : bazaar ? 74 : grove ? 82 : 30;
-          scene.fog.far = dark ? 36 : skyline ? 134 : underworks ? 104 : interior ? 92 : caldera ? (eruption ? 105 : 142) : office || moonlit ? 152 : bazaar ? 262 : grove ? 300 : blockchain ? 290 : 420;
+          scene.fog.near = dark ? 4 : blockchain ? 105 : underworks || caldera ? 19 : interior ? 23 : bazaar ? 74 : grove ? 82 : skyline ? 43 : 30;
+          scene.fog.far = dark ? 36 : skyline ? 168 : underworks ? 104 : interior ? 92 : caldera ? (eruption ? 105 : 142) : office || moonlit ? 152 : bazaar ? 262 : grove ? 300 : blockchain ? 290 : 420;
         }
       }
     } else if (scene.fog && scene.fog.far > 300) {
