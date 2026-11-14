@@ -190,12 +190,11 @@ slot. Retry that same instance/key after a lost response; never select protocol,
 seed/loadout/run ID or regenerate a fallback key to enter legacy. Server legacy
 selection is reported as unsupported for this v2 controller. Unknown protocol or
 retained manifest support blocks start; it does not trigger a completed-log path.
-The client accepts the retained campaign verifier built from `a4252d117190a388e5a7974b40cd88c679ea6e72`.
-Its SHA-256 is `a215914d3f931ffce5c29de5a5ea498b1d0b10da66632a2939c8db5b22f88040` and its content
+The client accepts the retained campaign verifier built from `7db4fc4f93333f3977da2159771a060f344b6ea0`.
+Its SHA-256 is `ab175aae2000991fae582e7c2ee0c1fea952488e89a6888b96eda9c7e0ee2e1e` and its content
 fingerprint is `73c6eb0f` (simulator 1, upload 2, replay API 2,
-checkpoint 2 and economy 1). That commit is Shooter main through #140. Level data since the
-remove-tiers pin changed the campaign bundle bytes. #140 did not change sim sources;
-the pin is that later main, so the baked commit moved. It replaces the previous client pin
+checkpoint 2 and economy 1). That commit is Shooter main through #141. Level 1 changed a sim source, so the
+campaign bundle bytes moved again. It replaces the previous client pin
 `2608511e93b765aedfb8e9311266bb9e989170e8` /
 `735b6da58d5fbd61c69862596a3a45c9062c5a15fc11575549803b8076c01e2b`. Register this exact build for
 new rewarded runs before shipping this client. Rebuilding the bundle at a later
