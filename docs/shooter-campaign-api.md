@@ -190,13 +190,13 @@ slot. Retry that same instance/key after a lost response; never select protocol,
 seed/loadout/run ID or regenerate a fallback key to enter legacy. Server legacy
 selection is reported as unsupported for this v2 controller. Unknown protocol or
 retained manifest support blocks start; it does not trigger a completed-log path.
-The client accepts the retained campaign verifier built from `7db4fc4f93333f3977da2159771a060f344b6ea0`.
-Its SHA-256 is `ab175aae2000991fae582e7c2ee0c1fea952488e89a6888b96eda9c7e0ee2e1e` and its content
+The client accepts the retained campaign verifier built from `1fd01820e5f9f62fd549db09408261b7b6674c79`.
+Its SHA-256 is `7ba57e4214ce5b9b69dd00b78fd9cd36c6d08049bb0495cb9cf94faee0077f2e` and its content
 fingerprint is `73c6eb0f` (simulator 1, upload 2, replay API 2,
-checkpoint 2 and economy 1). That commit is Shooter main through #141. Level 1 changed a sim source, so the
+checkpoint 2 and economy 1). That commit is Shooter main through #152. Levels 7-10 changed campaign level data, so the
 campaign bundle bytes moved again. It replaces the previous client pin
-`2608511e93b765aedfb8e9311266bb9e989170e8` /
-`735b6da58d5fbd61c69862596a3a45c9062c5a15fc11575549803b8076c01e2b`. Register this exact build for
+`7db4fc4f93333f3977da2159771a060f344b6ea0` /
+`ab175aae2000991fae582e7c2ee0c1fea952488e89a6888b96eda9c7e0ee2e1e`. Register this exact build for
 new rewarded runs before shipping this client. Rebuilding the bundle at a later
 commit changes the SHA-256, because the commit is baked into the file. Keep the
 previous retained executable available for runs issued against it.
