@@ -275,6 +275,21 @@ def fuel():
     return m
 
 
+def escarpment():
+    """Layered basalt cliff with a few molten fractures for the mid-distance."""
+    m = model('escarpment')
+    for x, y, radius, height, tilt, color in (
+        (-5.4, 1.7, 3.4, 10, -16, INK), (-1.8, 1.9, 4.3, 15.8, 9, BASALT),
+        (3.2, 1.5, 4.1, 12.2, -8, SLATE), (7.1, 1.0, 2.6, 8, 16, BASALT),
+        (1.6, -2.1, 3.9, 6.6, -12, INK),
+    ):
+        m.cyl(color, radius, height, (x, y, 0), (tilt * .2, tilt, x * 7),
+              r2=radius * .73, seg=6, smooth=False)
+    for x, z in ((-2.9, 3.3), (3.8, 4.4), (7.2, 3.5)):
+        m.box(EMBER, (.13, .12, 2.1), (x, -2.58, z), (0, -14, 0))
+    return m
+
+
 def main():
     clear_scene()
     MATERIALS.clear()
@@ -282,12 +297,15 @@ def main():
     scene = bpy.context.scene
     scene.render.fps = 24
     scene.frame_start, scene.frame_end = FRAMES[0], FRAMES[-1]
-    for i, maker in enumerate((wall, scree, spires, overhang, apron, bridge, obelisk, brazier, vent, shrine, seal, fuel)):
+    args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+    expansion_only = '--expansion-only' in args
+    for i, maker in enumerate((wall, scree, spires, overhang, apron, bridge, obelisk, brazier, vent, shrine, seal, fuel, escarpment)):
         result = maker()
         mesh, motion = result if isinstance(result, tuple) else (result, [])
         parts = [bake(mesh, *GLOW), *motion]
         scene.frame_set(scene.frame_start)
-        export(parts, 'props', mesh.name, animated=bool(motion), compressed=True)
+        if not expansion_only or maker == escarpment:
+            export(parts, 'props', mesh.name, animated=bool(motion), compressed=True)
         collection = bpy.data.collections.new(mesh.name)
         scene.collection.children.link(collection)
         root = bpy.data.objects.new(mesh.name + ' | Editable prop', None)

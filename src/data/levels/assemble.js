@@ -4,7 +4,8 @@ import { box } from './kit.js';
 function shiftAt(at, dx) { return [at[0] + dx, at[1], at[2]]; }
 
 export function makeLevel(def) {
-  let cursor = 0;
+  const originX = def.originX ?? 0;
+  let cursor = originX;
   const sections = [];
   for (let i = 0; i < def.sections.length; i++) {
     const s = def.sections[i];
@@ -60,7 +61,7 @@ export function makeLevel(def) {
     jetpack: def.jetpack || false,
     gravityMult: def.gravityMult || 1,
     lighting: def.lighting || null,
-    bounds: { min: [-10, -25, -6], max: [cursor + 12, 48, width + 6] },
+    bounds: { min: [originX - 10, -25, -6], max: [cursor + 12, 48, width + 6] },
     sections,
     modifiers: def.modifiers || [],
   };

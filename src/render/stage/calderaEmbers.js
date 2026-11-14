@@ -11,16 +11,18 @@ export function createCalderaEmbers() {
   const material = new ShaderMaterial({
     transparent: true,
     depthWrite: false,
-    uniforms: { time: { value: 0 }, start: { value: 0 } },
+    uniforms: { time: { value: 0 }, start: { value: 0 }, span: { value: 0 }, width: { value: 0 } },
     vertexShader: /* glsl */ `
       uniform float time;
       uniform float start;
+      uniform float span;
+      uniform float width;
       varying float heat;
       varying float fade;
       void main() {
         float rise = fract(position.y + time * (4. + floor(position.z * 5.)) / 120.);
-        float x = start - 6. + fract(position.x + time * 2. / 120.) * 61.;
-        float z = position.z * 32. - 5. + sin(rise * 5. + position.x * 38.) * .82;
+        float x = start - 6. + fract(position.x + time * 2. / 120.) * (span + 10.);
+        float z = (position.z - .5) * (width + 8.) + 11. + sin(rise * 5. + position.x * 38.) * .82;
         vec4 view = viewMatrix * vec4(x, -.4 + rise * 15., z, 1.);
         float depth = -view.z;
         heat = position.x;

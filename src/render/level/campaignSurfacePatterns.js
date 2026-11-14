@@ -213,6 +213,16 @@ export const CAMPAIGN_SURFACE_PATTERNS = {
     float heat = surfaceNoise(p * .27);
     float plate = surfaceHash(floor(joints / size));
     float charcoal = surfaceGrain(p, vec2(.31, .51)) - split * .31 + (plate - .5) * .15;
-    return mix(vec3(.96, 1.04, 1.06), vec3(1.18, .90, .77), heat) * charcoal;
+    vec3 cooled = mix(vec3(.96, 1.04, 1.06), vec3(1.18, .90, .77), heat) * charcoal;
+    if (upward) {
+      float cross = abs(p.y - 11.);
+      float brokenEdge = cross + (surfaceNoise(p * vec2(.32, 1.4)) - .5) * 1.05;
+      float trail = 1. - smoothstep(3.85, 5.2, brokenEdge);
+      float shoulder = surfaceStamp(brokenEdge - 5.35, .21);
+      float broken = smoothstep(.27, .65, surfaceNoise(p * vec2(1.15, .46)));
+      cooled = mix(cooled, cooled * vec3(1.13, 1.075, 1.02), trail * .78);
+      cooled += vec3(.25, .12, .071) * shoulder * broken;
+    }
+    return cooled;
   `,
 };

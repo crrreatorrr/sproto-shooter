@@ -26,6 +26,7 @@ export const PROPS = {
   caldera_apron: 'models/props/caldera_apron.glb.gz',
   caldera_brazier: 'models/props/caldera_brazier.glb.gz',
   caldera_bridge: 'models/props/caldera_bridge.glb.gz',
+  caldera_escarpment: 'models/props/caldera_escarpment.glb.gz',
   caldera_fuel: 'models/props/caldera_fuel.glb.gz',
   caldera_obelisk: 'models/props/caldera_obelisk.glb.gz',
   caldera_overhang: 'models/props/caldera_overhang.glb.gz',
