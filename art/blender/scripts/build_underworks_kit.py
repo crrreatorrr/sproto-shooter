@@ -329,6 +329,34 @@ def lavafall():
     return m
 
 
+def cavern_rib():
+    """A broad shelf of slanted basalt pillars, built for the middle distance."""
+    m = model('cavern_rib')
+    for x, y, r, height, tilt, color in (
+        (-3.4, 1.3, 3.2, 9.5, -14, BASALT), (-.6, .5, 3.6, 16.5, 8, SLATE),
+        (3.5, .4, 2.9, 11.6, 17, BASALT), (1.2, -1.5, 2.3, 6.4, -13, INK),
+        (-3.9, -1.4, 2.2, 5.4, 11, IRON),
+    ):
+        m.cyl(color, r, height, (x, y, 0), (tilt * .3, tilt, x * 8),
+              r2=r * .68, seg=5, smooth=False)
+    return m
+
+
+def distant_smelter():
+    """A rockside industrial silhouette with glowing slots and angled stacks."""
+    m = model('distant_smelter')
+    m.box(INK, (11.2, 6.2, 3.0), (0, 0, 1.5))
+    m.box(IRON, (9.7, 5.65, 4.6), (0, .14, 5.2), bevel=.26)
+    m.box(BASALT, (6.35, 4.55, 2.3), (1.2, .22, 8.55), bevel=.16)
+    for x in (-2.8, 2.9):
+        m.cyl(IRON, .72, 5.6, (x, .65, 7.2), r2=.49, seg=6, smooth=False)
+        m.cyl(RUST, .77, .24, (x, .65, 12.6), seg=6, smooth=False)
+        m.box(HEAT, (.62, .065, .64), (x, -2.72, 4.65))
+    for x in (-3.65, -1.2, 1.2, 3.65):
+        m.box(AMBER, (.72, .09, .17), (x, -2.73, 6.2))
+    return m
+
+
 def main():
     clear_scene()
     MATERIALS.clear()
@@ -336,15 +364,19 @@ def main():
     scene = bpy.context.scene
     scene.render.fps = 24
     scene.frame_start, scene.frame_end = FRAMES[0], FRAMES[-1]
+    backdrop = (cavern_rib, distant_smelter)
     makers = (basalt_wall, steel_wall, roof, gantry, tunnel, track, cart, hoist,
-              basalt_cluster, furnace, pipe, press, reactor, chimney, magma, lavafall)
+              basalt_cluster, furnace, pipe, press, reactor, chimney, magma, lavafall, *backdrop)
+    args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+    backdrop_only = '--backdrop-only' in args
     for i, make in enumerate(makers):
         result = make()
         mesh, motion = result if isinstance(result, tuple) else (result, [])
         obj = bake(mesh, *GLOW)
         parts = [obj, *motion]
         scene.frame_set(scene.frame_start)
-        export(parts, 'props', mesh.name, animated=bool(motion), compressed=True)
+        if not backdrop_only or make in backdrop:
+            export(parts, 'props', mesh.name, animated=bool(motion), compressed=True)
         collection = bpy.data.collections.new(mesh.name)
         scene.collection.children.link(collection)
         root = bpy.data.objects.new(f'{mesh.name} | Editable prop', None)
@@ -363,8 +395,8 @@ def main():
         if area.type == 'VIEW_3D':
             area.spaces.active.shading.color_type = 'VERTEX'
             region = area.spaces.active.region_3d
-            region.view_location = (30, 26, 3)
-            region.view_distance = 108
+            region.view_location = (30, 42, 3)
+            region.view_distance = 142
             region.view_rotation = Vector((-.17, 1, -.88)).to_track_quat('-Z', 'Y')
     target = Path(__file__).resolve().parents[1] / 'hellfire_underworks.blend'
     bpy.ops.wm.save_as_mainfile(filepath=str(target), compress=True)

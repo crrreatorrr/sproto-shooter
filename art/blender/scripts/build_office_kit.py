@@ -400,6 +400,35 @@ def laser():
     return m, [rotor]
 
 
+def annex():
+    """Two stepped civic buildings for the rooftop's middle-distance skyline."""
+    m = model('annex')
+    m.box(NAVY, (12.4, 7.8, 9.4), (0, 0, 4.7))
+    m.box(SLATE, (8.6, 6.4, 4.5), (-1.0, .2, 11.65))
+    m.box(INK, (5.1, 4.4, 2.4), (-1.45, .12, 15.1))
+    m.box(STEEL, (12.5, 8.0, .28), (0, 0, 9.34))
+    for y in (-3.91, 3.91):
+        for z in (2.5, 4.9, 7.15):
+            for x in (-3.9, -.9, 2.1, 4.8):
+                m.box(AMBER if (z + x) % 3 < 1.5 else GLASS, (1.25, .052, .33), (x, y, z))
+    m.box(INK, (.14, .14, 3.1), (-1.45, .12, 17.76))
+    m.box(RED, (.21, .21, .15), (-1.45, .12, 19.3))
+    return m
+
+
+def atrium_sign():
+    m = model('atrium_sign')
+    m.box(NAVY, (.26, 7.0, .72), (0, 0, .36), bevel=.05)
+    for y in (-3.15, 3.15):
+        m.box(BRASS, (.32, .1, .62), (-.09, y, .37))
+    start = len(m.verts)
+    m.text(CYAN, 'PUBLIC SERVICES', .37, .018, (0, 0, 0))
+    for i in range(start, len(m.verts)):
+        x, y, z = m.verts[i]
+        m.verts[i] = (y - .163, -x, z + .18)
+    return m
+
+
 def main():
     clear_scene()
     MATERIALS.clear()
@@ -407,14 +436,18 @@ def main():
     scene = bpy.context.scene
     scene.render.fps = 24
     scene.frame_start, scene.frame_end = FRAMES[0], FRAMES[-1]
+    additions = (annex, atrium_sign)
     makers = (facade, wall, parapet, soffit, skirt, pilaster, portal, reception, clock, cubicle, elevator,
-              server, conduit, planter, fan, dish, tower, pad, laser)
+              server, conduit, planter, fan, dish, tower, pad, laser, *additions)
+    args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+    additions_only = '--expansion-only' in args
     for i, make in enumerate(makers):
         result = make()
         mesh, motion = result if isinstance(result, tuple) else (result, [])
         parts = [bake(mesh, *GLOW), *motion]
         scene.frame_set(scene.frame_start)
-        export(parts, 'props', mesh.name, animated=bool(motion), compressed=True)
+        if not additions_only or make in additions:
+            export(parts, 'props', mesh.name, animated=bool(motion), compressed=True)
         collection = bpy.data.collections.new(mesh.name)
         scene.collection.children.link(collection)
         root = bpy.data.objects.new(f'{mesh.name} | Editable prop', None)

@@ -5,7 +5,7 @@ import {
 } from './campaignSurfaceArt.js';
 import { CAMPAIGN_SURFACE_PATTERNS, SURFACE_GLSL } from './campaignSurfacePatterns.js';
 
-const HARD = 0, SOFT = 1, WOOD = 2, ICE = 3, GRASS = 4, MASONRY = 5, ROAD = 6, PANEL_FLOOR = 7;
+const HARD = 0, SOFT = 1, WOOD = 2, ICE = 3, GRASS = 4, MASONRY = 5, ROAD = 6, PANEL_FLOOR = 7, CRYPT_FLOOR = 8;
 const SUBSTRATE = {
   stone: HARD, rock: HARD, concrete: HARD, metal: HARD, pillar: HARD,
   grass: GRASS, dirt: SOFT, sand: SOFT, snow: SOFT, creekBed: SOFT, wood: WOOD, ice: ICE,
@@ -29,12 +29,12 @@ const KIT_SURFACES = {
   moonlit_apron: HARD, moonlit_wall: HARD, moonlit_crypt_wall: HARD,
   moonlit_vault: HARD, moonlit_column: HARD, moonlit_ruin_arch: HARD, moonlit_tomb: HARD,
   moonlit_ridge: HARD,
-  landing_facade_a: HARD, landing_facade_b: HARD, landing_facade_c: HARD,
-  landing_street_wall: HARD, landing_mall_wall: HARD, landing_garage_wall: HARD,
-  landing_upper_wall: HARD, landing_rail: HARD, landing_tower: HARD,
   caldera_apron: HARD, caldera_wall: HARD, caldera_spires: HARD, caldera_overhang: HARD,
   bazaar2_wall_panel: HARD, bazaar2_shop: HARD, bazaar2_tower: HARD,
   bazaar2_support: HARD, bazaar2_ridge: MASONRY, bazaar2_canopy: WOOD,
+  landing_facade_a: HARD, landing_facade_b: HARD, landing_facade_c: HARD,
+  landing_street_wall: HARD, landing_mall_wall: HARD, landing_garage_wall: HARD,
+  landing_upper_wall: HARD, landing_rail: HARD, landing_tower: HARD,
 };
 
 const SURFACE_EXCLUSIONS = new Set(['energyBridge', 'fireRing', 'lockWall', 'mover', 'crackTiles']);
@@ -143,6 +143,48 @@ const SHADE_SURFACE = /* glsl */ `
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.37, .42, .47), crossing * flecks * .66);
       }
     #endif
+    #ifdef CAMPAIGN_ART_UNDERWORKS
+      if (surfaceNormal.y > .57 && abs(vCampaignSurface.y) < .045 && campaignSurfaceKind == 7.) {
+        float lane = abs(surfaceUV.y - 11.);
+        float warning = surfaceStamp(lane - 6.6, .14) * surfaceLine(surfaceUV.x, 7.2, 1.05);
+        float diagonal = surfaceLine(surfaceUV.x + surfaceUV.y, .50, .125);
+        float panel = surfaceStamp(lane - 8.5, .62) * surfaceLine(surfaceUV.x, 9.1, .75);
+        float slots = surfaceLine(surfaceUV.x, .18, .026);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.46, .225, .061), warning * diagonal * .81);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.049, .032, .044), panel * (.25 + .45 * slots));
+      }
+    #endif
+    #ifdef CAMPAIGN_ART_OFFICE
+      if (surfaceNormal.y > .57 && campaignOfficeFloor > .5) {
+        float fromCenter = abs(surfaceUV.y - 11.);
+        float wear = mix(.70, 1., surfaceNoise(surfaceUV * 1.6));
+        if (campaignOfficeFloor < 1.5) {
+          float carpet = 1. - smoothstep(3.85, 4.05, fromCenter);
+          float inlay = surfaceStamp(fromCenter - 3.65, .052);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.13, .26, .31) * wear, carpet * .80);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.44, .36, .21), inlay * .65);
+        } else if (campaignOfficeFloor < 2.5) {
+          float carpet = 1. - smoothstep(13.3, 13.6, fromCenter);
+          float crossing = surfaceLine(surfaceUV.x - 3.75, 9., .92);
+          float threads = .92 + .08 * surfaceNoise(surfaceUV * 7.);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.23, .28, .34) * threads, carpet * (1. - crossing * .58) * .80);
+        } else if (campaignOfficeFloor < 3.5) {
+          float lanes = surfaceStamp(fromCenter - 7.3, .093) * surfaceLine(surfaceUV.x, 4.8, 1.28);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.42, .32, .18), lanes * wear * .78);
+        }
+      }
+    #endif
+    #ifdef CAMPAIGN_ART_MOONLIT
+      if (surfaceNormal.y > .57 && campaignSurfaceKind == 8.) {
+        float centre = abs(surfaceUV.y - 11.);
+        float aisle = 1. - smoothstep(3.7, 3.95, centre);
+        float rim = surfaceStamp(centre - 3.71, .06);
+        vec2 stone = abs(fract(vec2(surfaceUV.x / 3.8, surfaceUV.y / 2.5)) - .5);
+        float carving = surfaceStamp(stone.x + stone.y - .28, .021) * aisle;
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(.57, .65, .86), aisle * .62);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.23, .26, .42), max(rim, carving * .64) * .55);
+      }
+    #endif
     diffuseColor.rgb *= mix(vec3(1.), max(campaignTint, vec3(.39)), campaignWeight);
   #endif
 `;
@@ -154,7 +196,7 @@ export function createCampaignSurfaceMaterials() {
     (path) => [path, { texture: { value: null }, ready: { value: 0 } }],
   ));
   const themes = new Map();
-  function decorate(base, level, kind, ceiling, road = null) {
+  function decorate(base, level, kind, ceiling, road = null, officeFloor = 0) {
     const glassRoof = ceiling === GLASS_CEILING_SURFACE;
     if (kind === undefined || !Object.hasOwn(CAMPAIGN_SURFACE_PATTERNS, level)
       || (base.transparent && !glassRoof) || !base.isMeshStandardMaterial) return base;
@@ -164,7 +206,7 @@ export function createCampaignSurfaceMaterials() {
     const art = atlases.get(surfaceArtPath(level));
     if (!materials.has(base)) materials.set(base, new Map());
     const cache = materials.get(base);
-    const key = level + ':' + kind + ':' + ceiling + (road ? ':' + road.toArray().join(',') : '');
+    const key = level + ':' + kind + ':' + ceiling + ':' + officeFloor + (road ? ':' + road.toArray().join(',') : '');
     if (cache.has(key)) return cache.get(key);
 
     const material = base.clone();
@@ -183,6 +225,7 @@ export function createCampaignSurfaceMaterials() {
       shader.uniforms.campaignArtReady = art.ready;
       shader.uniforms.campaignCeiling = { value: ceiling };
       if (level === 'L06') shader.uniforms.campaignRoad = { value: road || new Vector4(0, 0, 0, 0) };
+      if (level === 'L08') shader.uniforms.campaignOfficeFloor = { value: officeFloor };
       shader.uniforms.campaignArtLayout = { value: theme.layout };
       shader.uniforms.campaignArtTiles = { value: theme.tiles };
       shader.uniforms.campaignArtMetresX = { value: theme.metresX };
@@ -198,7 +241,10 @@ export function createCampaignSurfaceMaterials() {
           ${level === 'L01' ? '#define CAMPAIGN_ART_LANDING' : ''}
           ${level === 'L03' ? '#define CAMPAIGN_ART_GROVE' : ''}
           ${level === 'L05' ? '#define CAMPAIGN_ART_FROST' : ''}
+          ${level === 'L09' ? '#define CAMPAIGN_ART_MOONLIT' : ''}
           ${level === 'L06' ? '#define CAMPAIGN_ART_SKYLINE\nuniform vec4 campaignRoad;' : ''}
+          ${level === 'L07' ? '#define CAMPAIGN_ART_UNDERWORKS' : ''}
+          ${level === 'L08' ? '#define CAMPAIGN_ART_OFFICE\nuniform float campaignOfficeFloor;' : ''}
           ${['L07', 'L08', 'L09', 'L10'].includes(level) ? '#define CAMPAIGN_ART_ACCENT_FLOOR' : ''}
           ${glassRoof ? '#define CAMPAIGN_GLASS_ROOF' : ''}
           ${SURFACE_GLSL}
@@ -234,10 +280,12 @@ export function createCampaignSurfaceMaterials() {
       const kind = ceiling === GLASS_CEILING_SURFACE ? HARD
         : landingRoad || (level === 'L06' && /^S[1-4]-floor$/.test(geometry.id)) ? ROAD
           : level === 'L02' && geometry.mat === 'rock' ? MASONRY
-          : accentFloor ? PANEL_FLOOR : primitiveSurfaceKind(geometry);
+          : level === 'L09' && geometry.id === 'S2-floor' ? CRYPT_FLOOR
+            : accentFloor ? PANEL_FLOOR : primitiveSurfaceKind(geometry);
       const road = level === 'L06' && kind === ROAD
         ? new Vector4(geometry.size[2] / 2, geometry.at[2], geometry.at[0], Number(geometry.id[1])) : null;
-      return decorate(base, level, kind, ceiling, road);
+      const officeFloor = level === 'L08' && /^S[1-3]-floor$/.test(geometry.id) ? Number(geometry.id[1]) : 0;
+      return decorate(base, level, kind, ceiling, road, officeFloor);
     },
     kit(base, level, model) {
       return Object.hasOwn(KIT_SURFACES, model)

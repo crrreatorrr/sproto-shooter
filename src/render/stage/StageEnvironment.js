@@ -56,10 +56,10 @@ export function mountStage(env) {
   }
 
   function applyStage(id, levelId, sectionId) {
-    const landing = id === 'city' && levelId === 'L01';
     const grove = id === 'grove' && levelId === 'L03';
     const bazaar = id === 'desert' && levelId === 'L02';
     const showroom = bazaar && sectionId === 'S4';
+    const landing = id === 'city' && levelId === 'L01';
     const blockchain = id === 'void' && levelId === 'L04';
     const frostspire = id === 'glacier' && levelId === 'L05';
     const skyline = id === 'city' && levelId === 'L06';
@@ -72,12 +72,10 @@ export function mountStage(env) {
     const crypt = moonlit && sectionId === 'S2';
     const st = STAGES[id], a = stageAssets(id);
     const variant = office ? (roof ? 'L08-roof' : 'L08-interior')
-      : moonlit ? (crypt ? 'L09-crypt' : 'L09-exterior')
-      : landing ? levelId
       : caldera ? (eruption ? 'L10-eruption' : 'L10-ridge')
-      : frostspire || blockchain || skyline ? `${levelId}-${sectionId || 'S1'}`
+      : frostspire || blockchain || skyline || underworks || moonlit ? `${levelId}-${sectionId || 'S1'}`
       : bazaar ? (showroom ? 'L02-showroom' : 'L02-exterior')
-        : grove || underworks ? levelId : '';
+        : grove || landing ? levelId : '';
     const key = id + ':' + variant + ':' + assetsVersion();
     if (key === stageKey) return;
     stageKey = key;
@@ -121,13 +119,14 @@ export function mountStage(env) {
       bounce.color.setHex(0xbbd7e1);
     }
     if (skyTex && (landing || bazaar || skyline || underworks || roof || moonlit || caldera)) {
-      skyTex.offset.y = landing ? -.106 : bazaar ? -.018 : skyline ? -.088 : underworks ? .035 : moonlit ? -.036 : caldera ? .057 : -.098;
-      if (landing || bazaar || skyline || roof || moonlit || caldera) {
+      skyTex.offset.y = landing ? -.106 : bazaar ? -.018 : skyline ? -.088 : underworks ? -.045 : moonlit ? -.078 : caldera ? .057 : -.049;
+      if (landing || bazaar || skyline || underworks || roof || moonlit || caldera) {
         // Frame a different part of the painted skyline along each approach.
         skyTex.wrapS = THREE.RepeatWrapping;
         const skylineOffset = { S1: .09, S2: .195, S3: -.17, S4: .275 };
+        const cavernOffset = { S1: .04, S2: -.095, S3: .19, S4: .32 };
         skyTex.offset.x = skyline ? (skylineOffset[sectionId] ?? skylineOffset.S1)
-          : landing ? .10 : bazaar ? (showroom ? -.13 : .04) : moonlit ? .208 : caldera ? .204 : .185;
+          : underworks ? (cavernOffset[sectionId] ?? cavernOffset.S1) : landing ? .10 : bazaar ? (showroom ? -.13 : .04) : moonlit ? (sectionId === 'S3' ? .190 : .067) : caldera ? .204 : .292;
         skyTex.needsUpdate = true;
       }
     }
@@ -136,17 +135,6 @@ export function mountStage(env) {
     standardSky.map = skyTex;
     standardSky.color.setHex(skyTex ? 0xffffff : skyline ? 0x242d54 : underworks || caldera ? 0x472840 : st.background);
     standardSky.needsUpdate = true;
-    if (landing) {
-      scene.fog.color.setHex(0x6c5c80);
-      hemi.color.setHex(0xe1c9f0);
-      hemi.groundColor.setHex(0x77829a);
-      hemi.intensity = 1.42;
-      sun.color.setHex(0xffc4a5);
-      sun.position.set(-26, 24, -15);
-      sun.intensity = 1.27;
-      bounce.color.setHex(0x8bbbe8);
-      bounce.intensity = .54;
-    }
     if (bazaar) {
       scene.fog.color.setHex(showroom ? 0x866977 : 0xb98780);
       hemi.color.setHex(showroom ? 0xd6bef1 : 0xffdfd7);
@@ -157,6 +145,17 @@ export function mountStage(env) {
       sun.intensity = showroom ? 1.23 : 1.58;
       bounce.color.setHex(showroom ? 0x8d9bee : 0xc0a8ed);
       bounce.intensity = showroom ? .54 : .42;
+    }
+    if (landing) {
+      scene.fog.color.setHex(0x6c5c80);
+      hemi.color.setHex(0xe1c9f0);
+      hemi.groundColor.setHex(0x77829a);
+      hemi.intensity = 1.42;
+      sun.color.setHex(0xffc4a5);
+      sun.position.set(-26, 24, -15);
+      sun.intensity = 1.27;
+      bounce.color.setHex(0x8bbbe8);
+      bounce.intensity = .54;
     }
     if (blockchain) {
       scene.fog.color.setHex(0x312445);
@@ -200,7 +199,7 @@ export function mountStage(env) {
       bounce.intensity = .44;
     }
     if (underworks) {
-      scene.fog.color.setHex(0x503147);
+      scene.fog.color.setHex(0x4a3046);
       hemi.color.setHex(0xd4b9f2);
       hemi.groundColor.setHex(0xb78386);
       hemi.intensity = 1.29;
@@ -211,7 +210,7 @@ export function mountStage(env) {
       bounce.intensity = .86;
     }
     if (office) {
-      scene.fog.color.setHex(roof ? 0x232f57 : 0x293745);
+      scene.fog.color.setHex(roof ? 0x38446d : 0x293745);
       hemi.color.setHex(roof ? 0xb5c8f4 : 0xe4f0ff);
       hemi.groundColor.setHex(roof ? 0x606a84 : 0x9299a4);
       hemi.intensity = roof ? 1.16 : 1.47;
@@ -222,7 +221,7 @@ export function mountStage(env) {
       bounce.intensity = roof ? .55 : .44;
     }
     if (moonlit) {
-      scene.fog.color.setHex(crypt ? 0x322c51 : 0x30456e);
+      scene.fog.color.setHex(crypt ? 0x282b47 : 0x384d72);
       hemi.color.setHex(crypt ? 0xc2b2ed : 0xc1d8fc);
       hemi.groundColor.setHex(crypt ? 0x857aa4 : 0x7a86aa);
       hemi.intensity = crypt ? 1.26 : 1.20;

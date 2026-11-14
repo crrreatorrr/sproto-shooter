@@ -9,7 +9,7 @@ import { createEnemy, createBoss, createPickup, createProjectile, nextId } from 
 import { generateGun } from '../guns.js';
 import { damagePlayer, onEnemyKilled } from '../combat.js';
 import { clearCampaignSpells, grantSpell } from '../spellbook.js';
-import { beginV2, noteV2Section, v2Post, v2Pre } from './v2.js';
+import { beginV2, bindV2Section, noteV2Section, v2Post, v2Pre } from './v2.js';
 import { detonateBarrel, isZone, onMover, playerZoneSlow, publishSlowZones, slowEnemiesInHazard, tickGeyser, tickMover, tickRising, tickSwitch, tickZoneDamage } from './mechanisms.js';
 import { tickAlarms } from './alarms.js';
 import { tickWeather } from './weather.js';
@@ -81,6 +81,22 @@ export function transitionDone(state) {
   } else if (lv.intro) lv.intro = null;
 }
 
+function syncLegacySolids(state, sec) {
+  const lv = state.level;
+  if (sec.legacyCeiling) {
+    if (lv.legacySolidSection === sec.id) return;
+    bindV2Section(state, sec);
+    lv.legacySolidSection = sec.id;
+    lv.legacyCeiling = sec.legacyCeiling;
+  } else if (lv.legacySolidSection) {
+    delete lv.legacySolidSection;
+    delete lv.legacyCeiling;
+    delete lv.solids;
+    delete lv.closedDoors;
+    delete lv.useSolids;
+  }
+}
+
 export function campaignPre(state, dt) {
   const lv = state.level;
   if (!lv || lv.won || lv.lost) return;
@@ -96,6 +112,7 @@ export function campaignPre(state, dt) {
   if (p.padCd > 0) p.padCd -= dt;
   const sec = sectionById(lv.id, lv.section);
   if (!sec) return;
+  if (lv.format !== 'v2') syncLegacySolids(state, sec);
   tickAlarms(state, dt);
   tickWeather(state, sec, dt);
   for (const m of sec.mechanisms || []) {
