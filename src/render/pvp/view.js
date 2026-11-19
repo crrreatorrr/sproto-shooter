@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { graphicsPixelRatio } from '../graphicsPresets.js';
 import { loadSettings } from '../../save/settings.js';
 import { TUNING } from '../../data/tuning.js';
+import { stageAssets } from '../../data/stages.js';
 import { dirFromYawPitch } from '../../core/math.js';
 import { ARENA_SOLIDS, ARENA_WALL_H } from '../../sim/pvp/arena.js';
 import { ensureGunModel, loadTexture, releaseAsset, retainAsset } from '../assets.js';
@@ -84,7 +85,7 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
 
   // The title's city floor, from the shared asset cache (no second download). Held while this view
   // lives, so the main view's eviction cannot dispose it under the arena.
-  const FLOOR_TEX = 'textures/stages/city/floor.jpg';
+  const FLOOR_TEX = stageAssets('city').floor;
   retainAsset(FLOOR_TEX);
   loadTexture(FLOOR_TEX).then((tex) => {
     if (!tex || disposed) return;
