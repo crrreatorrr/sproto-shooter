@@ -110,6 +110,8 @@ export class Game {
       const next = progressShown();
       if (next === shown) return;
       shown = next;
+      // A level the player picked is still downloading: repainting now would cancel its start.
+      if (this._levelLoad) return;
       if (!this.screen.hidden && (this.screenKind === 'title' || this.screenKind === 'campaignSelect') && !this.pvpActive && !this._wagerScreen) this.showScreen(this.screenKind);
     });
     // A link that is still connecting (src/main.js no longer waits for it) keeps progress held;
