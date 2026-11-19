@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright';
 import { percentile } from '../src/render/debug/perfCounters.js';
 import { BASELINE_COMMIT, repoRoot } from './asset-report.mjs';
-import { CRITICAL_ASSETS, GATE, MEASURED, criticalTransferBytes } from './check-budgets.mjs';
+import { CRITICAL_ASSETS, GATE, MEASURED, TITLE_LAZY_CHUNKS, criticalTransferBytes, titleChunks } from './check-budgets.mjs';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -23,6 +23,7 @@ const MIME = {
   '.webp': 'image/webp',
   '.wasm': 'application/wasm',
   '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
   '.mp4': 'video/mp4',
 };
 
@@ -260,14 +261,20 @@ async function openPage(browser, origin, { throttle, cacheDisabled, condition, c
   return { context, page, sample };
 }
 
-function requestProblems(sample) {
+function requestProblems(sample, chunks = null) {
   const problems = [];
   const seen = new Set();
+  const seenJs = new Set();
   for (const entry of sample.waterfall) {
     if (entry.party !== 'first') continue;
     const pathname = new URL(entry.url).pathname;
     if (pathname === '/favicon.ico') continue;
     if (entry.status && entry.status >= 400) problems.push(`${entry.status} ${pathname}`);
+    const file = pathname.split('/').at(-1);
+    if (chunks && file.startsWith('index-') && file.endsWith('.js')) {
+      seenJs.add(file);
+      if (!chunks.includes(file)) problems.push(`unexpected title chunk ${file}`);
+    }
     if (!entry.path) continue;
     if (entry.path.startsWith('index-') && (entry.path.endsWith('.js') || entry.path.endsWith('.css'))) continue;
     seen.add(entry.path);
@@ -275,6 +282,10 @@ function requestProblems(sample) {
   }
   for (const expected of CRITICAL_ASSETS) {
     if (!seen.has(expected)) problems.push(`missing critical asset ${expected}`);
+  }
+  // Every chunk the budget counts must really load, except the ones the title may load later.
+  for (const name of chunks || []) {
+    if (!seenJs.has(name) && !TITLE_LAZY_CHUNKS.some((lazy) => name.startsWith(`index-${lazy}-`))) problems.push(`title chunk did not load ${name}`);
   }
   return problems;
 }
@@ -381,7 +392,7 @@ export async function smokeDist(dist) {
     const opened = await openPage(browser, origin, {
       throttle: false, cacheDisabled: true, condition: 'cold', cache: 'disabled',
     });
-    const problems = requestProblems(opened.sample);
+    const problems = requestProblems(opened.sample, titleChunks(dist));
     const report = {
       schema: 'sproto-shooter.load-profile-smoke.v1',
       source: { baselineCommit: BASELINE_COMMIT, generatedFromCommit: gitRev(repoRoot()) },
