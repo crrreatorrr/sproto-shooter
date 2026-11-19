@@ -251,7 +251,7 @@ label.nav-focus { padding: 2px 6px; }
 .title .tag { font-size: 18px; color: var(--ink-dim); max-width: 520px; }
 .hub-chip { font-weight: 800; color: var(--sun); background: rgba(26, 16, 48, .85); border: 2px solid var(--sun); border-radius: 999px; padding: 6px 14px; }
 .hub-chip b { font-variant-numeric: tabular-nums; }
-.hub-chip.offline { color: var(--ink-dim); border-color: var(--ink-dim); }
+.hub-chip.offline, .hub-chip.connecting { color: var(--ink-dim); border-color: var(--ink-dim); }
 .hub-chip.guest { color: #9ad7ff; border-color: #9ad7ff; }
 .hub-chip.connected { color: var(--sun); border-color: var(--sun); }
 .hub-chip.error { color: var(--bad); border-color: var(--bad); }

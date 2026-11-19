@@ -116,7 +116,9 @@ export class Game {
       shown = next;
       if (!this.screen.hidden && (this.screenKind === 'title' || this.screenKind === 'campaignSelect') && !this.pvpActive && !this._wagerScreen) this.showScreen(this.screenKind);
     });
-    campaignProgress.followHub(this.hub);
+    // A link that is still connecting (src/main.js no longer waits for it) keeps progress held;
+    // attachHub follows the account once it has settled.
+    if (this.hub.settled !== false) campaignProgress.followHub(this.hub);
     this.gui = null;
     this.debugOpen = false;
     wireHitstop(this);
@@ -534,6 +536,20 @@ export class Game {
   }
   hubChip() {
     return hubChipHtml(this.hub);
+  }
+  /**
+   * The hub link settled after boot (src/main.js starts the game without waiting for it).
+   * Progress follows the account, and a title screen that is up repaints its chip and wager offer.
+   */
+  attachHub(hub = this.hub) {
+    if (hub !== this.hub) {
+      this.hub = hub;
+      this.waveRelic = createWaveRelicReporter({ hub: this.hub, onGranted: (id) => this.ui.toast(`Relic: ${relicName(id)}`, 'good') });
+    }
+    void campaignProgress.followHub(this.hub);
+    if (this.screen.hidden || this.screenKind !== 'title' || this.pvpActive || this._wagerScreen) return;
+    this.paintHubChip();
+    void this.refreshWagerOffer();
   }
   paintHubChip() {
     const slot = this.screen.querySelector('.hub-chip');

@@ -353,8 +353,14 @@ describe('provenance and ledger boundary', () => {
     const eventIds = new Set([...src.matchAll(/'((?:shooter|coop|fighter|arcade|sproto|hpos10i|tickets|verse)\.[a-z_]+)'/g)].map((m) => m[1]));
     expect([...eventIds]).toEqual(['shooter.wave_clear']);
     const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
-    expect(main.indexOf('await connectHub()')).toBeGreaterThan(-1);
-    expect(main.indexOf('await connectHub()')).toBeLessThan(main.indexOf('new Game'));
+    // The game no longer waits for the visit: the link exists (connecting) before new Game, the game
+    // follows it once it settles, and progress holds device writes until then.
+    expect(main).not.toMatch(/await connectHub\(\)/);
+    expect(main.indexOf('startHub()')).toBeGreaterThan(-1);
+    expect(main.indexOf('startHub()')).toBeLessThan(main.indexOf('new Game'));
+    expect(main.indexOf('ready.then(() => game.attachHub(hub))')).toBeGreaterThan(main.indexOf('new Game'));
+    expect(read('src/save/progress.js')).toMatch(/if \(hubVisitStarting\(HUB_GAME_ID\)\) campaignProgress\.hold\(\);/);
+    expect(read('src/game/Game.js')).toMatch(/if \(this\.hub\.settled !== false\) campaignProgress\.followHub\(this\.hub\);/);
 
     if (existsSync('dist')) {
       const chunks = walkJs('dist');

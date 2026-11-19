@@ -1,5 +1,7 @@
 // Boot: URL params ?seed=123&mode=waves|sandbox|test|boss|campaign&level=L01&boss=monster&debug=1&stats=1
-// A hub visit arrives as /#t=<ticket>. connectHub redeems it before the title screen.
+// A hub visit arrives as /#t=<ticket>. startHub redeems it while the renderer boots: the game gets
+// the link in its `connecting` state at once and Game.attachHub runs once it has settled. Campaign
+// progress holds device writes until then (src/save/progress.js).
 // The entry chunk paints the title, then loads the hub SDK and the renderer.
 // Crash safety net: uncaught errors and rejections feed the crash guard; when it halts the game
 // (a streak of failing frames) or boot fails (a stale chunk after a deploy, a failed load), the
@@ -26,12 +28,12 @@ async function boot() {
     screen.hidden = false;
     screen.innerHTML = '<div class="title"><h1>SPROTO<br><span>SHOOTER</span></h1><p class="loading">Loading…</p></div>';
   }
-  const [{ connectHub }, { Game }] = await Promise.all([
+  const [{ startHub }, { Game }] = await Promise.all([
     import('./hub/link.js'),
     import('./game/Game.js'),
   ]);
-  const hub = await connectHub();
-  new Game({
+  const { link: hub, ready } = startHub();
+  const game = new Game({
     seed: Number(q.get('seed')) || (Date.now() % 1e9),
     mode: q.get('mode') || 'title',
     debug: q.get('debug') === '1',
@@ -40,5 +42,6 @@ async function boot() {
     stats: q.get('stats') === '1',
     hub,
   });
+  void ready.then(() => game.attachHub(hub));
 }
 crashGuard.guardBoot(boot);
