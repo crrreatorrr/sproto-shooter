@@ -4,12 +4,12 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { CHARACTER_MODELS, rotationForModelPath, stageAssets } from '../data/stages.js';
 import { unpackGltf } from './loadPackedGltf.js';
+import { decodeTexture } from './textureDecode.js';
 import { createLoadControl } from './loadControl.js';
 import { instantiateCharacter as buildCharacter } from './assets/characterInstance.js';
 
 const BASE = `${import.meta.env.BASE_URL}assets/`;
 const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-const texLoader = new THREE.TextureLoader();
 
 // ---- download queue: 'now' (needed this level) before 'later' (prefetch); a few at a time ----
 const NOW = 0, LATER = 1;
@@ -186,22 +186,15 @@ export function loadTexture(path, { color = true, repeat = null, prio = NOW } = 
   }
   if (control.status(path) === 'error') return control.schedule(path, starters.get(path), prio);
   return schedule(path, async () => {
-    const buf = await fetchBuf(path);
-    const url = URL.createObjectURL(new Blob([buf]));
-    try {
-      const t = await texLoader.loadAsync(url);
-      if (!t || !t.isTexture) throw new Error('load failed');
-      if (color) t.colorSpace = THREE.SRGBColorSpace;
-      if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat, repeat); }
-      t.anisotropy = 4;
-      const w = t.image?.width || 0;
-      const h = t.image?.height || 0;
-      control.setDecoded(path, w * h * 4);
-      bump();
-      return t;
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    const t = await decodeTexture(await fetchBuf(path));
+    if (color) t.colorSpace = THREE.SRGBColorSpace;
+    if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat, repeat); }
+    t.anisotropy = 4;
+    const w = t.image?.width || 0;
+    const h = t.image?.height || 0;
+    control.setDecoded(path, w * h * 4);
+    bump();
+    return t;
   }, prio);
 }
 
