@@ -9,18 +9,14 @@ import { createAudio } from '../audio/sfx.js';
 import { createUI } from '../ui/ui.js';
 import { ENEMIES, BOSSES } from '../data/enemies.js';
 import { CAMPAIGN, getLevelData } from '../data/levels/index.js';
+import { campaignLevelReady, loadAllCampaignLevels, loadCampaignLevel } from './campaignLevels.js';
 import { loadSettings, saveSettings } from '../save/settings.js';
 import { campaignProgress } from '../save/progress.js';
 import { decideHubReturn, hubChipHtml, WAGER_RPC } from '../hub/link.js';
-import {
-  bindWagerScreen, browserReceiptStore, createWagerFlow, labelIsWager, reconnectNotice, renderWagerScreen,
-  RULE_TEXT, STALL_MS, wagerGuestProbe, wagerSlotHtml,
-} from '../hub/wagers.js';
 import { createWaveRelicReporter, relicName } from '../hub/waveRelic.js';
 import { restoreCheckpoint } from '../sim/campaign/campaign.js';
 import { canonicalCommand } from '../server/canonicalCommand.js';
-import { RewardedCampaignUI } from '../hub/campaignRewards/uiFlow.js';
-import { REWARDED_CAMPAIGN_ENABLED } from '../hub/campaignRewards/session.js';
+import { REWARDED_CAMPAIGN_ENABLED } from '../hub/campaignRewards/flag.js';
 import { GUN_TYPES, QUALITIES, ELEMENTS, WACKY, zoomLevelsOf, zoomFovFor } from '../data/guns.js';
 import { swappedWeapon } from '../input/aimRules.js';
 import { SKILL_IDS, SPELL_IDS } from '../data/skills.js';
@@ -126,7 +122,10 @@ export class Game {
     this.wireInput();
     // N twice, or the pause screen's button: the hub feedback window.
     this.feedback = installGameFeedback(this);
-    this.rewardedCampaign = REWARDED_CAMPAIGN_ENABLED ? new RewardedCampaignUI(this) : null;
+    // The rewarded campaign (off unless VITE_SHOOTER_REWARDED) brings the server's run checks, which
+    // read every level, so it loads with all of them and only when it is on. Null until then.
+    this.rewardedCampaign = null;
+    this.rewardedPending = REWARDED_CAMPAIGN_ENABLED ? this.loadRewardedCampaign() : null;
     if (debug) this.openDebugPanel();
 
     // initial sandbox content so the title screen has something going on behind it. Its pickups'
@@ -154,6 +153,21 @@ export class Game {
       game: this,
       perf: (seconds = 5) => this.samplePerf(seconds),
     };
+  }
+
+  async loadRewardedCampaign() {
+    let RewardedCampaignUI;
+    try {
+      [{ RewardedCampaignUI }] = await Promise.all([import('../hub/campaignRewards/uiFlow.js'), loadAllCampaignLevels()]);
+    } catch (err) {
+      this.rewardedPending = null;
+      console.warn('[rewarded] could not load the rewarded campaign:', err);
+      return null;
+    }
+    this.rewardedCampaign = new RewardedCampaignUI(this);
+    this.rewardedPending = null;
+    if (!this.screen.hidden && this.screenKind === 'title' && !this.pvpActive && !this._wagerScreen) this.showScreen('title');
+    return this.rewardedCampaign;
   }
 
   samplePerf(seconds = 5) {
@@ -291,6 +305,11 @@ export class Game {
 
   start(mode, extra = {}) {
     if (this.rewardedCampaign?.controlsRestricted) { this.rewardedCampaign.unsupportedControl(); return; }
+    // A campaign level's body is its own chunk (src/game/campaignLevels.js): fetch it, then start.
+    // The level renderer is one too (src/render/level/lazyLevelView.js); warm it at the same time.
+    if (mode === 'campaign') void import('../render/level/levelView.js').catch(() => {});
+    if (mode === 'campaign' && !campaignLevelReady(extra.level)) { this.startAfterLevelLoads(mode, extra); return; }
+    this._levelLoad = null;
     this.playing = true;
     this.renderer.titleBackdrop(false);
     this.hubLeaveArmed = false;
@@ -318,8 +337,23 @@ export class Game {
     this.input.lock();
   }
 
+  startAfterLevelLoads(mode, extra) {
+    const token = {};
+    this._levelLoad = token;
+    const note = this.screen.querySelector('.tag');
+    if (!this.screen.hidden && note) note.textContent = 'Loading level…';
+    loadCampaignLevel(extra.level).then(() => {
+      if (this._levelLoad === token) this.start(mode, extra);
+    }, () => {
+      if (this._levelLoad !== token) return;
+      this.showScreen('campaignSelect');
+      this.ui.toast('Could not load that level. Check your connection and try again.');
+    });
+  }
+
   // ---------- screens ----------
   showScreen(kind) {
+    this._levelLoad = null; // a level still loading does not start once you have moved on
     if (kind === 'title') this.rewardedCampaign?.leave();
     else if (this.rewardedCampaign?.controlsRestricted) { this.rewardedCampaign.unsupportedControl(); return; }
     if (kind === 'defeat' || kind === 'bossWon' || kind === 'bossLost' || kind === 'levelClear' || kind === 'levelLost') {
@@ -396,6 +430,7 @@ export class Game {
       const lv = s.level || {};
       const idx = Math.max(0, CAMPAIGN.indexOf(lv.id));
       const next = CAMPAIGN[idx + 1];
+      if (win && next) void loadCampaignLevel(next).catch(() => {}); // ready for "Next level"
       body = `<div class="end ${win ? 'victory' : 'defeat'}"><h1>${win ? 'AUDIT PASSED' : 'AUDIT FAILED'}</h1>
         <p>${win ? `${lv.name} cleared.` : `${lv.name} got the better of you.`}</p>
         <div class="stats"><div><b>${clock(lv.time)}</b>time · par ${clock(lv.parTime)}</div><div><b>${s.run.kills}</b>kills</div><div><b>${Math.round(s.run.damageTaken).toLocaleString()}</b>damage taken</div></div>
@@ -900,9 +935,16 @@ export class Game {
     }
   }
 
+  /** The wager module (src/hub/wagers.js) loads the first time a bankable visit needs the offer or the desk. */
+  async loadWagers() {
+    this._wagers ??= await import('../hub/wagers.js');
+    return this._wagers;
+  }
+
+  /** Needs loadWagers() first. */
   ensureWagerFlow() {
     if (this.wagerFlow) return this.wagerFlow;
-    this.wagerFlow = createWagerFlow({
+    this.wagerFlow = this._wagers.createWagerFlow({
       rpc: (id, body) => this.wagerRpc(id, body),
       balance: () => (this.hub.refreshBalance ? this.hub.refreshBalance(0) : Promise.resolve(this.hub.balance)),
       session: () => ({
@@ -911,7 +953,7 @@ export class Game {
         guest: this.hub.status === 'guest',
         status: this.hub.status || 'offline',
       }),
-      store: browserReceiptStore(),
+      store: this._wagers.browserReceiptStore(),
       addMatchmaker: async (req) => {
         const rt = await this.wagerRealtime();
         return rt.addMatchmaker(req);
@@ -957,7 +999,7 @@ export class Game {
   async readWagerGuest() {
     try {
       const rt = await this.wagerRealtime();
-      const added = await rt.addMatchmaker(wagerGuestProbe());
+      const added = await rt.addMatchmaker(this._wagers.wagerGuestProbe());
       if (added && added.ticket) {
         try { await rt.removeMatchmaker(added.ticket); } catch { /* the probe must not stay queued */ }
       }
@@ -974,7 +1016,7 @@ export class Game {
       this._wagerResynced = false;
       if (!this._wagerSocketDown) this._wagerReconnectAt = performance.now();
       this._wagerSocketDown = true;
-      this.paintWagerOverlay(reconnectNotice(STALL_MS));
+      this.paintWagerOverlay(this._wagers.reconnectNotice(this._wagers.STALL_MS));
     };
     this._wagerOnline = () => {
       if (!this._wagerPlaying || !this._wagerSocketDown) return;
@@ -1001,8 +1043,8 @@ export class Game {
       this._wagerResynced = false;
       if (!this._wagerSocketDown) this._wagerReconnectAt = performance.now();
       this._wagerSocketDown = true;
-      const left = Math.max(0, STALL_MS - (performance.now() - this._wagerReconnectAt));
-      this.paintWagerOverlay(reconnectNotice(left));
+      const left = Math.max(0, this._wagers.STALL_MS - (performance.now() - this._wagerReconnectAt));
+      this.paintWagerOverlay(this._wagers.reconnectNotice(left));
       return;
     }
     if (state === 'open' && this._wagerSocketDown) {
@@ -1065,6 +1107,7 @@ export class Game {
         if (this._wagerPaint === token) this.paintWagerSlot();
         return;
       }
+      await this.loadWagers();
       const flow = this.ensureWagerFlow();
       await flow.refresh();
       flow.recallReceipt();
@@ -1079,10 +1122,11 @@ export class Game {
   paintWagerSlot() {
     const slot = this.screen.querySelector('[data-wager-slot]');
     if (!slot || !this.wagerFlow) return;
-    slot.innerHTML = wagerSlotHtml(this.wagerFlow.view);
+    slot.innerHTML = this._wagers.wagerSlotHtml(this.wagerFlow.view);
   }
 
   async openWagerDesk() {
+    await this.loadWagers();
     const flow = this.ensureWagerFlow();
     await flow.confirmStake();
     this.paintWagerScreen();
@@ -1095,7 +1139,7 @@ export class Game {
     this.screen.hidden = false;
     this.screen.style.display = '';
     this.screen.innerHTML = this.wagerScreenHtml();
-    bindWagerScreen(this.screen, this.wagerFlow, {
+    this._wagers.bindWagerScreen(this.screen, this.wagerFlow, {
       onFree: () => {
         this._wagerScreen = false;
         void this.wagerFlow.cancelQueue();
@@ -1114,7 +1158,7 @@ export class Game {
   }
 
   wagerScreenHtml() {
-    return `${renderWagerScreen(this.wagerFlow.view)}<div class="wager-std">${this.stdMenuHtml({ main: true })}</div>`;
+    return `${this._wagers.renderWagerScreen(this.wagerFlow.view)}<div class="wager-std">${this.stdMenuHtml({ main: true })}</div>`;
   }
 
   async leaveWagerFromScreen() {
@@ -1136,7 +1180,7 @@ export class Game {
       const rt = await this.wagerRealtime();
       const target = info.matchId ? { matchId: info.matchId } : { token: info.token };
       match = await rt.joinMatch(target);
-      if (!labelIsWager(match.label)) {
+      if (!this._wagers.labelIsWager(match.label)) {
         this.wagerFlow.noteNotEscrowed();
         try { await match.leave(); } catch { /* the free match is not ours to keep */ }
         this.paintWagerScreen();
@@ -1165,7 +1209,7 @@ export class Game {
     this.pvpNav = false;
     this.playing = false;
     this.ui.setPvp(true);
-    this.ui.setWagerLive(true, RULE_TEXT);
+    this.ui.setWagerLive(true, this._wagers.RULE_TEXT);
     this.screen.hidden = false;
     this.screen.style.display = 'block';
     this.screen.style.padding = '0';
@@ -1194,7 +1238,7 @@ export class Game {
     this.screen.querySelector('[data-wager-leave]').onclick = () => { void this.leaveWagerFromScreen(); };
     if (this.input.setLockElement) this.input.setLockElement(canvas);
     canvas.addEventListener('mousedown', () => this.input.lock());
-    this.paintWagerOverlay(RULE_TEXT);
+    this.paintWagerOverlay(this._wagers.RULE_TEXT);
     this.bindWagerNet();
     this.pvp = {
       wantsLock: true,
@@ -1204,10 +1248,10 @@ export class Game {
         const state = client.viewState(now);
         arena.render(state.sample, Math.max(0, client.seat), client.phase === 'live' ? client.look : null, { shots: client.shots, now });
         if (this._wagerSocketDown && !state.result) {
-          const left = Math.max(0, STALL_MS - (performance.now() - (this._wagerReconnectAt || performance.now())));
-          this.paintWagerOverlay(reconnectNotice(left));
+          const left = Math.max(0, this._wagers.STALL_MS - (performance.now() - (this._wagerReconnectAt || performance.now())));
+          this.paintWagerOverlay(this._wagers.reconnectNotice(left));
         } else if (state.link === 'reconnecting' && !state.result && !this._wagerResynced) {
-          this.paintWagerOverlay(reconnectNotice(state.graceLeftMs));
+          this.paintWagerOverlay(this._wagers.reconnectNotice(state.graceLeftMs));
         }
       },
     };
