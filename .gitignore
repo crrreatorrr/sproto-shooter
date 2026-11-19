@@ -3,3 +3,6 @@ node_modules/
 .DS_Store
 .claude/worktrees/
 *.blend1
+# Test and build outputs (npm run build:server-sim, browser test evidence)
+/build/
+/ci-artifacts/
