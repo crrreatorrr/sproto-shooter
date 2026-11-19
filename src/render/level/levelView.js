@@ -358,6 +358,8 @@ export function createLevelView() {
   }
   return {
     group,
+    /** Leaving the campaign: free the section meshes and let go of the level's props. */
+    clear() { rebuild({ level: null }); },
     sync(state) {
       rebuild(state);
       const seconds = state.tick * DT;
