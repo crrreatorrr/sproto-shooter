@@ -134,6 +134,8 @@ export function createCampaignProgress({ storage = browserStorage(), pushDelayMs
    * The old build queued an account's unsynced profile under one browser-wide key. It belongs to that
    * account: merged in when the same player attaches, dropped for anyone else.
    */
+  let exitFlushed = false;
+
   function adoptLegacyOutbox(playerId) {
     if (!storage) return;
     const queued = parse(storage, LEGACY_OUTBOX_KEY);
@@ -152,6 +154,22 @@ export function createCampaignProgress({ storage = browserStorage(), pushDelayMs
     watches: (key) => store.watches(key),
     refresh: () => store.refresh(),
     flush: () => store.flush(),
+
+    /**
+     * Page exit (`pagehide`): send the unsynced account copy once, with `keepalive` so the write outlives
+     * the page (hub-sdk 0.9.0 `flushKeepalive`). An SDK without it falls back to `flush()`. Return to Hub
+     * navigates away and so fires `pagehide` too; this is the only exit hook, and `exitFlushed` keeps a
+     * second `pagehide` from sending again until `pageshow` restores the page from the back/forward cache.
+     */
+    flushOnExit() {
+      if (exitFlushed) return false;
+      exitFlushed = true;
+      if (typeof store.flushKeepalive === 'function') return store.flushKeepalive();
+      void store.flush();
+      return true;
+    },
+    /** The page came back (`pageshow` from the back/forward cache): the next exit sends again. */
+    pageShown() { exitFlushed = false; },
     isUnlocked: (id) => store.get().unlocked.includes(id),
     bestWave: () => store.get().bestWave,
 
@@ -199,5 +217,6 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
   // A portal ticket or a live hub session: progress waits for the account (main.js settles it).
   if (hubVisitStarting(HUB_GAME_ID)) campaignProgress.hold();
   window.addEventListener('storage', (event) => { if (campaignProgress.watches(event.key)) campaignProgress.refresh(); });
-  window.addEventListener('pagehide', () => { void campaignProgress.flush(); });
+  window.addEventListener('pagehide', () => { campaignProgress.flushOnExit(); });
+  window.addEventListener('pageshow', (event) => { if (event.persisted) campaignProgress.pageShown(); });
 }

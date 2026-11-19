@@ -109,6 +109,54 @@ describe('the progress model', () => {
   });
 });
 
+describe('progress on page exit', () => {
+  /** A cloud save that records each `save.put` and its options. */
+  function recordingCloud() {
+    const puts = [];
+    return {
+      puts,
+      async loadSave() { return { data: null, updatedAt: null }; },
+      async writeSave(data, opts) { puts.push({ data: JSON.parse(encodeSave(data)), opts }); return { data, updatedAt: 2 }; },
+    };
+  }
+
+  it('sends unsynced account progress once with keepalive, and again only after the page is restored', async () => {
+    const api = recordingCloud();
+    const p = progressOn(browser());
+    await p.followHub(visit(api, 'ann'));
+    p.levelWon({ next: 'L02' });
+    expect(p.flushOnExit()).toBe(true);
+    expect(api.puts).toHaveLength(1);
+    expect(api.puts[0].opts).toEqual({ keepalive: true });
+    expect(api.puts[0].data.unlocked).toEqual(['L01', 'L02']);
+    expect(p.flushOnExit()).toBe(false); // Return to Hub's navigation and a second pagehide send nothing more
+    expect(api.puts).toHaveLength(1);
+    p.pageShown();
+    expect(p.flushOnExit()).toBe(true); // restored from the back/forward cache: the mark is still unsynced
+    expect(api.puts).toHaveLength(2);
+  });
+
+  it('falls back to flush when the SDK has no flushKeepalive', async () => {
+    const api = recordingCloud();
+    const p = progressOn(browser());
+    await p.followHub(visit(api, 'ann'));
+    p.levelWon({ next: 'L03' });
+    Object.defineProperty(p.store, 'flushKeepalive', { value: undefined, configurable: true });
+    const flush = vi.spyOn(p.store, 'flush');
+    expect(p.flushOnExit()).toBe(true);
+    expect(p.flushOnExit()).toBe(false);
+    expect(flush).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(api.puts.length).toBeGreaterThan(0));
+    expect(api.puts.at(-1).opts).toBeUndefined();
+  });
+
+  it('sends nothing for device progress', () => {
+    const p = progressOn(browser());
+    p.levelWon({ next: 'L02' });
+    expect(p.flushOnExit()).toBe(false);
+  });
+});
+
 describe('progress per hub account', () => {
   it('starts a new account empty on a browser another account and the device already used', async () => {
     const ls = usedBrowser();
