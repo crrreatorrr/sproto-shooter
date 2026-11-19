@@ -7,7 +7,7 @@ import { loadSettings } from '../../save/settings.js';
 import { TUNING } from '../../data/tuning.js';
 import { dirFromYawPitch } from '../../core/math.js';
 import { ARENA_SOLIDS, ARENA_WALL_H } from '../../sim/pvp/arena.js';
-import { ensureGunModel } from '../assets.js';
+import { ensureGunModel, loadTexture, releaseAsset, retainAsset } from '../assets.js';
 import { loadPlayerModel } from '../firstPerson.js';
 import { PLAYER_CHARACTERS, selectedCharacter } from '../playerCharacters.js';
 import { GUN_IDS } from '../../sim/pvp/rules.js';
@@ -18,11 +18,6 @@ import { createGrappler } from '../vfx/grappler.js';
 export { chaseCamera };
 
 const SEAT_COLOR = [0xff5ec4, 0x4fd1c5];
-
-function asset(path) {
-  const base = import.meta.env && import.meta.env.BASE_URL ? import.meta.env.BASE_URL : './';
-  return `${base}assets/${path}`;
-}
 
 /** Cosmetic recoil kick per slot (radians of camera pitch) and how fast it settles. */
 export const RECOIL = Object.freeze({ kick: [0.012, 0.05, 0.08], tauMs: 90 });
@@ -87,9 +82,12 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
     scene.add(pillar);
   }
 
-  const loader = new THREE.TextureLoader();
-  loader.load(asset('textures/stages/city/floor.' + 'jpg'), (tex) => {
-    tex.colorSpace = THREE.SRGBColorSpace;
+  // The title's city floor, from the shared asset cache (no second download). Held while this view
+  // lives, so the main view's eviction cannot dispose it under the arena.
+  const FLOOR_TEX = 'textures/stages/city/floor.jpg';
+  retainAsset(FLOOR_TEX);
+  loadTexture(FLOOR_TEX).then((tex) => {
+    if (!tex || disposed) return;
     floor.material.map = tex;
     floor.material.color.set(0xffffff);
     floor.material.needsUpdate = true;
@@ -248,6 +246,7 @@ export function createArenaView(canvas, { getGraphicsPreset = null } = {}) {
 
   function dispose() {
     disposed = true;
+    releaseAsset(FLOOR_TEX);
     for (const body of bodies) {
       body.grappler.dispose();
       disposeModel(body);
