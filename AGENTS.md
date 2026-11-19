@@ -30,9 +30,13 @@ are the hub contracts.
   global `SprotoShooterPvp`), each with a `.pin.json`. metaverse-hub vendors the campaign bundle
   into `server/modules/vendor/` and checks it with `scripts/check-shooter-sim-version.mjs`. Both
   bundles also pull in shared `src/sim`, `src/data` and `src/core` modules.
-- The bundles bake in the commit (`git rev-parse HEAD`), so their sha256 changes with every
-  commit. The hub's check requires its pinned commit to equal this repo's `main`, so every merge
-  here needs a hub re-vendor before hub CI passes again.
+- The bundles bake in the last commit that changed a sim path (`src/sim`, `src/server`, `src/net`,
+  `src/data`, `src/core` or `scripts/build-server-sim.mjs`, the paths the hub's
+  `scripts/shooter-main-pin.mjs` watches), so a client-, asset- or doc-only commit rebuilds the same
+  bytes. A shallow clone that cannot see that commit, uncommitted sim edits, or `SHOOTER_SIM_COMMIT`
+  bake `HEAD` or the given commit instead. The hub accepts a `main` that is ahead of its pin with no
+  sim-path changes, so only a merge that touches a sim path needs a hub re-vendor (and a matching
+  `SUPPORTED_MANIFEST` in `src/hub/campaignRewards/clientProtocol.js`).
 - `vendor/hub-sdk` comes from `metaverse-hub` (`node scripts/vendor-sdk.mjs` in that repo). The game
   imports the ESM build. The classic IIFE (global `HubSDK`) and `SOURCE.pin.json` come from the same
   commit. Update `VENDOR.md` and `SOURCE.pin.json` together.
