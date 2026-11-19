@@ -26,22 +26,26 @@ export const ASPIRATION = {
 // deferred game and hub chunks the title actually loads (titleChunks), and not
 // the level bodies, PvP, wagers or the debug GUI.
 export const MEASURED = {
-  staticShipBytes: 23217417,
-  publicAssetBytes: 22065058,
+  // Re-measured 2026-11-19 after the boot-load pass: Duck Gun off the title, the Game chunk split
+  // (levels, level renderer, wagers, rewarded campaign, three.js), self-hosted fonts.
+  staticShipBytes: 29002281,
+  publicAssetBytes: 26964053,
   // Includes the three Pepe rigs and the 256 × 256 Sproto Soldier portrait.
   // Raised from 236679812 when Sproto Duel's obstacles and its desert, grove and office stage sets were
   // copied in for the campaign (+21.5 MB decoded). Those load per level, never at the title.
   decodedBytes: 258207558,
-  titleShellGzipBytes: 6669,
-  criticalTransferBytes: 3761311,
-  criticalFirstPartyRequests: 13,
-  criticalJsGzipBytes: 312547,
-  jsGzipBytes: 1311,
-  cssBytes: 19514,
-  cssGzipBytes: 4962,
-  htmlBytes: 765,
-  htmlGzipBytes: 396,
-  assetBytes: 3443406,
+  titleShellGzipBytes: 10733,
+  // Was 3761311 (3805685 on the main this pass started from) with 20 requests.
+  criticalTransferBytes: 2998636,
+  criticalFirstPartyRequests: 17,
+  criticalJsGzipBytes: 418123,
+  jsGzipBytes: 3588,
+  cssBytes: 27870,
+  cssGzipBytes: 6855,
+  htmlBytes: 494,
+  htmlGzipBytes: 290,
+  assetBytes: 2525836,
+  fontBytes: 47532,
 };
 
 export function growthCeiling(bytes) {
