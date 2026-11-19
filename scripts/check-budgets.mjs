@@ -23,24 +23,29 @@ export const ASPIRATION = {
 
 // Measured after the S4 split and texture pass. Gzip is zlib level 6.
 // Title shell is the entry chunk only. criticalTransferBytes also includes the
-// deferred game and hub chunks the title actually loads, and not the debug GUI.
+// deferred game and hub chunks the title actually loads (titleChunks), and not
+// the level bodies, PvP, wagers or the debug GUI.
 export const MEASURED = {
-  staticShipBytes: 23217417,
-  publicAssetBytes: 22065058,
+  // Re-measured 2026-11-19 after the boot-load pass: Duck Gun off the title, the Game chunk split
+  // (levels, level renderer, wagers, rewarded campaign, three.js), self-hosted fonts.
+  staticShipBytes: 29002281,
+  publicAssetBytes: 26964053,
   // Includes the three Pepe rigs and the 256 × 256 Sproto Soldier portrait.
   // Raised from 236679812 when Sproto Duel's obstacles and its desert, grove and office stage sets were
   // copied in for the campaign (+21.5 MB decoded). Those load per level, never at the title.
   decodedBytes: 258207558,
-  titleShellGzipBytes: 6669,
-  criticalTransferBytes: 3761311,
-  criticalFirstPartyRequests: 13,
-  criticalJsGzipBytes: 312547,
-  jsGzipBytes: 1311,
-  cssBytes: 19514,
-  cssGzipBytes: 4962,
-  htmlBytes: 765,
-  htmlGzipBytes: 396,
-  assetBytes: 3443406,
+  titleShellGzipBytes: 10733,
+  // Was 3761311 (3805685 on the main this pass started from) with 20 requests.
+  criticalTransferBytes: 2998636,
+  criticalFirstPartyRequests: 17,
+  criticalJsGzipBytes: 418123,
+  jsGzipBytes: 3588,
+  cssBytes: 27870,
+  cssGzipBytes: 6855,
+  htmlBytes: 494,
+  htmlGzipBytes: 290,
+  assetBytes: 2525836,
+  fontBytes: 47532,
 };
 
 export function growthCeiling(bytes) {
@@ -62,10 +67,12 @@ export const GATE = {
 // Title boots a city sandbox. That download is the city stage, the starting MG,
 // the first-person player, the sandbox Duck Gun pickup, and every modeled
 // projectile (the renderer starts those loads while it builds the pools).
-// Boss and next-wave prefetch do not run in sandbox. Google fonts are
-// third-party and stay in the waterfall, outside this first-party set.
+// Boss and next-wave prefetch do not run in sandbox. The fonts are self-hosted
+// now and counted separately (TITLE_FONTS).
 // Title sandbox. Projectile meshes wait until one of that kind exists, so they
-// are not part of this set. The Duck Gun pickup in front of spawn still is.
+// are not part of this set. Neither is the Duck Gun pickup in front of spawn: the
+// title backdrop draws it with its built-in mesh and its model loads once a mode
+// starts (renderer.titleBackdrop).
 export const CRITICAL_ASSETS = [
   'textures/stages/city/floor.jpg',
   'textures/stages/city/sky.jpg',
@@ -73,7 +80,6 @@ export const CRITICAL_ASSETS = [
   'models/stages/city/pillar.glb',
   'models/stages/city/prop.glb',
   'models/guns/toy_mg.glb',
-  'models/guns/toy_duckgun.glb',
   'models/characters/sproto_player.glb',
   'models/gear/grappler.glb',
 ];
@@ -98,13 +104,48 @@ function htmlRefs(html, kind) {
     .filter((name) => !name.startsWith('http'));
 }
 
+// Chunks the title may import on its own after boot (the hub SDK's page capture for the feedback
+// window). They count toward the title's bytes; scripts/load-profile.mjs allows them.
+export const TITLE_LAZY_CHUNKS = ['modern-screenshot'];
+
+function chunkRefs(code, re) {
+  return [...code.matchAll(re)].map((match) => match[1].replace(/^\.\//, ''));
+}
+
+/**
+ * The JS the title loads: the entry, the chunks its boot imports (main.js loads the hub link and
+ * the game; they are listed in the entry's preload map), the static imports of all of those, and
+ * TITLE_LAZY_CHUNKS. Level bodies, PvP, wagers and the debug GUI load later and are left out.
+ */
+export function titleChunks(dist) {
+  const html = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
+  const entries = htmlRefs(html, 'js');
+  const read = (name) => fs.readFileSync(path.join(dist, name), 'utf8');
+  const out = new Set();
+  const visit = (name) => {
+    if (out.has(name) || !name.endsWith('.js') || !fs.existsSync(path.join(dist, name))) return;
+    out.add(name);
+    const code = read(name);
+    for (const ref of chunkRefs(code, /(?:from|import)\s*"(\.\/index-[^"]+\.js)"/g)) visit(ref);
+  };
+  for (const entry of entries) {
+    visit(entry);
+    const deps = read(entry).match(/m\.f=\[([^\]]*)\]/);
+    if (deps) for (const ref of chunkRefs(deps[1], /"(\.\/[^"]+\.js)"/g)) visit(ref);
+  }
+  for (const name of fs.readdirSync(dist)) {
+    if (TITLE_LAZY_CHUNKS.some((lazy) => name.startsWith(`index-${lazy}-`))) visit(name);
+  }
+  return [...out].sort();
+}
+
 export function shellSizes(dist) {
   const htmlPath = path.join(dist, 'index.html');
   const html = fs.readFileSync(htmlPath);
   const htmlText = html.toString('utf8');
   const entry = htmlRefs(htmlText, 'js').map((name) => fs.readFileSync(path.join(dist, name)));
   const css = htmlRefs(htmlText, 'css').map((name) => fs.readFileSync(path.join(dist, name)));
-  const criticalJs = shellFiles(dist, '.js').filter((file) => !path.basename(file).includes('debug-gui'));
+  const criticalJs = titleChunks(dist).map((name) => path.join(dist, name));
   const htmlGzipBytes = gzipSize(html);
   const entryGzipBytes = entry.reduce((sum, buf) => sum + gzipSize(buf), 0);
   const cssGzipBytes = css.reduce((sum, buf) => sum + gzipSize(buf), 0);
@@ -124,6 +165,16 @@ export function shellSizes(dist) {
   };
 }
 
+// Self-hosted fonts the title draws (src/styles/fonts.css): the latin subsets. The latin-ext files
+// load only for text that needs them. Emitted as index-<name>-<8 char hash>.woff2.
+export const TITLE_FONTS = ['bungee-latin', 'baloo2-latin'];
+
+export function titleFonts(dist) {
+  if (!fs.existsSync(dist)) return [];
+  const names = fs.readdirSync(dist);
+  return TITLE_FONTS.flatMap((font) => names.filter((name) => new RegExp(`^index-${font}-[A-Za-z0-9_-]{8}\\.woff2$`).test(name))).sort();
+}
+
 export function criticalTransferBytes(dist) {
   const shell = shellSizes(dist);
   let assetBytes = 0;
@@ -131,12 +182,16 @@ export function criticalTransferBytes(dist) {
     const file = path.join(dist, 'assets', rel);
     assetBytes += fs.statSync(file).size;
   }
+  // WOFF2 is already compressed: counted at file size.
+  const fonts = titleFonts(dist);
+  const fontBytes = fonts.reduce((sum, name) => sum + fs.statSync(path.join(dist, name)).size, 0);
   return {
     ...shell,
     assetBytes,
-    criticalTransferBytes: shell.criticalJsGzipBytes + shell.cssGzipBytes + shell.htmlGzipBytes + assetBytes,
+    fontBytes,
+    criticalTransferBytes: shell.criticalJsGzipBytes + shell.cssGzipBytes + shell.htmlGzipBytes + assetBytes + fontBytes,
     criticalJsGzipBytes: shell.criticalJsGzipBytes,
-    criticalRequests: shell.criticalJsFiles + shell.cssFiles + 1 + CRITICAL_ASSETS.length,
+    criticalRequests: shell.criticalJsFiles + shell.cssFiles + 1 + CRITICAL_ASSETS.length + fonts.length,
   };
 }
 

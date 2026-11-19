@@ -80,6 +80,22 @@ export function offerFromServer({ version, session, balance, refusal } = {}) {
 }
 
 /**
+ * The guest answer carried by shooter.version: 'wager_guest' or '' when the hub sent `isGuest` or
+ * `wagerEligible`, null when it sent neither (an older hub: ask with the probe ticket instead).
+ */
+export function serverGuestAnswer(version) {
+  if (!version || typeof version !== 'object') return null;
+  const hasGuest = typeof version.isGuest === 'boolean';
+  const hasEligible = typeof version.wagerEligible === 'boolean';
+  if (!hasGuest && !hasEligible) return null;
+  if (hasGuest && version.isGuest) return 'wager_guest';
+  // Not eligible while wagers are on: a refusal even when the account is not called a guest, so the
+  // stake stays off rather than failing at the queue.
+  if (hasEligible && !version.wagerEligible && version.wagerEnabled === true) return 'wager_guest';
+  return '';
+}
+
+/**
  * Ticket used only to hear the server's guest answer. Content is not the build
  * fingerprint, so the hub rejects it in the matchmaker hook before claimQueue:
  * a device account gets wager_guest, a signed-in account gets version_mismatch.
@@ -439,7 +455,8 @@ export function createWagerFlow(deps = {}) {
       try {
         version = await call(WAGER_RPC.version, {});
       } catch (err) {
-        const code = String(err?.code || err?.message || '');
+        // The HTTP client reports a server error as rpc_failed with the reason in the message.
+        const code = `${err?.code || ''} ${err?.message || ''}`;
         version = code.includes('version') ? { error: 'version_mismatch', wagerEnabled: false } : null;
       }
     }
@@ -449,7 +466,11 @@ export function createWagerFlow(deps = {}) {
     }
     let refusal = '';
     const localGuest = (who.status === 'guest' || who.guest === true);
-    const probing = version && version.wagerEnabled === true && who.bankable && !localGuest
+    // A hub that answers `isGuest` / `wagerEligible` in shooter.version settles the guest question
+    // itself. An older hub does not, and the matchmaker probe still asks it.
+    const answered = serverGuestAnswer(version);
+    if (answered !== null) refusal = answered;
+    const probing = answered === null && version && version.wagerEnabled === true && who.bankable && !localGuest
       && view.phase !== 'queued' && view.phase !== 'live'
       && typeof deps.readServerRefusal === 'function';
     if (probing) {

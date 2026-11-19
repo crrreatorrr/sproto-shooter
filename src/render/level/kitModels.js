@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { loadPackedGltf } from '../loadPackedGltf.js';
-import { PRIORITY, assetStatus, ensureStatic, enqueue, instantiateStatic, peekAsset, retainAsset } from '../assets.js';
+import { PRIORITY, assetStatus, ensureStatic, enqueue, instantiateStatic, peekAsset, releaseAsset, retainAsset } from '../assets.js';
 import { PROPS } from './kitPropPaths.js';
 
 const PICKUPS = {
@@ -28,9 +28,15 @@ let version = 0;
 /** Goes up when a kit model finishes loading. Views that fell back to primitives rebuild on it. */
 export const kitVersion = () => version;
 
+// One loader for every kit file (a level asks for up to a few dozen at once).
+let sharedLoader = null;
+function kitLoader() {
+  sharedLoader ??= import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => new GLTFLoader());
+  return sharedLoader;
+}
+
 async function parse(path) {
-  const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-  return loadPackedGltf(new GLTFLoader(), path);
+  return loadPackedGltf(await kitLoader(), path);
 }
 
 async function loadGeometry(path) {
@@ -74,17 +80,49 @@ async function loadScene(path) {
   return { scene: g.scene, clip: combinedClip(g, 'fx') };
 }
 
-function ensure(path, start, prio) {
+// `pin`: shared kit models (pickups, bombs, effects) stay resident once loaded. Level props are
+// held by the level that uses them instead (kitProp), so they can be evicted after it.
+function ensure(path, start, prio, pin = true) {
   const found = peekAsset(path);
   if (found) return found;
   const status = assetStatus(path);
-  if (status !== 'loading' && status !== 'error') enqueue(path, start, prio).then(() => retainAsset(path), () => {});
+  if (status !== 'loading' && status !== 'error') enqueue(path, start, prio).then(() => { if (pin) retainAsset(path); }, () => {});
   return null;
 }
 
-/** `{ geometry, size, center, minY }` once loaded, else null (and the load starts). */
+/** `{ geometry, size, center, minY }` once loaded, else null (and the load starts). Stays resident. */
 export function kitGeometry(path, prio = PRIORITY.NOW) {
   return ensure(path, () => loadGeometry(path), prio);
+}
+
+// The campaign level whose props are held. One level view draws props at a time.
+const propScope = { id: null, paths: new Set() };
+
+/**
+ * Hold this level's props, and let go of the last level's. The level view calls it on every
+ * rebuild, after it has dropped the old section's meshes; `null` (no level) releases everything.
+ */
+export function kitPropScope(id) {
+  if (id === propScope.id) return;
+  for (const path of propScope.paths) releaseAsset(path);
+  propScope.paths.clear();
+  propScope.id = id;
+}
+
+/** Paths the current level holds. For tests and the debug report. */
+export function kitPropPaths() {
+  return [...propScope.paths];
+}
+
+/** A level prop: kitGeometry for `KIT.prop(name)`, held until the level changes (kitPropScope). */
+export function kitProp(name, prio = PRIORITY.NOW) {
+  const path = PROPS[name];
+  if (!path) return null;
+  if (!propScope.paths.has(path)) {
+    propScope.paths.add(path);
+    retainAsset(path);
+  }
+  return ensure(path, () => loadGeometry(path), prio, false);
 }
 
 /** `{ scene, clip }` once loaded, else null (and the load starts). */

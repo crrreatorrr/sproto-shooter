@@ -74,6 +74,7 @@ export function mountPresent(env) {
     const campaign = state.mode === 'campaign' && state.level;
     for (const mesh of arenaBits) mesh.visible = !campaign;
     levelView.group.visible = !!campaign;
+    if (!campaign) levelView.idle();
     const skyline = campaign && state.level.id === 'L06';
     env.skylineRain.visible = !!skyline;
     if (skyline) {

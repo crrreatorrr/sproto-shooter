@@ -4,7 +4,7 @@ import { voidMaterial } from './voidMaterial.js';
 import { grovePaneMaterial } from './groveMaterials.js';
 import { mountFrostSearchlight } from './frostspireLights.js';
 import { createKitObject } from './kitMotion.js';
-import { KIT, kitGeometry, kitMaterial } from './kitModels.js';
+import { kitMaterial, kitProp } from './kitModels.js';
 
 /** Batch static scenery by model and give each authored loop its own mixer. */
 export function decorMeshes(list, origin, replaced = null, surfaceFor = (base) => base) {
@@ -21,7 +21,7 @@ export function decorMeshes(list, origin, replaced = null, surfaceFor = (base) =
   const up = new THREE.Vector3(0, 1, 0);
   const scale = new THREE.Vector3();
   for (const [model, items] of byModel) {
-    const kit = kitGeometry(KIT.prop(model));
+    const kit = kitProp(model);
     if (!kit) continue;
     const base = model.startsWith('void_') && !kit.hasAuthoredGlow ? voidMaterial()
       : model === 'grove_greenhouse_glass' ? grovePaneMaterial

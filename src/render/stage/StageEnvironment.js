@@ -5,7 +5,7 @@ import { createAuroraSky } from './auroraSky.js';
 import { panoramaPath } from '../level/campaignSurfaceArt.js';
 import { createCalderaEmbers } from './calderaEmbers.js';
 import { createSkylineRain } from './skylineRain.js';
-import { createLevelView } from '../level/levelView.js';
+import { createLazyLevelView } from '../level/lazyLevelView.js';
 
 export function mountStage(env) {
   const { ARENA_R, E, M, bounce, hemi, scene, sun } = env;
@@ -37,7 +37,7 @@ export function mountStage(env) {
   scene.add(wall);
   const decor = new THREE.Group();
   scene.add(decor);
-  const levelView = createLevelView();
+  const levelView = createLazyLevelView();
   scene.add(levelView.group);
   const arenaBits = [ground, outer, rim, edgeRing, wall, decor];
   let stageKey = '';

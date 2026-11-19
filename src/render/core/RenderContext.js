@@ -2,24 +2,32 @@ import * as THREE from 'three';
 import { TUNING } from '../../data/tuning.js';
 import { graphicsPixelRatio, normalizeGraphicsPreset } from '../graphicsPresets.js';
 
-function softwareWebGL() {
-  if (typeof document === 'undefined') return false;
-  const canvas = document.createElement('canvas');
-  const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+/** True for a software rasterizer (SwiftShader, llvmpipe, softpipe), read from the game's own context. */
+export function softwareGL(gl) {
   if (!gl) return false;
   const info = gl.getExtension('WEBGL_debug_renderer_info');
   const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : '';
-  const lose = gl.getExtension('WEBGL_lose_context');
-  if (lose) lose.loseContext();
   return /swiftshader|llvmpipe|softpipe/i.test(name);
+}
+
+/**
+ * The game's WebGLRenderer. A hardware GPU keeps the first context, so there is no throwaway probe
+ * context at boot. A software rasterizer is asked once more without multisampling: antialiasing is
+ * what pushes the Sahil showroom trace past its 90 s deadline on SwiftShader.
+ */
+function createGameRenderer() {
+  const options = { powerPreference: 'high-performance' };
+  const first = new THREE.WebGLRenderer({ ...options, antialias: true });
+  if (!softwareGL(first.getContext())) return first;
+  first.dispose();
+  first.forceContextLoss();
+  return new THREE.WebGLRenderer({ ...options, antialias: false });
 }
 
 export function createRenderContext(container, initialPreset = 'high') {
   let preset = normalizeGraphicsPreset(initialPreset);
   const initialWidth = Math.max(1, container.clientWidth), initialHeight = Math.max(1, container.clientHeight);
-  // Multisampling on SwiftShader is what pushes the Sahil showroom trace past its 90s deadline.
-  // Hardware GPUs keep antialiasing.
-  const renderer = new THREE.WebGLRenderer({ antialias: !softwareWebGL(), powerPreference: 'high-performance' });
+  const renderer = createGameRenderer();
   renderer.info.autoReset = false;
   renderer.setPixelRatio(graphicsPixelRatio(preset, initialWidth, initialHeight, window.devicePixelRatio));
   renderer.setSize(initialWidth, initialHeight);

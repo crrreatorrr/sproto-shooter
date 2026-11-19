@@ -17,4 +17,4 @@ export function campaignSessionBinding(session) {
 
 // Opt-in build configuration only. No URL/query/localStorage switch and no
 // production settings changed here. Server cohort/readiness still decides.
-export const REWARDED_CAMPAIGN_ENABLED = import.meta.env.VITE_SHOOTER_REWARDED === 'true';
+export { REWARDED_CAMPAIGN_ENABLED } from './flag.js';

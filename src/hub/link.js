@@ -130,6 +130,9 @@ export function hubChipHtml(hub) {
   if (status === 'error') {
     return `<div class="hub-chip error" data-hub="error">Hub <b>${escapeHtml(hub.error || 'error')}</b></div>`;
   }
+  if (status === 'connecting') {
+    return `<div class="hub-chip connecting" data-hub="connecting">Hub <b>…</b></div>`;
+  }
   if (status === 'guest') {
     const n = hub.balance === null || hub.balance === undefined ? '…' : String(hub.balance);
     return `<div class="hub-chip guest" data-hub="guest">Guest · Tickets <b>${escapeHtml(n)}</b></div>`;
@@ -188,6 +191,8 @@ export class HubLink {
   constructor(api) {
     this.api = api;
     this.status = 'offline';
+    // False only while startHub is still redeeming the ticket (src/main.js boots without waiting).
+    this.settled = true;
     this.connected = false;
     this.bankable = false;
     this.playerId = null;
@@ -339,40 +344,61 @@ export class HubLink {
   }
 }
 
-/** Redeem `#t=` once, or resume a cached session. Never throws. */
-export async function connectHub(api) {
+/**
+ * Start a hub visit without waiting for it. The link comes back at once in the
+ * `connecting` state (not bankable, no player), so the game can build its renderer
+ * and start downloading the title assets while the ticket is redeemed. `ready`
+ * resolves with the same link once it is connected, a guest, offline or failed.
+ * Never throws and `ready` never rejects.
+ */
+export function startHub(api) {
   let sdk = api;
   try {
     if (!sdk) sdk = createBrowserSdk();
   } catch (err) {
     const link = new HubLink({ exit() {}, getTicketBalance: async () => null });
     link.fail(err);
-    return link;
+    link.settled = true;
+    return { link, ready: Promise.resolve(link) };
   }
   const link = new HubLink(sdk);
+  link.status = 'connecting';
+  link.settled = false;
+  const ready = settleHub(link, sdk).then(() => {
+    link.settled = true;
+    return link;
+  });
+  return { link, ready };
+}
+
+async function settleHub(link, sdk) {
   try {
     await sdk.init(HUB_GAME_ID);
     const profileError = typeof sdk.profileGetError === 'function' ? sdk.profileGetError() : null;
     if (profileError) {
       link.fail(profileError);
-      return link;
+      return;
     }
     const session = typeof sdk.getSession === 'function' ? sdk.getSession() : null;
     if (!session || !session.playerId || session.game !== HUB_GAME_ID) {
       link.markOffline();
-      return link;
+      return;
     }
     const expiresAt = Number(session.expiresAt) || 0;
     if (expiresAt && expiresAt <= Date.now()) {
       link.fail(new Error('session_expired'));
       link.dropIdentity();
-      return link;
+      return;
     }
     link.adopt(session, usernameFromToken(session.token));
   } catch (err) {
     link.fail(err);
   }
-  return link;
+}
+
+/** Redeem `#t=` once, or resume a cached session. Never throws. */
+export async function connectHub(api) {
+  return startHub(api).ready;
 }
 
 export function nakamaUrl() {
@@ -393,7 +419,27 @@ function createBrowserSdk() {
     assign: () => redirectToHub(),
   });
   sdk.profileGetError = watched.profileGetError;
+  sdk.restRpc = restRpcFor(sdk, watched.client);
   return sdk;
+}
+
+/**
+ * A game-session RPC over HTTP, for reads that need no socket (the title's `shooter.version`).
+ * Refreshes a token that is about to expire, as the realtime client does.
+ */
+export function restRpcFor(sdk, client) {
+  return async (id, body) => {
+    let session = typeof sdk.getSession === 'function' ? sdk.getSession() : null;
+    if (session && session.expiresAt && session.expiresAt - Date.now() < 300_000 && typeof sdk.refreshSession === 'function') {
+      session = (await sdk.refreshSession()) || null;
+    }
+    if (!session || !session.token) {
+      const err = new Error('offline');
+      err.code = 'offline';
+      throw err;
+    }
+    return client.rpc(id, body ?? {}, { token: session.token });
+  };
 }
 
 function redirectToHub() {

@@ -103,7 +103,8 @@ async function fixture({ enabled = true, holdIssue = false, offline = false, los
       window.__stepUI = () => { const now = performance.now(); game.acc = 0; game.last = now - DT * 1000 - .001; return game.step(now); };
     </script></body></html>` }));
   await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => !!window.__uiFixture, null, { timeout: 45000 });
+  // The rewarded campaign loads after the Game constructor (Game.loadRewardedCampaign).
+  await page.waitForFunction(() => !!window.__uiFixture && !window.__game.rewardedPending, null, { timeout: 45000 });
   return { page, requests, errors, consoleErrors, runs,
     release: () => releaseIssue?.(),
     swap: async (extra) => { currentActor = { accountId: extra?.playerId || owner.accountId, sessionId: extra?.sid || owner.sessionId };
