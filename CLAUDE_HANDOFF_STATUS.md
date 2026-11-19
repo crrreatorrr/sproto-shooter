@@ -124,16 +124,17 @@ with `chromium-1254` and `chromium_headless_shell-1254` symlinked to `/opt/pw-br
 | `npm ci` | ok | ok |
 | `npm run lint` | ok | ok |
 | `npm run typecheck` | ok | ok |
-| `npm test` | 17 failed / 1028 passed (Chromium could not launch; `checkpoint-corpus` timing) | final serial run in progress; result added when it ends |
+| `npm test` | 17 failed / 1028 passed (Chromium could not launch; `checkpoint-corpus` timing) | 123 files / 1,079 passed, 1 skipped, 0 failed (`npm test -- --no-file-parallelism`, as CI runs it, at `3ed6074`) |
 | `npm run build` | ok | ok |
 | `npm run assets:check` | ok (395 files) | ok (395 files, 0 missing, 0 unused) |
 | `npm run budgets` | ok | ok |
 | `npm run profile:check` | ok (with the Chromium symlink) | ok |
 
 Timing-sensitive tests: under load (builds and browsers running beside the suite) the Goja replays fail
-their CPU budgets (`cpu_budget`, `execution_timeout`) and some browser tests time out; run alone they
-pass. One case in `tests/hub/reward-ui-browser.test.js` ("actual UI drains old actions…", a 1 s
-`expect.poll`) also fails on the untouched baseline, so it predates this work; CI excludes that file.
+their CPU budgets (`cpu_budget`, `execution_timeout`) and some browser tests time out; run serially
+(the final run above) everything passes. One case in `tests/hub/reward-ui-browser.test.js` ("actual UI
+drains old actions…", a 1 s `expect.poll`) failed on the untouched baseline in a parallel run and
+passed in the final serial run; it is timing-sensitive, and CI excludes that file.
 
 ## Measurements
 
@@ -157,7 +158,15 @@ frame is the first-render shader compile, which now lands inside the sample wind
 appears 570 ms sooner; nothing in the frame loop changed. Campaign level entry: L01 14, L03 27, L05 18
 kit files in the first 15 s (unchanged).
 
-Server-sim bundles (`npm run build:server-sim`, at this branch's head): added with the final test result.
+Server-sim bundles (`npm run build:server-sim`; both bake `fcff929`, the last sim-path commit):
+
+| Bundle | sha256 | fingerprint | sourceContentHash |
+| --- | --- | --- | --- |
+| `build/shooter-sim.js` | `a71250cde0f89aeb6d84e87d298fb4a6cffee4addb3f888051fdca86a94df209` | `73c6eb0f` | `38610326…eb82ae` |
+| `build/shooter-pvp-sim.js` | `59aae3bbf39841cae33dbf5a123668e9cdf18f506ef7945222836b651cbef8af` | `e749d2fd` | `fbdb54a8…da2e2d` |
+
+The hub currently vendors `shooter-sim.js` at `1fd0182` (sha256 `7ba57e42…`); the bytes differ only in
+the baked commit, because this branch edits the build script.
 
 ## Cross-repo follow-ups
 
