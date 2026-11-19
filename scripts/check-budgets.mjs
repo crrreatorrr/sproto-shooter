@@ -65,7 +65,9 @@ export const GATE = {
 // Boss and next-wave prefetch do not run in sandbox. Google fonts are
 // third-party and stay in the waterfall, outside this first-party set.
 // Title sandbox. Projectile meshes wait until one of that kind exists, so they
-// are not part of this set. The Duck Gun pickup in front of spawn still is.
+// are not part of this set. Neither is the Duck Gun pickup in front of spawn: the
+// title backdrop draws it with its built-in mesh and its model loads once a mode
+// starts (renderer.titleBackdrop).
 export const CRITICAL_ASSETS = [
   'textures/stages/city/floor.jpg',
   'textures/stages/city/sky.jpg',
@@ -73,7 +75,6 @@ export const CRITICAL_ASSETS = [
   'models/stages/city/pillar.glb',
   'models/stages/city/prop.glb',
   'models/guns/toy_mg.glb',
-  'models/guns/toy_duckgun.glb',
   'models/characters/sproto_player.glb',
   'models/gear/grappler.glb',
 ];

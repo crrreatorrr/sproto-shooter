@@ -129,7 +129,9 @@ export class Game {
     this.rewardedCampaign = REWARDED_CAMPAIGN_ENABLED ? new RewardedCampaignUI(this) : null;
     if (debug) this.openDebugPanel();
 
-    // initial sandbox content so the title screen has something going on behind it
+    // initial sandbox content so the title screen has something going on behind it. Its pickups'
+    // gun models (the sandbox Duck Gun) load once a mode starts, not at the title.
+    if (!['waves', 'sandbox', 'test', 'boss', 'campaign'].includes(mode)) this.renderer.titleBackdrop(true);
     this.queue({ type: 'startMode', mode: 'sandbox' });
     this.queue({ type: 'debug', op: 'spawnDummies' });
     if (mode === 'waves') this.start('waves');
@@ -290,6 +292,7 @@ export class Game {
   start(mode, extra = {}) {
     if (this.rewardedCampaign?.controlsRestricted) { this.rewardedCampaign.unsupportedControl(); return; }
     this.playing = true;
+    this.renderer.titleBackdrop(false);
     this.hubLeaveArmed = false;
     this.titleLeaveArmed = false;
     this.ctl.close();

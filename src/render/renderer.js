@@ -23,6 +23,7 @@ const ELEM_COL = { none: 0xffe9a8, fire: 0xff7a1a, shock: 0x4fe3ff, goo: 0x9be33
 export function createRenderer(container, bus, playerModel, graphicsPreset = 'high') {
   const env = { bus, lerp, ELEM_COL, ARENA_R, ...createRenderContext(container, graphicsPreset), ...createMaterials() };
   env.stageOverride = null;
+  env.titleBackdrop = false;
   mountStage(env);
   mountWorld(env);
   mountCreatures(env);
@@ -43,7 +44,9 @@ export function createRenderer(container, bus, playerModel, graphicsPreset = 'hi
       ensureGunModel(g.type, NOW);
       demandNow.push(GUN_MODELS[g.type].path);
     }
-    for (const k of state.pickups || []) if (k.kind === 'gun' && k.gun && GUN_MODELS[k.gun.type]) {
+    // The title backdrop (a sandbox behind the menu) shows pickups with their built-in mesh: the
+    // sandbox Duck Gun's model waits until the player starts a mode (Game.start → titleBackdrop(false)).
+    if (!env.titleBackdrop) for (const k of state.pickups || []) if (k.kind === 'gun' && k.gun && GUN_MODELS[k.gun.type]) {
       ensureGunModel(k.gun.type, LATER);
       demandLater.push(GUN_MODELS[k.gun.type].path);
     }
@@ -117,6 +120,7 @@ export function createRenderer(container, bus, playerModel, graphicsPreset = 'hi
     camera: env.camera,
     setShowHitboxes: env.setShowHitboxes,
     setStage(id) { env.stageOverride = id || null; },
+    titleBackdrop(on) { env.titleBackdrop = !!on; },
     firstPerson: env.fp,
     THREE, scene: env.scene,
     pendingDownloads, loadReport, retryFailed,
