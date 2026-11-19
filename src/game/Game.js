@@ -1043,6 +1043,12 @@ export class Game {
   }
 
   async wagerRpc(id, body) {
+    // shooter.version is a read the title makes on every visit: HTTP answers it, so the socket
+    // waits until a match is wanted. Once the socket is open it carries everything.
+    const api = this.hub && this.hub.api;
+    if (id === WAGER_RPC.version && !this._wagerRt && api && typeof api.restRpc === 'function') {
+      return api.restRpc(id, body || {});
+    }
     const rt = await this.wagerRealtime();
     return rt.rpc(id, body || {});
   }
