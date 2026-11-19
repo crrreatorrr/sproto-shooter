@@ -23,7 +23,7 @@ import { buildSectionMeshes, LEVEL_COLOR, levelMaterial, terrainMesh } from './l
 import { decorMeshes } from './levelDecorMeshes.js';
 import { createKitObject, updateKitMotion } from './kitMotion.js';
 import { DT } from '../../sim/simulate.js';
-import { KIT, duelInstance, kitGeometry, kitMaterial, kitVersion } from './kitModels.js';
+import { KIT, duelInstance, kitGeometry, kitMaterial, kitProp, kitPropScope, kitVersion } from './kitModels.js';
 
 export { buildLookGroup, buildSectionMeshes, LEVEL_COLOR, levelMaterial } from './levelGeometry.js';
 
@@ -51,7 +51,7 @@ function primBounds(g) {
 
 /** A kit model stretched to fill a box, or null while the model is still loading. */
 function fitKit(model, yaw, min, max, keepHeight, surfaceFor) {
-  const kit = kitGeometry(KIT.prop(model));
+  const kit = kitProp(model);
   if (!kit) return null;
   const target = max.clone().sub(min);
   // No yaw given: lay the model's long side along the box's long side.
@@ -210,6 +210,8 @@ export function createLevelView() {
       if (c.userData.kit) { if (c.isInstancedMesh) c.dispose(); if (c.userData.release) c.userData.release(); } else if (c.geometry) c.geometry.dispose();
       group.remove(c);
     }
+    // This level's props stay held across its sections; the last level's are let go (and evicted).
+    kitPropScope(lv ? lv.id : null);
     if (!lv) { fixtures.rebuild(group); return; }
     const rt = getLevelRuntime(lv.id);
     const sec = rt.sectionById[lv.section];
@@ -311,7 +313,7 @@ export function createLevelView() {
   function kitMarker(m, at, special) {
     const jetpack = special === 'void_jetpack';
     const pick = special ?? MECHANISM_MODEL[m.kind]?.(m);
-    const kit = m.kind === 'ammo' ? kitGeometry(KIT.pickup('ammo_box')) : pick ? kitGeometry(KIT.prop(pick)) : null;
+    const kit = m.kind === 'ammo' ? kitGeometry(KIT.pickup('ammo_box')) : pick ? kitProp(pick) : null;
     if (!kit) return null;
     const material = jetpack ? voidMaterial() : kitMaterial();
     const mesh = createKitObject(kit, material, Math.abs(at[0] * .19 + at[2] * .17));

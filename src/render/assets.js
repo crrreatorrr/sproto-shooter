@@ -66,7 +66,9 @@ function estimateDecoded(root) {
 function disposeTemplate(t) {
   if (!t) return;
   if (t.isTexture) { t.dispose(); return; }
-  const root = t.root || t.scene;
+  // A kit model (src/render/level/kitModels.js) is a merged geometry, plus its scene when animated.
+  if (t.geometry && typeof t.geometry.dispose === 'function') t.geometry.dispose();
+  const root = t.root || t.scene || (t.motion && t.motion.scene);
   if (!root || !root.traverse) return;
   const geos = new Set();
   const mats = new Set();
@@ -271,6 +273,8 @@ export function assetStatus(path) { return control.status(path); }
 export function peekAsset(path) { return control.result(path); }
 export function retainAsset(path) { control.retain(path); }
 export function releaseAsset(path) { control.release(path); }
+/** Live users of a template (retainAsset minus releaseAsset). */
+export function assetUsers(path) { return control.userCount(path); }
 
 export function loadReport() { return control.report(); }
 
