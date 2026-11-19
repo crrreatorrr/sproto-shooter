@@ -67,6 +67,17 @@ describe('startHub', () => {
   });
 });
 
+describe('shooter.version over HTTP', () => {
+  it('keeps the out-of-date notice when the reason is only in the error message', async () => {
+    const flow = createWagerFlow({
+      session: () => ({ playerId: 'player-a', bankable: true, guest: false, status: 'connected' }),
+      rpc: async () => { const err = new Error('version_mismatch'); err.code = 'rpc_failed'; throw err; },
+    });
+    await flow.refresh();
+    expect(flow.view.offer.mismatch).toBe(true);
+  });
+});
+
 describe('restRpcFor', () => {
   it('sends the session token and refreshes one about to expire', async () => {
     const sent = [];
@@ -89,6 +100,7 @@ describe('guest answer from shooter.version', () => {
     expect(serverGuestAnswer({ wagerEnabled: true, isGuest: true })).toBe('wager_guest');
     expect(serverGuestAnswer({ wagerEnabled: true, isGuest: false, wagerEligible: true })).toBe('');
     expect(serverGuestAnswer({ wagerEnabled: true, wagerEligible: false })).toBe('wager_guest');
+    expect(serverGuestAnswer({ wagerEnabled: true, isGuest: false, wagerEligible: false })).toBe('wager_guest');
     expect(serverGuestAnswer({ wagerEnabled: false, wagerEligible: false })).toBe('');
   });
 

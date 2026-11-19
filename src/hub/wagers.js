@@ -89,9 +89,9 @@ export function serverGuestAnswer(version) {
   const hasEligible = typeof version.wagerEligible === 'boolean';
   if (!hasGuest && !hasEligible) return null;
   if (hasGuest && version.isGuest) return 'wager_guest';
-  // Not eligible while wagers are on and the account is not called a guest: still a guest refusal,
-  // the only per-account reason the hub has.
-  if (hasEligible && !version.wagerEligible && version.wagerEnabled === true && !hasGuest) return 'wager_guest';
+  // Not eligible while wagers are on: a refusal even when the account is not called a guest, so the
+  // stake stays off rather than failing at the queue.
+  if (hasEligible && !version.wagerEligible && version.wagerEnabled === true) return 'wager_guest';
   return '';
 }
 
@@ -455,7 +455,8 @@ export function createWagerFlow(deps = {}) {
       try {
         version = await call(WAGER_RPC.version, {});
       } catch (err) {
-        const code = String(err?.code || err?.message || '');
+        // The HTTP client reports a server error as rpc_failed with the reason in the message.
+        const code = `${err?.code || ''} ${err?.message || ''}`;
         version = code.includes('version') ? { error: 'version_mismatch', wagerEnabled: false } : null;
       }
     }

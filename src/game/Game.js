@@ -160,7 +160,9 @@ export class Game {
   async loadRewardedCampaign() {
     let RewardedCampaignUI;
     try {
-      [{ RewardedCampaignUI }] = await Promise.all([import('../hub/campaignRewards/uiFlow.js'), loadAllCampaignLevels()]);
+      // In order: the server checks it imports read every level as they load.
+      await loadAllCampaignLevels();
+      ({ RewardedCampaignUI } = await import('../hub/campaignRewards/uiFlow.js'));
     } catch (err) {
       this.rewardedPending = null;
       console.warn('[rewarded] could not load the rewarded campaign:', err);
