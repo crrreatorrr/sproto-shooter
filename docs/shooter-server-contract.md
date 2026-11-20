@@ -19,7 +19,7 @@ Outputs:
 
 `sourceCommit` is `git rev-parse HEAD` baked into the bundle before the sha256. Rebuild on the merged shooter SHA and vendor both files. Refuse to boot if `bundleSha256` or `contentFingerprint` disagrees with the running copy. A stale pin is not accepted.
 
-Measured on this phase's build host: the bundle is about 277 KB. Content fingerprint for protocol 1 is `73c6eb0f`. The sha256 changes with the commit baked into the file, so read it from the pin of the build you vendor.
+Measured on this phase's build host: the bundle is about 277 KB. Content fingerprint for protocol 1 is `dfb46fb6` (was `73c6eb0f`). The sha256 changes with the commit baked into the file, so read it from the pin of the build you vendor.
 
 Entry points:
 

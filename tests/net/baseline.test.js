@@ -121,7 +121,7 @@ describe('pins the harness must never move', () => {
     // leaves it alone. Grapple caps moved it to dc00f234. Shared locomotion moved it to
     // e749d2fd; the 180-tick mirror moved from 532a562e to da423456.
     expect(CONTENT_FINGERPRINT).toBe('e749d2fd');
-    expect(contentFingerprint(1)).toBe('73c6eb0f');
+    expect(contentFingerprint(1)).toBe('dfb46fb6');
   });
 });
 

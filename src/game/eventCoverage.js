@@ -41,9 +41,11 @@ export const EVENT_COVERAGE = {
   hazardSet: ['none'],
   grapple: ['audio', 'vfx'],
   grappleRelease: ['audio'],
+  dualWield: ['none'], // the left-hand gun arrives / leaves as gunPickedUp / gunDropped
   gunDropped: ['none'],
   gunPickedUp: ['audio', 'vfx', 'ui'],
   icePatch: ['vfx'],
+  melee: ['audio', 'vfx'],
   impact: ['vfx'],
   intermissionEnd: ['none'],
   intermissionStart: ['ui'],

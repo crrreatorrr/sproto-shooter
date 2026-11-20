@@ -3,6 +3,12 @@ import { createFirstPerson, FP } from '../firstPerson.js';
 import { colliderFor } from '../gunCollider.js';
 import { fxRandom } from '../core/fxRandom.js';
 import { TUNING } from '../../data/tuning.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { enqueue, peekAsset, retainAsset, PRIORITY } from '../assets.js';
+
+/** The universal melee swing authored in Blender (art/blender/scripts/build_melee_swing.py). */
+export const MELEE_SWING_MODEL = 'models/gear/melee_swing.glb';
+const MELEE_CLIP = 'Melee swing';
 
 export function mountViewmodel(env, playerModel) {
   const { E, ELEM_COL, G, GUN_MODEL_LEN, HAND_FRAC, LEFT_SPEC, RAY_COL, VM_LAYER, addBeam, addBoom, addTracer, buildGunModel, burstConfetti, bus, camera, flashLight } = env;
@@ -19,6 +25,8 @@ export function mountViewmodel(env, playerModel) {
   // barrel angled in toward the crosshair; aiming pulls them to the center.
   const VM_POSE = {
     box: { rest: FP.hip.pos, ads: FP.ads.pos, yaw: 0, roll: 0, scale: FP.gunScale }, // placeholder while a model loads
+    // dual-wieldable sidearms (placeholder rectangles): held out in front, no aim pose. The left-hand gun mirrors x and yaw.
+    sidearm: { rest: [0.2, -0.19, -0.62], ads: [0.2, -0.19, -0.62], yaw: 0.06, roll: 0, scale: 0.7 },
     model: { rest: [0.2, -0.17, -0.5], ads: [0, -0.27, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
     // The MG's front sight sits above the barrel shroud. Keep it just below the crosshair in ADS.
     mg: { rest: [0.21, -0.18, -0.5], ads: [0, -0.16, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
@@ -51,7 +59,45 @@ export function mountViewmodel(env, playerModel) {
       idle(() => colliderFor(mesh, key));
     }
   }
-  const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, swap: 0, lastYaw: 0, lastPitch: 0, grapplePose: 0 };
+  const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, swap: 0, lastYaw: 0, lastPitch: 0, grapplePose: 0, meleeT: -1 };
+
+  // ---------- melee swing ----------
+  // One clip for every gun: the "Melee" node's keyed translation / rotation is a camera-space offset the
+  // frame adds to whatever gun is held; the arms follow the gun, so nothing is per gun type.
+  // Requested on the first play action (shot, swap, pickup, melee), never on the title screen.
+  let swingRequested = false;
+  function requestSwing() {
+    if (swingRequested) return;
+    swingRequested = true;
+    void enqueue(MELEE_SWING_MODEL, () => new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}assets/${MELEE_SWING_MODEL}`), PRIORITY.LATER).catch(() => {});
+  }
+  let swing = null;
+  function meleeSwing() {
+    if (swing) return swing;
+    const asset = peekAsset(MELEE_SWING_MODEL);
+    const clip = asset && THREE.AnimationClip.findByName(asset.animations, MELEE_CLIP);
+    if (!clip || !asset.scene.getObjectByName('Melee')) return null;
+    retainAsset(MELEE_SWING_MODEL);
+    const holder = new THREE.Group(), node = new THREE.Object3D();
+    node.name = 'Melee';
+    holder.add(node);
+    const mixer = new THREE.AnimationMixer(holder);
+    const action = mixer.clipAction(clip).play();
+    action.paused = true;
+    swing = { node, mixer, action, duration: clip.duration, pose: { x: 0, y: 0, z: 0, q: new THREE.Quaternion() } };
+    return swing;
+  }
+  /** The swing's offset `t` seconds in ({ x, y, z, q } in camera space), or null when idle or not loaded. */
+  function meleeOffset(t) {
+    const sw = meleeSwing();
+    if (!sw || !(t >= 0) || t > sw.duration) return null;
+    sw.action.time = t;
+    sw.mixer.update(0);
+    const o = sw.pose;
+    o.x = sw.node.position.x; o.y = sw.node.position.y; o.z = sw.node.position.z;
+    o.q.copy(sw.node.quaternion);
+    return o;
+  }
 
   // ---------- reload animations ----------
   // Procedural, per gun type, driven by reload progress t (0..1) so they always fit the real reload time.
@@ -221,7 +267,9 @@ export function mountViewmodel(env, playerModel) {
   function addTrauma(t) { feel.trauma = Math.min(1, feel.trauma + t); }
   // ---------- event listeners ----------
   bus.on('shot', (ev) => {
-    vm.kick = Math.min(1, vm.kick + (ev.gunType === 'mg' || ev.gunType === 'raygun' ? 0.25 : 1));
+    env.flashHand = ev.hand === 'left' ? 'left' : 'right'; // dual wield: which gun's muzzle flashes
+    if (ev.hand === 'left') vm.kickL = Math.min(1, (vm.kickL || 0) + 0.6);
+    else vm.kick = Math.min(1, vm.kick + (ev.gunType === 'mg' || ev.gunType === 'raygun' ? 0.25 : ev.gunType === 'machinepistol' ? 0.3 : 1));
     muzzleFlash.visible = true; env.flashT = 0.05;
     const big = ev.gunType !== 'mg' && ev.gunType !== 'raygun';
     muzzleFlash.scale.setScalar(big ? 0.12 : 0.07 * (ev.manufacturer === 'blastco' ? 1.6 : 1));
@@ -288,8 +336,11 @@ export function mountViewmodel(env, playerModel) {
   bus.on('dash', () => { feel.fovPunch += 8; });
   bus.on('slide', () => { feel.fovPunch += 4; });
   bus.on('reloadStart', (ev) => { vm.reloadTime = ev.time || 1.5; });
+  // melee: the Blender swing on the held gun (a plain kick until the clip has loaded)
+  bus.on('melee', (ev) => { requestSwing(); vm.meleeT = 0; if (!meleeSwing()) vm.kick = 1; addTrauma(ev.hit ? 0.3 : 0.08); });
+  for (const type of ['shot', 'swap', 'gunPickedUp']) bus.on(type, requestSwing);
   bus.on('swap', () => { vm.swap = 1; });
-  bus.on('gunPickedUp', () => { vm.swap = 1; });
+  bus.on('gunPickedUp', (ev) => { if (ev.slot === 'left') vm.swapL = 1; else vm.swap = 1; });
   bus.on('stomp', (ev) => burstConfetti({ ...ev.pos, y: 0.1 }, 8, 3, [new THREE.Color(0xff5ec4)]));
   bus.on('pound', (ev) => { addBoom({ ...ev.pos, y: 0.2 }, 3.2, 0x9fb4ff, 0.3); addTrauma(0.2); });
   bus.on('bossStunned', (ev) => { addTrauma(0.6); burstConfetti({ ...ev.pos, y: 4 }, 30, 5, [new THREE.Color(0xffee55)]); });
@@ -299,5 +350,5 @@ export function mountViewmodel(env, playerModel) {
   bus.on('levelUp', () => feel.fovPunch += 3);
   bus.on('duckBounce', (ev) => burstConfetti(ev.pos, 2, 2, [new THREE.Color(0xffe14a)]));
   bus.on('bounce', (ev) => burstConfetti(ev.pos, 3, 3, [new THREE.Color(0x6b6b6b), new THREE.Color(0x3a3a3a)])); // tyre hitting the ground
-  Object.assign(env, { vmRoot, vmLight, muzzleFlash, setVmLayer, VM_POSE, fp, warmed, idle, warmColliders, vm, smooth, pulse, RELOAD_ANIM, NO_RELOAD, reloadOffsets, reloadProgress, track, PALM_DOWN_L, PUSH_FWD_L, BOLT_R, HAND_ANIM, reloadHands, feel, addTrauma, flushWeaponTracers });
+  Object.assign(env, { vmRoot, vmLight, muzzleFlash, setVmLayer, VM_POSE, fp, warmed, idle, warmColliders, vm, smooth, pulse, RELOAD_ANIM, NO_RELOAD, reloadOffsets, reloadProgress, track, PALM_DOWN_L, PUSH_FWD_L, BOLT_R, HAND_ANIM, reloadHands, feel, addTrauma, flushWeaponTracers, meleeOffset });
 }

@@ -70,6 +70,8 @@ export function createAudio(bus) {
         case 'mg': noise({ dur: 0.06, vol: 0.25, freq: j(2600 * zip) }); tone({ freq: j(220 * zip), end: 90, dur: 0.06, vol: 0.12 }); break;
         case 'shotgun': noise({ dur: 0.25, vol: 0.5, freq: j(1400 * zip), end: 200 }); tone({ freq: 110, end: 40, dur: 0.2, type: 'sine', vol: 0.4 }); break;
         case 'sniper': noise({ dur: 0.35, vol: 0.45, freq: j(3200), end: 300 }); tone({ freq: 900, end: 60, dur: 0.3, type: 'sawtooth', vol: 0.2 }); break;
+        case 'handgun': noise({ dur: 0.08, vol: 0.3, freq: j(2200 * zip), end: 700 }); tone({ freq: j(320 * zip), end: 110, dur: 0.07, vol: 0.15 }); break;
+        case 'machinepistol': noise({ dur: 0.04, vol: 0.2, freq: j(3000 * zip) }); tone({ freq: j(280 * zip), end: 120, dur: 0.04, vol: 0.1 }); break;
         case 'bazooka': noise({ dur: 0.3, vol: 0.4, freq: 600, end: 150 }); tone({ freq: 160, end: 60, dur: 0.3, type: 'triangle', vol: 0.3 }); break;
         // ray gun: a falling sci-fi "pew" with a bright overtone
         case 'raygun': tone({ freq: j(1800), end: 420, dur: 0.12, type: 'sawtooth', vol: 0.16 }); tone({ freq: j(3600), end: 900, dur: 0.08, type: 'sine', vol: 0.1 }); break;
@@ -132,6 +134,7 @@ export function createAudio(bus) {
       else if (ev.outcome === 'jackpot') [0, 1, 2, 3].forEach((i) => tone({ freq: 1000 + i * 200, dur: 0.12, type: 'triangle', vol: 0.2, delay: 0.35 + i * 0.08 }));
     },
     enemyAttack(ev) { if (throttle('tele', 2, 100)) tone({ freq: ev.enemyType === 'bigObama' ? 90 : 260, end: ev.enemyType === 'bigObama' ? 60 : 380, dur: 0.18, type: 'sawtooth', vol: 0.08 }); },
+    melee(ev) { if (throttle('melee', 1, 120)) tone({ freq: ev && ev.hit ? 180 : 420, end: ev && ev.hit ? 70 : 260, dur: ev && ev.hit ? 0.12 : 0.07, type: ev && ev.hit ? 'square' : 'sine', vol: ev && ev.hit ? 0.25 : 0.1 }); },
     stomp() { if (throttle('stomp', 2, 80)) tone({ freq: 140, end: 50, dur: 0.15, type: 'sine', vol: 0.25 }); },
     pound() { noise({ dur: 0.4, vol: 0.4, freq: 600, end: 60 }); },
     splat() { if (throttle('splat', 2, 80)) noise({ dur: 0.2, vol: 0.2, freq: 500, end: 150 }); },

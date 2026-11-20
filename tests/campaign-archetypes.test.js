@@ -85,7 +85,7 @@ describe('campaign archetypes', () => {
   });
 
   it('does not move the campaign or PvP pins', () => {
-    expect(contentFingerprint(1)).toBe('73c6eb0f');
+    expect(contentFingerprint(1)).toBe('dfb46fb6');
     expect(CONTENT_FINGERPRINT).toBe('e749d2fd');
   });
 });

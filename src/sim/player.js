@@ -14,6 +14,8 @@ import { alarmRay, damageAlarm } from './campaign/alarms.js';
 import { effectiveGunStats } from './guns.js';
 import { damageEnemy, damagePlayer, healPlayer, explode } from './combat.js';
 import { createProjectile } from './state.js';
+import { checkOffhand, dropOffhand, melee } from './dualWield.js';
+import { nearBox } from './economy.js';
 
 const EMPTY_CMD = { yaw: 0, pitch: 0, moveX: 0, moveZ: 0, held: {}, pressed: {}, slot: -1, wheel: 0, actions: [] };
 
@@ -23,7 +25,7 @@ export function playerInput(state, commands) {
     p.cmd = c;
     p.yaw = c.yaw;
     p.pitch = clamp(c.pitch, -1.5, 1.5);
-    p.zooming = !!c.held.zoom && !p.dead;
+    p.zooming = !!c.held.zoom && !p.dead && !p.dual; // no aiming or zoom while dual wielding
   }
 }
 
@@ -87,7 +89,7 @@ export function playerMovement(state, dt) {
     p.jumpBufferT = body.jumpBufferT;
     p.jumpsLeft = body.jumpsLeft;
     p.invulnT = body.invulnT;
-    p.zooming = !!body.zooming;
+    p.zooming = !!body.zooming && !p.dual; // no aiming or zoom while dual wielding
     // Absent unless sprint has cancelled zoom, so replays that never do that keep their hash.
     if (body.zoomCancelled) p.zoomCancelled = true;
     else delete p.zoomCancelled;
@@ -180,6 +182,7 @@ function activeGun(p) { return p.guns[p.activeSlot]; }
 
 function switchSlot(state, p, slot) {
   if (slot === p.activeSlot || !slotUsable(p, slot) || !p.guns[slot]) return;
+  if (p.dual) dropOffhand(state, p); // changing weapon drops the left-hand gun
   p.activeSlot = slot;
   p.reloadT = 0;
   const g = p.guns[slot];
@@ -188,13 +191,13 @@ function switchSlot(state, p, slot) {
   emit(state, 'swap', { playerId: p.id, slot });
 }
 
-function startReload(state, p, g) {
-  if (p.reloadT > 0 || g.ammoInMag >= g.stats.magSize) return;
+function startReload(state, p, g, h = p) {
+  if (h.reloadT > 0 || g.ammoInMag >= g.stats.magSize) return;
   const free = state.tuning.infiniteAmmo || state.tuning.godMode || hasInfiniteReserve(g); // god mode: every gun has endless spare ammo
   if (!free && p.ammo[g.ammoType] <= 0) { emit(state, 'ammoEmpty', { playerId: p.id }); return; }
   const st = effectiveGunStats(g, p);
-  p.reloadT = st.reloadTime;
-  emit(state, 'reloadStart', { playerId: p.id, slot: p.activeSlot, time: st.reloadTime });
+  h.reloadT = st.reloadTime;
+  emit(state, 'reloadStart', { playerId: p.id, slot: h === p ? p.activeSlot : 'left', time: st.reloadTime });
   if (g.wacky === 'yeetReload') {
     const eye = eyePos(p);
     const d = dirFromYawPitch(p.yaw, p.pitch + 0.15);
@@ -207,13 +210,13 @@ function startReload(state, p, g) {
   }
 }
 
-function finishReload(state, p, g) {
+function finishReload(state, p, g, h = p) {
   const need = g.stats.magSize - g.ammoInMag;
   const free = state.tuning.infiniteAmmo || state.tuning.godMode || hasInfiniteReserve(g); // god mode: every gun has endless spare ammo
   const take = free ? need : Math.min(need, p.ammo[g.ammoType]);
   if (!free) p.ammo[g.ammoType] -= take;
   g.ammoInMag += take;
-  emit(state, 'reloadEnd', { playerId: p.id, slot: p.activeSlot });
+  emit(state, 'reloadEnd', { playerId: p.id, slot: h === p ? p.activeSlot : 'left' });
 }
 
 function coneDir(state, aim, spreadDeg) {
@@ -268,7 +271,9 @@ export function fireHitscan(state, p, g, st, origin, dir, extra = {}) {
     end = { x: origin.x + dir.x * t, y: origin.y + dir.y * t, z: origin.z + dir.z * t };
     if (origin.y + dir.y * t <= 0.01) emit(state, 'impact', { pos: end, element: g.element });
   }
-  emit(state, 'tracer', { from: origin, to: end, element: g.element, gunType: g.type, mega: !!extra.mega });
+  const tracer = { from: origin, to: end, element: g.element, gunType: g.type, mega: !!extra.mega };
+  if (extra.hand) tracer.hand = extra.hand; // dual wield: drawn from the left gun's muzzle
+  emit(state, 'tracer', tracer);
 }
 
 export function playerCombat(state, dt) {
@@ -303,10 +308,16 @@ export function playerCombat(state, dt) {
     rec.yaw *= Math.max(0, 1 - 6 * dt);
     if (!c.held.fire) rec.heat = Math.max(0, rec.heat - 1.5 * dt);
 
+    if (p.meleeCd > 0) p.meleeCd = Math.max(0, p.meleeCd - dt);
+    checkOffhand(state, p);
+    // melee: Interact with no gun or Weapon Box in reach (with any gun; dual wielding drops the left gun)
+    if (c.pressed.interact && !p.nearGunPickupId && !p.downed && !nearBox(state, p)) melee(state, p);
+
     const g = activeGun(p);
     if (!g) continue;
     const st = effectiveGunStats(g, p);
     if (p.swapT > 0) { p.swapT -= dt; continue; }
+    if (p.dual) { dualCombat(state, p, g, st, c, dt); continue; }
     if (p.reloadT > 0) {
       p.reloadT -= dt;
       if (p.reloadT <= 0) { p.reloadT = 0; finishReload(state, p, g); }
@@ -317,62 +328,102 @@ export function playerCombat(state, dt) {
     if (!c.held.fire || p.fireCd > 0 || p.medkitT > 0) continue;
     if (g.ammoInMag <= 0) { startReload(state, p, g); continue; }
     p.fireCd += 1 / st.fireRate;
-    if (!(st.ammoSaveChance > 0 && float(state.rng) < st.ammoSaveChance) && !state.tuning.infiniteAmmo) g.ammoInMag--;
-    p.shotCounter++;
-    const mega = g.wacky === 'tenthMega' && p.shotCounter % 10 === 0;
-    const eye = eyePos(p);
-    const aim = dirFromYawPitch(p.yaw + rec.yaw, p.pitch + rec.pitch);
-    const muzzle = { x: eye.x + aim.x * 0.5, y: eye.y + aim.y * 0.5 - 0.12, z: eye.z + aim.z * 0.5 };
-    if (mega) {
-      createProjectile(state, {
-        kind: 'megaBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: aim.x * 40, y: aim.y * 40, z: aim.z * 40 },
-        radius: 0.6, damage: st.damage * st.pellets * 6, element: g.element, elementChance: 1, critMult: st.critMult, pierce: 5, ttl: 3, arcane: g.arcane,
-        splash: { radius: 3, damage: st.damage * st.pellets * 3, minFalloff: 0.4, selfMult: 0, knockback: 6 },
-      });
-    } else if (GUN_TYPES_BY_ID[g.type].projectile === 'rubberBullet') {
-      // Duck Gun: a lobbed rubber bullet; one bounce off the floor or wall, explodes on what it hits or where it lands
-      const d = coneDir(state, aim, st.spread);
-      createProjectile(state, {
-        kind: 'rubberBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: d.x * st.projectileSpeed, y: d.y * st.projectileSpeed + 2.5, z: d.z * st.projectileSpeed },
-        radius: 0.24, gravity: 14, bounces: 1, damage: st.damage, element: g.element, elementChance: st.elementChance, critMult: st.critMult,
-        critChance: st.critChance, ttl: 4, arcane: g.arcane, wacky: g.wacky,
-        splash: { radius: st.splashRadius, damage: st.splashDamage, minFalloff: 0.35, selfMult: 0, knockback: 9 },
-      });
-    } else if (GUN_TYPES_BY_ID[g.type].projectile === 'bigBullet') {
-      // Big Bullets: a visible heavy round, slight drop, crits, punches through `pierce` targets, bursts on impact
-      const d = coneDir(state, aim, st.spread);
-      createProjectile(state, {
-        kind: 'bigBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: d.x * st.projectileSpeed, y: d.y * st.projectileSpeed, z: d.z * st.projectileSpeed },
-        radius: 0.32, gravity: 4, damage: st.damage, element: g.element, elementChance: st.elementChance, critMult: st.critMult, critChance: st.critChance,
-        pierce: st.pierce, ttl: 3, arcane: g.arcane, wacky: g.wacky,
-        splash: { radius: st.splashRadius, damage: st.splashDamage, minFalloff: 0.4, selfMult: 0, knockback: 7 },
-      });
-    } else if (st.projectileSpeed > 0) {
-      const d = coneDir(state, aim, st.spread);
-      createProjectile(state, {
-        kind: 'rocket', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: d.x * st.projectileSpeed, y: d.y * st.projectileSpeed, z: d.z * st.projectileSpeed },
-        radius: 0.2, damage: st.damage, element: g.element, elementChance: st.elementChance, critMult: st.critMult, ttl: 5, arcane: g.arcane, wacky: g.wacky,
-        splash: { radius: st.splashRadius, damage: st.splashDamage, minFalloff: 0.3, selfMult: 0.35, knockback: 8 },
-      });
-    } else if (g.wacky === 'rubberDuck') {
-      for (let i = 0; i < st.pellets; i++) {
-        const d = coneDir(state, aim, st.spread + 1);
-        createProjectile(state, {
-          kind: 'duckBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: d.x * 45, y: d.y * 45, z: d.z * 45 },
-          radius: 0.18, gravity: 10, damage: st.damage * 1.15, element: g.element, elementChance: st.elementChance, critMult: st.critMult,
-          critChance: st.critChance, bounces: 3, ttl: 3, arcane: g.arcane, wacky: g.wacky, pellet: st.pellets > 1,
-        });
-      }
-    } else {
-      for (let i = 0; i < st.pellets; i++) fireHitscan(state, p, g, st, eye, coneDir(state, aim, st.spread));
-    }
-    // recoil
-    rec.pitch += deg(st.recoil) * (1 + rec.heat * 0.6);
-    rec.yaw += deg(st.recoilYaw) * range(state.rng, -1, 1);
-    rec.pitch = Math.min(rec.pitch, deg(25));
-    rec.heat = Math.min(1, rec.heat + 0.08);
-    emit(state, 'shot', { playerId: p.id, gunId: g.id, gunType: g.type, manufacturer: g.manufacturer, element: g.element, mega });
+    shoot(state, p, g, st, 0);
     if (g.ammoInMag <= 0) startReload(state, p, g);
+  }
+}
+
+/** One shot from gun `g` (ammo, projectile or hitscan, recoil, the shot event). `side`: 0 single gun, +1 / -1 right / left hand. */
+function shoot(state, p, g, st, side) {
+  const rec = p.recoil;
+  if (!(st.ammoSaveChance > 0 && float(state.rng) < st.ammoSaveChance) && !state.tuning.infiniteAmmo) g.ammoInMag--;
+  p.shotCounter++;
+  const mega = g.wacky === 'tenthMega' && p.shotCounter % 10 === 0;
+  const eye = eyePos(p);
+  const aim = dirFromYawPitch(p.yaw + rec.yaw, p.pitch + rec.pitch);
+  // dual wield: each hand's muzzle sits to its side (side +1 right hand, -1 left hand, 0 a single gun)
+  const sx = Math.cos(p.yaw) * 0.16 * side, sz = -Math.sin(p.yaw) * 0.16 * side;
+  const muzzle = { x: eye.x + aim.x * 0.5 + sx, y: eye.y + aim.y * 0.5 - 0.12, z: eye.z + aim.z * 0.5 + sz };
+  if (mega) {
+    createProjectile(state, {
+      kind: 'megaBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: aim.x * 40, y: aim.y * 40, z: aim.z * 40 },
+      radius: 0.6, damage: st.damage * st.pellets * 6, element: g.element, elementChance: 1, critMult: st.critMult, pierce: 5, ttl: 3, arcane: g.arcane,
+      splash: { radius: 3, damage: st.damage * st.pellets * 3, minFalloff: 0.4, selfMult: 0, knockback: 6 },
+    });
+  } else if (GUN_TYPES_BY_ID[g.type].projectile === 'rubberBullet') {
+    // Duck Gun: a lobbed rubber bullet; one bounce off the floor or wall, explodes on what it hits or where it lands
+    const d = coneDir(state, aim, st.spread);
+    createProjectile(state, {
+      kind: 'rubberBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: d.x * st.projectileSpeed, y: d.y * st.projectileSpeed + 2.5, z: d.z * st.projectileSpeed },
+      radius: 0.24, gravity: 14, bounces: 1, damage: st.damage, element: g.element, elementChance: st.elementChance, critMult: st.critMult,
+      critChance: st.critChance, ttl: 4, arcane: g.arcane, wacky: g.wacky,
+      splash: { radius: st.splashRadius, damage: st.splashDamage, minFalloff: 0.35, selfMult: 0, knockback: 9 },
+    });
+  } else if (GUN_TYPES_BY_ID[g.type].projectile === 'bigBullet') {
+    // Big Bullets: a visible heavy round, slight drop, crits, punches through `pierce` targets, bursts on impact
+    const d = coneDir(state, aim, st.spread);
+    createProjectile(state, {
+      kind: 'bigBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: d.x * st.projectileSpeed, y: d.y * st.projectileSpeed, z: d.z * st.projectileSpeed },
+      radius: 0.32, gravity: 4, damage: st.damage, element: g.element, elementChance: st.elementChance, critMult: st.critMult, critChance: st.critChance,
+      pierce: st.pierce, ttl: 3, arcane: g.arcane, wacky: g.wacky,
+      splash: { radius: st.splashRadius, damage: st.splashDamage, minFalloff: 0.4, selfMult: 0, knockback: 7 },
+    });
+  } else if (st.projectileSpeed > 0) {
+    const d = coneDir(state, aim, st.spread);
+    createProjectile(state, {
+      kind: 'rocket', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: d.x * st.projectileSpeed, y: d.y * st.projectileSpeed, z: d.z * st.projectileSpeed },
+      radius: 0.2, damage: st.damage, element: g.element, elementChance: st.elementChance, critMult: st.critMult, ttl: 5, arcane: g.arcane, wacky: g.wacky,
+      splash: { radius: st.splashRadius, damage: st.splashDamage, minFalloff: 0.3, selfMult: 0.35, knockback: 8 },
+    });
+  } else if (g.wacky === 'rubberDuck') {
+    for (let i = 0; i < st.pellets; i++) {
+      const d = coneDir(state, aim, st.spread + 1);
+      createProjectile(state, {
+        kind: 'duckBullet', ownerId: p.id, gunId: g.id, pos: muzzle, vel: { x: d.x * 45, y: d.y * 45, z: d.z * 45 },
+        radius: 0.18, gravity: 10, damage: st.damage * 1.15, element: g.element, elementChance: st.elementChance, critMult: st.critMult,
+        critChance: st.critChance, bounces: 3, ttl: 3, arcane: g.arcane, wacky: g.wacky, pellet: st.pellets > 1,
+      });
+    }
+  } else {
+    for (let i = 0; i < st.pellets; i++) fireHitscan(state, p, g, st, eye, coneDir(state, aim, st.spread), side < 0 ? { hand: 'left' } : undefined);
+  }
+  // recoil
+  rec.pitch += deg(st.recoil) * (1 + rec.heat * 0.6);
+  rec.yaw += deg(st.recoilYaw) * range(state.rng, -1, 1);
+  rec.pitch = Math.min(rec.pitch, deg(25));
+  rec.heat = Math.min(1, rec.heat + 0.08);
+  emit(state, 'shot', side < 0
+    ? { playerId: p.id, gunId: g.id, gunType: g.type, manufacturer: g.manufacturer, element: g.element, mega, hand: 'left' }
+    : { playerId: p.id, gunId: g.id, gunType: g.type, manufacturer: g.manufacturer, element: g.element, mega });
+}
+
+/**
+ * Dual wielding: hold Fire and the two guns take turns, each at its own fire rate, half an interval apart.
+ * Each gun has its own magazine and reload; Reload reloads both, and an empty gun reloads while the other fires.
+ */
+function dualCombat(state, p, g, st, c, dt) {
+  const d = p.dual, L = d.gun, stL = effectiveGunStats(L, p);
+  const right = { h: p, gun: g, st, side: 1 }, left = { h: d, gun: L, st: stL, side: -1 };
+  for (const hand of [right, left]) {
+    if (hand.h.reloadT > 0) {
+      hand.h.reloadT -= dt;
+      if (hand.h.reloadT <= 0) { hand.h.reloadT = 0; finishReload(state, p, hand.gun, hand.h); }
+    }
+  }
+  if (c.pressed.reload) { startReload(state, p, g, p); startReload(state, p, L, d); return; }
+  p.fireCd = Math.max(-0.05, p.fireCd - dt);
+  d.fireCd = Math.max(-0.05, d.fireCd - dt);
+  d.gap = Math.max(0, d.gap - dt);
+  if (!c.held.fire || p.medkitT > 0 || d.gap > 0) return;
+  for (const hand of d.turn === 'left' ? [left, right] : [right, left]) {
+    if (hand.h.reloadT > 0 || hand.h.fireCd > 0) continue;
+    if (hand.gun.ammoInMag <= 0) { startReload(state, p, hand.gun, hand.h); continue; }
+    hand.h.fireCd += 1 / hand.st.fireRate;
+    d.gap = 0.5 / hand.st.fireRate;
+    d.turn = hand.side < 0 ? 'right' : 'left';
+    shoot(state, p, hand.gun, hand.st, hand.side);
+    if (hand.gun.ammoInMag <= 0) startReload(state, p, hand.gun, hand.h);
+    return;
   }
 }
 

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MANUFACTURERS_BY_ID, QUALITIES_BY_ID } from '../../data/guns.js';
+import { MANUFACTURERS_BY_ID, QUALITIES_BY_ID, isDualWield } from '../../data/guns.js';
 import { instantiateGun } from '../assets.js';
 
 // Gun with a 3D model (e.g. the toy machine gun): model + element gem. Null if the type has none / not loaded yet.
@@ -62,6 +62,7 @@ export function mountGuns(env) {
     const g = new THREE.Group();
     const man = MANUFACTURERS_BY_ID[gun.manufacturer];
     const q = QUALITIES_BY_ID[gun.quality];
+    if (isDualWield(gun)) return buildSidearmBox(g, gun, man, q, forView);
     const bodyMat = M(man.color, { roughness: 0.4, metalness: 0.3 });
     const accent = M(new THREE.Color(q.color), { emissive: new THREE.Color(q.color), emissiveIntensity: 0.35 });
     const elCol = ELEM_COL[gun.element];
@@ -94,6 +95,27 @@ export function mountGuns(env) {
     if (!forView) g.scale.setScalar(1.6);
     const barrelLen = gun.type === 'bazooka' ? 0.475 - dims[2] / 2 : gun.parts.barrel === 'long' ? 0.45 : gun.parts.barrel === 'short' ? 0.18 : 0.3;
     g.userData.muzzle = new THREE.Vector3(0, 0.02, -dims[2] / 2 - barrelLen);
+    return g;
+  }
+
+  // Dual-wieldable sidearms: placeholder rectangles (a slide and a grip, both boxes), no model and no animation.
+  // Handgun: a short blocky slide in the maker's colour; Machine Pistol: longer, with a quality-coloured stripe.
+  const SIDEARM_DIMS = { handgun: [0.06, 0.09, 0.24], machinepistol: [0.065, 0.1, 0.32] };
+  function buildSidearmBox(g, gun, man, q, forView) {
+    const dims = SIDEARM_DIMS[gun.type] || SIDEARM_DIMS.handgun;
+    const body = new THREE.Mesh(G.box, M(man.color, { roughness: 0.5, metalness: 0.2 }));
+    body.scale.set(...dims);
+    const grip = new THREE.Mesh(G.box, M(gun.type === 'machinepistol' ? 0x2a2a2a : 0x3a2a1a));
+    grip.scale.set(dims[0] * 0.85, 0.13, 0.06); grip.position.set(0, -dims[1] / 2 - 0.055, dims[2] / 2 - 0.05);
+    const stripe = new THREE.Mesh(G.box, M(new THREE.Color(q.color), { emissive: new THREE.Color(q.color), emissiveIntensity: 0.35 }));
+    stripe.scale.set(dims[0] * 1.04, 0.015, dims[2] * 0.7); stripe.position.y = dims[1] / 2;
+    g.add(body, grip, stripe);
+    if (gun.element !== 'none') {
+      const gem = new THREE.Mesh(G.sphereLo, E(ELEM_COL[gun.element])); gem.scale.setScalar(0.03); gem.position.set(dims[0] / 2 + 0.01, 0, 0); g.add(gem);
+    }
+    if (!forView) g.scale.setScalar(1.6);
+    g.userData.muzzle = new THREE.Vector3(0, 0.01, -dims[2] / 2 - 0.01);
+    g.userData.sidearm = true;
     return g;
   }
 

@@ -23,7 +23,7 @@ export const KEY_ACTIONS = [
   ['forward', 'Move forward'], ['back', 'Move back'], ['left', 'Move left'], ['right', 'Move right'],
   ['sprint', 'Sprint'], ['jump', 'Jump / double jump'], ['slide', 'Slide'], ['crouch', 'Crouch-slide (with Sprint)'],
   ['grapple', 'Grapple'], ['dash', 'Dash'], ['aimToggle', 'Aim toggle · sniper: zoom closer'],
-  ['reload', 'Reload · hold: pick up gun'], ['interact', 'Pick up gun / open Weapon Box'], ['medkit', 'Use medkit'],
+  ['reload', 'Reload · hold: pick up gun'], ['interact', 'Pick up gun / open Weapon Box · melee when nothing is in reach'], ['medkit', 'Use medkit'],
   ['spellSelect', 'Next spell'], ['chainZap', 'Quick cast Chain Zap'], ['swarm', 'Quick cast Sproto Swarm'],
   ['manaShield', 'Quick cast Mana Shield'], ['meteor', 'Quick cast Meteor Bonk'],
   ['slot1', 'Gun slot 1'], ['slot2', 'Gun slot 2'], ['slot3', 'Gun slot 3'], ['slot4', 'Gun slot 4'], ['slotLegendary', 'Legendary gun slot'],

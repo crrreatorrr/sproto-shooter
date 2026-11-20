@@ -66,7 +66,7 @@ function expectedGun(typeId) {
 
 describe('fixed loadout and spawns', () => {
   it('gives both seats the same common guns, ammo, and no perks', () => {
-    expect(contentFingerprint(1)).toBe('73c6eb0f');
+    expect(contentFingerprint(1)).toBe('dfb46fb6');
     expect(CONTENT_FINGERPRINT).toBe(FINGERPRINT);
     expect(LOADOUT.map((gun) => gun.type)).toEqual(['mg', 'shotgun', 'sniper']);
     for (const gun of LOADOUT) {
@@ -171,7 +171,7 @@ describe('browser, node, and goja', () => {
     expect(pin.crits).toBe(true);
     expect(pin.combatSeed).toBe('sha256-commit-reveal-128');
     expect(pin.campaignProtocol).toBe(1);
-    expect(pin.campaignContentFingerprint).toBe('73c6eb0f');
+    expect(pin.campaignContentFingerprint).toBe('dfb46fb6');
     expect(pin.mintsTickets).toBe(false);
     expect(pin.stakes).toBe(false);
     expect(pin.bundleSha256).toMatch(/^[0-9a-f]{64}$/);

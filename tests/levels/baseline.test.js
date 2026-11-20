@@ -51,14 +51,11 @@ function hashRun(seed, mode) {
 // midget×6, flying midget×3, obama×2, big obama×1.
 describe('arena baseline', () => {
   it('wave mode hashes match the locked main baseline', () => {
-    for (const seed of [11, 12, 13]) {
-      const got = hashRun(seed, 'waves');
-      expect(got).toEqual({
-        600: fixture.waves[seed][600],
-        3000: fixture.waves[seed][3000],
-        6000: fixture.waves[seed][6000],
-      });
-    }
+    // All seeds at once, so a failing run prints every hash (they differ between macOS and the Linux CI
+    // runner by libm ulps; the fixture holds the CI values).
+    const got = {};
+    for (const seed of [11, 12, 13]) got[seed] = hashRun(seed, 'waves');
+    expect(got).toEqual(fixture.waves);
   }, 30000);
 
   it('sandbox hashes match the locked main baseline', () => {
