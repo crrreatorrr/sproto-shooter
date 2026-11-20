@@ -24,8 +24,9 @@ are the hub contracts.
   - Wave Mode and Sandbox hashes in `tests/fixtures/baseline-hashes.json`
     (`tests/levels/baseline.test.js`). The Wave Mode hashes at ticks 3000 and 6000 moved on
     2026-11-11 with the arena balance pass (boss gun drops, wave spell unlocks); tick 600 and the
-    Sandbox hashes did not. All of them moved on 2026-11-19 when the Handgun and Machine Pistol
-    joined the drop table. `tests/performance-baseline.test.js` repeats all of them.
+    Sandbox hashes did not. On 2026-11-19 the Wave Mode 3000 / 6000 and all Sandbox hashes moved
+    again when the Handgun and Machine Pistol joined the drop table. The hashes are the Linux CI
+    runner's; macOS gives different ones (libm), so these two tests fail on a Mac. `tests/performance-baseline.test.js` repeats all of them.
 - Never edit `src/sim/pvp/`, `src/net/inputCodec.js`, `src/net/protocol.js` or `src/server/`
   without rebuilding and re-pinning. `npm run build:server-sim` writes `build/shooter-sim.js`
   (campaign verifier, global `SprotoShooterSim`) and `build/shooter-pvp-sim.js` (Free 1v1,
