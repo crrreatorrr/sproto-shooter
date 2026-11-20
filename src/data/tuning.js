@@ -37,6 +37,8 @@ export const TUNING = {
   healthOrb: 20, bigOrb: 60, manaOrb: 25,
   magnetRadius: 4, magnetAccel: 30, collectRadius: 0.9, pickupTtl: 30, gunPickupTtl: 120,
   gunPickupRadius: 2.2,
+  // Melee (any gun): Interact with nothing in reach. Hits the closest enemy in a cone in front (src/sim/dualWield.js).
+  melee: { damage: 45, range: 2.4, coneDeg: 50, cooldown: 0.7, fireLock: 0.35 },
   hitscanRange: G.hitscanRange,
 };
 

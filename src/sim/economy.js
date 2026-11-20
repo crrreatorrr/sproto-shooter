@@ -1,4 +1,5 @@
 // Crafting (weapon boxes), shop, vending, gun pickup/sell. PLAN §3.11, §7.7, §7.9
+import { grabsOffhand, takeOffhand } from './dualWield.js';
 import { SHOP } from '../data/shop.js';
 import { TUNING } from '../data/tuning.js';
 import { weighted, next } from '../core/rng.js';
@@ -58,6 +59,8 @@ export function pickupGun(state, p, pickupId) {
   if (!k) return;
   if (Math.hypot(p.pos.x - k.pos.x, p.pos.z - k.pos.z) > TUNING.gunPickupRadius + 1) return;
   const gun = k.gun;
+  // Halo-style dual wield: holding a dual-wieldable gun, a dual-wieldable gun on the floor goes to the left hand
+  if (grabsOffhand(p, gun)) { k.dead = true; takeOffhand(state, p, gun); return; }
   const legendary = gun.quality === 'legendary';
   let slot = -1;
   if (legendary && !p.guns[LEGENDARY_SLOT]) slot = LEGENDARY_SLOT;

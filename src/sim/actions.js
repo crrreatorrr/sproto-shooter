@@ -66,6 +66,7 @@ export function startMode(state, p, mode, _tier = null, opts = {}) {
   state.run = newRunStats();
   if (p.downCount != null) delete p.downCount;
   if (p.dead || p.downed) respawn(state, p);
+  delete p.dual; // a new mode starts with one gun in hand (the left-hand gun is not kept)
   p.hp = p.maxHp; p.shield = p.maxShield; p.mana = p.maxMana;
   p.pos = { x: 0, y: 0, z: 8 }; p.prevPos = { ...p.pos }; p.vel = { x: 0, y: 0, z: 0 };
   // Wave Mode progress (looted and saved guns, skill levels, wave spells) belongs to Wave Mode alone.
@@ -172,6 +173,18 @@ function giveTestLoadout(state, p) {
   state.tuning.infiniteAmmo = true;
   setGodMode(state, p, true);
   debugOp(state, p, 'spawnDummies', {});
+  placeTestSidearms(state, p);
+}
+
+/** Test Range: two Handguns and two Machine Pistols on the floor, to try every dual-wield pairing. */
+export const TEST_SIDEARMS = ['handgun', 'handgun', 'machinepistol', 'machinepistol'];
+function placeTestSidearms(state, p) {
+  TEST_SIDEARMS.forEach((type, i) => {
+    const gun = generateGun({ seed: 0x51DE + i, level: state.tier, forced: { type, quality: 'common', manufacturer: i % 2 ? 'zippity' : 'blastco', element: 'none' } });
+    const k = spawnGunPickup(state, gun, { x: p.pos.x - 3 + i * 2, z: p.pos.z - 3 }, 'sandbox');
+    k.ttl = Infinity; // stays until you take it
+    k.vel = { x: 0, y: 0, z: 0 };
+  });
 }
 
 /** God mode on: back up to at least GOD_HP (reviving if down) and stocked up on everything. Off: normal damage again. */

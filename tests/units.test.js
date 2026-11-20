@@ -52,10 +52,11 @@ describe('gun generator', () => {
       expect(generateGun({ seed: s, forced: { quality: 'rare' } }).wacky).toBeNull();
     }
   });
-  it('type drop frequency ~ 60/17/17/6', () => {
-    const c = { mg: 0, shotgun: 0, sniper: 0, bazooka: 0 };
+  it('type drop frequency ~ 60/17/17/6 + handguns 25/20 (weights out of 145)', () => {
+    const c = { mg: 0, shotgun: 0, sniper: 0, bazooka: 0, handgun: 0, machinepistol: 0 };
     for (let s = 0; s < 4000; s++) c[generateGun({ seed: s * 7919 }).type]++;
-    expect(c.mg / 4000).toBeGreaterThan(0.54); expect(c.bazooka / 4000).toBeLessThan(0.1);
+    expect(c.mg / 4000).toBeGreaterThan(0.36); expect(c.bazooka / 4000).toBeLessThan(0.07);
+    expect(c.handgun / 4000).toBeGreaterThan(0.13); expect(c.machinepistol / 4000).toBeGreaterThan(0.1);
   });
   it('higher quality and level means more damage', () => {
     const c = generateGun({ seed: 1, forced: { type: 'mg', quality: 'common', manufacturer: 'reliable' } });

@@ -1,3 +1,4 @@
+import { isDualWield } from '../src/data/guns.js';
 import { describe, it, expect } from 'vitest';
 import { createGameState, run, cmd } from './helpers.js';
 import { generateGun } from '../src/sim/guns.js';
@@ -204,7 +205,8 @@ describe('saved progress never leaves Wave Mode', () => {
     if (mode === 'test') expect(sources.every((x) => x === 'test'), why).toBe(true);
     // the sandbox's own Duck Gun may lie on the floor there and in the Test Range; nowhere else has a gun pickup
     if (mode !== 'sandbox' && mode !== 'test') expect(s.pickups.filter((k) => k.gun), why).toEqual([]);
-    else expect(s.pickups.filter((k) => k.gun && k.gun.type !== 'duckgun'), why).toEqual([]);
+    // the sandbox's Duck Gun and the Test Range's sidearms (TEST_SIDEARMS) are the only floor guns
+    else expect(s.pickups.filter((k) => k.gun && k.gun.type !== 'duckgun' && !(k.gun.source === 'sandbox' && isDualWield(k.gun))), why).toEqual([]);
   };
 
   it('every other mode entered straight from Wave Mode is clean, with or without the client flag', () => {

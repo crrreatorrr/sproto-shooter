@@ -18,6 +18,13 @@ export const GUN_TYPES = [
     base: B({ damage: 85, fireRate: 0.8, spread: 3.0, adsSpread: 0, magSize: 4, reloadTime: 2.6, critMult: 3.0, critChance: 0.08, elementChance: 0.35, recoil: 5.0, recoilYaw: 0.8, swapTime: 0.6, zoomFov: 12, pierce: 1 }) },
   { id: 'bazooka', name: 'Bazooka', short: 'BZ', ammoType: 'rockets', weight: 6, fireMode: 'auto',
     base: B({ damage: 140, fireRate: 0.6, spread: 0.5, adsSpread: 0.2, magSize: 1, reloadTime: 2.2, projectileSpeed: 28, critMult: 1.5, critChance: 0, elementChance: 0.5, splashRadius: 4.0, splashDamage: 110, recoil: 4.0, recoilYaw: 0.5, swapTime: 0.7, zoomFov: 70 }) },
+  // Dual-wieldable sidearms (dualWield): hold one, then hold Reload / Interact on another dual-wieldable gun on the
+  // floor to take it in the left hand (src/sim/dualWield.js). Each gun keeps its own magazine and reload.
+  // Placeholder rectangle viewmodels for now (no model, no animation).
+  { id: 'handgun', name: 'Handgun', short: 'HG', ammoType: 'bullets', weight: 25, dualWield: true, fireMode: 'auto', infiniteReserve: true, range: { full: 22, max: 55, min: 0.5 },
+    base: B({ damage: 16, fireRate: 3.5, spread: 1.0, adsSpread: 0.5, magSize: 12, reloadTime: 1.5, critMult: 2.2, critChance: 0.06, elementChance: 0.1, recoil: 1.4, recoilYaw: 0.35, swapTime: 0.35, zoomFov: 70 }) },
+  { id: 'machinepistol', name: 'Machine Pistol', short: 'MP', ammoType: 'bullets', weight: 20, dualWield: true, fireMode: 'auto', infiniteReserve: true, range: { full: 14, max: 40, min: 0.4 },
+    base: B({ damage: 7, fireRate: 11, spread: 2.4, adsSpread: 1.4, magSize: 24, reloadTime: 1.8, critMult: 1.8, critChance: 0.04, elementChance: 0.08, recoil: 0.45, recoilYaw: 0.3, swapTime: 0.35, zoomFov: 70 }) },
   // Boss weapons (bossOnly): never rolled at random (weight 0), not crafted or sold in the shop. Every boss kill
   // drops one (data/drops.js 'bossGun'). Endless spare ammo; the magazine still reloads.
   // Ray Gun: a piercing laser beam (hitscan, drawn as a glowing ray), fast and accurate.
@@ -82,12 +89,12 @@ export const ELEMENTS = [
 ];
 
 export const WACKY = [
-  { id: 'rubberDuck', name: 'Rubber Duckie', desc: 'Shots become bouncing rubber ducks.', allowedTypes: ['mg', 'shotgun', 'sniper'] },
-  { id: 'yeetReload', name: 'Yeet Reload', desc: 'Reloading throws the gun as an explosive.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun'] },
-  { id: 'tenthMega', name: 'Every Tenth', desc: 'Every 10th shot fires a giant mega bullet.', allowedTypes: ['mg', 'shotgun', 'sniper'] },
-  { id: 'critSproto', name: 'Lil Buddy', desc: 'Weak-spot hits spawn a mini friendly Sproto.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun'] },
-  { id: 'confettiKill', name: 'Party Popper', desc: 'Kills explode in damaging confetti.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun'] },
-  { id: 'bigHead', name: 'Big Head Mode', desc: 'Enemies you hit get huge heads (bigger weak spots).', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun'] },
+  { id: 'rubberDuck', name: 'Rubber Duckie', desc: 'Shots become bouncing rubber ducks.', allowedTypes: ['mg', 'shotgun', 'sniper', 'handgun', 'machinepistol'] },
+  { id: 'yeetReload', name: 'Yeet Reload', desc: 'Reloading throws the gun as an explosive.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun', 'handgun', 'machinepistol'] },
+  { id: 'tenthMega', name: 'Every Tenth', desc: 'Every 10th shot fires a giant mega bullet.', allowedTypes: ['mg', 'shotgun', 'sniper', 'handgun', 'machinepistol'] },
+  { id: 'critSproto', name: 'Lil Buddy', desc: 'Weak-spot hits spawn a mini friendly Sproto.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun', 'handgun', 'machinepistol'] },
+  { id: 'confettiKill', name: 'Party Popper', desc: 'Kills explode in damaging confetti.', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun', 'handgun', 'machinepistol'] },
+  { id: 'bigHead', name: 'Big Head Mode', desc: 'Enemies you hit get huge heads (bigger weak spots).', allowedTypes: ['mg', 'shotgun', 'sniper', 'bazooka', 'raygun', 'bigbullets', 'duckgun', 'handgun', 'machinepistol'] },
 ];
 
 export const NAME_BITS = {
@@ -98,6 +105,8 @@ export const NAME_BITS = {
   raygun: ['Zapper', 'Beam Buddy', 'Ray-o-Matic', 'Laser Lad'],
   bigbullets: ['Hand Cannon', 'Chonker', 'Big Bertha', 'Thumper'],
   duckgun: ['Quackinator', 'Bath Time', 'Quack Attack', 'Rubber Ruckus'],
+  handgun: ['Pea Shooter', 'Pocket Pal', 'Snubby', 'Side Piece'],
+  machinepistol: ['Bzzt Pistol', 'Lil Sprayer', 'Wrist Rattler', 'Pocket Hose'],
   element: { none: ['', 'Trusty', 'Basic'], fire: ['Spicy', 'Toasty', 'Hot'], shock: ['Zappy', 'Buzzy', 'Static'], goo: ['Gloopy', 'Sticky', 'Slimy'] },
 };
 
@@ -126,6 +135,8 @@ export const zoomLevelsOf = (gun) => (gun && GUN_TYPES_BY_ID[gun.type] && GUN_TY
 /** Field of view while aiming at zoom `level` (1 or 2). */
 export const zoomFovFor = (gun, level) => gun.stats.zoomFov * (level >= 2 && zoomLevelsOf(gun) >= 2 ? SCOPE_ZOOM2 : 1);
 /** True when this gun never runs out of spare ammo (the magazine still needs reloading). */
+/** True when this gun can be held in either hand (two of them can be dual wielded). */
+export const isDualWield = (gun) => !!(gun && GUN_TYPES_BY_ID[gun.type] && GUN_TYPES_BY_ID[gun.type].dualWield);
 export const hasInfiniteReserve = (gun) => !!(gun && GUN_TYPES_BY_ID[gun.type] && GUN_TYPES_BY_ID[gun.type].infiniteReserve);
 export const PARTS_BY_SLOT = Object.fromEntries(SLOTS.map((s) => [s, PARTS.filter((p) => p.slot === s)]));
 export const STAT_KEYS = ['damage', 'fireRate', 'spread', 'magSize', 'reloadTime', 'projectileSpeed', 'critMult', 'elementChance'];

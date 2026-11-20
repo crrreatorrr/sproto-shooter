@@ -828,7 +828,7 @@ export class Game {
     const input = this.input;
     input.canInteract = !this.pvpActive && !!p && !p.dead && (!!p.nearGunPickupId || !!nearBox(s, p));
     input.spellsUnlocked = p ? SPELL_IDS.filter((id) => p.perks[id]) : [];
-    if (p && p.dead) input.dropAim();
+    if (p && (p.dead || p.dual)) input.dropAim(); // no aiming while dual wielding
     // Changing weapon always comes up unzoomed.
     if (swappedWeapon(this._aimMemo || (this._aimMemo = {}), p)) input.dropAim();
   }

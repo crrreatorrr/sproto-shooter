@@ -19,6 +19,8 @@ export function mountViewmodel(env, playerModel) {
   // barrel angled in toward the crosshair; aiming pulls them to the center.
   const VM_POSE = {
     box: { rest: FP.hip.pos, ads: FP.ads.pos, yaw: 0, roll: 0, scale: FP.gunScale }, // placeholder while a model loads
+    // dual-wieldable sidearms (placeholder rectangles): held out in front, no aim pose. The left-hand gun mirrors x and yaw.
+    sidearm: { rest: [0.2, -0.19, -0.62], ads: [0.2, -0.19, -0.62], yaw: 0.06, roll: 0, scale: 0.7 },
     model: { rest: [0.2, -0.17, -0.5], ads: [0, -0.27, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
     // The MG's front sight sits above the barrel shroud. Keep it just below the crosshair in ADS.
     mg: { rest: [0.21, -0.18, -0.5], ads: [0, -0.16, -0.45], yaw: 0.06, roll: -0.03, scale: 1 },
@@ -221,7 +223,9 @@ export function mountViewmodel(env, playerModel) {
   function addTrauma(t) { feel.trauma = Math.min(1, feel.trauma + t); }
   // ---------- event listeners ----------
   bus.on('shot', (ev) => {
-    vm.kick = Math.min(1, vm.kick + (ev.gunType === 'mg' || ev.gunType === 'raygun' ? 0.25 : 1));
+    env.flashHand = ev.hand === 'left' ? 'left' : 'right'; // dual wield: which gun's muzzle flashes
+    if (ev.hand === 'left') vm.kickL = Math.min(1, (vm.kickL || 0) + 0.6);
+    else vm.kick = Math.min(1, vm.kick + (ev.gunType === 'mg' || ev.gunType === 'raygun' ? 0.25 : ev.gunType === 'machinepistol' ? 0.3 : 1));
     muzzleFlash.visible = true; env.flashT = 0.05;
     const big = ev.gunType !== 'mg' && ev.gunType !== 'raygun';
     muzzleFlash.scale.setScalar(big ? 0.12 : 0.07 * (ev.manufacturer === 'blastco' ? 1.6 : 1));
@@ -288,8 +292,9 @@ export function mountViewmodel(env, playerModel) {
   bus.on('dash', () => { feel.fovPunch += 8; });
   bus.on('slide', () => { feel.fovPunch += 4; });
   bus.on('reloadStart', (ev) => { vm.reloadTime = ev.time || 1.5; });
+  bus.on('melee', (ev) => { vm.kick = 1; addTrauma(ev.hit ? 0.3 : 0.08); }); // melee: a jab of the held gun
   bus.on('swap', () => { vm.swap = 1; });
-  bus.on('gunPickedUp', () => { vm.swap = 1; });
+  bus.on('gunPickedUp', (ev) => { if (ev.slot === 'left') vm.swapL = 1; else vm.swap = 1; });
   bus.on('stomp', (ev) => burstConfetti({ ...ev.pos, y: 0.1 }, 8, 3, [new THREE.Color(0xff5ec4)]));
   bus.on('pound', (ev) => { addBoom({ ...ev.pos, y: 0.2 }, 3.2, 0x9fb4ff, 0.3); addTrauma(0.2); });
   bus.on('bossStunned', (ev) => { addTrauma(0.6); burstConfetti({ ...ev.pos, y: 4 }, 30, 5, [new THREE.Color(0xffee55)]); });

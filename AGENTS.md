@@ -10,9 +10,10 @@ are the hub contracts.
 - `src/sim` and `src/data` stay pure: no `three`, no DOM, no `Math.random`, `Date.now` or
   `performance.now`. `tests/architecture.test.js` checks this.
 - Pins and tripwires. Change these numbers only on purpose, and say so in the PR:
-  - Campaign content fingerprint `73c6eb0f` (`contentFingerprint(1)` in
+  - Campaign content fingerprint `dfb46fb6` (`contentFingerprint(1)` in
     `src/data/serverManifest.js`; `tests/pvp-sim.test.js`, `tests/fixtures/boss-goldens.json`). It
-    covers boss, encounter, gun, part, element, spell and tuning data.
+    covers boss, encounter, gun, part, element, spell and tuning data. Was `73c6eb0f` until the
+    Handgun and Machine Pistol joined the gun table and `TUNING.melee` arrived (dual wield + melee).
   - PvP content fingerprint `e749d2fd` (`CONTENT_FINGERPRINT` in `src/sim/pvp/rules.js`).
     Was `c8a753da` until wager matches used campaign crits, element procs and splash, and
     sprint cancelled zoom. Before that, `dc00f234` (grapple caps) and `b33eada6`.
@@ -23,7 +24,8 @@ are the hub contracts.
   - Wave Mode and Sandbox hashes in `tests/fixtures/baseline-hashes.json`
     (`tests/levels/baseline.test.js`). The Wave Mode hashes at ticks 3000 and 6000 moved on
     2026-11-11 with the arena balance pass (boss gun drops, wave spell unlocks); tick 600 and the
-    Sandbox hashes did not. `tests/performance-baseline.test.js` repeats all of them.
+    Sandbox hashes did not. All of them moved on 2026-11-19 when the Handgun and Machine Pistol
+    joined the drop table. `tests/performance-baseline.test.js` repeats all of them.
 - Never edit `src/sim/pvp/`, `src/net/inputCodec.js`, `src/net/protocol.js` or `src/server/`
   without rebuilding and re-pinning. `npm run build:server-sim` writes `build/shooter-sim.js`
   (campaign verifier, global `SprotoShooterSim`) and `build/shooter-pvp-sim.js` (Free 1v1,

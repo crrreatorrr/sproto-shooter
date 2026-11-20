@@ -12,6 +12,7 @@ import { BIND, keyLabel } from '../input/input.js';
 import { TUNING } from '../data/tuning.js';
 import { bossLabel } from './bossLabel.js';
 import { describePickup, pickupLine } from './pickupText.js';
+import { grabsOffhand } from '../sim/dualWield.js';
 import { CAMPAIGN_NOTICE_EVENTS, campaignNotice, damageArcAngle, firstRunTip } from './hudText.js';
 
 /** Can a locked spell still be unlocked in the mode being played? Campaign: shrines. Wave Mode: wave clears. */
@@ -36,7 +37,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const fmt = (n, d = 0) => (Math.round(n * 10 ** d) / 10 ** d).toLocaleString();
 const SPELL_ICON = { gooBolt: '●', chainZap: 'ϟ', swarm: '✲', manaShield: '◈', meteor: '☄' };
-const TYPE_ICON = { mg: '▬', shotgun: '▮', sniper: '━', bazooka: '◉', raygun: '⚡', bigbullets: '●', duckgun: '🦆' };
+const TYPE_ICON = { mg: '▬', shotgun: '▮', sniper: '━', bazooka: '◉', raygun: '⚡', bigbullets: '●', duckgun: '🦆', handgun: '▪', machinepistol: '▫' };
 const PANEL_NAMES = { shop: 'Shop', inventory: 'Your guns', skills: 'Skills', stats: 'Stats & powers' };
 // The shop key is O by default. B is the grapple, and N (twice) is the feedback window, so the shop
 // has its own. Panel keys live in BIND (src/input/input.js) so Controller settings can move them.
@@ -525,9 +526,12 @@ export function createUI(root, { input, bus, project, game }) {
     // weapon
     const g = p.guns[p.activeSlot];
     if (g) {
-      const q = QUALITIES_BY_ID[g.quality];
-      html(els.gunName, 'gn', `<span style="color:${q.color}">${g.name}</span>${g.element !== 'none' ? ` <i style="color:${ELEMENTS_BY_ID[g.element].color}">●</i>` : ''}`);
-      text(els.mag, 'mag', p.reloadT > 0 ? `RELOAD ${p.reloadT.toFixed(1)}s` : String(g.ammoInMag));
+      const gunLabel = (x) => `<span style="color:${QUALITIES_BY_ID[x.quality].color}">${x.name}</span>${x.element !== 'none' ? ` <i style="color:${ELEMENTS_BY_ID[x.element].color}">●</i>` : ''}`;
+      const L = p.dual ? p.dual.gun : null;
+      // dual wield: both guns, left | right, each with its own magazine and reload
+      html(els.gunName, 'gn', L ? `${gunLabel(L)} <small>|</small> ${gunLabel(g)}` : gunLabel(g));
+      const magOf = (gun, reloadT) => (reloadT > 0 ? `RELOAD ${reloadT.toFixed(1)}s` : String(gun.ammoInMag));
+      text(els.mag, 'mag', L ? `L ${magOf(L, p.dual.reloadT)} · R ${magOf(g, p.reloadT)}` : magOf(g, p.reloadT));
       text(els.reserve, 'res', s.tuning.infiniteAmmo || s.tuning.godMode || hasInfiniteReserve(g) ? '/ ∞' : `/ ${p.ammo[g.ammoType]}`);
       set(els.mag, 'magLow', g.ammoInMag <= Math.max(1, g.stats.magSize * 0.2), (e, v) => e.classList.toggle('low', v));
     }
@@ -603,7 +607,8 @@ export function createUI(root, { input, bus, project, game }) {
     else if (nearGun) {
       const leg = nearGun.gun && nearGun.gun.quality === 'legendary';
       const full = p.guns.slice(0, p.unlockedSlots).every(Boolean);
-      prompt = `<b>${keyTag(keyLabel('reload'), PAD_BINDINGS.interact, true)}</b> Pick up${leg ? (p.guns[LEGENDARY_SLOT] && full ? ' (swaps your legendary)' : ` → legendary slot${pad() ? '' : ` [${keyLabel('slotLegendary')}]`}`) : full ? ' (swaps with equipped)' : ''}`;
+      if (nearGun.gun && grabsOffhand(p, nearGun.gun)) prompt = `<b>${keyTag(keyLabel('reload'), PAD_BINDINGS.interact, true)}</b> ${p.dual ? 'Swap left-hand gun' : 'Dual wield (left hand)'}`;
+      else prompt = `<b>${keyTag(keyLabel('reload'), PAD_BINDINGS.interact, true)}</b> Pick up${leg ? (p.guns[LEGENDARY_SLOT] && full ? ' (swaps your legendary)' : ` → legendary slot${pad() ? '' : ` [${keyLabel('slotLegendary')}]`}`) : full ? ' (swaps with equipped)' : ''}`;
     }
     else if (s.wave && s.wave.phase === 'intermission') prompt = pad() ? `<b>${keyTag(keyLabel('shop'), PAD_BINDINGS.panel)}</b> Shop · Ready` : `<b>[${keyLabel('shop')}]</b> Shop · <b>[${keyLabel('skip')}]</b> Ready`;
     html(els.prompt, 'prompt', prompt);
