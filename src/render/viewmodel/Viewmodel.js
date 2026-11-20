@@ -3,6 +3,12 @@ import { createFirstPerson, FP } from '../firstPerson.js';
 import { colliderFor } from '../gunCollider.js';
 import { fxRandom } from '../core/fxRandom.js';
 import { TUNING } from '../../data/tuning.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { enqueue, peekAsset, retainAsset, PRIORITY } from '../assets.js';
+
+/** The universal melee swing authored in Blender (art/blender/scripts/build_melee_swing.py). */
+export const MELEE_SWING_MODEL = 'models/gear/melee_swing.glb';
+const MELEE_CLIP = 'Melee swing';
 
 export function mountViewmodel(env, playerModel) {
   const { E, ELEM_COL, G, GUN_MODEL_LEN, HAND_FRAC, LEFT_SPEC, RAY_COL, VM_LAYER, addBeam, addBoom, addTracer, buildGunModel, burstConfetti, bus, camera, flashLight } = env;
@@ -53,7 +59,45 @@ export function mountViewmodel(env, playerModel) {
       idle(() => colliderFor(mesh, key));
     }
   }
-  const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, swap: 0, lastYaw: 0, lastPitch: 0, grapplePose: 0 };
+  const vm = { kick: 0, swayX: 0, swayY: 0, bob: 0, swap: 0, lastYaw: 0, lastPitch: 0, grapplePose: 0, meleeT: -1 };
+
+  // ---------- melee swing ----------
+  // One clip for every gun: the "Melee" node's keyed translation / rotation is a camera-space offset the
+  // frame adds to whatever gun is held; the arms follow the gun, so nothing is per gun type.
+  // Requested on the first play action (shot, swap, pickup, melee), never on the title screen.
+  let swingRequested = false;
+  function requestSwing() {
+    if (swingRequested) return;
+    swingRequested = true;
+    void enqueue(MELEE_SWING_MODEL, () => new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}assets/${MELEE_SWING_MODEL}`), PRIORITY.LATER).catch(() => {});
+  }
+  let swing = null;
+  function meleeSwing() {
+    if (swing) return swing;
+    const asset = peekAsset(MELEE_SWING_MODEL);
+    const clip = asset && THREE.AnimationClip.findByName(asset.animations, MELEE_CLIP);
+    if (!clip || !asset.scene.getObjectByName('Melee')) return null;
+    retainAsset(MELEE_SWING_MODEL);
+    const holder = new THREE.Group(), node = new THREE.Object3D();
+    node.name = 'Melee';
+    holder.add(node);
+    const mixer = new THREE.AnimationMixer(holder);
+    const action = mixer.clipAction(clip).play();
+    action.paused = true;
+    swing = { node, mixer, action, duration: clip.duration, pose: { x: 0, y: 0, z: 0, q: new THREE.Quaternion() } };
+    return swing;
+  }
+  /** The swing's offset `t` seconds in ({ x, y, z, q } in camera space), or null when idle or not loaded. */
+  function meleeOffset(t) {
+    const sw = meleeSwing();
+    if (!sw || !(t >= 0) || t > sw.duration) return null;
+    sw.action.time = t;
+    sw.mixer.update(0);
+    const o = sw.pose;
+    o.x = sw.node.position.x; o.y = sw.node.position.y; o.z = sw.node.position.z;
+    o.q.copy(sw.node.quaternion);
+    return o;
+  }
 
   // ---------- reload animations ----------
   // Procedural, per gun type, driven by reload progress t (0..1) so they always fit the real reload time.
@@ -292,7 +336,9 @@ export function mountViewmodel(env, playerModel) {
   bus.on('dash', () => { feel.fovPunch += 8; });
   bus.on('slide', () => { feel.fovPunch += 4; });
   bus.on('reloadStart', (ev) => { vm.reloadTime = ev.time || 1.5; });
-  bus.on('melee', (ev) => { vm.kick = 1; addTrauma(ev.hit ? 0.3 : 0.08); }); // melee: a jab of the held gun
+  // melee: the Blender swing on the held gun (a plain kick until the clip has loaded)
+  bus.on('melee', (ev) => { requestSwing(); vm.meleeT = 0; if (!meleeSwing()) vm.kick = 1; addTrauma(ev.hit ? 0.3 : 0.08); });
+  for (const type of ['shot', 'swap', 'gunPickedUp']) bus.on(type, requestSwing);
   bus.on('swap', () => { vm.swap = 1; });
   bus.on('gunPickedUp', (ev) => { if (ev.slot === 'left') vm.swapL = 1; else vm.swap = 1; });
   bus.on('stomp', (ev) => burstConfetti({ ...ev.pos, y: 0.1 }, 8, 3, [new THREE.Color(0xff5ec4)]));
@@ -304,5 +350,5 @@ export function mountViewmodel(env, playerModel) {
   bus.on('levelUp', () => feel.fovPunch += 3);
   bus.on('duckBounce', (ev) => burstConfetti(ev.pos, 2, 2, [new THREE.Color(0xffe14a)]));
   bus.on('bounce', (ev) => burstConfetti(ev.pos, 3, 3, [new THREE.Color(0x6b6b6b), new THREE.Color(0x3a3a3a)])); // tyre hitting the ground
-  Object.assign(env, { vmRoot, vmLight, muzzleFlash, setVmLayer, VM_POSE, fp, warmed, idle, warmColliders, vm, smooth, pulse, RELOAD_ANIM, NO_RELOAD, reloadOffsets, reloadProgress, track, PALM_DOWN_L, PUSH_FWD_L, BOLT_R, HAND_ANIM, reloadHands, feel, addTrauma, flushWeaponTracers });
+  Object.assign(env, { vmRoot, vmLight, muzzleFlash, setVmLayer, VM_POSE, fp, warmed, idle, warmColliders, vm, smooth, pulse, RELOAD_ANIM, NO_RELOAD, reloadOffsets, reloadProgress, track, PALM_DOWN_L, PUSH_FWD_L, BOLT_R, HAND_ANIM, reloadHands, feel, addTrauma, flushWeaponTracers, meleeOffset });
 }

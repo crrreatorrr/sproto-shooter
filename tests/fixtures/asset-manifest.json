@@ -77,10 +77,10 @@
     }
   ],
   "counts": {
-    "runtimeFiles": 395,
-    "runtimeBytes": 26964053,
+    "runtimeFiles": 396,
+    "runtimeBytes": 26965413,
     "decodedBytes": 257493830,
-    "referenced": 395,
+    "referenced": 396,
     "dynamic": 54,
     "missing": 0,
     "unused": 0,
@@ -341,6 +341,13 @@
       "kind": "static",
       "from": [
         "src/render/vfx/grappler.js"
+      ]
+    },
+    {
+      "path": "models/gear/melee_swing.glb",
+      "kind": "static",
+      "from": [
+        "src/render/viewmodel/Viewmodel.js"
       ]
     },
     {
@@ -4401,6 +4408,35 @@
           "Ochre",
           "Satin steel"
         ]
+      }
+    },
+    {
+      "path": "models/gear/melee_swing.glb",
+      "bytes": 1360,
+      "sha256": "ef40affc3b9bae9a7639199a933684881d2b9f959102e456ac203bcd9ca70c2b",
+      "referenced": true,
+      "referenceKind": "static",
+      "referencedFrom": [
+        "src/render/viewmodel/Viewmodel.js"
+      ],
+      "kind": "glb",
+      "width": null,
+      "height": null,
+      "meshopt": false,
+      "triangles": 0,
+      "meshoptDecodedBytes": 0,
+      "imageDecodedBytes": 0,
+      "decodedBytes": 0,
+      "decodedNote": "Embedded image RGBA8 plus meshopt-decoded buffer views. Meshopt views are the uncompressed payload, not a second codec.",
+      "images": [],
+      "rig": {
+        "clips": [
+          "Melee swing"
+        ],
+        "skins": 0,
+        "joints": 0,
+        "nodes": 1,
+        "materials": []
       }
     },
     {
@@ -15227,6 +15263,10 @@
       {
         "path": "art/blender/hellfire_underworks.blend",
         "bytes": 275371
+      },
+      {
+        "path": "art/blender/melee_swing.blend",
+        "bytes": 93725
       },
       {
         "path": "art/blender/moonlit_ruins.blend",

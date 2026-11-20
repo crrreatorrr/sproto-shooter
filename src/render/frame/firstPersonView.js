@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { TUNING } from '../../data/tuning.js';
 import { isDualWield, zoomFovFor } from '../../data/guns.js';
 import { DT } from '../../sim/simulate.js';
@@ -8,7 +9,8 @@ const NO_WEAPON_OFFSET = [0, 0, 0];
 
 export function createFirstPersonView(env) {
   const { GUN_MODEL_LEN, VM_POSE, buildGunMesh, buildGunModel, camera, disposeTree, feel, flashLight, fp, lerp,
-    muzzleFlash, NO_RELOAD, reloadHands, reloadOffsets, setVmLayer, vm, vmRoot, warmColliders } = env;
+    meleeOffset, muzzleFlash, NO_RELOAD, reloadHands, reloadOffsets, setVmLayer, vm, vmRoot, warmColliders } = env;
+  const meleeQ = new THREE.Quaternion(), NO_TURN = new THREE.Quaternion();
   let vmGun = null, vmGunKey = null;
   let vmGunL = null, vmGunLKey = null; // dual wield: the left-hand gun
   let slide = 0, pepeBreathe = 0, pepeStride = 0, pepePace = 0;
@@ -77,6 +79,7 @@ export function createFirstPersonView(env) {
     // sidearms are placeholder rectangles: no hands on them and no reload motion
     const sidearm = !!(vmGun && vmGun.userData.sidearm);
     vm.kick = Math.max(0, vm.kick - fdt * 8);
+    if (vm.meleeT >= 0) { vm.meleeT += fdt; if (vm.meleeT > 1) vm.meleeT = -1; }
     vm.kickL = Math.max(0, (vm.kickL || 0) - fdt * 8);
     vm.swap = Math.max(0, vm.swap - fdt * 4);
     vm.swapL = Math.max(0, (vm.swapL || 0) - fdt * 4);
@@ -110,6 +113,14 @@ export function createFirstPersonView(env) {
         lerp(pose.rest[1], ad[1], vm.ads) - vm.swayY * steady + r.y * ready - vm.swap * 0.25 + weaponBob * steady - glide * 0.035 + offset[1] - grapplePose * 0.29,
         lerp(pose.rest[2], ad[2], vm.ads) + (vm.kick * 0.05 + r.z) * ready + offset[2] + grapplePose * 0.07);
       vmGun.rotation.set((vm.kick * 0.25 + r.rx) * ready + glide * 0.045 - grapplePose * 0.76, pose.yaw * ia + vm.swayX * steady + r.ry * ready, pose.roll * ia + r.rz * ready - glide * 0.13);
+      // melee: the universal swing (camera-space offset and turn about the gun) on top of any gun's pose.
+      // window.__meleeAt (seconds) pins the swing for inspection, like __hideFP.
+      const pinned = typeof window !== 'undefined' && typeof window.__meleeAt === 'number' ? window.__meleeAt : null;
+      const m = meleeOffset(pinned ?? vm.meleeT);
+      if (m) {
+        vmGun.position.x += m.x * ready; vmGun.position.y += m.y * ready; vmGun.position.z += m.z * ready;
+        vmGun.quaternion.premultiply(meleeQ.slerpQuaternions(NO_TURN, m.q, ready));
+      }
       vmGun.updateMatrix();
       muzzleFlash.position.copy(vmGun.userData.muzzle).applyMatrix4(vmGun.matrix);
       if (vmGunL) {
