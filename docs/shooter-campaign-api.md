@@ -190,17 +190,17 @@ slot. Retry that same instance/key after a lost response; never select protocol,
 seed/loadout/run ID or regenerate a fallback key to enter legacy. Server legacy
 selection is reported as unsupported for this v2 controller. Unknown protocol or
 retained manifest support blocks start; it does not trigger a completed-log path.
-The client accepts the retained campaign verifier built from `ccaa836dcfa1f93fc3bb2ee3c55e4209e9cf219d`.
-Its SHA-256 is `bcfdba3eefe012accc6675faf233186d6588d55bf55a8600b5423ca2b0e46807` and its content
-fingerprint is `73c6eb0f` (simulator 1, upload 2, replay API 2,
-checkpoint 2 and economy 1). That commit is Shooter main through #155. #155 changed
-`scripts/build-server-sim.mjs`, a bundle input, so the campaign bundle bytes moved again; the simulation
-itself did not change. It replaces the previous client pin
-`1fd01820e5f9f62fd549db09408261b7b6674c79` /
-`7ba57e4214ce5b9b69dd00b78fd9cd36c6d08049bb0495cb9cf94faee0077f2e`. Register this exact build for
-new rewarded runs before shipping this client. The bundle bakes the last commit that
-changed one of its sim source paths, so a later commit changes the SHA-256 only when it
-touches one of those paths. Keep the
+The client accepts the retained campaign verifier built from `fd97966869387a40c22c97a87075dc3431cd4b05`.
+Its SHA-256 is `63c650240469000451a4156de04c551ace92fc838e1d8497907a22d64a2281b3` and its content
+fingerprint is `dfb46fb6` (simulator 1, upload 2, replay API 2,
+checkpoint 2 and economy 1). That commit is Shooter main through #158. #158 added dual-wieldable
+sidearms and melee to the campaign simulation, so the content fingerprint moved from `73c6eb0f` to
+`dfb46fb6`. Runs recorded against the old verifier do not replay on this one. It replaces the previous client pin
+`ccaa836dcfa1f93fc3bb2ee3c55e4209e9cf219d` /
+`bcfdba3eefe012accc6675faf233186d6588d55bf55a8600b5423ca2b0e46807`. Register this exact build for
+new rewarded runs before shipping this client. The bundle bakes the commit it was built at
+(`git rev-parse HEAD`), so build it from the pinned commit itself; a later commit that leaves the
+sim, protocol, content and bundle-build files alone does not need a new pin. Keep the
 previous retained executable available for runs issued against it.
 
 An issued response must have the exact0056 shape and limits, canonical engine
