@@ -151,9 +151,9 @@ export function mergeProgress(old, next) {
 // Exact retained campaign verifier for this client’s simulation. The hub must
 // register this bundle before issuing rewarded runs to this client.
 export const SUPPORTED_MANIFEST = Object.freeze({ artifact: 'shooter-sim',
-  sourceCommit: 'ccaa836dcfa1f93fc3bb2ee3c55e4209e9cf219d',
-  sha256: 'bcfdba3eefe012accc6675faf233186d6588d55bf55a8600b5423ca2b0e46807',
-  protocol: 1, contentFingerprint: '73c6eb0f', uploadProtocol: 2, replayApiVersion: 2,
+  sourceCommit: 'fd97966869387a40c22c97a87075dc3431cd4b05',
+  sha256: '63c650240469000451a4156de04c551ace92fc838e1d8497907a22d64a2281b3',
+  protocol: 1, contentFingerprint: 'dfb46fb6', uploadProtocol: 2, replayApiVersion: 2,
   checkpointSchema: 2, economyPolicy: 1 });
 export const ISSUED_LIMITS = Object.freeze({ batchFramesTextBytes: 2097152, runFramesTextBytes: 67108864,
   bodyBytes: 2162688, batchFrames: 28800, runFrames: 162000, batches: 4096, batchActions: 32,
